@@ -440,3 +440,7 @@ fn server_error(error: impl std::fmt::Display) -> Response {
         "the local mock IdP could not complete the operation",
     )
 }
+
+#[cfg(test)]
+#[path = "handlers_tests.rs"]
+mod tests;

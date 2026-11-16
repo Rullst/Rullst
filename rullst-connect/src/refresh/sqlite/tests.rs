@@ -369,3 +369,102 @@ async fn existing_symbolic_link_targets_are_rejected() {
     std::fs::remove_file(link).expect("remove link");
     std::fs::remove_file(target).expect("remove target");
 }
+
+#[tokio::test]
+async fn snapshots_metadata_and_debug_report_the_stored_values() {
+    let path = temporary_database("report");
+    let url = database_url(&path);
+    let store = SqliteTokenSnapshotStore::connect(&url, 3)
+        .await
+        .expect("bounded store");
+    let encryption_key = key("rotation-7", 9);
+    for account in ["first", "second"] {
+        store
+            .insert_initial(
+                &binding(account),
+                &state("access", "refresh", 0),
+                &encryption_key,
+            )
+            .await
+            .expect("insert row");
+    }
+    let snapshot = store.snapshot().await.expect("two of three entries");
+    assert_eq!(snapshot.entries(), 2);
+    assert_eq!(snapshot.max_entries(), 3);
+    let metadata = store
+        .metadata(&binding("first"))
+        .await
+        .expect("metadata")
+        .expect("stored row");
+    assert_eq!(metadata.key_id(), "rotation-7");
+    assert_eq!(metadata.generation(), 0);
+    assert_eq!(
+        format!("{store:?}"),
+        "SqliteTokenSnapshotStore { database: \"[REDACTED]\", max_entries: 3 }"
+    );
+
+    // Closing one handle closes the pool its clones share.
+    let clone = store.clone();
+    store.close().await;
+    assert!(clone.snapshot().await.is_err());
+    remove_database(&path);
+}
+
+#[tokio::test]
+async fn directories_and_memory_mode_are_refused() {
+    let directory = temporary_database("directory");
+    std::fs::create_dir(&directory).expect("create directory");
+    assert!(matches!(
+        SqliteTokenSnapshotStore::connect(&database_url(&directory), 4).await,
+        Err(TokenStoreError::InvalidConfiguration(
+            "target must be a regular file"
+        ))
+    ));
+    std::fs::remove_dir(&directory).expect("remove directory");
+
+    let path = temporary_database("memory-mode");
+    assert!(matches!(
+        SqliteTokenSnapshotStore::connect(&format!("{}?mode=memory", database_url(&path)), 4).await,
+        Err(TokenStoreError::InvalidConfiguration(
+            "database must be file-backed"
+        ))
+    ));
+    assert!(!path.exists());
+}
+
+#[tokio::test]
+async fn an_unknown_schema_version_is_corrupt_storage() {
+    let path = temporary_database("schema-version");
+    let url = database_url(&path);
+    SqliteTokenSnapshotStore::connect(&url, 4)
+        .await
+        .expect("store")
+        .close()
+        .await;
+    let pool = sqlx::SqlitePool::connect(&url).await.expect("raw pool");
+    sqlx::query("UPDATE rullst_connect_token_meta SET schema_version = 2")
+        .execute(&pool)
+        .await
+        .expect("tamper with the schema version");
+    pool.close().await;
+    assert!(matches!(
+        SqliteTokenSnapshotStore::connect(&url, 4).await,
+        Err(TokenStoreError::CorruptStorage("schema configuration"))
+    ));
+    remove_database(&path);
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn a_target_that_cannot_be_inspected_is_unavailable() {
+    // A path below a regular file fails with `NotADirectory`, not `NotFound`.
+    let file = temporary_database("parent-file");
+    std::fs::File::create(&file).expect("create file");
+    assert!(matches!(
+        SqliteTokenSnapshotStore::connect(&database_url(&file.join("tokens.sqlite")), 4).await,
+        Err(TokenStoreError::StorageUnavailable(
+            "inspect database target"
+        ))
+    ));
+    std::fs::remove_file(&file).expect("remove file");
+}

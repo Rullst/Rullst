@@ -290,7 +290,8 @@ struct ParsedEnvelope<'a> {
 }
 
 fn parse_envelope(envelope: &str) -> Result<ParsedEnvelope<'_>, TokenSnapshotError> {
-    if envelope.is_empty() || envelope.len() > MAX_ENVELOPE_BYTES {
+    // An empty envelope fails the prefix check.
+    if envelope.len() > MAX_ENVELOPE_BYTES {
         return Err(TokenSnapshotError::InvalidEnvelope);
     }
     let mut fields = envelope.split(':');

@@ -375,3 +375,7 @@ pub(crate) fn parse_content_length(headers: &reqwest::header::HeaderMap) -> Opti
             })
         })
 }
+
+#[cfg(test)]
+#[path = "proxy_tests.rs"]
+mod proxy_tests;

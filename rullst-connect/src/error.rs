@@ -294,4 +294,19 @@ mod tests {
             assert!(!debug.contains("issued-") && !display.contains("issued-"));
         }
     }
+
+    #[test]
+    fn issued_tokens_debug_names_which_tokens_were_issued() {
+        let both = IssuedTokens::new("access".to_string(), Some("refresh".to_string()), Some(60));
+        assert_eq!(
+            format!("{both:?}"),
+            "IssuedTokens { access_token: \"[REDACTED]\", refresh_token: Some(\"[REDACTED]\"), \
+             expires_in: Some(60) }"
+        );
+        let access_only = IssuedTokens::new("access".to_string(), None, None);
+        assert_eq!(
+            format!("{access_only:?}"),
+            "IssuedTokens { access_token: \"[REDACTED]\", refresh_token: None, expires_in: None }"
+        );
+    }
 }

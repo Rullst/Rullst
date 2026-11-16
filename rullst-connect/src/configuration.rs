@@ -301,6 +301,10 @@ fn is_loopback(url: &Url) -> bool {
 }
 
 #[cfg(test)]
+#[path = "configuration_tests.rs"]
+mod validation_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
