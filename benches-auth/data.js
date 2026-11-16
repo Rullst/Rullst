@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794813954823,
+  "lastUpdate": 1794817056370,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -23399,6 +23399,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4249,
             "range": "± 40",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5d47d9606ad33cc7c7f078893bbe14529160ac90",
+          "message": "Merge pull request #734 from Rullst/chore/v13-alpha6-dependency-refresh\n\nchore(deps): pre-freeze refresh, aws-lc-sys 0.47 for the aarch64 ES256 fix",
+          "timestamp": "2026-11-16T05:01:03-03:00",
+          "tree_id": "292cfa4f73e6f7638f6fa02715a53dfc2e3b6d3a",
+          "url": "https://github.com/Rullst/Rullst/commit/5d47d9606ad33cc7c7f078893bbe14529160ac90"
+        },
+        "date": 1794817055205,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 852,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 667,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1532,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3697,
+            "range": "± 19",
             "unit": "ns/iter"
           }
         ]
