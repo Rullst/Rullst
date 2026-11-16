@@ -71,6 +71,31 @@ received a test or is listed under
   crate-private clock that its tests set (the public `mock_router` keeps the
   system clock), and a test that exchanges a code 299 and 300 seconds after
   issuing it kills that mutant, which leaves the eight accepted equivalents.
+- **`rullst-auth`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+  [PR #743](https://github.com/Rullst/Rullst/pull/743), runs in the
+  maintainer's fork
+  [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)):
+  targeted runs of the 63 files outside the PostgreSQL and MySQL passkey and
+  session-registry stores (8 have no mutants) gave 1,890 mutants: 1,613
+  caught, 262 unviable, no timeout and 15 missed. Six of the misses are the
+  PostgreSQL durability checks of the email-login and API-token services,
+  which the `auth-recovery-postgres` contract run catches; the other nine are
+  accepted equivalents listed below. The contract runs:
+  `passkey-postgres`
+  ([43886790700](https://github.com/venelouis/rullst-ci/actions/runs/43886790700)),
+  150 mutants: 100 caught, 14 unviable and 36 missed, 35 of them in
+  `manager.rs`, which its targeted run catches except the accepted
+  `start_authenticate` one; the last, the cross-host skew bound of
+  `advance_clock` in `postgres/operations.rs` with `<` as `<=`, is killed by a
+  contract step that adopts a time exactly five seconds behind (rerun
+  [43906357870](https://github.com/venelouis/rullst-ci/actions/runs/43906357870));
+  `auth-recovery-postgres`
+  ([43886805895](https://github.com/venelouis/rullst-ci/actions/runs/43886805895)),
+  255 mutants: 123 caught, 43 unviable and 89 missed, all caught by the
+  targeted runs except the three accepted equivalents of `connection.rs` and
+  `store.rs`; `auth-session-registry`
+  ([43886821193](https://github.com/venelouis/rullst-ci/actions/runs/43886821193)):
+  4 mutants, all caught.
 - **`rullst-nexus`**: first measured in PR #532 (26 files, 876 mutants). New
   tests killed 170 of the 171 first misses, one is an accepted equivalent, and
   one real defect was fixed.
