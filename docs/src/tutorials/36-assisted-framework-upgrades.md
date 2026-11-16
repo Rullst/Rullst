@@ -257,6 +257,21 @@ location out and still reports the rule's other locations. The
 [rule classification](#v12--v13-rule-classification) lists which migration
 rows have rules.
 
+The review rules about how the deployed application behaves skip test code
+(since 13.0.0-alpha.6): files below a `tests` directory or named `tests.rs`,
+`*_tests.rs` or `*_test.rs`, and, in any file, an item marked `#[cfg(test)]`,
+`#[test]` or another `…::test` attribute (`#[tokio::test]`), with everything
+inside it, such as the inline `mod tests { … }` of a controller. Those rules
+are `V13-CSRF-COOKIE-IN-PAGE`, `V13-CSRF-STATIC-PREFIXES`,
+`V13-ROUTER-BASELINE-LAYERS`, `V13-CREDENTIAL-RATE-LIMIT`,
+`V13-LMS-RECORD-PROGRESS`, `V13-ERP-DASHBOARD-ACCESS`, `V13-ERP-STORE-ORDER`,
+`V13-PAGE-CSP-NONCE`, `V13-PAGE-BOUNDS` and `V13-PORTFOLIO-PROFILE`. Before,
+`V13-CSRF-COOKIE-IN-PAGE` skipped only test files, `V13-CREDENTIAL-RATE-LIMIT`
+and `V13-LMS-RECORD-PROGRESS` only test functions and modules, and the other
+seven reported test code too. Must-change rules and
+the review rules whose change a test also observes (a removed probe field,
+new header values, the ORM sandbox attribute) still report test code.
+
 Must-change findings stop `cargo rullst upgrade` before it changes anything:
 the code they name does not compile with the target, so changing the versions
 and running the Cargo gates (minutes on a cold cache) could only fail and
@@ -709,7 +724,7 @@ totals, which every new row or rule would change.
 | Secure cookies over HTTPS | (c) none | — | Runtime behaviour; not detectable in source |
 | CSRF cookie on cacheable responses | (c) none | — | `Cache-Control` values set by handlers are not located |
 | CSRF static files by path | (b) review | `V13-CSRF-STATIC-PREFIXES` | `.nest_service("/path", ..)` and `.route_service("/path", ..)` with a literal path that Core's default `csrf_static_prefixes` and `csrf_static_paths` do not cover, in a file that names `ServeDir` or `ServeFile`, at every location; dynamic pages that now get a token need no change and are not located; introduced in 13.0.0-alpha.6 |
-| CSRF token masked per response | (b) review | `V13-CSRF-COOKIE-IN-PAGE` | `.strip_prefix("rullst_csrf=")`, the raw cookie read of the `get_csrf_token` helper generated before 13.0.0-alpha.6, outside test code (a `tests` directory, `tests.rs`, `*_tests.rs`, `*_test.rs`) in a file that does not call `mask_csrf_token`, at every location; code that compares `CsrfToken::as_str()` with the cookie is not located; introduced in 13.0.0-alpha.6 |
+| CSRF token masked per response | (b) review | `V13-CSRF-COOKIE-IN-PAGE` | `.strip_prefix("rullst_csrf=")`, the raw cookie read of the `get_csrf_token` helper generated before 13.0.0-alpha.6, outside test code (a `tests` directory, `tests.rs`, `*_tests.rs`, `*_test.rs`, and `#[cfg(test)]` modules and test functions of other files) in a file that does not call `mask_csrf_token`, at every location; code that compares `CsrfToken::as_str()` with the cookie is not located; introduced in 13.0.0-alpha.6 |
 | Compressed pages in the generated Caddyfile | (b) review | `V13-DEPLOY-CADDY-ENCODE` | A root `Caddyfile` with `reverse_proxy app:3000` and no `encode` line, reported at the proxy line; introduced in 13.0.0-alpha.6 |
 | Connect mock credentials | (c) none | — | Credentials come from configuration and are not located |
 | Connect mock authorization URL | (c) none | — | Mock mode only |

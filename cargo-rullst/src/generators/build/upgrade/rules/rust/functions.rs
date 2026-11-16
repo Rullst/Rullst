@@ -150,14 +150,7 @@ fn serves_requests(path: &Path) -> bool {
 
 /// `#[test]`, `#[tokio::test]` and other `…::test` attributes, or `#[cfg(test)]`.
 fn test_code(attributes: &[Attribute]) -> bool {
-    attributes.iter().any(|attribute| match &attribute.meta {
-        syn::Meta::List(list) if list.path.is_ident("cfg") => list.tokens.to_string() == "test",
-        meta => meta
-            .path()
-            .segments
-            .last()
-            .is_some_and(|segment| segment.ident == "test"),
-    })
+    super::super::test_code::is_test_attribute(attributes)
 }
 
 struct Functions<'a> {
