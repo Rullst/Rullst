@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794824017890,
+  "lastUpdate": 1794833805217,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -17944,6 +17944,46 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_past_due",
             "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "@venelouis",
+            "username": "venelouis",
+            "email": "37526748+venelouis@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "fc8c05016f38058919dd60f6af0ff04c77ff71c3",
+          "message": "Merge pull request #735 from Rullst/perf/v13-alpha6-sqlite-wal\n\nperf(orm): opt-in WAL journal for SQLite pools and WAL in generated starters",
+          "timestamp": "2026-11-16T09:52:19Z",
+          "url": "https://github.com/Rullst/Rullst/commit/fc8c05016f38058919dd60f6af0ff04c77ff71c3"
+        },
+        "date": 1794833804909,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 11,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 13,
             "range": "± 0",
             "unit": "ns/iter"
           },
