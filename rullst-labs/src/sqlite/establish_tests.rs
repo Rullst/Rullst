@@ -1,21 +1,33 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
-//! A real bootstrap connection that outlives the pool wait is tried again.
+//! A lock held past a bootstrap wait is tried again, on every platform.
+//!
+//! `open` connects while another connection keeps the file under SQLite's
+//! exclusive lock, with short waits so that each test takes about a second.
+//! One wait is much shorter than the other, so which one runs out is decided
+//! rather than raced: SQLite's busy handler (`SQLITE_BUSY`) or the pool's wait
+//! (`PoolTimedOut`). The store's waits are 5 seconds each, which made the
+//! outcome depend on the platform's timers.
 
 use super::super::{ContentKey, SqliteLabs, StoreConfig, cause};
-use crate::{ExecutionProfile, Reference, SystemClock};
+use super::{Waits, retried};
+use crate::{ExecutionProfile, LabError, Reference, SystemClock};
 use sqlx::{
     Connection, SqliteConnection,
     sqlite::{SqliteConnectOptions, SqliteLockingMode},
 };
-use std::{
-    cell::Cell,
-    path::Path,
-    time::{Duration, Instant},
-};
+use std::{cell::Cell, future::Future, path::Path, time::Duration};
+
+/// The wait that is meant to run out.
+const SHORT: Duration = Duration::from_millis(200);
+/// A pool wait that tries the second attempt's connection while a stalled
+/// runner disk delays it.
+const POOL: Duration = Duration::from_secs(1);
+/// The wait that is not meant to run out.
+const LONG: Duration = Duration::from_secs(10);
 
 fn config() -> StoreConfig {
     StoreConfig::new(
-        Reference::new("stalled").unwrap(),
+        Reference::new("locked").unwrap(),
         10,
         4,
         ExecutionProfile::Simulation,
@@ -25,6 +37,20 @@ fn config() -> StoreConfig {
 
 fn key() -> ContentKey {
     ContentKey::new([5; 32]).unwrap()
+}
+
+async fn initialized(directory: &Path) -> std::path::PathBuf {
+    let path = directory.join("labs.sqlite");
+    SqliteLabs::initialize(&path, config(), key(), SystemClock)
+        .await
+        .unwrap()
+        .close()
+        .await;
+    path
+}
+
+async fn open(path: &Path, waits: Waits) -> Result<SqliteLabs, LabError> {
+    SqliteLabs::open_with(path, config(), key(), SystemClock, waits).await
 }
 
 /// A connection in SQLite's exclusive locking mode that has taken the write
@@ -45,52 +71,72 @@ async fn exclusive_lock(path: &Path) -> SqliteConnection {
     connection
 }
 
-/// `open` establishes its first connection while another connection keeps
-/// the file locked, so that establishment waits past the pool's 5-second
-/// wait and times out. The lock is released only once the store has tried
-/// the step again, so the first attempt never saw the file unlocked.
-///
-/// Establishing the connection waits for the lock in SQLite's busy handler,
-/// whose 5-second timeout equals the pool wait and is spent in about 60
-/// sleeps. Windows rounds each sleep up to the system timer tick: on hosted
-/// runners the handler gave up after about 5.5 s, while the pool wait ended
-/// within 5.01 s. On Linux the handler gave up after only 5.008 to 5.015 s,
-/// so a late runtime thread can see `SQLITE_BUSY` first, which is not
-/// retried: the test runs on Windows only. A later attempt may time out too
-/// when the runner's disk stalls, so it asserts at least one retry.
-#[tokio::test]
-#[cfg_attr(
-    not(windows),
-    ignore = "only Windows makes SQLite's lock wait outlast the pool wait"
-)]
-async fn open_tries_again_when_establishing_its_connection_times_out() {
-    let directory = tempfile::tempdir().unwrap();
-    let path = directory.path().join("labs.sqlite");
-    SqliteLabs::initialize(&path, config(), key(), SystemClock)
-        .await
-        .unwrap()
-        .close()
-        .await;
-    let holder = exclusive_lock(&path).await;
-    let before = super::retried();
+/// Runs `opening` while `path` stays locked until the store has tried a step
+/// again, so the first attempt never sees the file unlocked.
+async fn locked_until_retried<T>(path: &Path, opening: impl Future<Output = T>) -> T {
+    let holder = exclusive_lock(path).await;
+    let before = retried();
     let finished = Cell::new(false);
-    let started = Instant::now();
     let opening = async {
-        let opened = SqliteLabs::open(&path, config(), key(), SystemClock).await;
+        let opened = opening.await;
         finished.set(true);
         opened
     };
     let releasing = async {
-        while super::retried() == before && !finished.get() {
-            tokio::time::sleep(Duration::from_millis(10)).await;
+        while retried() == before && !finished.get() {
+            tokio::time::sleep(Duration::from_millis(5)).await;
         }
         holder.close().await.unwrap();
     };
-    let (opened, ()) = tokio::join!(opening, releasing);
-    let elapsed = started.elapsed();
-    let store = opened
-        .unwrap_or_else(|error| panic!("open: {error:?} ({:?}) after {elapsed:?}", cause::last()));
-    assert!(super::retried() > before, "after {elapsed:?}");
-    assert!(elapsed >= Duration::from_secs(5), "after {elapsed:?}");
+    tokio::join!(opening, releasing).0
+}
+
+#[tokio::test]
+async fn a_lock_wait_that_runs_out_is_tried_again() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = initialized(directory.path()).await;
+    let before = retried();
+    let waits = Waits {
+        pool: LONG,
+        lock: SHORT,
+    };
+    let store = locked_until_retried(&path, open(&path, waits))
+        .await
+        .unwrap_or_else(|error| panic!("open: {error:?} ({:?})", cause::last()));
+    assert!(retried() > before);
     store.close().await;
+}
+
+#[tokio::test]
+async fn a_pool_wait_that_runs_out_is_tried_again() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = initialized(directory.path()).await;
+    let before = retried();
+    let waits = Waits {
+        pool: POOL,
+        lock: LONG,
+    };
+    let store = locked_until_retried(&path, open(&path, waits))
+        .await
+        .unwrap_or_else(|error| panic!("open: {error:?} ({:?})", cause::last()));
+    assert!(retried() > before);
+    store.close().await;
+}
+
+#[tokio::test]
+async fn a_lock_held_past_every_attempt_is_a_storage_timeout() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = initialized(directory.path()).await;
+    let holder = exclusive_lock(&path).await;
+    let before = retried();
+    let waits = Waits {
+        pool: LONG,
+        lock: SHORT,
+    };
+    let opened = open(&path, waits).await;
+    holder.close().await.unwrap();
+    assert_eq!(opened.err(), Some(LabError::StorageTimeout));
+    // SQLITE_BUSY, extended or not, behind the last attempt.
+    assert!(matches!(cause::last(), Some(cause::StorageCause::Sqlite(code)) if code & 0xff == 5));
+    assert_eq!(retried() - before, 2);
 }

@@ -37,6 +37,11 @@ pub enum ConsentError {
     DurableStateRequired,
     #[error("consent storage is unavailable")]
     StoreUnavailable,
+    /// `SqliteConsentStore::initialize` or `open` (v13): the file stayed
+    /// locked by another connection, or its disk stalled, past every
+    /// attempt's wait. Nothing was changed; try again later.
+    #[error("consent storage stayed locked or stalled while opening")]
+    StoreTimeout,
     #[error("consent storage has reached its configured capacity")]
     StoreCapacity,
     #[error("consent state or storage configuration is invalid")]

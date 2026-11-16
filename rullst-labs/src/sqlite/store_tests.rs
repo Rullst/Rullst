@@ -162,13 +162,13 @@ fn only_verbatim_drive_paths_lose_their_prefix() {
 async fn validation_itself_rejects_a_foreign_binding_or_a_missing_time() {
     let directory = tempfile::tempdir().unwrap();
     let path = initialized(&directory).await;
-    let own = SqliteLabs::connect(&path, config(10), key(), SystemClock)
+    let own = SqliteLabs::connect(&path, config(10), key(), SystemClock, Waits::STORE)
         .await
         .unwrap();
     own.validate().await.unwrap();
     own.close().await;
 
-    let foreign = SqliteLabs::connect(&path, config(11), key(), SystemClock)
+    let foreign = SqliteLabs::connect(&path, config(11), key(), SystemClock, Waits::STORE)
         .await
         .unwrap();
     assert!(matches!(
@@ -185,7 +185,7 @@ async fn validation_itself_rejects_a_foreign_binding_or_a_missing_time() {
         ],
     )
     .await;
-    let untimed = SqliteLabs::connect(&path, config(10), key(), SystemClock)
+    let untimed = SqliteLabs::connect(&path, config(10), key(), SystemClock, Waits::STORE)
         .await
         .unwrap();
     assert!(matches!(

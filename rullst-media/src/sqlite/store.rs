@@ -1,12 +1,10 @@
+use super::establish::Waits;
 use crate::{Clock, MediaError as Error, ProviderBinding, ProviderMode, SystemClock};
 use sqlx::{
     SqlitePool,
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous},
 };
-use std::{
-    path::{Path, PathBuf},
-    time::Duration,
-};
+use std::path::{Path, PathBuf};
 
 pub(super) const SCHEMA: &[(&str, &str)] = &[
     (
@@ -103,10 +101,10 @@ impl<C: Clock> SqliteMedia<C> {
         let file = options.open(&path).map_err(|_| Error::Configuration)?;
         file.sync_all().map_err(|_| Error::Storage)?;
         drop(file);
-        let store = Self::connect(&path, config, clock).await?;
+        let store = Self::connect(&path, config, clock, Waits::STORE).await?;
         let mut tx = super::establish::retry(|| store.pool.begin_with("BEGIN IMMEDIATE"))
             .await
-            .map_err(storage)?;
+            .map_err(startup)?;
         for (_, sql) in SCHEMA {
             sqlx::query(*sql).execute(&mut *tx).await.map_err(storage)?;
         }
@@ -126,7 +124,17 @@ impl<C: Clock> SqliteMedia<C> {
         config: StoreConfig,
         clock: C,
     ) -> Result<Self, Error> {
-        let path = resolved(path.as_ref())?;
+        Self::open_with(path.as_ref(), config, clock, Waits::STORE).await
+    }
+    /// [`open`](Self::open) with the given waits, so that a test can hold a
+    /// lock past them quickly.
+    pub(super) async fn open_with(
+        path: &Path,
+        config: StoreConfig,
+        clock: C,
+        waits: Waits,
+    ) -> Result<Self, Error> {
+        let path = resolved(path)?;
         if !std::fs::symlink_metadata(&path)
             .map_err(|_| Error::Storage)?
             .file_type()
@@ -134,7 +142,7 @@ impl<C: Clock> SqliteMedia<C> {
         {
             return Err(Error::Configuration);
         }
-        let store = Self::connect(&path, config, clock).await?;
+        let store = Self::connect(&path, config, clock, waits).await?;
         store.validate().await?;
         super::transaction::Operation::bootstrap(&store)
             .await?
@@ -142,37 +150,40 @@ impl<C: Clock> SqliteMedia<C> {
             .await?;
         Ok(store)
     }
-    async fn connect(path: &Path, config: StoreConfig, clock: C) -> Result<Self, Error> {
+    async fn connect(
+        path: &Path,
+        config: StoreConfig,
+        clock: C,
+        waits: Waits,
+    ) -> Result<Self, Error> {
         let options = SqliteConnectOptions::new()
             .filename(path)
             .create_if_missing(false)
             .journal_mode(SqliteJournalMode::Wal)
             .synchronous(SqliteSynchronous::Full)
             .foreign_keys(true)
-            // Same waits as the Supervision and Privacy stores: a full-sync WAL
-            // commit on a slow disk can hold the write lock for seconds.
-            .busy_timeout(Duration::from_secs(5));
+            .busy_timeout(waits.lock);
         let pool = super::establish::retry(|| {
             SqlitePoolOptions::new()
                 .max_connections(4)
-                .acquire_timeout(Duration::from_secs(5))
+                .acquire_timeout(waits.pool)
                 .connect_with(options.clone())
         })
         .await
-        .map_err(storage)?;
+        .map_err(startup)?;
         Ok(Self {
             pool,
             config,
             clock,
         })
     }
-    /// Runs only in `initialize` and `open`, so it retries a connection that
-    /// times out (see `establish`).
+    /// Runs only in `initialize` and `open`, so it retries a step whose wait
+    /// runs out (see `establish`).
     async fn validate(&self) -> Result<(), Error> {
         // Only the literal `sqlite_` prefix is reserved; an unescaped `_` would
         // also skip user objects such as a trigger named `sqliteXhook`.
         let rows: Vec<(String,String)> = super::establish::retry(|| sqlx::query_as("SELECT substr(name,1,65),substr(sql,1,2049) FROM sqlite_schema WHERE name NOT LIKE 'sqlite\\_%' ESCAPE '\\' LIMIT 5")
-            .fetch_all(&self.pool)).await.map_err(storage)?;
+            .fetch_all(&self.pool)).await.map_err(startup)?;
         if rows.len() != SCHEMA.len()
             || SCHEMA
                 .iter()
@@ -184,6 +195,15 @@ impl<C: Clock> SqliteMedia<C> {
     }
     pub async fn close(&self) {
         self.pool.close().await;
+    }
+}
+/// The failure of a bootstrap step that [`retry`](super::establish::retry)
+/// ran: `StorageTimeout` when its wait ran out at every attempt.
+pub(super) fn startup(error: sqlx::Error) -> Error {
+    if super::establish::outlived(&error) {
+        Error::StorageTimeout
+    } else {
+        storage(error)
     }
 }
 /// A lock or connection wait past its timeout is contention, not damage: the
