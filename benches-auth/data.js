@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794812538836,
+  "lastUpdate": 1794813954823,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -23351,6 +23351,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2565,
             "range": "± 18",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "325bddc88933a6283cd83c2f83ae48dec3329420",
+          "message": "Merge pull request #730 from Rullst/feat/v13-alpha6-footprint-startup\n\nfeat(cli): footprint start-up time of the release binary",
+          "timestamp": "2026-11-16T04:10:44-03:00",
+          "tree_id": "9a962b7626ec1f54e38333c607edbb78bd3ae8f0",
+          "url": "https://github.com/Rullst/Rullst/commit/325bddc88933a6283cd83c2f83ae48dec3329420"
+        },
+        "date": 1794813953986,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1008,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 737,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1762,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4249,
+            "range": "± 40",
             "unit": "ns/iter"
           }
         ]
