@@ -1,5 +1,7 @@
 # Tutorial 02: CLI Automation & Generators ⚡
 
+> 🇧🇷 [Leia esta página em português](../pt-BR/tutorials/02-cli-generators.md).
+
 **Your goal:** generate a small piece of the application, find the resulting
 files and understand what still needs your code. You need the CLI installed in
 [Tutorial 01](01-hello-world.md#6-continue-with-the-cli) (`cargo rullst --version`

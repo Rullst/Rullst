@@ -1,5 +1,7 @@
 # Getting Started
 
+> 🇧🇷 [Leia esta página em português](pt-BR/1-getting-started.md).
+
 Welcome to the **Rullst** Getting Started guide!
 
 **Your goal:** install the matching v13 CLI, generate a small application,

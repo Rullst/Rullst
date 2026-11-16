@@ -69,6 +69,7 @@ LMS or the blog showcase
 · [Zero-to-Hero tutorial](https://rullst.github.io/Rullst/book/tutorials/01-hello-world.html)
 · [Build a JSON REST API](https://rullst.github.io/Rullst/book/tutorials/rest-api-quickstart.html)
 · [CLI reference](https://rullst.github.io/Rullst/book/cli_reference.html)
+· 🇧🇷 [Primeira hora em português](https://rullst.github.io/Rullst/book/pt-BR/index.html)
 
 Stuck? `cargo rullst doctor` checks your toolchain and free disk space and,
 inside a project, its configuration, database and migrations. `cargo rullst --help`

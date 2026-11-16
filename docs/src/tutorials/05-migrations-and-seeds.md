@@ -1,5 +1,7 @@
 # Tutorial 05: Database Migrations & Seeders 🗄️
 
+> 🇧🇷 [Leia esta página em português](../pt-BR/tutorials/05-migrations-and-seeds.md).
+
 Rullst uses timestamped Rust migration modules for SQLx-primary projects. Turso
 primary projects receive explicit, reversible `TursoMigration` statements
 instead. This tutorial shows the SQLx path: `Schema` works with SQLite,

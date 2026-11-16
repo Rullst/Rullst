@@ -1,5 +1,7 @@
 # Tutorial 01: From Zero to Hello Rullst 🚀
 
+> 🇧🇷 [Leia esta página em português](../pt-BR/tutorials/01-hello-world.md).
+
 **What you will build:** one complete web application with a typed route and
 server-rendered HTML. No database account or AI provider is needed. By the end,
 you will be able to point to the handler that produced the page in your browser.

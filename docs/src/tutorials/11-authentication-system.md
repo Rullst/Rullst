@@ -1,5 +1,7 @@
 # Tutorial 11: Authentication Scaffolding 🔒
 
+> 🇧🇷 [Leia esta página em português](../pt-BR/tutorials/11-authentication-system.md).
+
 The authentication generator creates a reviewable starting point for
 cookie-session login and registration. It is application source code, not a
 hosted identity service or a claim that every production policy is automatic.
