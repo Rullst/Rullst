@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
-"""Run `cargo rullst auth` on fresh Blank starters against SQL servers (Linux CI).
+"""Run `cargo rullst auth` on fresh Blank and API starters against SQL servers (Linux CI).
 
 For PostgreSQL, MySQL and MariaDB, each in a disposable container bound to
-loopback, with the CLI built from this checkout (`--cli`):
+loopback, with the CLI built from this checkout (`--cli`), for each starter:
 
-1. `cargo rullst new --blueprint blank --database <server>` (its manifest
-   depends on this checkout); `.env` gets the server's DATABASE_URL and
-   `cargo rullst db:migrate` creates the starter's `users` table. Two rows are
-   inserted as that table allows: a name, with the default timestamps.
+1. `cargo rullst new --blueprint <blank|api> --database <server>` (its
+   manifest depends on this checkout); `.env` gets the server's DATABASE_URL
+   and `cargo rullst db:migrate` creates the starter's `users` table. Two rows
+   are inserted as that table allows: a name, with the default timestamps.
 2. `cargo rullst auth`, the sign-up routes mounted in `router()` as Tutorial 11
-   (Step 2) and the SaaS starter do, and `cargo rullst db:migrate`.
+   (Step 2) and the SaaS starter do, and `cargo rullst db:migrate`. The API
+   starter has no sign-up of its own: `cargo rullst auth` generates the same
+   form sign-up for every starter (there is no `auth --api`), and the API
+   starter's `Server` applies CSRF to it as to every route that is not a
+   bearer machine endpoint.
 3. SQL against the server: the six added columns with their types,
    nullability and defaults, the unique index `users_email_unique` (which
    rejects a duplicate), the `user-<id>@no-email.invalid` placeholders without
@@ -29,7 +33,7 @@ relational CLI profiles have just filled) and run offline from the
 workspace's Cargo.lock, as .github/run-workspace-test-shard.sh prepares. The
 images, clients and catalog queries are in auth_starter_servers.py.
 
-Usage: check-auth-starter-sql.py --cli PATH [--server NAME ...] [--target-dir DIR]
+Usage: check-auth-starter-sql.py --cli PATH [--server NAME ...] [--starter NAME ...] [--target-dir DIR]
 """
 
 from __future__ import annotations
@@ -69,14 +73,9 @@ ACCOUNT_EMAIL = "signup-smoke@example.com"
 ACCOUNT_COLUMNS_SUFFIX = "_add_account_columns_to_users_table.rs"
 RESET_TOKENS_SUFFIX = "_create_password_reset_tokens_table.rs"
 SESSIONS_SUFFIX = "_create_rullst_auth_sessions_table.rs"
-# The Blank starter's router, and the same lines with Tutorial 11's sign-up
-# routes before its health probes (`Server` applies CSRF to every route).
-ROUTER_ANCHOR = """        post("/clicked" => clicked),
-    ]
-    // `Server` adds CSRF, the secure headers and the WAF in every environment.
-"""
-ROUTER_WITH_SIGNUP = """        post("/clicked" => clicked),
-        get("/register" => controllers::auth_controller::register_view),
+# Tutorial 11's sign-up routes, mounted before the health probes (`Server`
+# applies CSRF to every route).
+SIGNUP_ROUTES = """        get("/register" => controllers::auth_controller::register_view),
     ]
     // Mounted by .github/check-auth-starter-sql.py as Tutorial 11 (Step 2)
     // describes, before the health probes.
@@ -86,6 +85,19 @@ ROUTER_WITH_SIGNUP = """        post("/clicked" => clicked),
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
     // `Server` adds CSRF, the secure headers and the WAF in every environment.
 """
+# The last route of each starter's router and the lines after it.
+ROUTER_TAIL = """    ]
+    // `Server` adds CSRF, the secure headers and the WAF in every environment.
+"""
+LAST_ROUTES = {
+    "blank": """        post("/clicked" => clicked),
+""",
+    "api": """        post("/api/messages" => create_message),
+""",
+}
+STARTERS = tuple(LAST_ROUTES)
+ROUTER_ANCHOR = LAST_ROUTES["blank"] + ROUTER_TAIL
+ROUTER_WITH_SIGNUP = LAST_ROUTES["blank"] + SIGNUP_ROUTES
 TIMINGS: list[tuple[str, float]] = []
 
 
@@ -117,11 +129,12 @@ def point_env_at(env_text: str, url: str) -> str:
     return "".join(lines)
 
 
-def mount_signup_routes(main_rs: str) -> str:
-    """The Blank starter's `src/main.rs` with the sign-up routes mounted."""
-    if main_rs.count(ROUTER_ANCHOR) != 1:
-        raise Failure("src/main.rs no longer has the Blank starter's router; update ROUTER_ANCHOR")
-    return main_rs.replace(ROUTER_ANCHOR, ROUTER_WITH_SIGNUP, 1)
+def mount_signup_routes(main_rs: str, starter: str = "blank") -> str:
+    """A starter's `src/main.rs` with the sign-up routes mounted."""
+    anchor = LAST_ROUTES[starter] + ROUTER_TAIL
+    if main_rs.count(anchor) != 1:
+        raise Failure(f"src/main.rs no longer has the {starter} starter's router; update LAST_ROUTES")
+    return main_rs.replace(anchor, LAST_ROUTES[starter] + SIGNUP_ROUTES, 1)
 
 
 def placeholder_accounts(rows: list[Row]) -> list[Row]:
@@ -216,21 +229,22 @@ def sign_up(app: Application) -> None:
            app.text()[-3000:])
 
 
-def check_server(server: Server, work: Path, env: dict[str, str], target_dir: Path) -> None:
+def check_server(server: Server, starter: str, work: Path, env: dict[str, str], target_dir: Path) -> None:
     database = Database(server)
-    project = work / f"auth-{server.name}"
+    project = work / f"auth-{starter}-{server.name}"
+    label = f"{starter} on {server.name}"
     app: Application | None = None
     try:
-        with step(f"{server.name}: start the server and generate the Blank starter"):
+        with step(f"{label}: start the server and generate the starter"):
             url = database.start()
-            run(["cargo", "rullst", "new", str(project), "--default", "--blueprint", "blank",
+            run(["cargo", "rullst", "new", str(project), "--default", "--blueprint", starter,
                  "--database", server.name, "--skip-initial-migration"], cwd=work, env=env)
             check_checkout_dependencies(project)
             shutil.copy(ROOT / "Cargo.lock", project / "Cargo.lock")
             env_file = project / ".env"
             env_file.write_text(point_env_at(env_file.read_text(), url))
 
-        with step(f"{server.name}: the starter's db:migrate and two rows"):
+        with step(f"{label}: the starter's db:migrate and two rows"):
             run(["cargo", "rullst", "db:migrate"], cwd=project, env=env, timeout=BUILD_TIMEOUT)
             values = ", ".join(f"('{name}')" for name in STARTER_NAMES)
             database.query(f"INSERT INTO users (name) VALUES {values}")
@@ -242,16 +256,16 @@ def check_server(server: Server, work: Path, env: dict[str, str], target_dir: Pa
             expect([row[1] for row in before["rows"]] == list(STARTER_NAMES), "users holds the two rows",
                    before["rows"])
 
-        with step(f"{server.name}: cargo rullst auth, sign-up routes and db:migrate"):
+        with step(f"{label}: cargo rullst auth, sign-up routes and db:migrate"):
             run(["cargo", "rullst", "auth"], cwd=project, env=env)
             account_columns = migration_name(project, ACCOUNT_COLUMNS_SUFFIX)
             reset_tokens = migration_name(project, RESET_TOKENS_SUFFIX)
             sessions_table = migration_name(project, SESSIONS_SUFFIX)
             main_rs = project / "src/main.rs"
-            main_rs.write_text(mount_signup_routes(main_rs.read_text()))
+            main_rs.write_text(mount_signup_routes(main_rs.read_text(), starter))
             run(["cargo", "rullst", "db:migrate"], cwd=project, env=env, timeout=BUILD_TIMEOUT)
 
-        with step(f"{server.name}: the account columns, index and placeholders"):
+        with step(f"{label}: the account columns, index and placeholders"):
             after = database.snapshot()
             expect(after["columns"] == before["columns"] + list(server.added_columns),
                    "users keeps the starter's columns and adds the six account columns with their "
@@ -275,9 +289,9 @@ def check_server(server: Server, work: Path, env: dict[str, str], target_dir: Pa
             expect(duplicate.returncode != 0 and "users_email_unique" in duplicate.stderr,
                    "users_email_unique rejects a second row with the same email", duplicate.stderr.strip())
 
-        with step(f"{server.name}: a sign-up over HTTP"):
+        with step(f"{label}: a sign-up over HTTP"):
             binary = target_dir / "debug" / package_name(project)
-            app = Application(binary, project, env, work / f"app-{server.name}.log")
+            app = Application(binary, project, env, work / f"app-{starter}-{server.name}.log")
             app.wait_until_ready()
             sign_up(app)
             app.stop()
@@ -297,7 +311,7 @@ def check_server(server: Server, work: Path, env: dict[str, str], target_dir: Pa
             expect(sessions == [("1", "64", "22")],
                    "the sign-up registered one session, stored as a 64-character digest", sessions)
 
-        with step(f"{server.name}: db:rollback, then db:migrate again"):
+        with step(f"{label}: db:rollback, then db:migrate again"):
             run(["cargo", "rullst", "db:rollback"], cwd=project, env=env, timeout=BUILD_TIMEOUT)
             rolled_back = database.snapshot()
             for name in ("columns", "indexes", "tables", "migrations"):
@@ -333,6 +347,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--cli", type=Path, required=True, help="the cargo-rullst binary built from this checkout")
     parser.add_argument("--server", action="append", choices=[server.name for server in SERVERS],
                         help="check only this server (repeatable; default: all)")
+    parser.add_argument("--starter", action="append", choices=STARTERS,
+                        help="check only this starter (repeatable; default: blank and api)")
     parser.add_argument("--target-dir", type=Path, default=ROOT / "target",
                         help="the Cargo target directory the generated builds share")
     args = parser.parse_args(argv)
@@ -340,6 +356,7 @@ def main(argv: list[str] | None = None) -> int:
     if not cli.is_file():
         parser.error(f"{cli} is not a file")
     selected = [server for server in SERVERS if not args.server or server.name in args.server]
+    starters = [starter for starter in STARTERS if not args.starter or starter in args.starter]
     failures = []
     with tempfile.TemporaryDirectory(prefix="rullst-auth-sql-") as temporary:
         work = Path(temporary)
@@ -357,18 +374,20 @@ def main(argv: list[str] | None = None) -> int:
             env["CARGO_BUILD_JOBS"] = os.environ["RULLST_GENERATED_BUILD_JOBS"]
         run(["cargo", "rullst", "--version"], env=env)
         for server in selected:
-            try:
-                check_server(server, work, env, args.target_dir.resolve())
-            except (Failure, OSError, subprocess.SubprocessError) as error:
-                message = str(error).replace("%", "%25").replace("\r", "").replace("\n", "%0A")
-                log(f"::error title=cargo rullst auth on {server.name}::{message}")
-                failures.append(server.name)
+            for starter in starters:
+                try:
+                    check_server(server, starter, work, env, args.target_dir.resolve())
+                except (Failure, OSError, subprocess.SubprocessError) as error:
+                    message = str(error).replace("%", "%25").replace("\r", "").replace("\n", "%0A")
+                    log(f"::error title=cargo rullst auth, {starter} starter on {server.name}::{message}")
+                    failures.append(f"{starter} on {server.name}")
     for title, seconds in TIMINGS:
         log(f"{seconds:7.1f} s  {title}")
     if failures:
         log(f"failed: {', '.join(failures)}")
         return 1
-    log(f"cargo rullst auth extends the Blank starter's users table on {', '.join(s.name for s in selected)}")
+    log(f"cargo rullst auth extends the users table of the {' and '.join(starters)} starters on "
+        f"{', '.join(s.name for s in selected)}")
     return 0
 
 

@@ -26,6 +26,8 @@
 mod admin;
 mod clock;
 mod error;
+#[cfg(feature = "sqlite")]
+mod establish;
 mod memory;
 mod model;
 #[cfg(feature = "orm-outbox")]

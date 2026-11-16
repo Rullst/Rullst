@@ -223,6 +223,7 @@ pub rullst_labs::LabError::Capacity
 pub rullst_labs::LabError::Clock
 pub rullst_labs::LabError::Expired
 pub rullst_labs::LabError::Storage
+pub rullst_labs::LabError::StorageTimeout
 pub rullst_labs::LabError::Integrity
 pub rullst_labs::LabError::Unsupported
 pub rullst_labs::LabError::Uncertain

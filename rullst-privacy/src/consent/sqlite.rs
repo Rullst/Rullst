@@ -3,15 +3,12 @@
 //! policy versions before processing resumes, or old grants could reappear.
 
 use super::*;
-use crate::sqlite_establish::retry;
+use crate::sqlite_establish::{Waits, outlived, retry};
 use sqlx::{
     SqliteConnection, SqlitePool,
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous},
 };
-use std::{
-    path::{Path, PathBuf},
-    time::Duration,
-};
+use std::path::{Path, PathBuf};
 
 const SCHEMA: [&str; 2] = [
     "CREATE TABLE rullst_consent_meta (id INTEGER PRIMARY KEY CHECK(id = 1), schema_version INTEGER NOT NULL CHECK(schema_version = 1), capacity INTEGER NOT NULL CHECK(capacity BETWEEN 1 AND 100000), last_now INTEGER NOT NULL CHECK(last_now >= 0))",
@@ -55,9 +52,9 @@ impl SqliteConsentStore {
         file.sync_all()
             .map_err(|_| ConsentError::StoreUnavailable)?;
         drop(file);
-        let store = Self::connect(&path, capacity).await?;
+        let store = Self::connect(&path, capacity, Waits::STORE).await?;
         let prepared = async {
-            let mut tx = retry(|| store.pool.begin_with("BEGIN IMMEDIATE")).await.map_err(unavailable)?;
+            let mut tx = retry(|| store.pool.begin_with("BEGIN IMMEDIATE")).await.map_err(startup)?;
             for statement in SCHEMA { sqlx::query(statement).execute(&mut *tx).await.map_err(unavailable)?; }
             sqlx::query("INSERT INTO rullst_consent_meta (id,schema_version,capacity,last_now) VALUES (1,1,?,0)")
                 .bind(store.capacity).execute(&mut *tx).await.map_err(unavailable)?;
@@ -72,8 +69,18 @@ impl SqliteConsentStore {
 
     /// Opens only initialized existing state; never creates missing files/tables.
     pub async fn open(path: impl AsRef<Path>, capacity: usize) -> Result<Self, ConsentError> {
+        Self::open_with(path.as_ref(), capacity, Waits::STORE).await
+    }
+
+    /// [`open`](Self::open) with the given waits, so that a test can hold a
+    /// lock past them quickly.
+    pub(crate) async fn open_with(
+        path: &Path,
+        capacity: usize,
+        waits: Waits,
+    ) -> Result<Self, ConsentError> {
         validate_capacity(capacity)?;
-        let path = resolved_path(path.as_ref())?;
+        let path = resolved_path(path)?;
         if !std::fs::symlink_metadata(&path)
             .map_err(|_| ConsentError::StoreUnavailable)?
             .file_type()
@@ -81,11 +88,11 @@ impl SqliteConsentStore {
         {
             return Err(ConsentError::StoreConfiguration);
         }
-        let store = Self::connect(&path, capacity).await?;
+        let store = Self::connect(&path, capacity, waits).await?;
         let checked = async {
             let mut tx = retry(|| store.pool.begin_with("BEGIN IMMEDIATE"))
                 .await
-                .map_err(unavailable)?;
+                .map_err(startup)?;
             store.metadata(&mut tx).await?;
             store.count(&mut tx).await?;
             tx.commit().await.map_err(unavailable)
@@ -102,22 +109,22 @@ impl SqliteConsentStore {
         self.pool.close().await;
     }
 
-    async fn connect(path: &Path, capacity: usize) -> Result<Self, ConsentError> {
+    async fn connect(path: &Path, capacity: usize, waits: Waits) -> Result<Self, ConsentError> {
         let options = SqliteConnectOptions::new()
             .filename(path)
             .create_if_missing(false)
             .journal_mode(SqliteJournalMode::Wal)
             .synchronous(SqliteSynchronous::Full)
             .foreign_keys(true)
-            .busy_timeout(Duration::from_secs(5));
+            .busy_timeout(waits.lock);
         let pool = retry(|| {
             SqlitePoolOptions::new()
                 .max_connections(4)
-                .acquire_timeout(Duration::from_secs(5))
+                .acquire_timeout(waits.pool)
                 .connect_with(options.clone())
         })
         .await
-        .map_err(unavailable)?;
+        .map_err(startup)?;
         Ok(Self {
             pool,
             capacity: capacity as i64,
@@ -263,4 +270,14 @@ fn resolved_path(path: &Path) -> Result<PathBuf, ConsentError> {
 
 fn unavailable(_: sqlx::Error) -> ConsentError {
     ConsentError::StoreUnavailable
+}
+
+/// The failure of a bootstrap step that [`retry`] ran: `StoreTimeout` when
+/// its wait ran out at every attempt.
+fn startup(error: sqlx::Error) -> ConsentError {
+    if outlived(&error) {
+        ConsentError::StoreTimeout
+    } else {
+        ConsentError::StoreUnavailable
+    }
 }

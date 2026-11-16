@@ -24,6 +24,11 @@ pub enum AgeError {
     DurableReplayRequired,
     #[error("replay protection is unavailable")]
     StoreUnavailable,
+    /// `SqliteReplayStore::open` (v13): the file stayed locked by another
+    /// connection, or its disk stalled, past every attempt's wait. Nothing
+    /// was changed; try again later.
+    #[error("replay protection storage stayed locked or stalled while opening")]
+    StoreTimeout,
     #[error("replay protection capacity reached")]
     StoreCapacity,
     #[error("replay protection configuration or schema does not match")]
