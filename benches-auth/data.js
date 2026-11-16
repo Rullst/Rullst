@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794806558467,
+  "lastUpdate": 1794809503489,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -23207,6 +23207,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3736,
             "range": "± 20",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9e80bcbeaff6fb259069f54477c3709c8ee8d376",
+          "message": "Merge pull request #728 from Rullst/feat/v13-alpha6-non-exhaustive-audit\n\nfeat(api)!: non-exhaustive public enums and structs for the 13.0 freeze",
+          "timestamp": "2026-11-16T02:51:57-03:00",
+          "tree_id": "264f02fb2d679c0fd3284d370a809ffb2ae55b94",
+          "url": "https://github.com/Rullst/Rullst/commit/9e80bcbeaff6fb259069f54477c3709c8ee8d376"
+        },
+        "date": 1794809502579,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1014,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 753,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1772,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4275,
+            "range": "± 39",
             "unit": "ns/iter"
           }
         ]
