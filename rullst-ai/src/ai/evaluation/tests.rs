@@ -32,6 +32,8 @@ impl AiProvider for SequenceProvider {
     }
 
     async fn prompt(&self, text: &str) -> Result<String, AiError> {
+        // Yielding lets a test deadline stop an evaluation loop that never ends.
+        tokio::task::yield_now().await;
         self.prompts
             .lock()
             .expect("prompt lock")
@@ -429,15 +431,18 @@ async fn exhausted_turn_budget_is_inconclusive_and_decision_debug_redacts_prompt
         prompt: "Start bounded evaluation".to_string(),
         decision: continue_forever,
     };
-    let report = evaluator
-        .run(
+    let report = tokio::time::timeout(
+        Duration::from_secs(5),
+        evaluator.run(
             "turn-limit-v1",
             "fixture:model-v1",
             &mut strategy,
             &AiCancellation::new(),
-        )
-        .await
-        .expect("turn limit returns a report");
+        ),
+    )
+    .await
+    .expect("the turn limit ends the evaluation")
+    .expect("turn limit returns a report");
     assert_eq!(report.status(), AiEvaluationStatus::Inconclusive);
     assert_eq!(report.terminal_code(), "turn_limit");
     assert_eq!(report.turns().len(), 2);

@@ -65,4 +65,28 @@ mod tests {
         assert_ne!(prompt, "xyzzy");
         assert_ne!(prompt, "");
     }
+
+    #[tokio::test]
+    async fn in_memory_retrieval_limit_and_vector_components_are_bounded() {
+        let tenant = rullst_core::security::TenantContext::try_new("tenant:docs").expect("tenant");
+        let retriever = InMemoryRagRetriever::try_new(4, 1).expect("retriever");
+        let document = RagDocument::try_new(&tenant, "doc", "content", 0.0).expect("document");
+        // A component of exactly one million is the largest accepted.
+        retriever
+            .upsert(&tenant, document.clone(), vec![1_000_000.0])
+            .expect("the largest component");
+        assert!(
+            retriever
+                .upsert(&tenant, document, vec![1_000_001.0])
+                .is_err()
+        );
+        let found = retriever
+            .retrieve(&tenant, &[1.0], 32)
+            .await
+            .expect("a limit of 32 is accepted");
+        assert_eq!(found.len(), 1);
+        for limit in [0, 33] {
+            assert!(retriever.retrieve(&tenant, &[1.0], limit).await.is_err());
+        }
+    }
 }
