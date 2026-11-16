@@ -204,7 +204,6 @@ pub fn rullst_core::FieldErrors::as_any(&self) -> &(dyn core::any::Any + core::m
 pub fn rullst_core::FieldErrors::codes(&self) -> alloc::collections::btree::map::BTreeMap<alloc::string::String, alloc::vec::Vec<alloc::string::String>>
 pub fn rullst_core::FieldErrors::is_empty(&self) -> bool
 pub fn rullst_core::FieldErrors::messages(&self) -> alloc::collections::btree::map::BTreeMap<alloc::string::String, alloc::vec::Vec<alloc::string::String>>
-pub fn rullst_core::FieldErrors::new() -> Self
 pub fn rullst_core::FieldErrors::validate<T: validator::traits::Validate + ?core::marker::Sized>(value: &T) -> core::result::Result<(), Self>
 impl core::clone::Clone for rullst_core::FieldErrors
 impl core::default::Default for rullst_core::FieldErrors

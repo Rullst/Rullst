@@ -18,7 +18,7 @@
   `messages()` and `codes()` return each field path's messages and validator
   codes, `is_empty()` whether any failed, and `as_any()` reaches the
   `validator` errors by downcasting; `FieldErrors::validate(&payload)`,
-  `FieldErrors::new()` and `add(field, code, message)` build one, so a
+  `FieldErrors::default()` and `add(field, code, message)` build one, so a
   handler can add a failure such as a taken email address to the same `422`
   response. The JSON response, the HTMX fragment, `Display` and `Debug` are
   unchanged. `validator` stays a public dependency through `rullst::Validate`

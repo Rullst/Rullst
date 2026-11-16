@@ -19,6 +19,10 @@ use std::collections::BTreeMap;
 /// derive stores each rejected input as a `value` parameter, which can hold a
 /// password or other personal data.
 ///
+/// [`validate`](Self::validate) runs a payload's constraints, and
+/// `FieldErrors::default()` holds no failure; [`add`](Self::add) adds one
+/// that only the application can see.
+///
 /// ```
 /// use rullst_core::validation::{FieldErrors, Validate, ValidationError};
 ///
@@ -48,11 +52,6 @@ pub struct FieldErrors {
 }
 
 impl FieldErrors {
-    /// No failure; add them with [`add`](Self::add).
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     /// Runs the [`Validate`](crate::Validate) constraints of `value`, as
     /// [`ValidatedJson`](crate::ValidatedJson) and
     /// [`ValidatedForm`](crate::ValidatedForm) do; `Err` holds its failures.

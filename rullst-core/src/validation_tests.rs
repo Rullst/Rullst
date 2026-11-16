@@ -200,7 +200,7 @@ async fn htmx_fragments_escape_messages_and_fields() {
     assert!(!body.contains("<script>"), "{body}");
     assert!(body.contains("&lt;script&gt;"), "{body}");
 
-    let mut errors = FieldErrors::new();
+    let mut errors = FieldErrors::default();
     errors.add("name", "custom", "<b onmouseover=x>bad</b>");
     let body = body_string(
         ValidationError::ValidationError {
@@ -439,7 +439,7 @@ async fn field_errors_list_messages_and_codes_by_path() {
 
 #[tokio::test]
 async fn added_failures_are_rendered_with_the_payload_ones() {
-    assert!(FieldErrors::new().is_empty());
+    assert!(FieldErrors::default().is_empty());
     assert!(
         FieldErrors::validate(&TestPayload {
             username: "venelouis".to_string(),
@@ -447,7 +447,7 @@ async fn added_failures_are_rendered_with_the_payload_ones() {
         })
         .is_ok()
     );
-    let mut added = FieldErrors::new();
+    let mut added = FieldErrors::default();
     added.add("email", "taken", "Email taken");
     assert!(!added.is_empty());
     assert!(
