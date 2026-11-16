@@ -102,8 +102,9 @@ impl Record {
             || (matches!(a.lifecycle, Lifecycle::Active | Lifecycle::Deleting) && a.video.is_none())
             || (matches!(a.lifecycle, Lifecycle::Creating | Lifecycle::Deleting)
                 && self.pending.is_none())
+            // A published tombstone fails the next clause.
             || (a.lifecycle == Lifecycle::Deleted
-                && (a.published || a.pending || a.processing != Processing::Missing))
+                && (a.pending || a.processing != Processing::Missing))
             || (a.published && (a.lifecycle != Lifecycle::Active || !a.processing.is_playable()))
         {
             return Err(Error::Configuration);

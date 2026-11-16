@@ -5,6 +5,7 @@
 mod support;
 use rullst_media::{bunny::BunnyStream, sqlite::*, *};
 use serde_json::json;
+use sqlx::{Connection, SqliteConnection, sqlite::SqliteConnectOptions};
 use support::*;
 
 async fn service(
@@ -171,4 +172,89 @@ async fn a_playable_video_that_stops_being_watchable_is_withdrawn() {
         .unwrap();
     assert_eq!(refreshed.processing, Processing::Playable);
     assert!(!refreshed.published);
+}
+
+/// Sets `$.asset.processing` of the only stored record to `processing`,
+/// starting from `body`.
+async fn store_processing(db: &mut SqliteConnection, body: &str, processing: &str) {
+    sqlx::query("UPDATE media_assets SET body=json_set(?, '$.asset.processing', ?)")
+        .bind(body)
+        .bind(processing)
+        .execute(db)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn a_stored_record_is_published_only_while_playable_and_a_tombstone_stays_missing() {
+    let fixture = Fixture::new().await;
+    let dir = tempfile::tempdir().unwrap();
+    let app = service(&fixture, &dir).await;
+    let auth = Auth::new();
+    let (teacher, id, scope) = (reference("teacher"), reference("lesson"), scope());
+    let created = app
+        .create(&auth, &teacher, &scope, &id, metadata())
+        .await
+        .unwrap();
+    set_status(&fixture, created.video.as_ref().unwrap(), 4, false);
+    let published = app
+        .publish(&auth, &teacher, &scope, &id, created.revision)
+        .await
+        .unwrap();
+    let mut db = SqliteConnection::connect_with(
+        &SqliteConnectOptions::new().filename(dir.path().join("video.sqlite")),
+    )
+    .await
+    .unwrap();
+    let body: String = sqlx::query_scalar("SELECT body FROM media_assets")
+        .fetch_one(&mut db)
+        .await
+        .unwrap();
+    // A record read back must keep publication on a playable state.
+    for (processing, valid) in [
+        ("Playable", true),
+        ("Processing", false),
+        ("AwaitingUpload", false),
+        ("Failed", false),
+        ("Missing", false),
+        ("Ready", true),
+    ] {
+        store_processing(&mut db, &body, processing).await;
+        let read = app.get(&auth, &teacher, &scope, &id).await;
+        match valid {
+            true => assert!(read.unwrap().published, "{processing}"),
+            false => assert_eq!(read.unwrap_err(), MediaError::Configuration, "{processing}"),
+        }
+    }
+    let withdrawn = app
+        .withdraw(&auth, &teacher, &scope, &id, published.revision)
+        .await
+        .unwrap();
+    let deleted = app
+        .delete(&auth, &teacher, &scope, &id, withdrawn.revision)
+        .await
+        .unwrap();
+    assert_eq!(deleted.lifecycle, Lifecycle::Deleted);
+    let tombstone: String = sqlx::query_scalar("SELECT body FROM media_assets")
+        .fetch_one(&mut db)
+        .await
+        .unwrap();
+    // A tombstone is never playable, ready or processing again.
+    for processing in ["Ready", "Playable", "Processing"] {
+        store_processing(&mut db, &tombstone, processing).await;
+        assert_eq!(
+            app.get(&auth, &teacher, &scope, &id).await.unwrap_err(),
+            MediaError::Configuration,
+            "{processing}"
+        );
+    }
+    store_processing(&mut db, &tombstone, "Missing").await;
+    assert_eq!(
+        app.get(&auth, &teacher, &scope, &id)
+            .await
+            .unwrap()
+            .lifecycle,
+        Lifecycle::Deleted
+    );
+    db.close().await.unwrap();
 }
