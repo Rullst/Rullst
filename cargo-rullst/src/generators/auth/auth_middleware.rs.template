@@ -92,14 +92,16 @@ pub async fn signed_in(headers: &HeaderMap) -> Result<Option<(User, Authenticate
 }
 
 /// Route middleware: runs the handler with the signed-in account's id as
-/// `Extension<i32>` and its session as `Extension<AuthenticatedSession>`;
-/// any other request is sent to `/login`.
+/// `Extension<i32>`, the account as `Extension<User>` (loaded for this
+/// request, so a handler needs no second query) and its session as
+/// `Extension<AuthenticatedSession>`; any other request is sent to `/login`.
 pub async fn auth_middleware(mut req: Request, next: Next) -> Response {
     let account = signed_in(req.headers()).await;
     match account {
         Ok(Some((user, session))) => {
 __RULLST_MIDDLEWARE_EXTENSIONS__            req.extensions_mut().insert(user.id);
             req.extensions_mut().insert(session);
+            req.extensions_mut().insert(user);
             next.run(req).await
         }
         Ok(None) => Redirect::to("/login").into_response(),
