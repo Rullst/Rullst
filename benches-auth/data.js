@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794785358155,
+  "lastUpdate": 1794787514520,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -22871,6 +22871,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2525,
             "range": "± 22",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "654944c445e464c2b55d4720e6dd70105a07e44d",
+          "message": "Merge pull request #717 from Rullst/fix/v13-alpha6-scalar-docs-csp\n\nfix(core): serve the Scalar docs page with its own nonce CSP",
+          "timestamp": "2026-11-15T20:48:47-03:00",
+          "tree_id": "b5f32c7fa8f2faaa71374b796e3899da67dd210d",
+          "url": "https://github.com/Rullst/Rullst/commit/654944c445e464c2b55d4720e6dd70105a07e44d"
+        },
+        "date": 1794787513685,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1021,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 764,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1819,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4231,
+            "range": "± 12",
             "unit": "ns/iter"
           }
         ]
