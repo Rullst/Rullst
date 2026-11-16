@@ -103,6 +103,24 @@ received a test or is listed under
   no survivor left.
 - **`rullst-capital`**: 29 mutants that only a live Stripe response reaches
   stay with provider sandbox testing.
+- **`rullst-privacy`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+  [PR #745](https://github.com/Rullst/Rullst/pull/745), runs in the
+  maintainer's fork
+  [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)):
+  targeted runs of the 19 files outside the two PostgreSQL adapters (2 have
+  no mutants) gave 483 mutants: 410 caught, 62 unviable, no timeout and 11
+  missed, all accepted equivalents listed below. The `privacy-postgres`
+  contract run
+  ([43900834362](https://github.com/venelouis/rullst-ci/actions/runs/43900834362))
+  caught the 58 viable mutants of those adapters (79 mutants, 21 unviable).
+- **`rullst-supervision`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+  [PR #745](https://github.com/Rullst/Rullst/pull/745), runs in the
+  maintainer's fork
+  [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)):
+  targeted runs of the 23 files (3 have no mutants) gave 639 mutants: 524
+  caught, 105 unviable, no timeout and 10 missed, all accepted equivalents
+  listed below (the clock check of the SQLite transaction moved from
+  `Operation::begin` to `Operation::started`).
 - **v12 baseline**: the complete v12 campaign classified 14,391 of 14,391
   mutants in run `34761010296`, with a conservative 70.57% caught.
 
@@ -201,7 +219,7 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-supervision/src/exam/observation.rs`: `Observation::from_code`, `(code - 10) % 4` with `+` | `(code + 10) % 4` equals `(code - 10) % 4`, because 20 is a multiple of 4. |
 | `rullst-supervision/src/sqlite/events.rs`: `events`, and `rullst-supervision/src/sqlite/observations.rs`: `observations`, `expires_at > MAX_TIME` with `==` or `>=` | An event is received before its session expires, at least an hour before the session's retention ends at or before `MAX_TIME`, so with its fixed retention it always expires before `MAX_TIME`. |
 | `rullst-supervision/src/sqlite/observations.rs`: `record_observation`, both source match guards with `true` | `record_browser` and `record_capture` pass only browser or capture observations with the browser source, and `analyze` only presence or audio findings with an adapter source. |
-| `rullst-supervision/src/sqlite/transaction.rs`: `Operation::begin`, `now < before \|\| now < previous_time` with `&&` | `finish` checks the time against the same high-water mark and returns the same `Clock`. |
+| `rullst-supervision/src/sqlite/transaction.rs`: `Operation::started`, `now < before \|\| now < previous_time` with `&&` | `finish` checks the time against the same high-water mark and returns the same `Clock`. |
 | `rullst-supervision/src/sqlite/mod.rs`: `resolved_path`, both metadata match guards with `false` | `open` checks for a regular file again, `initialize` creates the file exclusively and fails on any existing entry, and every other metadata error also fails the open with the same `Storage`. |
 | `rullst-auth/src/auth/app_key.rs`: `parse_dotenv`, delete the `dotenvy::Error::Io` arm | The parser reads an in-memory `&str`, and valid UTF-8 read line by line cannot raise an I/O error. |
 | `rullst-auth/src/auth/passkey/ceremony.rs`: `ChallengeStore::issue`, `challenge.expires_at > now` with `>=` | It keeps only a challenge whose expiry equals a later `Instant::now()` reading to the nanosecond, which `consume` already rejects as expired. |
