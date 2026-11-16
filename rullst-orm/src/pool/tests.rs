@@ -25,6 +25,15 @@ fn named_memory_dsn_does_not_touch_a_backing_file() {
 async fn every_initializer_rejects_placeholder_dsns_before_connecting() {
     let placeholder = "postgres://app:[YOUR-PASSWORD]@db.invalid/app";
     assert!(matches!(
+        Orm::init(placeholder).await,
+        Err(crate::Error::Internal(_))
+    ));
+    let wal = super::OrmConfig::default().with_sqlite_journal_mode(super::SqliteJournalMode::Wal);
+    assert!(matches!(
+        Orm::init_with_config(placeholder, wal).await,
+        Err(crate::Error::Internal(_))
+    ));
+    assert!(matches!(
         Orm::init_with_options(placeholder, 5, 5).await,
         Err(crate::Error::Internal(_))
     ));

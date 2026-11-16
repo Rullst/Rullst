@@ -136,7 +136,8 @@ impl Server {
 
         if let Some(db_url) = &self.db_url {
             println!("Initializing Orm database pool...");
-            Orm::init(db_url)
+            let config = crate::server::database_url::orm_config(&app_config.database);
+            Orm::init_with_config(db_url, config)
                 .await
                 .map_err(|error| ServerError::Database(error.to_string()))?;
             println!("Database initialized successfully.");

@@ -113,6 +113,25 @@ fn database_url_debug_output_is_redacted() {
     assert!(format!("{:?}", DatabaseConfig::default()).contains("url: None"));
 }
 
+#[cfg(feature = "orm")]
+#[test]
+fn database_table_chooses_the_sqlite_journal_mode() {
+    use rullst_orm::SqliteJournalMode;
+    let parse = |toml: &str| RullstConfig::from_toml(toml).map(|config| config.database);
+    let wal = parse("[database]\nurl = \"sqlite://db.sqlite\"\nsqlite_journal_mode = \"wal\"\n")
+        .expect("wal");
+    assert_eq!(wal.sqlite_journal_mode, Some(SqliteJournalMode::Wal));
+    assert!(format!("{wal:?}").contains("sqlite_journal_mode: Some(Wal)"));
+    let delete = parse("[database]\nsqlite_journal_mode = \"delete\"\n").expect("delete");
+    assert_eq!(delete.sqlite_journal_mode, Some(SqliteJournalMode::Delete));
+    let absent = parse("[database]\nurl = \"sqlite://db.sqlite\"\n").expect("absent");
+    assert_eq!(absent.sqlite_journal_mode, None);
+    assert!(matches!(
+        parse("[database]\nsqlite_journal_mode = \"truncate\"\n"),
+        Err(ConfigError::Parse(_))
+    ));
+}
+
 #[test]
 fn test_deserialize_security_config_defaults() {
     let config: SecurityConfig = toml::from_str("").unwrap();

@@ -97,7 +97,12 @@ SQLite project (the starters' default) the image sets
 `DATABASE_URL=sqlite:///app/data/rullst.db?mode=rwc`, so the database lives in
 `/app/data`; configure the target platform so that directory remains owned by
 UID/GID 10001 when attaching persistent storage (the generated `compose.yaml`
-mounts a volume there).
+mounts a volume there). New projects run SQLite in WAL mode, which keeps
+`rullst.db-wal` and `rullst.db-shm` in the same directory: attach a disk
+volume, not a network share. A platform that offers only network file shares
+(for example Azure Files on Azure Container Apps or App Service) needs
+`sqlite_journal_mode = "delete"` under `[database]` in `Rullst.toml`, or a
+server database. See [SQLite journal mode](../crates/orm.md#sqlite-journal-mode-wal).
 
 Apply migrations in one bounded pre-deployment job and start application
 replicas only after it succeeds. Running migrations inside every replica is

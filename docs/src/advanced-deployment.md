@@ -23,7 +23,7 @@ Quadlet or Kubernetes.
 | Probes | `GET /health` (process alive) and `GET /ready` (ready for traffic). Starters mount both. A redirect to login is not a health signal. |
 | Trusted proxy | Behind any reverse proxy or ingress, set `[security] trusted_proxies` in `Rullst.toml` (or `Server::trusted_proxies`) to the proxy's address range, and only that. See [Client addresses behind the proxy](tutorials/26-one-click-paas-deploy.md#client-addresses-behind-the-proxy). |
 | Migrations | Run `<binary> db:migrate` once per release, before new replicas serve traffic, or opt in to [startup migrations](tutorials/26-one-click-paas-deploy.md#startup-migrations). |
-| Writable state | A SQLite file, uploads and similar state need a persistent writable directory. The generated image runs as UID/GID 10001. |
+| Writable state | A SQLite file, uploads and similar state need a persistent writable directory. The generated image runs as UID/GID 10001. In WAL mode (the default of projects generated since 13.0.0-alpha.6) SQLite keeps `-wal` and `-shm` files next to the database: keep them on the same volume, run every process that opens it on one host, and back up with `sqlite3 ".backup"` ([section 8 of the VM guide](vm-deployment.md#8-back-up-the-database-volume)). On a network volume (NFS, SMB, Azure Files) set `sqlite_journal_mode = "delete"` in `Rullst.toml`. |
 
 ## Nix
 

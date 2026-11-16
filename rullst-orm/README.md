@@ -449,6 +449,21 @@ async fn main() -> Result<(), rullst_orm::Error> {
 }
 ```
 
+### SQLite journal mode (WAL)
+
+`Orm::init` keeps the journal mode recorded in a SQLite file (the rollback
+journal for a new file). Since 13.0.0-alpha.6,
+`Orm::init_with_config(url, OrmConfig::default().with_sqlite_journal_mode(SqliteJournalMode::Wal))`
+switches the database to the write-ahead log, in which readers no longer lock
+the file for every statement; `Server` applications set
+`sqlite_journal_mode = "wal"` under `[database]` in `Rullst.toml` instead, as
+projects generated since 13.0.0-alpha.6 do. WAL keeps `-wal` and `-shm` files
+next to the database: back up with `sqlite3 <file> ".backup <copy>"` or
+`VACUUM INTO`, never by copying the database file alone, and do not use it on
+a network filesystem (NFS, SMB, Azure Files), where `SqliteJournalMode::Delete`
+keeps the rollback journal. `synchronous` stays `FULL`. Details:
+[SQLite journal mode](https://rullst.github.io/Rullst/book/crates/orm.html#sqlite-journal-mode-wal).
+
 ### Concurrent updates and counters
 
 Every model chooses what `save()` writes to a row it loaded, and since

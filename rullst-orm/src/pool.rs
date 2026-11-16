@@ -11,11 +11,13 @@ const POOL_SLOW_ACQUIRE_THRESHOLD: std::time::Duration = std::time::Duration::fr
 /// timeout to `Instant::now()` unchecked, so an unbounded value would panic.
 const MAX_ACQUIRE_TIMEOUT_SECS: u64 = 86_400;
 
+mod config;
 mod dsn;
 mod placeholders;
 mod savepoint;
 mod telemetry;
 // Used by `#[derive(Orm)]`.
+pub use config::{OrmConfig, SqliteJournalMode};
 #[doc(hidden)]
 pub use placeholders::portable_subquery;
 pub use placeholders::raw_fragment;
@@ -156,34 +158,12 @@ impl Orm {
         ORM_STATE.get().ok_or(crate::Error::NotInitialized)
     }
 
-    /// Initialize the global database connection pool using an agnostic URI
+    /// Initialize the global database connection pool using an agnostic URI.
+    ///
+    /// A SQLite database keeps the journal mode recorded in its file; choose
+    /// one with [`Orm::init_with_config`].
     pub async fn init(database_url: &str) -> Result<(), crate::Error> {
-        Self::ensure_uninitialized()?;
-        dsn::ensure_configured_dsn(database_url)?;
-
-        Self::validate_dsn(database_url);
-
-        #[cfg(not(any(
-            feature = "strict-postgres",
-            feature = "strict-mysql",
-            feature = "strict-sqlite"
-        )))]
-        install_default_drivers();
-
-        let options = Self::pool_options()
-            .acquire_timeout(std::time::Duration::from_secs(10))
-            .idle_timeout(Some(std::time::Duration::from_secs(300)))
-            .max_lifetime(Some(std::time::Duration::from_secs(1800)));
-        let pool = Self::options_for(options, database_url)
-            .connect(database_url)
-            .await
-            .map_err(|error| dsn::connect_error(database_url, error))?;
-
-        Self::publish(OrmState::new(
-            pool,
-            dsn::driver_for_url(database_url),
-            Vec::new(),
-        ))
+        Self::init_with_config(database_url, OrmConfig::default()).await
     }
 
     /// Initialize the global database connection pool with specific pool options.

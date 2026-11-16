@@ -38,6 +38,8 @@ services:
     tmpfs:
       - /tmp
     volumes:
+      # The SQLite database with its -wal and -shm files (WAL mode). Keep the
+      # volume on the VM's disk, not NFS/SMB; back up with sqlite3 ".backup".
       - app_data:/app/data
     cap_drop:
       - ALL
