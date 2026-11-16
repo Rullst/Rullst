@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794834473808,
+  "lastUpdate": 1794839710322,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -35881,6 +35881,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1695,
             "range": "± 44",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b80d89ddad5a8c4f7810284e26d662c995f52939",
+          "message": "Merge pull request #742 from Rullst/ci/v13-alpha6-ci-gaps\n\nci: API starter auth check, first-build measurement, required browser job",
+          "timestamp": "2026-11-16T11:30:34-03:00",
+          "tree_id": "c951571ed483edb71ed84f9b6cbf9eb8ba0c3f26",
+          "url": "https://github.com/Rullst/Rullst/commit/b80d89ddad5a8c4f7810284e26d662c995f52939"
+        },
+        "date": 1794839706086,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 677,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 907,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 411,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1706,
+            "range": "± 36",
             "unit": "ns/iter"
           }
         ]
