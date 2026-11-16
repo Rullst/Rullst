@@ -101,6 +101,13 @@ received a test or is listed under
   mutants, 30 caught and 4 unviable, no survivor, so it is listed too.
 - **Studio remote mode** (20 files, measured with the `cargo-rullst` campaign):
   no survivor left.
+- **`rullst-labs`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+  [PR #744](https://github.com/Rullst/Rullst/pull/744), runs in the
+  maintainer's fork
+  [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)):
+  targeted runs of the 27 files (4 have no mutants) gave 558 mutants: 459
+  caught, 88 unviable, no timeout and 11 missed, all accepted equivalents
+  listed below.
 - **`rullst-capital`**: 29 mutants that only a live Stripe response reaches
   stay with provider sandbox testing.
 - **v12 baseline**: the complete v12 campaign classified 14,391 of 14,391
@@ -196,7 +203,7 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-labs/src/sqlite/completion.rs`: `finish`, `lease.until <= tx.now \|\| record.view.expires_at <= tx.now` with `&&` | `narrow_deadline` with the earlier of the two returns the same `Expired`. |
 | `rullst-labs/src/sqlite/jobs.rs`: `cancel`, `revision <= 0 \|\| record.view.revision != revision` with `&&` | `save_job` updates only the row at that revision, so a stale revision still returns `Conflict`. |
 | `rullst-labs/src/sqlite/jobs.rs`: `load_job`, `body.len() > 32796`, and `seal_record`, `body.len() > 32768`, each with `==` or `>=` | Bounded record fields serialize far below 32 KiB, and a longer stored body fails authentication with the same `Integrity`. |
-| `rullst-labs/src/sqlite/jobs.rs`: `payload`, the `\|\|` before the scope and id comparisons with `&&` | The exercise digest covers scope, id and revision, so none of them can differ alone. |
+| `rullst-labs/src/sqlite/jobs.rs`: `payload`, the `\|\|` before the id comparison and the one before the revision comparison, each with `&&` | The exercise digest covers scope, id and revision, so none of them can differ alone. |
 | `rullst-labs/src/sqlite/retention.rs`: `expire_queued`, either `\|\|` with `&&`, and `purge_terminal`, the `\|\|` after the state match with `&&` | The SQL selection, `load_job`'s column checks and `Record::validate` already guarantee a queued, expired, unleased record, or an unleased one that is neither queued, running nor `Uncertain` (which always holds its lease). |
 | `rullst-supervision/src/exam/observation.rs`: `Observation::from_code`, `(code - 10) % 4` with `+` | `(code + 10) % 4` equals `(code - 10) % 4`, because 20 is a multiple of 4. |
 | `rullst-supervision/src/sqlite/events.rs`: `events`, and `rullst-supervision/src/sqlite/observations.rs`: `observations`, `expires_at > MAX_TIME` with `==` or `>=` | An event is received before its session expires, at least an hour before the session's retention ends at or before `MAX_TIME`, so with its fixed retention it always expires before `MAX_TIME`. |
