@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794839710322,
+  "lastUpdate": 1794847528230,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -35935,6 +35935,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1706,
             "range": "± 36",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3a46859e7d3a3d3acf8f01cb26c896ad08c004b4",
+          "message": "Merge pull request #743 from Rullst/test/v13-mutants-auth\n\ntest(auth): close 13.0 mutation campaign gaps",
+          "timestamp": "2026-11-16T13:42:29-03:00",
+          "tree_id": "d6d5ae92c96803e47d0f70762e2e52af0521849b",
+          "url": "https://github.com/Rullst/Rullst/commit/3a46859e7d3a3d3acf8f01cb26c896ad08c004b4"
+        },
+        "date": 1794847524757,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 417,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 561,
+            "range": "± 38",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 254,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 885,
+            "range": "± 12",
             "unit": "ns/iter"
           }
         ]
