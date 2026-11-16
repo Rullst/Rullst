@@ -468,13 +468,22 @@ def validate_comparison(home: Document, home_pt: Document, assembler) -> None:
         assembler.assemble(Path(temp) / "data", benchmarks=BENCHMARK_FIXTURE)
         run_link = '<a href="https://github.com/Rullst/Benchmarks/actions/runs/1">'
         for page, expected in (("compare/index.html", ("0.48× Axum", "(90,486)", "3.50 ms", "version 13.0.0-alpha.6", "Not in this measurement run.",
-                                                        "Fixture note: these numbers", "relative to Axum measured on the same machine", run_link)),
+                                                        "Fixture note: these numbers are not measurements of <code>cargo rullst new</code> starters; "
+                                                        "`&lt;b&gt;` and a lone ` stay text.</p>",
+                                                        "relative to Axum measured on the same machine", run_link)),
                                ("pt-br/comparar/index.html", ("0,48× Axum", "(90.486)", "3,50 ms", "versão 13.0.0-alpha.6", "Fora desta rodada de medição.",
-                                                              "Nota do fixture: estes números", "em relação ao Axum medido na mesma máquina", run_link))):
+                                                              "Nota do fixture: estes números não são medições de projetos <code>cargo rullst new</code>; "
+                                                              "`&lt;b&gt;` e uma ` sozinha ficam como texto.</p>",
+                                                              "em relação ao Axum medido na mesma máquina", run_link))):
             rendered = (Path(temp) / "data" / page).read_text(encoding="utf-8")
             assert 'class="benchmark-pending"' not in rendered, f"{page}: benchmark rows were not rendered"
             assert all(text in rendered for text in expected), f"{page}: unexpected benchmark rendering"
             assert "Actix" not in rendered, f"{page}: renders a framework outside the comparison"
+    # Backtick spans of a note: only short, balanced ones without markup become <code>.
+    for note, html in (("`a` & `b`", "<code>a</code> &amp; <code>b</code>"), ("`a", "`a"), ("``", "``"), ("` `", "` `"),
+                       ("`" + "x" * 81 + "`", "`" + "x" * 81 + "`"), ("`x\ny`", "`x\ny`"), ('`"q"`', "<code>&quot;q&quot;</code>"),
+                       ("`<i>` `ok` `", "`&lt;i&gt;` <code>ok</code> `")):
+        assert assembler.render_note(note) == html, f"note {note!r} rendered as {assembler.render_note(note)!r}"
     # The assembler reads results only from inside the working directory.
     with tempfile.TemporaryDirectory(prefix=".validate-site-", dir=ROOT) as temp, redirect_stderr(io.StringIO()) as warnings:
         bad = Path(temp) / "bad.json"

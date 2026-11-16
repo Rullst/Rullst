@@ -1,0 +1,24 @@
+# An application-owned mail transport to copy from, not a framework driver:
+# see docs/src/mail-custom-transport.md.
+[package]
+name = "rullst-mail-postmark-example"
+version = "13.0.0-alpha.5"
+edition = "2024"
+rust-version = "1.96.0"
+publish = false
+license = "MIT"
+description = "Application-owned Postmark MailDriver for rullst-mail, with an offline fallback, suppression feedback and the conformance kit"
+
+[dependencies]
+rullst-mail = { workspace = true }
+async-trait = { workspace = true }
+base64 = { workspace = true }
+chrono = { workspace = true, features = ["clock", "std"] }
+reqwest = { workspace = true, features = ["rustls"] }
+serde_json = { workspace = true, features = ["std"] }
+sha2 = { workspace = true }
+subtle = { workspace = true }
+
+[dev-dependencies]
+rullst-mail = { workspace = true, features = ["conformance"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "io-util", "time"] }

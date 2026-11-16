@@ -387,10 +387,11 @@ end-of-life 12.3.0, which has no `remote` feature. The `remote` feature is not
 enabled by default: applications that mount
 Studio's local pages in development do not build its HTTP client, encryption
 or SQLite history. `--no-default-features` leaves out the default
-features, which only the local pages use: the PostgreSQL and MySQL drivers and
-the SQLite queue. The remote mode needs neither, so the installation compiles
-less; `rullst-orm` and `rullst-capital` are still built, because Studio does not
-make them optional yet.
+features, which only the local pages use: the database drivers, the SQLite
+queue and the revenue dashboard (`capital`). The remote mode needs none of
+them, so the installation compiles less: it builds no `rullst-orm`,
+`rullst-capital` or `rullst-security`, and its only database driver is
+SQLx's SQLite, for its own history.
 
 It listens on `127.0.0.1` only, with the same protections as Studio's local
 pages: loopback peer and `Host`, same-origin forms, and a per-process form

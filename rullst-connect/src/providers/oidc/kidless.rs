@@ -64,3 +64,7 @@ fn key_type_fits(parameters: &AlgorithmParameters, alg: Algorithm) -> bool {
         _ => false,
     }
 }
+
+#[cfg(test)]
+#[path = "kidless_tests.rs"]
+mod tests;

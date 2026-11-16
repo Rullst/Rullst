@@ -57,6 +57,18 @@ received a test or is listed under
   `redis_streams/` (excluded from the gate) was measured with targeted runs
   and the `messaging-redis` contract run: 202 mutants, of which only the
   accepted `Remote::decode` arm survives both.
+- **`rullst-connect`** (13.0.0-alpha.6,
+  [PR #718](https://github.com/Rullst/Rullst/pull/718)): targeted runs of the 61
+  files outside the PostgreSQL and MySQL login-challenge stores (11 have no
+  mutants) gave 1,163 mutants: 772 caught, 262 unviable, no timeout and 129
+  missed; the `connect-sql` contract run caught the 23 viable mutants of those
+  two stores. New tests killed 119 of the misses and a redundant empty check of
+  the token snapshot envelope was removed. Reruns of the 13 changed files leave
+  9 of 1,162 mutants: 8 accepted equivalents (seven in the mock IdP handlers and
+  the `id_token.rs` nonce one) and one still missed: `token_handler` with the
+  `||` before the client-ID comparison replaced by `&&` accepts an expired
+  authorization code, which only a test waiting out the mock IdP's five-minute
+  code lifetime could show.
 - **`rullst-nexus`**: first measured in PR #532 (26 files, 876 mutants). New
   tests killed 170 of the 171 first misses, one is an accepted equivalent, and
   one real defect was fixed.
@@ -251,6 +263,11 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-messaging/src/wire.rs`: `FIXED_BYTES`, each `+` between two of its `2`s with `*`, and `Reader::is_finished` with `true` | `2 * 2` equals `2 + 2`; `decode` re-encodes the envelope and compares it with the frame, which rejects trailing bytes with the same `InvalidWireEnvelope`. |
 | `rullst-messaging/src/redis_streams/transport.rs`: `Remote::decode`, delete the `"missing" \| "corrupt"` arm | The catch-all arm returns the same `CorruptStorage`. |
 | `rullst-connect/src/provider/id_token.rs`: `validate_claims_with_presenters`, the `\|\|` before `nonce.is_empty()` with `&&` | `verify_nonce` compares SHA-256 digests, so a nonce empty on one side only already fails it, and two empty nonces still satisfy the joined condition. |
+| `rullst-connect/src/mock_idp/handlers.rs`: the grant `retain` of `authorize_handler` and the access-token `retain` of `token_handler` and `userinfo_handler`, `> now` with `>=` | A record kept for the one second its expiry equals the clock is refused by the later expiry checks with the same error; only the 64-record bound would count it for that second, which a test cannot arrange. |
+| `rullst-connect/src/mock_idp/handlers.rs`: `userinfo_handler`, the expiry test `*expiry > now` with `>=` | The `retain` just before it has removed every token whose expiry is not after `now`. |
+| `rullst-connect/src/mock_idp/handlers.rs`: `token_handler`, the `\|\|` before the redirect URI comparison with `&&` | The authorization and token requests must both carry the registered client ID and redirect URI, so neither binding comparison can differ. |
+| `rullst-connect/src/mock_idp/handlers.rs`: `userinfo_handler`, the bearer filter's `&&` with `\|\|` | An empty or oversized token then skips only the size bound and matches no issued token, so the response is the same `invalid_token`. |
+| `rullst-connect/src/mock_idp/handlers.rs`: `server_error` with `Default::default()` | It runs only when the clock is before 1970, Ed25519 signing fails or a validated loopback redirect URI does not parse. |
 | `rullst-mail/src/security.rs`: `redact_labelled_private_keys`, `MAX_PEM_LABEL_BYTES + 1` with `*` | Reading at most 64 label bytes cuts a longer label inside its run of label bytes, so the `-----` check that follows fails as the length check would. |
 | `rullst-mail/src/security.rs`: `href_values`, `value_start + length + 1` with `-` or `*` | The scan resumes on the closing quote or the byte before it (the opening quote for an empty value), and no `href` match can contain a quote. |
 | `rullst-mail/src/inspection/sniff.rs`: `root_element`, `open < close` with `<=` | Both are positions just after one byte, a `[` and a `>`, so they are never equal. |

@@ -103,6 +103,10 @@ TEXT = {
 # The data's note, by page language; a page without its own note shows the English one.
 NOTE_KEYS = {"en": "note", "pt-BR": "note_pt_br"}
 NOTE_LIMIT = 1000
+# Backticks in a note pair up in order; a pair around 1 to 80 characters on
+# one line, not all blank and without `<` or `>`, renders as <code>. Any other
+# pair and a final unpaired backtick stay literal text.
+CODE_TEXT = re.compile(r"[^<>\r\n]{1,80}")
 RUN_URL = re.compile(r"https://github\.com/Rullst/Benchmarks/actions/runs/[0-9]{1,20}")
 VERSION = re.compile(r"[0-9A-Za-z][0-9A-Za-z.+-]{0,39}")
 
@@ -187,6 +191,22 @@ def load_benchmarks(path: Path) -> dict | None:
     return {"measured_on": measured_on, "rows": rows, "notes": notes, "run_url": run_url}
 
 
+def render_note(note: str) -> str:
+    """A note's text, escaped, with its short backtick spans as <code>."""
+    pieces = note.split("`")
+    parts = []
+    for index, piece in enumerate(pieces):
+        if index % 2 == 0:
+            parts.append(escape(piece))
+            continue
+        closed = index + 1 < len(pieces)
+        if closed and piece.strip() and CODE_TEXT.fullmatch(piece):
+            parts.append(f"<code>{escape(piece)}</code>")
+        else:
+            parts.append(escape("`" + piece + ("`" if closed else "")))
+    return "".join(parts)
+
+
 def format_number(value: float, decimals: int, lang: str) -> str:
     text = f"{value:,.{decimals}f}"
     return text.translate(str.maketrans(",.", ".,")) if lang == "pt-BR" else text
@@ -215,7 +235,7 @@ def render_benchmarks(results: dict, lang: str) -> str:
         note, note_lang = results["notes"]["en"], "en"
     if note:
         attribute = "" if note_lang == lang else ' lang="en"'
-        lines.append(f'<p class="benchmark-note"{attribute}>{escape(note)}</p>')
+        lines.append(f'<p class="benchmark-note"{attribute}>{render_note(note)}</p>')
     if any(row.get("ratios") for row in results["rows"].values()):
         lines.append(f'<p class="benchmark-meta">{TEXT[lang]["ratio"]}</p>')
     lines.append('<ul class="benchmark-rows">')

@@ -15,14 +15,16 @@ pub(super) const GUIDE: &str = "https://rullst.github.io/Rullst/book/migration-v
 pub(super) const ALPHA2_CHECKLIST: &str = "upgrading-an-alpha2-application-to-alpha3";
 /// Its checklist for 13.0.0-alpha.3 applications.
 pub(super) const ALPHA3_CHECKLIST: &str = "upgrading-an-alpha3-application-to-alpha4";
-/// Its checklist for 13.0.0-alpha.4 applications, which also explains the
-/// rules a later 13.0 prerelease adds for alpha.5 changes.
+/// Its checklist for 13.0.0-alpha.4 applications.
 pub(super) const ALPHA4_CHECKLIST: &str = "upgrading-an-alpha4-application-to-alpha5";
+/// Its checklist for 13.0.0-alpha.5 applications, which also explains the
+/// rules a later 13.0 prerelease adds for alpha.6 changes.
+pub(super) const ALPHA5_CHECKLIST: &str = "upgrading-an-alpha5-application-to-alpha6";
 
 /// The checklist for an application on the 13.0 prerelease `current`, if
-/// the guide has one: alpha.2, alpha.3 and alpha.4 have their own; a later
-/// alpha, beta or release candidate gets only rules for alpha.5 changes,
-/// which the alpha.4 checklist describes. alpha.1 has none.
+/// the guide has one: alpha.2 to alpha.5 have their own; a later alpha, beta
+/// or release candidate gets only rules for alpha.6 changes, which the
+/// alpha.5 checklist describes. alpha.1 has none.
 fn checklist(current: &Version) -> Option<&'static str> {
     if (current.major, current.minor, current.patch) != (13, 0, 0) || current.pre.is_empty() {
         return None;
@@ -31,10 +33,11 @@ fn checklist(current: &Version) -> Option<&'static str> {
     match pre.strip_prefix("alpha.").map(str::parse::<u64>) {
         Some(Ok(2)) => Some(ALPHA2_CHECKLIST),
         Some(Ok(3)) => Some(ALPHA3_CHECKLIST),
-        Some(Ok(number)) if number >= 4 => Some(ALPHA4_CHECKLIST),
+        Some(Ok(4)) => Some(ALPHA4_CHECKLIST),
+        Some(Ok(number)) if number >= 5 => Some(ALPHA5_CHECKLIST),
         Some(_) => None,
         None if pre.starts_with("alpha") => None,
-        None => Some(ALPHA4_CHECKLIST),
+        None => Some(ALPHA5_CHECKLIST),
     }
 }
 

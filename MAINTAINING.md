@@ -87,10 +87,13 @@ rules come from real failures; follow them on any similar machine.
   [`changelog.d/`](changelog.d/README.md). A breaking
   change also gets a row in `docs/src/migration-v13.md` and, when the old usage
   can be detected in an application, a `cargo rullst upgrade` rule
-  (`cargo-rullst/src/generators/build/upgrade/rules/`). The classification
-  table and counts in
-  [tutorial 36](docs/src/tutorials/36-assisted-framework-upgrades.md) must
-  match the migration rows and the rule catalog.
+  (`cargo-rullst/src/generators/build/upgrade/rules/`). In
+  [tutorial 36](docs/src/tutorials/36-assisted-framework-upgrades.md), the
+  new row gets a line in the classification table, and a new rule is listed
+  on its row there and in the open release's row of "Rules by release". The
+  page states no row or rule totals, so there is no count to update; the
+  CLI's unit tests (`upgrade/rules/tests/docs.rs`) check both tables against
+  the guide and the catalog.
 - **Changelog fragments.** A user-visible change adds one file,
   `changelog.d/<slug>.md`: a `### Added`, `### Changed`, `### Deprecated`,
   `### Removed`, `### Fixed` or `### Security` line, then the bullets as they

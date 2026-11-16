@@ -1,5 +1,7 @@
 # Create Your First Rullst REST API
 
+> 🇧🇷 [Leia esta página em português](../pt-BR/tutorials/rest-api-quickstart.md).
+
 **Your result:** a typed JSON response you can verify from another terminal.
 Start here when your frontend is a separate app, mobile client or integration.
 [Explore all beginner paths](../start-here.md) or the
