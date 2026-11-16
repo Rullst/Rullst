@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794792960478,
+  "lastUpdate": 1794794187820,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -23015,6 +23015,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2950,
             "range": "± 63",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a7c98c026d75688b4e4fe75b7ce0c893db003003",
+          "message": "Merge pull request #721 from Rullst/ci/v13-alpha6-sse-scalar-checks\n\nci: SSE through the generated Caddy and Scalar /docs in Chromium",
+          "timestamp": "2026-11-15T22:40:20-03:00",
+          "tree_id": "a4e3c03cc10586ba31c8682f50ad326a45c0ca17",
+          "url": "https://github.com/Rullst/Rullst/commit/a7c98c026d75688b4e4fe75b7ce0c893db003003"
+        },
+        "date": 1794794186965,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1009,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 747,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1782,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4250,
+            "range": "± 82",
             "unit": "ns/iter"
           }
         ]
