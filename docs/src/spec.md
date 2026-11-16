@@ -1298,31 +1298,48 @@ store, `open`, which also creates a missing file) are tried again when their
 connection times out, three attempts in total (about 15 seconds): no other task
 can use the new pool yet, so the timeout means a slow establishment, not
 contention. Another connection or process that keeps the file locked also
-delays establishment: SQLite's busy timeout for that lock is also 5 seconds,
-and on hosted Windows runners it ended about half a second after the pool wait,
-so the step is tried again. A Windows-only test per store holds the file under
-SQLite's exclusive lock while `open` connects, releases it after the retry and
-checks that `open` succeeds. On Linux the busy timeout ends only milliseconds
-after the pool wait, so the same lock can instead end `open` with SQLite's busy
-result, which is not retried. Every other operation keeps the single 5-second
-bound and its `Busy` or `Storage` result. Labs keeps the SQLite result code,
-I/O error kind or pool condition behind the last `Storage` error of a thread
-for its test fixtures, never a message, SQL text or path.
+delays a step, and SQLite's busy handler waits 5 seconds for that lock, as long
+as the pool: on hosted Windows runners the pool's wait ended first, on Linux
+SQLite's, milliseconds later, could, and its busy result was not tried again.
+Since 13.0.0-alpha.6 a step is tried again when either wait runs out (the
+pool's `PoolTimedOut`, or `SQLITE_BUSY` with any extended code), so a lock held
+past the wait behaves the same on every platform, and a step whose wait runs
+out at all three attempts fails with a typed error that only these calls
+return: `LabError::StorageTimeout`, `MediaError::StorageTimeout`,
+`SupervisionError::StorageTimeout` (also from `upgrade_event_schema`, whose
+transaction starts the same way), `ConsentError::StoreTimeout` and
+`AgeError::StoreTimeout`. Nothing was changed, so the caller may try again
+later. Every other operation keeps the single 5-second bound and its `Busy` or
+`Storage` result. Tests on every platform hold the file under SQLite's
+exclusive lock while `open` connects, with the waits shortened to fractions of
+a second and one of them much shorter than the other, so that which one runs
+out is decided rather than raced: each store tries again after a busy result
+and after a pool timeout, opens once the lock is released, and returns its
+timeout error when the lock outlives the three attempts. Labs keeps the SQLite
+result code, I/O error kind or pool condition behind the last `Storage` or
+`StorageTimeout` error of a thread for its test fixtures, never a message, SQL
+text or path.
 
 `rullst-messaging`'s SQLite constructors (`SqliteBroker::connect` and its
-variants) wait up to 30 seconds for a pooled connection (SQLx's default) and for
-SQLite's lock, with no outer bound, so such a stall only delays them; they are
-not retried. `WebhookOutbox::open`, however, runs inside the outbox's 10-second
-storage deadline, and on a hosted Windows runner a stall made it fail with
-`Timeout` (13.0.0-alpha.4 and earlier). Since 13.0.0-alpha.5, `open` tries again
-when that deadline expires, three attempts in total (about 30 seconds): each
-attempt opens its own pool, which no other task uses yet, and every opening
-step is idempotent, so an expired attempt either rolled back or left committed
-state that the next attempt verifies. Every other outbox call keeps the single
-10-second deadline and its `Timeout` result. A test holds the file under
-SQLite's exclusive lock while `open` connects, releases it after the retry and
-checks that `open` succeeds; with 10 seconds against SQLite's 30 no race
-decides it, and it runs on Windows (`--ignored` runs it elsewhere).
+variants) and `WebhookOutbox::open` wait up to 30 seconds for a pooled
+connection (SQLx's default) and for SQLite's lock. Until 13.0.0-alpha.5 the
+constructors had no outer bound and no retry, while `WebhookOutbox::open`, which
+runs inside the outbox's 10-second storage deadline, failed with `Timeout` when
+a stall on a hosted Windows runner outlasted it (13.0.0-alpha.4 and earlier).
+Since 13.0.0-alpha.5 `open` tries again when that deadline expires, and since
+13.0.0-alpha.6 the constructors do the same through the same helper: each
+attempt opens its own pool, which no other task uses yet, within a 10-second
+deadline, three attempts in total (about 30 seconds). Every opening step is
+idempotent, so an expired attempt either rolled back or left committed state
+that the next attempt verifies. The deadline is shorter than SQLite's waits, so
+it is what ends an attempt on every platform. When all three attempts expire,
+the constructors fail with `MessagingError::StorageTimeout { operation:
+"connect" }` and `open` with `WebhookError::Timeout`. Every other broker
+operation keeps SQLite's 30-second waits, and every other outbox call the single
+10-second deadline and its `Timeout` result. Tests on every platform hold the
+file under SQLite's exclusive lock with the deadline shortened to fractions of a
+second: opening succeeds once the lock is released after the first retry, and
+fails with the timeout error when the lock outlives every attempt.
 
 ### v12 audit correction invariants
 
