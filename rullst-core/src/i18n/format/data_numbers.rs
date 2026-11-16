@@ -1,12 +1,17 @@
-//! CLDR 48 number, percent and currency symbols (generated from ICU 78;
-//! see `format/mod.rs`). `#` stands for the digits, `¤` for a currency code.
+//! CLDR 48 number, percent and currency symbols and currency names
+//! (generated from ICU 78; see `format/mod.rs`). `#` stands for the digits,
+//! `¤` for a currency code; currency patterns and names are `|`-separated.
 
 use super::NumberData;
 
-/// Currencies with localized symbols, in `NumberData::currency` order.
-pub(super) const CURRENCIES: [&str; 5] = ["BRL", "USD", "EUR", "GBP", "JPY"];
+/// Currencies with localized symbols and names, in `NumberData::currency`
+/// and `NumberData::currency_names` order.
+pub(super) const CURRENCIES: [&str; 15] = [
+    "BRL", "USD", "EUR", "GBP", "JPY", "ARS", "MXN", "CLP", "COP", "PEN", "UYU", "CAD", "AUD",
+    "CHF", "CNY",
+];
 
-pub(super) static NUMBERS: [NumberData; 20] = [
+pub(super) static NUMBERS: [NumberData; 27] = [
     NumberData {
         tag: "en",
         decimal: ".",
@@ -14,14 +19,8 @@ pub(super) static NUMBERS: [NumberData; 20] = [
         min_grouping: 1,
         negative: "-#",
         percent: ["#%", "-#%"],
-        currency: [
-            ["R$#", "-R$#"],
-            ["$#", "-$#"],
-            ["\u{20ac}#", "-\u{20ac}#"],
-            ["\u{a3}#", "-\u{a3}#"],
-            ["\u{a5}#", "-\u{a5}#"],
-            ["\u{a4}\u{a0}#", "-\u{a4}\u{a0}#"],
-        ],
+        currency: "R$#|-R$#|$#|-$#|\u{20ac}#|-\u{20ac}#|\u{a3}#|-\u{a3}#|\u{a5}#|-\u{a5}#|ARS\u{a0}#|-ARS\u{a0}#|MX$#|-MX$#|CLP\u{a0}#|-CLP\u{a0}#|COP\u{a0}#|-COP\u{a0}#|PEN\u{a0}#|-PEN\u{a0}#|UYU\u{a0}#|-UYU\u{a0}#|CA$#|-CA$#|A$#|-A$#|CHF\u{a0}#|-CHF\u{a0}#|CN\u{a5}#|-CN\u{a5}#|\u{a4}\u{a0}#|-\u{a4}\u{a0}#",
+        currency_names: "Brazilian Real|US Dollar|Euro|British Pound|Japanese Yen|Argentine Peso|Mexican Peso|Chilean Peso|Colombian Peso|Peruvian Sol|Uruguayan Peso|Canadian Dollar|Australian Dollar|Swiss Franc|Chinese Yuan",
     },
     NumberData {
         tag: "en-GB",
@@ -30,14 +29,8 @@ pub(super) static NUMBERS: [NumberData; 20] = [
         min_grouping: 1,
         negative: "-#",
         percent: ["#%", "-#%"],
-        currency: [
-            ["R$#", "-R$#"],
-            ["US$#", "-US$#"],
-            ["\u{20ac}#", "-\u{20ac}#"],
-            ["\u{a3}#", "-\u{a3}#"],
-            ["JP\u{a5}#", "-JP\u{a5}#"],
-            ["\u{a4}\u{a0}#", "-\u{a4}\u{a0}#"],
-        ],
+        currency: "R$#|-R$#|US$#|-US$#|\u{20ac}#|-\u{20ac}#|\u{a3}#|-\u{a3}#|JP\u{a5}#|-JP\u{a5}#|ARS\u{a0}#|-ARS\u{a0}#|MX$#|-MX$#|CLP\u{a0}#|-CLP\u{a0}#|COP\u{a0}#|-COP\u{a0}#|PEN\u{a0}#|-PEN\u{a0}#|UYU\u{a0}#|-UYU\u{a0}#|CA$#|-CA$#|A$#|-A$#|CHF\u{a0}#|-CHF\u{a0}#|CN\u{a5}#|-CN\u{a5}#|\u{a4}\u{a0}#|-\u{a4}\u{a0}#",
+        currency_names: "Brazilian Real|US Dollar|Euro|British Pound|Japanese Yen|Argentine Peso|Mexican Peso|Chilean Peso|Colombian Peso|Peruvian Sol|Uruguayan Peso|Canadian Dollar|Australian Dollar|Swiss Franc|Chinese Yuan",
     },
     NumberData {
         tag: "pt",
@@ -46,14 +39,8 @@ pub(super) static NUMBERS: [NumberData; 20] = [
         min_grouping: 1,
         negative: "-#",
         percent: ["#%", "-#%"],
-        currency: [
-            ["R$\u{a0}#", "-R$\u{a0}#"],
-            ["US$\u{a0}#", "-US$\u{a0}#"],
-            ["\u{20ac}\u{a0}#", "-\u{20ac}\u{a0}#"],
-            ["\u{a3}\u{a0}#", "-\u{a3}\u{a0}#"],
-            ["JP\u{a5}\u{a0}#", "-JP\u{a5}\u{a0}#"],
-            ["\u{a4}\u{a0}#", "-\u{a4}\u{a0}#"],
-        ],
+        currency: "R$\u{a0}#|-R$\u{a0}#|US$\u{a0}#|-US$\u{a0}#|\u{20ac}\u{a0}#|-\u{20ac}\u{a0}#|\u{a3}\u{a0}#|-\u{a3}\u{a0}#|JP\u{a5}\u{a0}#|-JP\u{a5}\u{a0}#|ARS\u{a0}#|-ARS\u{a0}#|MX$\u{a0}#|-MX$\u{a0}#|CLP\u{a0}#|-CLP\u{a0}#|COP\u{a0}#|-COP\u{a0}#|PEN\u{a0}#|-PEN\u{a0}#|UYU\u{a0}#|-UYU\u{a0}#|CA$\u{a0}#|-CA$\u{a0}#|AU$\u{a0}#|-AU$\u{a0}#|CHF\u{a0}#|-CHF\u{a0}#|CN\u{a5}\u{a0}#|-CN\u{a5}\u{a0}#|\u{a4}\u{a0}#|-\u{a4}\u{a0}#",
+        currency_names: "Real brasileiro|D\u{f3}lar americano|Euro|Libra esterlina|Iene japon\u{ea}s|Peso argentino|Peso mexicano|Peso chileno|Peso colombiano|Novo sol peruano|Peso uruguaio|D\u{f3}lar canadense|D\u{f3}lar australiano|Franco su\u{ed}\u{e7}o|Yuan chin\u{ea}s",
     },
     NumberData {
         tag: "pt-PT",
@@ -62,14 +49,8 @@ pub(super) static NUMBERS: [NumberData; 20] = [
         min_grouping: 2,
         negative: "-#",
         percent: ["#%", "-#%"],
-        currency: [
-            ["#\u{a0}R$", "-#\u{a0}R$"],
-            ["#\u{a0}US$", "-#\u{a0}US$"],
-            ["#\u{a0}\u{20ac}", "-#\u{a0}\u{20ac}"],
-            ["#\u{a0}\u{a3}", "-#\u{a0}\u{a3}"],
-            ["#\u{a0}JP\u{a5}", "-#\u{a0}JP\u{a5}"],
-            ["#\u{a0}\u{a4}", "-#\u{a0}\u{a4}"],
-        ],
+        currency: "#\u{a0}R$|-#\u{a0}R$|#\u{a0}US$|-#\u{a0}US$|#\u{a0}\u{20ac}|-#\u{a0}\u{20ac}|#\u{a0}\u{a3}|-#\u{a0}\u{a3}|#\u{a0}JP\u{a5}|-#\u{a0}JP\u{a5}|#\u{a0}ARS|-#\u{a0}ARS|#\u{a0}MX$|-#\u{a0}MX$|#\u{a0}CLP|-#\u{a0}CLP|#\u{a0}COP|-#\u{a0}COP|#\u{a0}PEN|-#\u{a0}PEN|#\u{a0}UYU|-#\u{a0}UYU|#\u{a0}CA$|-#\u{a0}CA$|#\u{a0}AU$|-#\u{a0}AU$|#\u{a0}CHF|-#\u{a0}CHF|#\u{a0}CN\u{a5}|-#\u{a0}CN\u{a5}|#\u{a0}\u{a4}|-#\u{a0}\u{a4}",
+        currency_names: "real brasileiro|d\u{f3}lar dos Estados Unidos|euro|libra esterlina brit\u{e2}nica|iene japon\u{ea}s|peso argentino|peso mexicano|peso chileno|peso colombiano|sol peruano|peso uruguaio|d\u{f3}lar canadiano|d\u{f3}lar australiano|franco su\u{ed}\u{e7}o|yuan",
     },
     NumberData {
         tag: "es",
@@ -78,14 +59,78 @@ pub(super) static NUMBERS: [NumberData; 20] = [
         min_grouping: 2,
         negative: "-#",
         percent: ["#\u{a0}%", "-#\u{a0}%"],
-        currency: [
-            ["#\u{a0}BRL", "-#\u{a0}BRL"],
-            ["#\u{a0}US$", "-#\u{a0}US$"],
-            ["#\u{a0}\u{20ac}", "-#\u{a0}\u{20ac}"],
-            ["#\u{a0}GBP", "-#\u{a0}GBP"],
-            ["#\u{a0}JPY", "-#\u{a0}JPY"],
-            ["#\u{a0}\u{a4}", "-#\u{a0}\u{a4}"],
-        ],
+        currency: "#\u{a0}BRL|-#\u{a0}BRL|#\u{a0}US$|-#\u{a0}US$|#\u{a0}\u{20ac}|-#\u{a0}\u{20ac}|#\u{a0}GBP|-#\u{a0}GBP|#\u{a0}JPY|-#\u{a0}JPY|#\u{a0}ARS|-#\u{a0}ARS|#\u{a0}MXN|-#\u{a0}MXN|#\u{a0}CLP|-#\u{a0}CLP|#\u{a0}COP|-#\u{a0}COP|#\u{a0}PEN|-#\u{a0}PEN|#\u{a0}UYU|-#\u{a0}UYU|#\u{a0}CAD|-#\u{a0}CAD|#\u{a0}AUD|-#\u{a0}AUD|#\u{a0}CHF|-#\u{a0}CHF|#\u{a0}CNY|-#\u{a0}CNY|#\u{a0}\u{a4}|-#\u{a0}\u{a4}",
+        currency_names: "real brasile\u{f1}o|d\u{f3}lar estadounidense|euro|libra esterlina|yen japon\u{e9}s|peso argentino|peso mexicano|peso chileno|peso colombiano|sol peruano|peso uruguayo|d\u{f3}lar canadiense|d\u{f3}lar australiano|franco suizo|yuan renminbi",
+    },
+    NumberData {
+        tag: "es-419",
+        decimal: ".",
+        group: ",",
+        min_grouping: 1,
+        negative: "-#",
+        percent: ["#%", "-#%"],
+        currency: "BRL\u{a0}#|-BRL\u{a0}#|USD\u{a0}#|-USD\u{a0}#|EUR\u{a0}#|-EUR\u{a0}#|GBP\u{a0}#|-GBP\u{a0}#|JPY\u{a0}#|-JPY\u{a0}#|ARS\u{a0}#|-ARS\u{a0}#|MXN\u{a0}#|-MXN\u{a0}#|CLP\u{a0}#|-CLP\u{a0}#|COP\u{a0}#|-COP\u{a0}#|PEN\u{a0}#|-PEN\u{a0}#|UYU\u{a0}#|-UYU\u{a0}#|CAD\u{a0}#|-CAD\u{a0}#|AUD\u{a0}#|-AUD\u{a0}#|CHF\u{a0}#|-CHF\u{a0}#|CNY\u{a0}#|-CNY\u{a0}#|\u{a4}\u{a0}#|-\u{a4}\u{a0}#",
+        currency_names: "real brasile\u{f1}o|d\u{f3}lar estadounidense|euro|libra esterlina|yen japon\u{e9}s|peso argentino|peso mexicano|peso chileno|peso colombiano|sol peruano|peso uruguayo|d\u{f3}lar canadiense|d\u{f3}lar australiano|franco suizo|yuan renminbi",
+    },
+    NumberData {
+        tag: "es-MX",
+        decimal: ".",
+        group: ",",
+        min_grouping: 1,
+        negative: "-#",
+        percent: ["#%", "-#%"],
+        currency: "BRL\u{a0}#|-BRL\u{a0}#|USD\u{a0}#|-USD\u{a0}#|EUR\u{a0}#|-EUR\u{a0}#|GBP\u{a0}#|-GBP\u{a0}#|JPY\u{a0}#|-JPY\u{a0}#|ARS\u{a0}#|-ARS\u{a0}#|$#|-$#|CLP\u{a0}#|-CLP\u{a0}#|COP\u{a0}#|-COP\u{a0}#|PEN\u{a0}#|-PEN\u{a0}#|UYU\u{a0}#|-UYU\u{a0}#|CAD\u{a0}#|-CAD\u{a0}#|AUD\u{a0}#|-AUD\u{a0}#|CHF\u{a0}#|-CHF\u{a0}#|CNY\u{a0}#|-CNY\u{a0}#|\u{a4}\u{a0}#|-\u{a4}\u{a0}#",
+        currency_names: "real brasile\u{f1}o|d\u{f3}lar estadounidense|euro|libra esterlina|yen japon\u{e9}s|peso argentino|peso mexicano|peso chileno|peso colombiano|sol peruano|peso uruguayo|d\u{f3}lar canadiense|d\u{f3}lar australiano|franco suizo|yuan renminbi",
+    },
+    NumberData {
+        tag: "es-AR",
+        decimal: ",",
+        group: ".",
+        min_grouping: 1,
+        negative: "-#",
+        percent: ["#%", "-#%"],
+        currency: "BRL\u{a0}#|-BRL\u{a0}#|US$\u{a0}#|-US$\u{a0}#|EUR\u{a0}#|-EUR\u{a0}#|GBP\u{a0}#|-GBP\u{a0}#|JPY\u{a0}#|-JPY\u{a0}#|$\u{a0}#|-$\u{a0}#|MXN\u{a0}#|-MXN\u{a0}#|CLP\u{a0}#|-CLP\u{a0}#|COP\u{a0}#|-COP\u{a0}#|PEN\u{a0}#|-PEN\u{a0}#|UYU\u{a0}#|-UYU\u{a0}#|CAD\u{a0}#|-CAD\u{a0}#|AUD\u{a0}#|-AUD\u{a0}#|CHF\u{a0}#|-CHF\u{a0}#|CNY\u{a0}#|-CNY\u{a0}#|\u{a4}\u{a0}#|-\u{a4}\u{a0}#",
+        currency_names: "real brasile\u{f1}o|d\u{f3}lar estadounidense|euro|libra esterlina|yen japon\u{e9}s|peso argentino|peso mexicano|peso chileno|peso colombiano|sol peruano|peso uruguayo|d\u{f3}lar canadiense|d\u{f3}lar australiano|franco suizo|yuan renminbi",
+    },
+    NumberData {
+        tag: "es-CL",
+        decimal: ",",
+        group: ".",
+        min_grouping: 1,
+        negative: "-#",
+        percent: ["#%", "-#%"],
+        currency: "BRL\u{a0}#|BRL-#|US$#|US$-#|EUR\u{a0}#|EUR-#|GBP\u{a0}#|GBP-#|JPY\u{a0}#|JPY-#|ARS\u{a0}#|ARS-#|MXN\u{a0}#|MXN-#|$#|$-#|COP\u{a0}#|COP-#|PEN\u{a0}#|PEN-#|UYU\u{a0}#|UYU-#|CAD\u{a0}#|CAD-#|AUD\u{a0}#|AUD-#|CHF\u{a0}#|CHF-#|CNY\u{a0}#|CNY-#|\u{a4}\u{a0}#|\u{a4}-#",
+        currency_names: "real brasile\u{f1}o|d\u{f3}lar estadounidense|euro|libra esterlina|yen japon\u{e9}s|peso argentino|peso mexicano|Peso chileno|peso colombiano|sol peruano|peso uruguayo|d\u{f3}lar canadiense|d\u{f3}lar australiano|franco suizo|yuan renminbi",
+    },
+    NumberData {
+        tag: "es-CO",
+        decimal: ",",
+        group: ".",
+        min_grouping: 1,
+        negative: "-#",
+        percent: ["#%", "-#%"],
+        currency: "BRL\u{a0}#|-BRL\u{a0}#|US$\u{a0}#|-US$\u{a0}#|EUR\u{a0}#|-EUR\u{a0}#|GBP\u{a0}#|-GBP\u{a0}#|JPY\u{a0}#|-JPY\u{a0}#|ARS\u{a0}#|-ARS\u{a0}#|MXN\u{a0}#|-MXN\u{a0}#|CLP\u{a0}#|-CLP\u{a0}#|$\u{a0}#|-$\u{a0}#|PEN\u{a0}#|-PEN\u{a0}#|UYU\u{a0}#|-UYU\u{a0}#|CAD\u{a0}#|-CAD\u{a0}#|AUD\u{a0}#|-AUD\u{a0}#|CHF\u{a0}#|-CHF\u{a0}#|CNY\u{a0}#|-CNY\u{a0}#|\u{a4}\u{a0}#|-\u{a4}\u{a0}#",
+        currency_names: "real brasile\u{f1}o|d\u{f3}lar estadounidense|euro|libra esterlina|yen japon\u{e9}s|peso argentino|peso mexicano|peso chileno|peso colombiano|sol peruano|peso uruguayo|d\u{f3}lar canadiense|d\u{f3}lar australiano|franco suizo|yuan renminbi",
+    },
+    NumberData {
+        tag: "es-PE",
+        decimal: ".",
+        group: ",",
+        min_grouping: 1,
+        negative: "-#",
+        percent: ["#%", "-#%"],
+        currency: "BRL\u{a0}#|-BRL\u{a0}#|USD\u{a0}#|-USD\u{a0}#|EUR\u{a0}#|-EUR\u{a0}#|GBP\u{a0}#|-GBP\u{a0}#|JPY\u{a0}#|-JPY\u{a0}#|ARS\u{a0}#|-ARS\u{a0}#|MXN\u{a0}#|-MXN\u{a0}#|CLP\u{a0}#|-CLP\u{a0}#|COP\u{a0}#|-COP\u{a0}#|S/\u{a0}#|-S/\u{a0}#|UYU\u{a0}#|-UYU\u{a0}#|CAD\u{a0}#|-CAD\u{a0}#|AUD\u{a0}#|-AUD\u{a0}#|CHF\u{a0}#|-CHF\u{a0}#|CNY\u{a0}#|-CNY\u{a0}#|\u{a4}\u{a0}#|-\u{a4}\u{a0}#",
+        currency_names: "real brasile\u{f1}o|d\u{f3}lar estadounidense|euro|libra esterlina|yen japon\u{e9}s|peso argentino|peso mexicano|peso chileno|peso colombiano|sol peruano|peso uruguayo|d\u{f3}lar canadiense|d\u{f3}lar australiano|franco suizo|yuan renminbi",
+    },
+    NumberData {
+        tag: "es-UY",
+        decimal: ",",
+        group: ".",
+        min_grouping: 1,
+        negative: "-#",
+        percent: ["#%", "-#%"],
+        currency: "BRL\u{a0}#|-BRL\u{a0}#|US$\u{a0}#|-US$\u{a0}#|EUR\u{a0}#|-EUR\u{a0}#|GBP\u{a0}#|-GBP\u{a0}#|JPY\u{a0}#|-JPY\u{a0}#|ARS\u{a0}#|-ARS\u{a0}#|MXN\u{a0}#|-MXN\u{a0}#|CLP\u{a0}#|-CLP\u{a0}#|COP\u{a0}#|-COP\u{a0}#|PEN\u{a0}#|-PEN\u{a0}#|$\u{a0}#|-$\u{a0}#|CAD\u{a0}#|-CAD\u{a0}#|AUD\u{a0}#|-AUD\u{a0}#|CHF\u{a0}#|-CHF\u{a0}#|CNY\u{a0}#|-CNY\u{a0}#|\u{a4}\u{a0}#|-\u{a4}\u{a0}#",
+        currency_names: "real brasile\u{f1}o|d\u{f3}lar estadounidense|euro|libra esterlina|yen japon\u{e9}s|peso argentino|peso mexicano|peso chileno|peso colombiano|sol peruano|peso uruguayo|d\u{f3}lar canadiense|d\u{f3}lar australiano|franco suizo|yuan renminbi",
     },
     NumberData {
         tag: "fr",
@@ -94,14 +139,8 @@ pub(super) static NUMBERS: [NumberData; 20] = [
         min_grouping: 1,
         negative: "-#",
         percent: ["#\u{a0}%", "-#\u{a0}%"],
-        currency: [
-            ["#\u{a0}R$", "-#\u{a0}R$"],
-            ["#\u{a0}$US", "-#\u{a0}$US"],
-            ["#\u{a0}\u{20ac}", "-#\u{a0}\u{20ac}"],
-            ["#\u{a0}\u{a3}GB", "-#\u{a0}\u{a3}GB"],
-            ["#\u{a0}JPY", "-#\u{a0}JPY"],
-            ["#\u{a0}\u{a4}", "-#\u{a0}\u{a4}"],
-        ],
+        currency: "#\u{a0}R$|-#\u{a0}R$|#\u{a0}$US|-#\u{a0}$US|#\u{a0}\u{20ac}|-#\u{a0}\u{20ac}|#\u{a0}\u{a3}GB|-#\u{a0}\u{a3}GB|#\u{a0}JPY|-#\u{a0}JPY|#\u{a0}$AR|-#\u{a0}$AR|#\u{a0}$MX|-#\u{a0}$MX|#\u{a0}$CL|-#\u{a0}$CL|#\u{a0}$CO|-#\u{a0}$CO|#\u{a0}PEN|-#\u{a0}PEN|#\u{a0}$UY|-#\u{a0}$UY|#\u{a0}$CA|-#\u{a0}$CA|#\u{a0}$AU|-#\u{a0}$AU|#\u{a0}CHF|-#\u{a0}CHF|#\u{a0}CNY|-#\u{a0}CNY|#\u{a0}\u{a4}|-#\u{a0}\u{a4}",
+        currency_names: "r\u{e9}al br\u{e9}silien|dollar des \u{c9}tats-Unis|euro|livre sterling|yen japonais|peso argentin|peso mexicain|peso chilien|peso colombien|sol p\u{e9}ruvien|peso uruguayen|dollar canadien|dollar australien|franc suisse|yuan renminbi chinois",
     },
     NumberData {
         tag: "de",
@@ -110,14 +149,8 @@ pub(super) static NUMBERS: [NumberData; 20] = [
         min_grouping: 1,
         negative: "-#",
         percent: ["#\u{a0}%", "-#\u{a0}%"],
-        currency: [
-            ["#\u{a0}R$", "-#\u{a0}R$"],
-            ["#\u{a0}$", "-#\u{a0}$"],
-            ["#\u{a0}\u{20ac}", "-#\u{a0}\u{20ac}"],
-            ["#\u{a0}\u{a3}", "-#\u{a0}\u{a3}"],
-            ["#\u{a0}\u{a5}", "-#\u{a0}\u{a5}"],
-            ["#\u{a0}\u{a4}", "-#\u{a0}\u{a4}"],
-        ],
+        currency: "#\u{a0}R$|-#\u{a0}R$|#\u{a0}$|-#\u{a0}$|#\u{a0}\u{20ac}|-#\u{a0}\u{20ac}|#\u{a0}\u{a3}|-#\u{a0}\u{a3}|#\u{a0}\u{a5}|-#\u{a0}\u{a5}|#\u{a0}ARS|-#\u{a0}ARS|#\u{a0}MX$|-#\u{a0}MX$|#\u{a0}CLP|-#\u{a0}CLP|#\u{a0}COP|-#\u{a0}COP|#\u{a0}PEN|-#\u{a0}PEN|#\u{a0}UYU|-#\u{a0}UYU|#\u{a0}CA$|-#\u{a0}CA$|#\u{a0}AU$|-#\u{a0}AU$|#\u{a0}CHF|-#\u{a0}CHF|#\u{a0}CN\u{a5}|-#\u{a0}CN\u{a5}|#\u{a0}\u{a4}|-#\u{a0}\u{a4}",
+        currency_names: "Brasilianischer Real|US-Dollar|Euro|Britisches Pfund|Japanischer Yen|Argentinischer Peso|Mexikanischer Peso|Chilenischer Peso|Kolumbianischer Peso|Peruanischer Sol|Uruguayischer Peso|Kanadischer Dollar|Australischer Dollar|Schweizer Franken|Renminbi Yuan",
     },
     NumberData {
         tag: "it",
@@ -126,14 +159,8 @@ pub(super) static NUMBERS: [NumberData; 20] = [
         min_grouping: 2,
         negative: "-#",
         percent: ["#%", "-#%"],
-        currency: [
-            ["#\u{a0}BRL", "-#\u{a0}BRL"],
-            ["#\u{a0}USD", "-#\u{a0}USD"],
-            ["#\u{a0}\u{20ac}", "-#\u{a0}\u{20ac}"],
-            ["#\u{a0}\u{a3}", "-#\u{a0}\u{a3}"],
-            ["#\u{a0}JPY", "-#\u{a0}JPY"],
-            ["#\u{a0}\u{a4}", "-#\u{a0}\u{a4}"],
-        ],
+        currency: "#\u{a0}BRL|-#\u{a0}BRL|#\u{a0}USD|-#\u{a0}USD|#\u{a0}\u{20ac}|-#\u{a0}\u{20ac}|#\u{a0}\u{a3}|-#\u{a0}\u{a3}|#\u{a0}JPY|-#\u{a0}JPY|#\u{a0}ARS|-#\u{a0}ARS|#\u{a0}MXN|-#\u{a0}MXN|#\u{a0}CLP|-#\u{a0}CLP|#\u{a0}COP|-#\u{a0}COP|#\u{a0}PEN|-#\u{a0}PEN|#\u{a0}UYU|-#\u{a0}UYU|#\u{a0}CA$|-#\u{a0}CA$|#\u{a0}A$|-#\u{a0}A$|#\u{a0}CHF|-#\u{a0}CHF|#\u{a0}CN\u{a5}|-#\u{a0}CN\u{a5}|#\u{a0}\u{a4}|-#\u{a0}\u{a4}",
+        currency_names: "real brasiliano|dollaro statunitense|euro|sterlina britannica|yen giapponese|peso argentino|peso messicano|peso cileno|peso colombiano|sol peruviano|peso uruguayano|dollaro canadese|dollaro australiano|franco svizzero|yuan cinese",
     },
     NumberData {
         tag: "nl",
@@ -142,14 +169,8 @@ pub(super) static NUMBERS: [NumberData; 20] = [
         min_grouping: 1,
         negative: "-#",
         percent: ["#%", "-#%"],
-        currency: [
-            ["R$\u{a0}#", "R$\u{a0}-#"],
-            ["US$\u{a0}#", "US$\u{a0}-#"],
-            ["\u{20ac}\u{a0}#", "\u{20ac}\u{a0}-#"],
-            ["\u{a3}\u{a0}#", "\u{a3}\u{a0}-#"],
-            ["JP\u{a5}\u{a0}#", "JP\u{a5}\u{a0}-#"],
-            ["\u{a4}\u{a0}#", "\u{a4}\u{a0}-#"],
-        ],
+        currency: "R$\u{a0}#|R$\u{a0}-#|US$\u{a0}#|US$\u{a0}-#|\u{20ac}\u{a0}#|\u{20ac}\u{a0}-#|\u{a3}\u{a0}#|\u{a3}\u{a0}-#|JP\u{a5}\u{a0}#|JP\u{a5}\u{a0}-#|ARS\u{a0}#|ARS\u{a0}-#|MX$\u{a0}#|MX$\u{a0}-#|CLP\u{a0}#|CLP\u{a0}-#|COP\u{a0}#|COP\u{a0}-#|PEN\u{a0}#|PEN\u{a0}-#|UYU\u{a0}#|UYU\u{a0}-#|C$\u{a0}#|C$\u{a0}-#|AU$\u{a0}#|AU$\u{a0}-#|CHF\u{a0}#|CHF\u{a0}-#|CN\u{a5}\u{a0}#|CN\u{a5}\u{a0}-#|\u{a4}\u{a0}#|\u{a4}\u{a0}-#",
+        currency_names: "Braziliaanse real|Amerikaanse dollar|Euro|Britse pond|Japanse yen|Argentijnse peso|Mexicaanse peso|Chileense peso|Colombiaanse peso|Peruaanse sol|Uruguayaanse peso|Canadese dollar|Australische dollar|Zwitserse frank|Chinese yuan",
     },
     NumberData {
         tag: "ru",
@@ -158,14 +179,8 @@ pub(super) static NUMBERS: [NumberData; 20] = [
         min_grouping: 1,
         negative: "-#",
         percent: ["#\u{a0}%", "-#\u{a0}%"],
-        currency: [
-            ["#\u{a0}R$", "-#\u{a0}R$"],
-            ["#\u{a0}$", "-#\u{a0}$"],
-            ["#\u{a0}\u{20ac}", "-#\u{a0}\u{20ac}"],
-            ["#\u{a0}\u{a3}", "-#\u{a0}\u{a3}"],
-            ["#\u{a0}\u{a5}", "-#\u{a0}\u{a5}"],
-            ["#\u{a0}\u{a4}", "-#\u{a0}\u{a4}"],
-        ],
+        currency: "#\u{a0}R$|-#\u{a0}R$|#\u{a0}$|-#\u{a0}$|#\u{a0}\u{20ac}|-#\u{a0}\u{20ac}|#\u{a0}\u{a3}|-#\u{a0}\u{a3}|#\u{a0}\u{a5}|-#\u{a0}\u{a5}|#\u{a0}ARS|-#\u{a0}ARS|#\u{a0}MX$|-#\u{a0}MX$|#\u{a0}CLP|-#\u{a0}CLP|#\u{a0}COP|-#\u{a0}COP|#\u{a0}PEN|-#\u{a0}PEN|#\u{a0}UYU|-#\u{a0}UYU|#\u{a0}CA$|-#\u{a0}CA$|#\u{a0}A$|-#\u{a0}A$|#\u{a0}CHF|-#\u{a0}CHF|#\u{a0}CN\u{a5}|-#\u{a0}CN\u{a5}|#\u{a0}\u{a4}|-#\u{a0}\u{a4}",
+        currency_names: "\u{431}\u{440}\u{430}\u{437}\u{438}\u{43b}\u{44c}\u{441}\u{43a}\u{438}\u{439} \u{440}\u{435}\u{430}\u{43b}|\u{434}\u{43e}\u{43b}\u{43b}\u{430}\u{440} \u{421}\u{428}\u{410}|\u{435}\u{432}\u{440}\u{43e}|\u{431}\u{440}\u{438}\u{442}\u{430}\u{43d}\u{441}\u{43a}\u{438}\u{439} \u{444}\u{443}\u{43d}\u{442} \u{441}\u{442}\u{435}\u{440}\u{43b}\u{438}\u{43d}\u{433}\u{43e}\u{432}|\u{44f}\u{43f}\u{43e}\u{43d}\u{441}\u{43a}\u{430}\u{44f} \u{438}\u{435}\u{43d}\u{430}|\u{430}\u{440}\u{433}\u{435}\u{43d}\u{442}\u{438}\u{43d}\u{441}\u{43a}\u{438}\u{439} \u{43f}\u{435}\u{441}\u{43e}|\u{43c}\u{435}\u{43a}\u{441}\u{438}\u{43a}\u{430}\u{43d}\u{441}\u{43a}\u{438}\u{439} \u{43f}\u{435}\u{441}\u{43e}|\u{447}\u{438}\u{43b}\u{438}\u{439}\u{441}\u{43a}\u{438}\u{439} \u{43f}\u{435}\u{441}\u{43e}|\u{43a}\u{43e}\u{43b}\u{443}\u{43c}\u{431}\u{438}\u{439}\u{441}\u{43a}\u{438}\u{439} \u{43f}\u{435}\u{441}\u{43e}|\u{43f}\u{435}\u{440}\u{443}\u{430}\u{43d}\u{441}\u{43a}\u{438}\u{439} \u{441}\u{43e}\u{43b}\u{44c}|\u{443}\u{440}\u{443}\u{433}\u{432}\u{430}\u{439}\u{441}\u{43a}\u{438}\u{439} \u{43f}\u{435}\u{441}\u{43e}|\u{43a}\u{430}\u{43d}\u{430}\u{434}\u{441}\u{43a}\u{438}\u{439} \u{434}\u{43e}\u{43b}\u{43b}\u{430}\u{440}|\u{430}\u{432}\u{441}\u{442}\u{440}\u{430}\u{43b}\u{438}\u{439}\u{441}\u{43a}\u{438}\u{439} \u{434}\u{43e}\u{43b}\u{43b}\u{430}\u{440}|\u{448}\u{432}\u{435}\u{439}\u{446}\u{430}\u{440}\u{441}\u{43a}\u{438}\u{439} \u{444}\u{440}\u{430}\u{43d}\u{43a}|\u{43a}\u{438}\u{442}\u{430}\u{439}\u{441}\u{43a}\u{438}\u{439} \u{44e}\u{430}\u{43d}\u{44c}",
     },
     NumberData {
         tag: "uk",
@@ -174,14 +189,8 @@ pub(super) static NUMBERS: [NumberData; 20] = [
         min_grouping: 1,
         negative: "-#",
         percent: ["#%", "-#%"],
-        currency: [
-            ["#\u{a0}BRL", "-#\u{a0}BRL"],
-            ["#\u{a0}USD", "-#\u{a0}USD"],
-            ["#\u{a0}EUR", "-#\u{a0}EUR"],
-            ["#\u{a0}GBP", "-#\u{a0}GBP"],
-            ["#\u{a0}\u{a5}", "-#\u{a0}\u{a5}"],
-            ["#\u{a0}\u{a4}", "-#\u{a0}\u{a4}"],
-        ],
+        currency: "#\u{a0}BRL|-#\u{a0}BRL|#\u{a0}USD|-#\u{a0}USD|#\u{a0}EUR|-#\u{a0}EUR|#\u{a0}GBP|-#\u{a0}GBP|#\u{a0}\u{a5}|-#\u{a0}\u{a5}|#\u{a0}ARS|-#\u{a0}ARS|#\u{a0}MXN|-#\u{a0}MXN|#\u{a0}CLP|-#\u{a0}CLP|#\u{a0}COP|-#\u{a0}COP|#\u{a0}PEN|-#\u{a0}PEN|#\u{a0}UYU|-#\u{a0}UYU|#\u{a0}CAD|-#\u{a0}CAD|#\u{a0}AUD|-#\u{a0}AUD|#\u{a0}CHF|-#\u{a0}CHF|#\u{a0}CNY|-#\u{a0}CNY|#\u{a0}\u{a4}|-#\u{a0}\u{a4}",
+        currency_names: "\u{431}\u{440}\u{430}\u{437}\u{438}\u{43b}\u{44c}\u{441}\u{44c}\u{43a}\u{438}\u{439} \u{440}\u{435}\u{430}\u{43b}|\u{434}\u{43e}\u{43b}\u{430}\u{440} \u{421}\u{428}\u{410}|\u{454}\u{432}\u{440}\u{43e}|\u{430}\u{43d}\u{433}\u{43b}\u{456}\u{439}\u{441}\u{44c}\u{43a}\u{438}\u{439} \u{444}\u{443}\u{43d}\u{442}|\u{44f}\u{43f}\u{43e}\u{43d}\u{441}\u{44c}\u{43a}\u{430} \u{454}\u{43d}\u{430}|\u{430}\u{440}\u{433}\u{435}\u{43d}\u{442}\u{438}\u{43d}\u{441}\u{44c}\u{43a}\u{438}\u{439} \u{43f}\u{435}\u{441}\u{43e}|\u{43c}\u{435}\u{43a}\u{441}\u{438}\u{43a}\u{430}\u{43d}\u{441}\u{44c}\u{43a}\u{438}\u{439} \u{43f}\u{435}\u{441}\u{43e}|\u{447}\u{438}\u{43b}\u{456}\u{439}\u{441}\u{44c}\u{43a}\u{438}\u{439} \u{43f}\u{435}\u{441}\u{43e}|\u{43a}\u{43e}\u{43b}\u{443}\u{43c}\u{431}\u{456}\u{439}\u{441}\u{44c}\u{43a}\u{438}\u{439} \u{43f}\u{435}\u{441}\u{43e}|\u{43f}\u{435}\u{440}\u{443}\u{430}\u{43d}\u{441}\u{44c}\u{43a}\u{438}\u{439} \u{43d}\u{43e}\u{432}\u{438}\u{439} \u{441}\u{43e}\u{43b}|\u{443}\u{440}\u{443}\u{433}\u{432}\u{430}\u{439}\u{441}\u{44c}\u{43a}\u{438}\u{439} \u{43f}\u{435}\u{441}\u{43e}|\u{43a}\u{430}\u{43d}\u{430}\u{434}\u{441}\u{44c}\u{43a}\u{438}\u{439} \u{434}\u{43e}\u{43b}\u{430}\u{440}|\u{430}\u{432}\u{441}\u{442}\u{440}\u{430}\u{43b}\u{456}\u{439}\u{441}\u{44c}\u{43a}\u{438}\u{439} \u{434}\u{43e}\u{43b}\u{430}\u{440}|\u{448}\u{432}\u{435}\u{439}\u{446}\u{430}\u{440}\u{441}\u{44c}\u{43a}\u{438}\u{439} \u{444}\u{440}\u{430}\u{43d}\u{43a}|\u{43a}\u{438}\u{442}\u{430}\u{439}\u{441}\u{44c}\u{43a}\u{438}\u{439} \u{44e}\u{430}\u{43d}\u{44c}",
     },
     NumberData {
         tag: "pl",
@@ -190,14 +199,8 @@ pub(super) static NUMBERS: [NumberData; 20] = [
         min_grouping: 2,
         negative: "-#",
         percent: ["#%", "-#%"],
-        currency: [
-            ["#\u{a0}R$", "-#\u{a0}R$"],
-            ["#\u{a0}USD", "-#\u{a0}USD"],
-            ["#\u{a0}\u{20ac}", "-#\u{a0}\u{20ac}"],
-            ["#\u{a0}GBP", "-#\u{a0}GBP"],
-            ["#\u{a0}JPY", "-#\u{a0}JPY"],
-            ["#\u{a0}\u{a4}", "-#\u{a0}\u{a4}"],
-        ],
+        currency: "#\u{a0}R$|-#\u{a0}R$|#\u{a0}USD|-#\u{a0}USD|#\u{a0}\u{20ac}|-#\u{a0}\u{20ac}|#\u{a0}GBP|-#\u{a0}GBP|#\u{a0}JPY|-#\u{a0}JPY|#\u{a0}ARS|-#\u{a0}ARS|#\u{a0}MXN|-#\u{a0}MXN|#\u{a0}CLP|-#\u{a0}CLP|#\u{a0}COP|-#\u{a0}COP|#\u{a0}PEN|-#\u{a0}PEN|#\u{a0}UYU|-#\u{a0}UYU|#\u{a0}CAD|-#\u{a0}CAD|#\u{a0}AUD|-#\u{a0}AUD|#\u{a0}CHF|-#\u{a0}CHF|#\u{a0}CNY|-#\u{a0}CNY|#\u{a0}\u{a4}|-#\u{a0}\u{a4}",
+        currency_names: "real brazylijski|dolar ameryka\u{144}ski|euro|funt szterling|jen japo\u{144}ski|peso argenty\u{144}skie|peso meksyka\u{144}skie|peso chilijskie|peso kolumbijskie|sol peruwia\u{144}ski|peso urugwajskie|dolar kanadyjski|dolar australijski|frank szwajcarski|juan chi\u{144}ski",
     },
     NumberData {
         tag: "cs",
@@ -206,14 +209,8 @@ pub(super) static NUMBERS: [NumberData; 20] = [
         min_grouping: 1,
         negative: "-#",
         percent: ["#\u{a0}%", "-#\u{a0}%"],
-        currency: [
-            ["#\u{a0}R$", "-#\u{a0}R$"],
-            ["#\u{a0}US$", "-#\u{a0}US$"],
-            ["#\u{a0}\u{20ac}", "-#\u{a0}\u{20ac}"],
-            ["#\u{a0}\u{a3}", "-#\u{a0}\u{a3}"],
-            ["#\u{a0}JP\u{a5}", "-#\u{a0}JP\u{a5}"],
-            ["#\u{a0}\u{a4}", "-#\u{a0}\u{a4}"],
-        ],
+        currency: "#\u{a0}R$|-#\u{a0}R$|#\u{a0}US$|-#\u{a0}US$|#\u{a0}\u{20ac}|-#\u{a0}\u{20ac}|#\u{a0}\u{a3}|-#\u{a0}\u{a3}|#\u{a0}JP\u{a5}|-#\u{a0}JP\u{a5}|#\u{a0}ARS|-#\u{a0}ARS|#\u{a0}MX$|-#\u{a0}MX$|#\u{a0}CLP|-#\u{a0}CLP|#\u{a0}COP|-#\u{a0}COP|#\u{a0}PEN|-#\u{a0}PEN|#\u{a0}UYU|-#\u{a0}UYU|#\u{a0}CA$|-#\u{a0}CA$|#\u{a0}AU$|-#\u{a0}AU$|#\u{a0}CHF|-#\u{a0}CHF|#\u{a0}CN\u{a5}|-#\u{a0}CN\u{a5}|#\u{a0}\u{a4}|-#\u{a0}\u{a4}",
+        currency_names: "brazilsk\u{fd} real|americk\u{fd} dolar|euro|britsk\u{e1} libra|japonsk\u{fd} jen|argentinsk\u{e9} peso|mexick\u{e9} peso|chilsk\u{e9} peso|kolumbijsk\u{e9} peso|peru\u{e1}nsk\u{fd} sol|uruguaysk\u{e9} peso|kanadsk\u{fd} dolar|australsk\u{fd} dolar|\u{161}v\u{fd}carsk\u{fd} frank|\u{10d}\u{ed}nsk\u{fd} j\u{fc}an",
     },
     NumberData {
         tag: "ro",
@@ -222,14 +219,8 @@ pub(super) static NUMBERS: [NumberData; 20] = [
         min_grouping: 1,
         negative: "-#",
         percent: ["#\u{a0}%", "-#\u{a0}%"],
-        currency: [
-            ["#\u{a0}BRL", "-#\u{a0}BRL"],
-            ["#\u{a0}USD", "-#\u{a0}USD"],
-            ["#\u{a0}EUR", "-#\u{a0}EUR"],
-            ["#\u{a0}GBP", "-#\u{a0}GBP"],
-            ["#\u{a0}JPY", "-#\u{a0}JPY"],
-            ["#\u{a0}\u{a4}", "-#\u{a0}\u{a4}"],
-        ],
+        currency: "#\u{a0}BRL|-#\u{a0}BRL|#\u{a0}USD|-#\u{a0}USD|#\u{a0}EUR|-#\u{a0}EUR|#\u{a0}GBP|-#\u{a0}GBP|#\u{a0}JPY|-#\u{a0}JPY|#\u{a0}ARS|-#\u{a0}ARS|#\u{a0}MXN|-#\u{a0}MXN|#\u{a0}CLP|-#\u{a0}CLP|#\u{a0}COP|-#\u{a0}COP|#\u{a0}PEN|-#\u{a0}PEN|#\u{a0}UYU|-#\u{a0}UYU|#\u{a0}CAD|-#\u{a0}CAD|#\u{a0}AUD|-#\u{a0}AUD|#\u{a0}CHF|-#\u{a0}CHF|#\u{a0}CNY|-#\u{a0}CNY|#\u{a0}\u{a4}|-#\u{a0}\u{a4}",
+        currency_names: "real|dolar american|euro|lir\u{103} sterlin\u{103}|yen japonez|peso argentinian|peso mexican|peso chilian|peso columbian|sol|peso uruguayan|dolar canadian|dolar australian|franc elve\u{21b}ian|yuan chinezesc",
     },
     NumberData {
         tag: "ar",
@@ -238,23 +229,8 @@ pub(super) static NUMBERS: [NumberData; 20] = [
         min_grouping: 1,
         negative: "\u{200e}-#",
         percent: ["#\u{200e}%\u{200e}", "\u{200e}-#\u{200e}%\u{200e}"],
-        currency: [
-            ["\u{200f}#\u{a0}R$", "\u{200f}\u{200e}-#\u{a0}R$"],
-            ["\u{200f}#\u{a0}US$", "\u{200f}\u{200e}-#\u{a0}US$"],
-            [
-                "\u{200f}#\u{a0}\u{20ac}",
-                "\u{200f}\u{200e}-#\u{a0}\u{20ac}",
-            ],
-            [
-                "\u{200f}#\u{a0}UK\u{a3}",
-                "\u{200f}\u{200e}-#\u{a0}UK\u{a3}",
-            ],
-            [
-                "\u{200f}#\u{a0}JP\u{a5}",
-                "\u{200f}\u{200e}-#\u{a0}JP\u{a5}",
-            ],
-            ["\u{200f}#\u{a0}\u{a4}", "\u{200f}\u{200e}-#\u{a0}\u{a4}"],
-        ],
+        currency: "\u{200f}#\u{a0}R$|\u{200f}\u{200e}-#\u{a0}R$|\u{200f}#\u{a0}US$|\u{200f}\u{200e}-#\u{a0}US$|\u{200f}#\u{a0}\u{20ac}|\u{200f}\u{200e}-#\u{a0}\u{20ac}|\u{200f}#\u{a0}UK\u{a3}|\u{200f}\u{200e}-#\u{a0}UK\u{a3}|\u{200f}#\u{a0}JP\u{a5}|\u{200f}\u{200e}-#\u{a0}JP\u{a5}|\u{200f}#\u{a0}ARS|\u{200f}\u{200e}-#\u{a0}ARS|\u{200f}#\u{a0}MX$|\u{200f}\u{200e}-#\u{a0}MX$|\u{200f}#\u{a0}CLP|\u{200f}\u{200e}-#\u{a0}CLP|\u{200f}#\u{a0}COP|\u{200f}\u{200e}-#\u{a0}COP|\u{200f}#\u{a0}PEN|\u{200f}\u{200e}-#\u{a0}PEN|\u{200f}#\u{a0}UYU|\u{200f}\u{200e}-#\u{a0}UYU|\u{200f}#\u{a0}CA$|\u{200f}\u{200e}-#\u{a0}CA$|\u{200f}#\u{a0}AU$|\u{200f}\u{200e}-#\u{a0}AU$|\u{200f}#\u{a0}CHF|\u{200f}\u{200e}-#\u{a0}CHF|\u{200f}#\u{a0}CN\u{a5}|\u{200f}\u{200e}-#\u{a0}CN\u{a5}|\u{200f}#\u{a0}\u{a4}|\u{200f}\u{200e}-#\u{a0}\u{a4}",
+        currency_names: "\u{631}\u{64a}\u{627}\u{644} \u{628}\u{631}\u{627}\u{632}\u{64a}\u{644}\u{64a}|\u{62f}\u{648}\u{644}\u{627}\u{631} \u{623}\u{645}\u{631}\u{64a}\u{643}\u{64a}|\u{64a}\u{648}\u{631}\u{648}|\u{62c}\u{646}\u{64a}\u{647} \u{625}\u{633}\u{62a}\u{631}\u{644}\u{64a}\u{646}\u{64a}|\u{64a}\u{646} \u{64a}\u{627}\u{628}\u{627}\u{646}\u{64a}|\u{628}\u{64a}\u{632}\u{648} \u{623}\u{631}\u{62c}\u{646}\u{62a}\u{64a}\u{646}\u{64a}|\u{628}\u{64a}\u{632}\u{648} \u{645}\u{643}\u{633}\u{64a}\u{643}\u{64a}|\u{628}\u{64a}\u{632}\u{648} \u{62a}\u{634}\u{64a}\u{644}\u{64a}|\u{628}\u{64a}\u{632}\u{648} \u{643}\u{648}\u{644}\u{648}\u{645}\u{628}\u{64a}|\u{633}\u{648}\u{644} \u{628}\u{64a}\u{631}\u{648}\u{641}\u{64a}|\u{628}\u{64a}\u{632}\u{648} \u{627}\u{648}\u{631}\u{648}\u{63a}\u{648}\u{627}\u{64a}|\u{62f}\u{648}\u{644}\u{627}\u{631} \u{643}\u{646}\u{62f}\u{64a}|\u{62f}\u{648}\u{644}\u{627}\u{631} \u{623}\u{633}\u{62a}\u{631}\u{627}\u{644}\u{64a}|\u{641}\u{631}\u{646}\u{643} \u{633}\u{648}\u{64a}\u{633}\u{631}\u{64a}|\u{64a}\u{648}\u{627}\u{646} \u{635}\u{64a}\u{646}\u{64a}",
     },
     NumberData {
         tag: "he",
@@ -263,32 +239,8 @@ pub(super) static NUMBERS: [NumberData; 20] = [
         min_grouping: 1,
         negative: "\u{200e}-#",
         percent: ["#%", "\u{200e}-#%"],
-        currency: [
-            [
-                "\u{200f}#\u{a0}\u{200f}R$",
-                "\u{200f}\u{200e}-#\u{a0}\u{200f}R$",
-            ],
-            [
-                "\u{200f}#\u{a0}\u{200f}$",
-                "\u{200f}\u{200e}-#\u{a0}\u{200f}$",
-            ],
-            [
-                "\u{200f}#\u{a0}\u{200f}\u{20ac}",
-                "\u{200f}\u{200e}-#\u{a0}\u{200f}\u{20ac}",
-            ],
-            [
-                "\u{200f}#\u{a0}\u{200f}\u{a3}",
-                "\u{200f}\u{200e}-#\u{a0}\u{200f}\u{a3}",
-            ],
-            [
-                "\u{200f}#\u{a0}\u{200f}\u{a5}",
-                "\u{200f}\u{200e}-#\u{a0}\u{200f}\u{a5}",
-            ],
-            [
-                "\u{200f}#\u{a0}\u{200f}\u{a4}",
-                "\u{200f}\u{200e}-#\u{a0}\u{200f}\u{a4}",
-            ],
-        ],
+        currency: "\u{200f}#\u{a0}\u{200f}R$|\u{200f}\u{200e}-#\u{a0}\u{200f}R$|\u{200f}#\u{a0}\u{200f}$|\u{200f}\u{200e}-#\u{a0}\u{200f}$|\u{200f}#\u{a0}\u{200f}\u{20ac}|\u{200f}\u{200e}-#\u{a0}\u{200f}\u{20ac}|\u{200f}#\u{a0}\u{200f}\u{a3}|\u{200f}\u{200e}-#\u{a0}\u{200f}\u{a3}|\u{200f}#\u{a0}\u{200f}\u{a5}|\u{200f}\u{200e}-#\u{a0}\u{200f}\u{a5}|\u{200f}#\u{a0}\u{200f}ARS|\u{200f}\u{200e}-#\u{a0}\u{200f}ARS|\u{200f}#\u{a0}\u{200f}MX$|\u{200f}\u{200e}-#\u{a0}\u{200f}MX$|\u{200f}#\u{a0}\u{200f}CLP|\u{200f}\u{200e}-#\u{a0}\u{200f}CLP|\u{200f}#\u{a0}\u{200f}COP|\u{200f}\u{200e}-#\u{a0}\u{200f}COP|\u{200f}#\u{a0}\u{200f}PEN|\u{200f}\u{200e}-#\u{a0}\u{200f}PEN|\u{200f}#\u{a0}\u{200f}UYU|\u{200f}\u{200e}-#\u{a0}\u{200f}UYU|\u{200f}#\u{a0}\u{200f}CA$|\u{200f}\u{200e}-#\u{a0}\u{200f}CA$|\u{200f}#\u{a0}\u{200f}A$|\u{200f}\u{200e}-#\u{a0}\u{200f}A$|\u{200f}#\u{a0}\u{200f}CHF|\u{200f}\u{200e}-#\u{a0}\u{200f}CHF|\u{200f}#\u{a0}\u{200f}\u{200e}CN\u{a5}\u{200e}|\u{200f}\u{200e}-#\u{a0}\u{200f}\u{200e}CN\u{a5}\u{200e}|\u{200f}#\u{a0}\u{200f}\u{a4}|\u{200f}\u{200e}-#\u{a0}\u{200f}\u{a4}",
+        currency_names: "\u{5e8}\u{5d9}\u{5d0}\u{5dc} \u{5d1}\u{5e8}\u{5d6}\u{5d9}\u{5dc}\u{5d0}\u{5d9}|\u{5d3}\u{5d5}\u{5dc}\u{5e8} \u{5d0}\u{5de}\u{5e8}\u{5d9}\u{5e7}\u{5d0}\u{5d9}|\u{5d0}\u{5d9}\u{5e8}\u{5d5}|\u{5dc}\u{5d9}\u{5e8}\u{5d4} \u{5e9}\u{5d8}\u{5e8}\u{5dc}\u{5d9}\u{5e0}\u{5d2}|\u{5d9}\u{5df} \u{5d9}\u{5e4}\u{5e0}\u{5d9}|\u{5e4}\u{5e1}\u{5d5} \u{5d0}\u{5e8}\u{5d2}\u{5e0}\u{5d8}\u{5d9}\u{5e0}\u{5d0}\u{5d9}|\u{5e4}\u{5e1}\u{5d5} \u{5de}\u{5e7}\u{5e1}\u{5d9}\u{5e7}\u{5e0}\u{5d9}|\u{5e4}\u{5e1}\u{5d5} \u{5e6}\u{5f3}\u{5d9}\u{5dc}\u{5d0}\u{5e0}\u{5d9}|\u{5e4}\u{5e1}\u{5d5} \u{5e7}\u{5d5}\u{5dc}\u{5d5}\u{5de}\u{5d1}\u{5d9}\u{5d0}\u{5e0}\u{5d9}|\u{5e1}\u{5d5}\u{5dc} \u{5e4}\u{5e8}\u{5d5}\u{5d0}\u{5e0}\u{5d9}|\u{5e4}\u{5e1}\u{5d5} \u{5d0}\u{5d5}\u{5e8}\u{5d5}\u{5d2}\u{5d5}\u{5d5}\u{5d0}\u{5d9}|\u{5d3}\u{5d5}\u{5dc}\u{5e8} \u{5e7}\u{5e0}\u{5d3}\u{5d9}|\u{5d3}\u{5d5}\u{5dc}\u{5e8} \u{5d0}\u{5d5}\u{5e1}\u{5d8}\u{5e8}\u{5dc}\u{5d9}|\u{5e4}\u{5e8}\u{5e0}\u{5e7} \u{5e9}\u{5d5}\u{5d5}\u{5d9}\u{5e6}\u{5e8}\u{5d9}|\u{5d9}\u{5d5}\u{5d0}\u{5df} \u{5e1}\u{5d9}\u{5e0}\u{5d9}",
     },
     NumberData {
         tag: "ja",
@@ -297,14 +249,8 @@ pub(super) static NUMBERS: [NumberData; 20] = [
         min_grouping: 1,
         negative: "-#",
         percent: ["#%", "-#%"],
-        currency: [
-            ["R$#", "-R$#"],
-            ["$#", "-$#"],
-            ["\u{20ac}#", "-\u{20ac}#"],
-            ["\u{a3}#", "-\u{a3}#"],
-            ["\u{ffe5}#", "-\u{ffe5}#"],
-            ["\u{a4}\u{a0}#", "-\u{a4}\u{a0}#"],
-        ],
+        currency: "R$#|-R$#|$#|-$#|\u{20ac}#|-\u{20ac}#|\u{a3}#|-\u{a3}#|\u{ffe5}#|-\u{ffe5}#|ARS\u{a0}#|-ARS\u{a0}#|MX$#|-MX$#|CLP\u{a0}#|-CLP\u{a0}#|COP\u{a0}#|-COP\u{a0}#|PEN\u{a0}#|-PEN\u{a0}#|UYU\u{a0}#|-UYU\u{a0}#|CA$#|-CA$#|A$#|-A$#|CHF\u{a0}#|-CHF\u{a0}#|\u{5143}\u{a0}#|-\u{5143}\u{a0}#|\u{a4}\u{a0}#|-\u{a4}\u{a0}#",
+        currency_names: "\u{30d6}\u{30e9}\u{30b8}\u{30eb} \u{30ec}\u{30a2}\u{30eb}|\u{7c73}\u{30c9}\u{30eb}|\u{30e6}\u{30fc}\u{30ed}|\u{82f1}\u{56fd}\u{30dd}\u{30f3}\u{30c9}|\u{65e5}\u{672c}\u{5186}|\u{30a2}\u{30eb}\u{30bc}\u{30f3}\u{30c1}\u{30f3} \u{30da}\u{30bd}|\u{30e1}\u{30ad}\u{30b7}\u{30b3} \u{30da}\u{30bd}|\u{30c1}\u{30ea} \u{30da}\u{30bd}|\u{30b3}\u{30ed}\u{30f3}\u{30d3}\u{30a2} \u{30da}\u{30bd}|\u{30da}\u{30eb}\u{30fc} \u{30bd}\u{30eb}|\u{30a6}\u{30eb}\u{30b0}\u{30a2}\u{30a4} \u{30da}\u{30bd}|\u{30ab}\u{30ca}\u{30c0} \u{30c9}\u{30eb}|\u{30aa}\u{30fc}\u{30b9}\u{30c8}\u{30e9}\u{30ea}\u{30a2} \u{30c9}\u{30eb}|\u{30b9}\u{30a4}\u{30b9} \u{30d5}\u{30e9}\u{30f3}|\u{4e2d}\u{56fd}\u{4eba}\u{6c11}\u{5143}",
     },
     NumberData {
         tag: "zh",
@@ -313,14 +259,8 @@ pub(super) static NUMBERS: [NumberData; 20] = [
         min_grouping: 1,
         negative: "-#",
         percent: ["#%", "-#%"],
-        currency: [
-            ["R$#", "-R$#"],
-            ["US$#", "-US$#"],
-            ["\u{20ac}#", "-\u{20ac}#"],
-            ["\u{a3}#", "-\u{a3}#"],
-            ["JP\u{a5}#", "-JP\u{a5}#"],
-            ["\u{a4}\u{a0}#", "-\u{a4}\u{a0}#"],
-        ],
+        currency: "R$#|-R$#|US$#|-US$#|\u{20ac}#|-\u{20ac}#|\u{a3}#|-\u{a3}#|JP\u{a5}#|-JP\u{a5}#|ARS\u{a0}#|-ARS\u{a0}#|MX$#|-MX$#|CLP\u{a0}#|-CLP\u{a0}#|COP\u{a0}#|-COP\u{a0}#|PEN\u{a0}#|-PEN\u{a0}#|UYU\u{a0}#|-UYU\u{a0}#|CA$#|-CA$#|AU$#|-AU$#|CHF\u{a0}#|-CHF\u{a0}#|\u{a5}#|-\u{a5}#|\u{a4}\u{a0}#|-\u{a4}\u{a0}#",
+        currency_names: "\u{5df4}\u{897f}\u{96f7}\u{4e9a}\u{5c14}|\u{7f8e}\u{5143}|\u{6b27}\u{5143}|\u{82f1}\u{9551}|\u{65e5}\u{5143}|\u{963f}\u{6839}\u{5ef7}\u{6bd4}\u{7d22}|\u{58a8}\u{897f}\u{54e5}\u{6bd4}\u{7d22}|\u{667a}\u{5229}\u{6bd4}\u{7d22}|\u{54e5}\u{4f26}\u{6bd4}\u{4e9a}\u{6bd4}\u{7d22}|\u{79d8}\u{9c81}\u{7d22}\u{5c14}|\u{4e4c}\u{62c9}\u{572d}\u{6bd4}\u{7d22}|\u{52a0}\u{62ff}\u{5927}\u{5143}|\u{6fb3}\u{5927}\u{5229}\u{4e9a}\u{5143}|\u{745e}\u{58eb}\u{6cd5}\u{90ce}|\u{4eba}\u{6c11}\u{5e01}",
     },
     NumberData {
         tag: "ko",
@@ -329,14 +269,8 @@ pub(super) static NUMBERS: [NumberData; 20] = [
         min_grouping: 1,
         negative: "-#",
         percent: ["#%", "-#%"],
-        currency: [
-            ["R$#", "-R$#"],
-            ["US$#", "-US$#"],
-            ["\u{20ac}#", "-\u{20ac}#"],
-            ["\u{a3}#", "-\u{a3}#"],
-            ["JP\u{a5}#", "-JP\u{a5}#"],
-            ["\u{a4}\u{a0}#", "-\u{a4}\u{a0}#"],
-        ],
+        currency: "R$#|-R$#|US$#|-US$#|\u{20ac}#|-\u{20ac}#|\u{a3}#|-\u{a3}#|JP\u{a5}#|-JP\u{a5}#|ARS\u{a0}#|-ARS\u{a0}#|MX$#|-MX$#|CLP\u{a0}#|-CLP\u{a0}#|COP\u{a0}#|-COP\u{a0}#|PEN\u{a0}#|-PEN\u{a0}#|UYU\u{a0}#|-UYU\u{a0}#|CA$#|-CA$#|AU$#|-AU$#|CHF\u{a0}#|-CHF\u{a0}#|CN\u{a5}#|-CN\u{a5}#|\u{a4}\u{a0}#|-\u{a4}\u{a0}#",
+        currency_names: "\u{be0c}\u{b77c}\u{c9c8} \u{b808}\u{c54c}|\u{bbf8}\u{ad6d} \u{b2ec}\u{b7ec}|\u{c720}\u{b85c}|\u{c601}\u{ad6d} \u{d30c}\u{c6b4}\u{b4dc}|\u{c77c}\u{bcf8} \u{c5d4}\u{d654}|\u{c544}\u{b974}\u{d5e8}\u{d2f0}\u{b098} \u{d398}\u{c18c}|\u{ba55}\u{c2dc}\u{cf54} \u{d398}\u{c18c}|\u{ce60}\u{b808} \u{d398}\u{c18c}|\u{cf5c}\u{b86c}\u{be44}\u{c544} \u{d398}\u{c18c}|\u{d398}\u{b8e8} \u{c194}|\u{c6b0}\u{b8e8}\u{acfc}\u{c774} \u{d398}\u{c18c}|\u{ce90}\u{b098}\u{b2e4} \u{b2ec}\u{b7ec}|\u{d638}\u{c8fc} \u{b2ec}\u{b7ec}|\u{c2a4}\u{c704}\u{c2a4} \u{d504}\u{b791}|\u{c911}\u{ad6d} \u{c704}\u{c548}\u{d654}",
     },
     NumberData {
         tag: "tr",
@@ -345,13 +279,7 @@ pub(super) static NUMBERS: [NumberData; 20] = [
         min_grouping: 1,
         negative: "-#",
         percent: ["%#", "-%#"],
-        currency: [
-            ["R$#", "-R$#"],
-            ["$#", "-$#"],
-            ["\u{20ac}#", "-\u{20ac}#"],
-            ["\u{a3}#", "-\u{a3}#"],
-            ["\u{a5}#", "-\u{a5}#"],
-            ["\u{a4}\u{a0}#", "-\u{a4}\u{a0}#"],
-        ],
+        currency: "R$#|-R$#|$#|-$#|\u{20ac}#|-\u{20ac}#|\u{a3}#|-\u{a3}#|\u{a5}#|-\u{a5}#|ARS\u{a0}#|-ARS\u{a0}#|MX$#|-MX$#|CLP\u{a0}#|-CLP\u{a0}#|COP\u{a0}#|-COP\u{a0}#|PEN\u{a0}#|-PEN\u{a0}#|UYU\u{a0}#|-UYU\u{a0}#|CA$#|-CA$#|AU$#|-AU$#|CHF\u{a0}#|-CHF\u{a0}#|CN\u{a5}#|-CN\u{a5}#|\u{a4}\u{a0}#|-\u{a4}\u{a0}#",
+        currency_names: "Brezilya reali|ABD dolar\u{131}|Euro|\u{130}ngiliz sterlini|Japon yeni|Arjantin pesosu|Meksika pesosu|\u{15e}ili pesosu|Kolombiya pesosu|Peru sol\u{fc}|Uruguay pesosu|Kanada dolar\u{131}|Avustralya dolar\u{131}|\u{130}svi\u{e7}re frang\u{131}|\u{c7}in yuan\u{131}",
     },
 ];

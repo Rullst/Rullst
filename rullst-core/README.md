@@ -17,7 +17,9 @@ Server-Sent Events, i18n and process telemetry. The `rullst` facade re-exports i
   grow with the catalog, and `order = [...]` sets the language-menu order of
   `LOCALES.iter()` (13.0.0-alpha.5). `Locale` also formats
   numbers, percentages, money (integer minor units) and dates with CLDR 48
-  data for 20 locales. `Locales` negotiates the locale from a
+  data for 27 locales (including `es-419`, `es-MX`, `es-AR`, `es-CL`,
+  `es-CO`, `es-PE` and `es-UY`) and localized symbols and names for 15
+  currencies. `Locales` negotiates the locale from a
   cookie or a bounded `Accept-Language` parse and offers a CSRF-protected
   `POST` switch route. See [the guide](https://github.com/Rullst/Rullst/blob/main/docs/src/i18n.md).
 - **Runtime Telemetry:** Exposes process/runtime snapshots and tracing-span collection for consumers such as Rullst Studio.
