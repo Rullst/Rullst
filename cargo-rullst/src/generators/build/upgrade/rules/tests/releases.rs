@@ -147,6 +147,7 @@ fn rules_carry_the_release_of_their_change() {
             "V13-ORM-SCHEMA-DIFF-REMOVED",
             "V13-ORM-SAVE-MODE",
             "V13-AUTH-PASSKEYS-FEATURE",
+            "V13-MEDIA-PROCESSING-MATCH",
             "V13-NON-EXHAUSTIVE-MATCH",
             "V13-NON-EXHAUSTIVE-LITERAL",
         ]

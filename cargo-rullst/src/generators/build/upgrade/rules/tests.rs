@@ -13,6 +13,7 @@ mod alpha5_runtime;
 mod alpha5_slimming;
 mod alpha6_defaults;
 mod alpha6_deprecated;
+mod alpha6_media;
 mod alpha6_non_exhaustive;
 mod alpha6_orm_save_mode;
 mod alpha6_passkeys;

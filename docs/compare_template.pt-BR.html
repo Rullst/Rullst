@@ -16,7 +16,7 @@
   <link rel="alternate" hreflang="pt-BR" href="https://rullst.win/pt-br/comparar/">
   <link rel="alternate" hreflang="x-default" href="https://rullst.win/compare/">
   <link rel="icon" type="image/png" href="/Rullst/Rullst.png">
-  <link rel="stylesheet" href="/assets/site.css?v=41b601054c0c3978">
+  <link rel="stylesheet" href="/assets/site.css?v=b1d91f4bbb45ffdf">
 </head>
 <body>
   <a class="skip-link" href="#main">Pular para o conteúdo</a>
@@ -130,7 +130,16 @@
 
     <section id="benchmarks" aria-labelledby="benchmarks-heading">
       <h2 id="benchmarks-heading">Desempenho</h2>
-      <p>Estes números não são escritos à mão: cada build diário deste site insere os resultados publicados mais recentes da suíte <a href="/Benchmarks/">Rullst/Benchmarks</a> para os três frameworks.</p>
+      <p>Estes números não são escritos à mão: cada build diário deste site insere os resultados publicados mais recentes da suíte <a href="/Benchmarks/">Rullst/Benchmarks</a> para os três frameworks, além de uma configuração mínima do Rullst.</p>
+      <div class="benchmark-howto">
+        <h3>Como ler estes números</h3>
+        <ul>
+          <li><strong>1,00× Axum significa o mesmo que o Axum</strong>, um framework Rust usado como referência e medido na mesma máquina e na mesma rodada. 0,50× é metade do valor do Axum; 2,00× é o dobro.</li>
+          <li><strong>Qual direção é melhor:</strong> em respostas por segundo, mais é melhor, então acima de 1× é mais rápido que o Axum; em latência e memória, menos é melhor, então abaixo de 1× é menos que o Axum.</li>
+          <li><strong>Compare as razões, não os números absolutos.</strong> Cada framework foi medido em uma máquina própria do GitHub, e essas máquinas variam, então o número absoluto entre parênteses depende em parte do hardware. A razão compara o framework com o Axum na mesma máquina, o que cancela a maior parte dessa diferença.</li>
+          <li><strong>O Rullst aparece duas vezes.</strong> "Rullst" é a aplicação que o <code>cargo rullst new</code> gera, com o middleware de produção que ele liga: WAF, proteção contra CSRF, cookies seguros, cabeçalhos seguros e log de acesso. "Rullst (mínimo)" usa o mesmo roteador, o mesmo ORM e os mesmos templates <code>html!</code> sem essas camadas, servido como o app do Axum. A diferença entre as duas linhas é o custo dessas camadas.</li>
+        </ul>
+      </div>
       <div class="benchmark-results" data-benchmark-results>
 <!-- benchmark-results:start -->
         <p class="benchmark-pending">A primeira medição de Rullst, Loco e Topcoat está em andamento. Esta seção se preenche automaticamente quando os resultados forem publicados; até lá, ela não mostra números.</p>

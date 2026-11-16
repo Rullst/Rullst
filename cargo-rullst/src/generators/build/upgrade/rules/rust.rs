@@ -500,6 +500,9 @@ impl<'ast> Visit<'ast> for Visitor<'_, '_> {
             {
                 self.hit(rule, line(expr.match_token.span()));
             }
+            if let Some(rule) = super::alpha6_media::match_rule(names, self.context.text) {
+                self.hit(rule, line(expr.match_token.span()));
+            }
             if let Some(rule) = super::alpha6_non_exhaustive::match_rule(names, self.context.text) {
                 self.hit(rule, line(expr.match_token.span()));
             }

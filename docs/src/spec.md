@@ -242,8 +242,15 @@ refresh prevent replay/reordering from granting access or publishing assets.
 Webhook status numbers and API video status numbers are distinct protocols.
 
 Publication is an explicit application mutation after current provider readiness;
-processing completion alone cannot publish. Playback requires current entitlement,
-fresh ready state and configured provider protection; withdrawal/deletion stop
+processing completion alone cannot publish. `Processing` (`#[non_exhaustive]`
+since 13.0.0-alpha.6) maps Bunny's API status 4 (`Finished`) to `Ready` and,
+since 13.0.0-alpha.6, status 8 (`JitPlaylistsCreated`, just-in-time encoding) to
+`Playable`; status 7 (`JitSegmenting`) stays `Processing`. A `Playable` video
+can be published and receives only `PlaybackKind::Embed` grants, because Bunny
+supports just-in-time playback only in its own player; `Hls` and `Mp4_720p` are
+`Unsupported` until `Ready`, which still means finished. A published video whose
+current read is neither withdraws publication. Playback requires current entitlement,
+fresh playable state and configured provider protection; withdrawal/deletion stop
 new grants but cannot immediately invalidate previously issued bearer tokens or
 provider caches. Upload grants are scoped and expiring, not cryptographic proofs
 of a one-shot upload, file type or byte limit. Library upload quotas and direct
