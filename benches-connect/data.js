@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794794260744,
+  "lastUpdate": 1794795439533,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -14285,6 +14285,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 547,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0902531b4dfea2615aa840572cb40ce3cb93b587",
+          "message": "Merge pull request #724 from Rullst/feat/v13-alpha6-capital-one-off-method-webhook\n\nfeat(capital): one-off payment method, instalments and per-checkout notification URL",
+          "timestamp": "2026-11-15T23:01:26-03:00",
+          "tree_id": "d8572183089533b4c11a50a9fbed35790355638d",
+          "url": "https://github.com/Rullst/Rullst/commit/0902531b4dfea2615aa840572cb40ce3cb93b587"
+        },
+        "date": 1794795438937,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 539,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
