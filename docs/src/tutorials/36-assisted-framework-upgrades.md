@@ -286,14 +286,15 @@ release:
 | 13.0.0-alpha.2 | `V13-HTML-MARKUP-RETURN`, `V13-HTML-RAW-MARKUP`, `V13-ORM-CONSTRAINT-ERRORS`, `V13-TEXT-TIMESTAMPS`, `V13-POLYGLOT-FEATURE` |
 | 13.0.0-alpha.3 | `V13-CONNECT-GITHUB-EMAIL`, `V13-ORM-TRANSACTION-ERRORS`, `V13-ORM-SKIP-MANAGED-COLUMNS`, `V13-ORM-DEFAULT-FEATURES` (reworded: `rullst-orm` has no default driver), `V13-RULLST-DEFAULT-FEATURES`, `V13-OMNI-REMOVED`, `V13-OFFLINE-SYNC-REMOVED` |
 | 13.0.0-alpha.4 | `V13-DEPLOY-TARGETS-REMOVED`, `V13-DEPLOY-GENERATORS-REMOVED`, `V13-CLI-SELF-UPDATE-REMOVED`, `V13-CLI-AI-REMOVED`, `V13-ORM-FROM-ROW`, `V13-SQLX-MACROS`, `V13-NEXUS-AI-FEATURE`, `V13-SQLX-TLS-RING` |
-| 13.0.0-alpha.5 | `V13-SQLX-TLS-NATIVE-ROOTS`, `V13-DEPLOY-SQLITE-URL`, `V13-DEPLOY-CADDY-HEALTH`, `V13-CLI-MIGRATION-AUTO-STATUS`, `V13-CLI-BLUEPRINTS-REMOVED` (alpha.4 changes that no alpha.4 rule located; an application already on alpha.4 gets them), `V13-API-ALIAS-PATHS`, `V13-HIDDEN-INTERNALS-PRIVATE`, `V13-SECURITY-STORE-COLLECTIONS`, `V13-ERROR-PAYLOADS`, `V13-SECURITY-GLOBAL-COLLECTIONS`, `V13-CONNECT-JWKS-KEY-SET`, `V13-AI-HTTP-STATUS`, `V13-ISLANDS-REMOVED`, `V13-ISLAND-COMMANDS-REMOVED`, `V13-LIVE-REMOVED`, `V13-LIVE-COMMAND-REMOVED`, `V13-SERVER-FUNCTIONS-REMOVED`, `V13-FRONTEND-ADAPTERS-REMOVED`, `V13-HTML-DYNAMIC-ALPINE-DIRECTIVE`, `V13-IOT-OTA-STATE`, `V13-IOT-CODEC-ERROR-MATCH`, `V13-IOT-SENSOR-CARD-HTML`, `V13-CAPITAL-INVOICE-MINOR-UNITS`, `V13-ORM-ADAPTERS-REMOVED`, `V13-MAIL-MESSAGE-REPLY-TO`, `V13-PRIVACY-CONSENT-CHOICE-MATCH`, `V13-LABS-NON-EXHAUSTIVE-MATCH`, `V13-CLI-GREEN-RENAMED`, `V13-ACADEMY-REMOVED`, `V13-ORM-QDRANT-REMOVED`, `V13-AI-PROVIDER-PRESETS` |
+| 13.0.0-alpha.5 | `V13-SQLX-TLS-NATIVE-ROOTS`, `V13-DEPLOY-SQLITE-URL`, `V13-DEPLOY-CADDY-HEALTH`, `V13-CLI-MIGRATION-AUTO-STATUS`, `V13-CLI-BLUEPRINTS-REMOVED` (alpha.4 changes that no alpha.4 rule located; an application already on alpha.4 gets them), `V13-API-ALIAS-PATHS`, `V13-HIDDEN-INTERNALS-PRIVATE`, `V13-SECURITY-STORE-COLLECTIONS`, `V13-ERROR-PAYLOADS`, `V13-SECURITY-GLOBAL-COLLECTIONS`, `V13-CONNECT-JWKS-KEY-SET`, `V13-AI-HTTP-STATUS`, `V13-ISLANDS-REMOVED`, `V13-ISLAND-COMMANDS-REMOVED`, `V13-LIVE-REMOVED`, `V13-LIVE-COMMAND-REMOVED`, `V13-SERVER-FUNCTIONS-REMOVED`, `V13-FRONTEND-ADAPTERS-REMOVED`, `V13-HTML-DYNAMIC-ALPINE-DIRECTIVE`, `V13-IOT-OTA-STATE`, `V13-IOT-CODEC-ERROR-MATCH`, `V13-IOT-SENSOR-CARD-HTML`, `V13-CAPITAL-INVOICE-MINOR-UNITS`, `V13-ORM-ADAPTERS-REMOVED`, `V13-MAIL-MESSAGE-REPLY-TO`, `V13-PRIVACY-CONSENT-CHOICE-MATCH`, `V13-LABS-NON-EXHAUSTIVE-MATCH`, `V13-CLI-GREEN-RENAMED`, `V13-ACADEMY-REMOVED`, `V13-ORM-QDRANT-REMOVED`, `V13-AI-PROVIDER-PRESETS`, `V13-HTMX-2` |
 | 13.0.0-alpha.6 | `V13-HEALTH-FRAMEWORK-VERSION`, `V13-HEALTH-PROBE-VERSION-FIELD`, `V13-CSRF-STATIC-PREFIXES` (the default changes of the 13.0 freeze), `V13-CSRF-COOKIE-IN-PAGE`, `V13-DEPLOY-CADDY-ENCODE` (the masked CSRF token and compressed pages), `V13-ROUTER-BASELINE-LAYERS` (the baseline in every environment), `V13-MAIL-DEPRECATED-REMOVED`, `V13-IOT-OTA-LEGACY-REMOVED`, `V13-NEXUS-INFALLIBLE-BUILD-REMOVED`, `V13-AI-DEPRECATED-REMOVED`, `V13-SECURITY-DEPRECATED-REMOVED`, `V13-QUEUE-PURGE-COMPLETED-REMOVED`, `V13-CONNECT-INFALLIBLE-NEW-REMOVED`, `V13-ROUTE-MARKER-REMOVED`, `V13-ORM-SCHEMA-DIFF-REMOVED` (the removal of every API still deprecated), `V13-ORM-SAVE-MODE`, `V13-AUTH-PASSKEYS-FEATURE` |
 
 A rule is dated by the first release tag whose catalog contains its code
 (`git show v13.0.0-alpha.2:cargo-rullst/src/generators/build/upgrade/rules/catalog.rs`,
 or `git log -S'"V13-..."'` on that file), checked against the CHANGELOG entry
-that names it; a new rule takes the next release. A unit test checks that every
-rule names one of these releases.
+that names it; a new rule takes the next release. Unit tests check that every
+rule names one of these releases and that this table lists each release's
+rules.
 
 The plan takes the application's Rullst version to be the oldest version that
 a Rullst requirement in the workspace manifests admits (`=13.0.0-alpha.3`,
@@ -332,8 +333,9 @@ The root object adds `finding_counts` (`must_change`, `review` and
 `reviewed`, the review locations a `rullst-upgrade: reviewed` marker left
 out), `unscanned_sources` (project-relative paths), `migration_guide` (the
 checklist for the application's version: the alpha.2 one for alpha.2, the
-alpha.3 one for alpha.3, the alpha.4 one for alpha.4 and later 13.0
-prereleases, otherwise the table) and
+alpha.3 one for alpha.3, the alpha.4 one for alpha.4, the alpha.5 one for
+alpha.5 and later 13.0 prereleases (since the 13.0.0-alpha.6 CLI; earlier
+CLIs give the alpha.4 one), otherwise the table) and
 `rule_selection`: `current_version` (the application's Rullst version, or
 `null` when it cannot be read), `all_rules` (`--all-rules`, and always `true`
 in project preparations), `skipped_rules` (rules introduced in or before
@@ -480,17 +482,19 @@ Every row of the [v13 migration guide](../migration-v13.md#changes-from-the-publ
 is classified for `rullst-upgrade-rules-v4`:
 
 - **(a) must-change**: a compile-breaking or API-shape change detectable in
-  application source (34 rows);
+  application source;
 - **(b) review**: changed behaviour worth reviewing when the application uses
-  the affected API, feature or configuration, which the rules locate (124 rows);
+  the affected API, feature or configuration, which the rules locate;
 - **(c) none**: no application impact, or not detectable in the application
   (CLI behaviour, generator output for new projects, opt-in features, fixes
-  of inputs that previously failed) (111 rows).
+  of inputs that previously failed).
 
-A row with both a must-change and a review part counts in both. The catalog
-has 164 rules. A row can map to several rules and a rule to
-several rows; when a row changes in a later release, update this table and
-the rule together.
+A row with both a must-change and a review part has both classes. A row can
+map to several rules and a rule to several rows; when a row changes in a
+later release, update this table and the rule together. Unit tests of the
+CLI check that every row of the guide is classified once, that every rule of
+the catalog is listed on its row, and that this page states no row or rule
+totals, which every new row or rule would change.
 
 | Migration row | Class | Rules | Notes |
 | :--- | :--- | :--- | :--- |
