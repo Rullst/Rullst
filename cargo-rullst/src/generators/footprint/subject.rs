@@ -1,21 +1,25 @@
 //! The app being measured: an app already running on `--url`, found by its
 //! port, a published site's `https://` URL (page weight only), or the
-//! project's release binary started on a free loopback port.
+//! project's release binary started on a free loopback port, a few times to
+//! time its start-up ([`startup`]).
 use super::failure::Failure;
 use super::report::Target;
+use super::startup::{self, Startup};
 use super::{process, target};
 use crate::ui::error_report::ProjectRequired;
 use std::error::Error;
 use std::path::{Path, PathBuf};
 
 /// The app being measured: its URL, PID and executable, plus the process
-/// started by footprint (stopped on drop), or why it could not be measured.
+/// started by footprint (stopped on drop) and its start-up time, or why it
+/// could not be measured.
 pub(super) struct Subject {
     pub base: Option<reqwest::Url>,
     pub target: Target,
     pub executable: Option<PathBuf>,
     pub executable_method: &'static str,
     pub owned: Option<target::OwnedApp>,
+    pub startup: Startup,
     pub failure: Option<Failure>,
 }
 
@@ -42,6 +46,7 @@ impl Subject {
             executable: binary,
             executable_method: RELEASE_BINARY,
             owned: None,
+            startup: Startup::unmeasured(failure.unmeasured()),
             failure: Some(failure),
         }
     }
@@ -81,6 +86,7 @@ pub(super) fn remote(base: &reqwest::Url, path: &str) -> Subject {
         executable: None,
         executable_method: REMOTE,
         owned: None,
+        startup: Startup::unmeasured(REMOTE),
         failure: None,
     }
 }
@@ -112,6 +118,7 @@ pub(super) async fn existing(
             executable: None,
             executable_method: process::METHODS.executable,
             owned: None,
+            startup: Startup::unmeasured(startup::ALREADY_RUNNING),
             failure: Some(failure),
         });
     }
@@ -137,11 +144,14 @@ pub(super) async fn existing(
         executable: executable.map(|found| found.path),
         executable_method: process::METHODS.executable,
         owned: None,
+        startup: Startup::unmeasured(startup::ALREADY_RUNNING),
         failure: None,
     })
 }
 
-/// Builds the project's release binary and starts it on a free port.
+/// Builds the project's release binary, then starts it on a free port up to
+/// [`startup::MAX_STARTS`] times to time its start-up; the last start is the
+/// app that is measured.
 pub(super) async fn spawned(
     client: &reqwest::Client,
     path: &str,
@@ -160,37 +170,15 @@ pub(super) async fn spawned(
             return Ok(Subject::unstarted(None, None, environment, failure));
         }
     };
-    let port = target::free_port()?;
-    let base = target::validate_url(&format!("http://127.0.0.1:{port}"))?;
-    let url = target::request_url(&base, path);
-    eprintln!("Starting the app with RULLST_ENV={environment} on {base} ...");
-    let mut app = match target::OwnedApp::spawn(&binary, port, environment) {
-        Ok(app) => app,
-        Err(error) => {
-            let failure = Failure {
-                stage: "start",
-                title: "App could not be started",
-                message: format!("Starting {} failed: {error}.", binary.display()),
-                fix: "Check that the release binary runs: `cargo run --release`.".into(),
-            };
-            return Ok(Subject::unstarted(
-                Some(&url),
-                Some(binary),
-                environment,
-                failure,
-            ));
-        }
+    eprintln!(
+        "Starting the app with RULLST_ENV={environment} on free loopback ports, up to {} times to time its start-up...",
+        startup::MAX_STARTS
+    );
+    let started = startup::cold_starts(|| start(client, &binary, path, environment)).await;
+    let ((app, base, url), samples) = match started {
+        Ok(started) => started,
+        Err(early) => return *early,
     };
-    if let Err(error) = app.wait_ready(client, &url).await {
-        let failure = Failure::start(format!("{error}."), &app.stderr_tail(), environment);
-        app.stop();
-        return Ok(Subject::unstarted(
-            Some(&url),
-            Some(binary),
-            environment,
-            failure,
-        ));
-    }
     let name = file_name(&binary);
     Ok(Subject {
         base: Some(base),
@@ -205,6 +193,57 @@ pub(super) async fn spawned(
         executable: Some(binary),
         executable_method: RELEASE_BINARY,
         owned: Some(app),
+        startup: Startup::measured(path, &samples),
         failure: None,
     })
+}
+
+/// The app started on a free port, its origin and the `--path` URL.
+type Started = (target::OwnedApp, reqwest::Url, reqwest::Url);
+/// What [`spawned`] returns when a start fails: an error, or the report of
+/// an app that did not start.
+type Early = Box<Result<Subject, Box<dyn Error>>>;
+
+/// One cold start of `binary`: the app, once it answered, and how long that
+/// took from the spawn; or what [`spawned`] returns when it does not start.
+async fn start(
+    client: &reqwest::Client,
+    binary: &Path,
+    path: &str,
+    environment: &'static str,
+) -> Result<(Started, std::time::Duration), Early> {
+    let port = target::free_port().map_err(|error| Box::new(Err(error.into())))?;
+    let base = target::validate_url(&format!("http://127.0.0.1:{port}"))
+        .map_err(|error| Box::new(Err(error.into())))?;
+    let url = target::request_url(&base, path);
+    let mut app = match target::OwnedApp::spawn(binary, port, environment) {
+        Ok(app) => app,
+        Err(error) => {
+            let failure = Failure {
+                stage: "start",
+                title: "App could not be started",
+                message: format!("Starting {} failed: {error}.", binary.display()),
+                fix: "Check that the release binary runs: `cargo run --release`.".into(),
+            };
+            return Err(Box::new(Ok(Subject::unstarted(
+                Some(&url),
+                Some(binary.to_path_buf()),
+                environment,
+                failure,
+            ))));
+        }
+    };
+    match app.wait_ready(client, &url).await {
+        Ok(elapsed) => Ok(((app, base, url), elapsed)),
+        Err(error) => {
+            let failure = Failure::start(format!("{error}."), &app.stderr_tail(), environment);
+            app.stop();
+            Err(Box::new(Ok(Subject::unstarted(
+                Some(&url),
+                Some(binary.to_path_buf()),
+                environment,
+                failure,
+            ))))
+        }
+    }
 }

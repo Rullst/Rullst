@@ -7,6 +7,7 @@ use super::failure::Failure;
 use super::page::PageWeight;
 use super::production::Production;
 use super::sci::SciEstimate;
+use super::startup::Startup;
 use serde::Serialize;
 
 pub(super) const SCHEMA_VERSION: &str = "rullst.footprint.v1";
@@ -15,13 +16,14 @@ pub(super) const NOTES: &[&str] = &[
     "Measured figures depend on the hardware, operating system, build profile, data and other running processes; compare runs only on the same machine and setup.",
     "The benchmark load generator runs on the same machine; its CPU use is not part of the app's CPU time.",
     "Response and page bytes are bodies as served over loopback, without headers; a CDN, proxy or another network changes what users receive.",
+    "Start-up time is measured on this machine for the release binary, with its files in the operating system's cache after the first start; a container host adds pulling and starting the image.",
     "The SCI figure is an estimate computed only from the power, network and grid figures you supply; footprint never fetches carbon data and measures no energy.",
     "This report is a measurement and an estimate, not a certification, an environmental claim or a comparison with other software; if you publish these figures, you are responsible for how you word them.",
 ];
 
 /// The notes of a published site's report, which holds only its page weight.
 pub(super) const REMOTE_NOTES: &[&str] = &[
-    "Only the page weight was measured: footprint fetched the published site's page and same-origin resources, and measured no binary, memory, CPU or dependency figure.",
+    "Only the page weight was measured: footprint fetched the published site's page and same-origin resources, and measured no binary, memory, start-up, CPU or dependency figure.",
     "Page bytes are response bodies as the site sent them to this machine, compressed as served, without headers; a visitor elsewhere, a CDN cache in another state, cookies or a signed-in session can receive different bytes.",
     "This report is a measurement, not a certification, an environmental claim or a comparison with other software; if you publish these figures, you are responsible for how you word them.",
 ];
@@ -68,6 +70,9 @@ pub(crate) struct Report {
     pub machine: Machine,
     pub target: Target,
     pub measured: Measured,
+    /// The start-up time of the release binary footprint started (v13,
+    /// 13.0.0-alpha.6).
+    pub startup: Startup,
     pub benchmark: Benchmark,
     pub page_weight: PageWeight,
     /// What the application served in production (`--monitor-url`).

@@ -6,7 +6,8 @@
 //! Measured: the release binary size, a container image's size when one is
 //! named (`--image`), the idle resident memory of the app, the dependency
 //! count from `Cargo.lock` and how many of those packages Cargo compiles
-//! ([`compiled`]); with `--bench`, the app's CPU time and the bytes
+//! ([`compiled`]), and the start-up time of the binary it starts
+//! ([`startup`]); with `--bench`, the app's CPU time and the bytes
 //! it served during a bounded loopback load, per request; with
 //! `--page-weight`, the bytes and requests of a page and its same-origin
 //! resources on a first and a repeat visit ([`page`]). Estimated, and
@@ -20,7 +21,8 @@
 //!
 //! Without `--url` it builds the project's release binary (reusing an
 //! existing build), starts it in production mode (or `--env staging`) on a
-//! free loopback port, measures it and stops it. With `--url http://…` it
+//! free loopback port, up to five times to time its start-up, measures the
+//! last start and stops it. With `--url http://…` it
 //! measures an app already running on loopback. With `--url https://…` it
 //! weighs a published site's page (`--page-weight`, nothing else): no
 //! process, binary, memory, CPU or dependency figure. The process exits 0 whenever the
@@ -42,6 +44,7 @@ mod production;
 mod render;
 mod report;
 mod sci;
+mod startup;
 mod subject;
 mod target;
 #[cfg(test)]
@@ -220,6 +223,7 @@ async fn measure(options: &Options) -> Result<Report, Box<dyn Error>> {
         machine: Machine::current(),
         target: subject.target.clone(),
         measured,
+        startup: subject.startup,
         benchmark,
         page_weight,
         production,

@@ -7,9 +7,9 @@ Part of the [resource efficiency roadmap](resource-efficiency-roadmap.md).
 
 `cargo rullst footprint` reports resource figures it **measured** for your
 application, says how it measured each one, and says which ones it could not
-measure: binary and image size, idle memory, dependencies, CPU time and bytes
-per request under a bounded load, and the weight of a page on a first and a
-repeat visit. It can check those figures against budgets in CI and set them
+measure: binary and image size, idle memory, start-up time, dependencies, CPU
+time and bytes per request under a bounded load, and the weight of a page on a
+first and a repeat visit. It can check those figures against budgets in CI and set them
 beside the bytes the application served in production, read from its
 monitor. It measures no energy. A carbon figure appears only as a
 Software Carbon Intensity (SCI) **estimate**, computed from figures that you
@@ -36,7 +36,7 @@ cargo install cargo-rullst --version =13.0.0-alpha.5 --locked
 Its flags are listed in [the CLI reference](cli_reference.md#cargo-rullst-footprint).
 
 ```bash
-# Build the release binary, start it on a free loopback port, measure, stop it
+# Build the release binary, time a few cold starts, measure the last one, stop it
 cargo rullst footprint
 
 # Also measure a local container image and run a 10-second benchmark
@@ -65,6 +65,7 @@ RULLST_MONITOR_TOKEN=... cargo rullst footprint --page-weight --bench --monitor-
 | Binary size | file size of the release binary built by `cargo build --release`; with `--url`, of the running executable (`/proc/<pid>/exe` on Linux, `proc_pidpath` on macOS, `QueryFullProcessImageNameW` on Windows) | Size on disk, not memory use. |
 | Image size | `docker image inspect --format {{.Size}}` (then `podman`) of the image you name with `--image` | Uncompressed size reported by the local engine. Only on a local socket (`DOCKER_HOST`/`CONTAINER_HOST` unset or `unix://`/`npipe://`); otherwise, or without `--image`, `NOT MEASURED` with the reason. |
 | Idle RSS | resident memory after start-up, before any page-weight or benchmark request: `VmRSS` from `/proc/<pid>/status` (Linux), the resident size from `proc_pidinfo(PROC_PIDTASKINFO)` (macOS), the working set from `GetProcessMemoryInfo` (Windows) | The method names the source on each platform. |
+| Start-up time (13.0.0-alpha.6) | median of up to five cold starts of the release binary footprint starts, each from spawning the process to the first HTTP response (any status) to `GET --path`, probed every 5 ms | Only for the binary footprint starts: an app found with `--url` was already running and a published site has no local process, so both read `NOT MEASURED`. See [Start-up time](#start-up-time). |
 | Dependencies | packages with a registry or git `source` in the nearest `Cargo.lock` | Every third-party crate Cargo resolved, for all targets and features; path and workspace packages are not counted. |
 | Compiled dependencies (13.0.0-alpha.6) | the packages of the Dependencies count that `cargo tree --locked --offline --edges normal,build --prefix none --format {p}` lists in the project directory, for its package, each `name version` once | What Cargo compiles for the release build footprint measures: the host platform, the default features and the same feature resolver as `cargo build`, with proc macros and build-script dependencies, without dev-dependencies, other platforms' dependencies or optional dependencies no enabled feature needs, all of which `Cargo.lock` also lists. Run footprint from the project directory (the one with `Cargo.toml`); `cargo tree` reads only the local index and lock file, so a project that was never built, or whose `Cargo.lock` is out of date, reads `NOT MEASURED` with the reason. |
 | CPU time (with `--bench`) | user + system CPU time of the app process over the benchmark: `utime + stime` from `/proc/<pid>/stat` (Linux), `proc_pidinfo` (macOS, converted from Mach time units), `GetProcessTimes` (Windows) | All threads of the process, not child processes. |
@@ -97,8 +98,11 @@ MSYS_NO_PATHCONV=1 cargo rullst footprint --path /
 1. **Target.** Without `--url`, footprint runs `cargo build --release` (Cargo
    reuses an up-to-date build), starts the binary from the project root with
    `RULLST_ENV=production`, `HOST=127.0.0.1` and `PORT=<free port>`, and waits
-   up to 60 seconds for the first HTTP response to `GET --path`. It stops the
-   app with SIGTERM (then a kill after 5 seconds) when the run ends.
+   up to 60 seconds for the first HTTP response to `GET --path`. It starts the
+   binary up to five times, each on a new free port and stopped before the
+   next, to time its [start-up](#start-up-time), and measures the last start.
+   It stops the app with SIGTERM (then a kill after 5 seconds) when the run
+   ends.
    Production refuses to start without production settings, such as the SaaS
    starter's real billing credentials; set them, or pass `--env staging`,
    which accepts the starters' mock credentials and is recorded in the report.
@@ -120,7 +124,7 @@ MSYS_NO_PATHCONV=1 cargo rullst footprint --path /
    `rullst.footprint.v1` document.
 
 When the release build fails, or the app exits or does not answer within 60
-seconds (a database it cannot reach, missing production settings), or nothing
+seconds on any of its starts (a database it cannot reach, missing production settings), or nothing
 answers on `--url`, footprint still prints the report, JSON included, with the
 figures that need no running app: the dependency count, the image size and,
 once a binary was built, its size. The others are `NOT MEASURED` with the
@@ -133,6 +137,47 @@ engine, the published site's `https://` origin when `--url` names one, and,
 only with `--monitor-url`, the application's monitor, and never fetches
 carbon intensity data. The release build itself may download crates as
 any `cargo build` does.
+
+## Start-up time
+
+Since 13.0.0-alpha.6, the report gives how long the release binary takes to
+start: the time from spawning the process to the first HTTP response, of any
+status, to `GET --path`. On a host that scales to zero, such as Azure
+Container Apps, Cloud Run or Knative, the first request after an idle period
+waits for this start, so a slow start is latency that visitors see.
+
+- **Cold starts.** footprint starts the binary up to five times, each a new
+  process on a new free loopback port, stopped before the next one starts,
+  and reports the median, the fastest and the slowest start and every start's
+  time. It stops starting once the timed starts add up to 20 seconds, so a
+  slow app is started fewer times (at least once); the report says how many
+  starts were timed (`runs`). The last start is the app that the other
+  figures measure.
+- **Resolution.** Readiness is probed every 5 ms, so a time is at most about
+  5 ms (plus one loopback request) later than the moment the app could first
+  answer. Times are reported to a tenth of a millisecond.
+- **What it includes.** Everything the process does before it answers:
+  loading the binary, reading configuration, opening the database pool,
+  running what `main` runs before `Server` binds, and the first request. Use
+  `--path` to time the path your host probes, such as `/ready` or `/health`
+  (the page weight and the benchmark use the same path).
+- **What it does not include.** On this machine, the binary and the files it
+  reads are in the operating system's cache after the first start, and
+  nothing is downloaded. A container host also pulls the image, creates the
+  container and starts its runtime, which footprint does not measure, so
+  compare a host's cold starts only with that host's own figures.
+- **When it is not measured.** An app found with `--url` was already running,
+  and a published `https://` site has no process here, so both read
+  `NOT MEASURED` with the reason; so does a run whose build failed or whose
+  app did not start.
+
+The [Rullst/Benchmarks](https://github.com/Rullst/Benchmarks) suite reports a
+different figure, `startup_s`: the time a framework's container takes to
+answer `GET /text` with `200 OK` once `docker run -d` has returned, probed
+every 0.25 s and rounded to hundredths of a second, so starts shorter than
+about a quarter of a second cannot be told apart there. footprint times your
+own release binary as a local process, without a container, from the spawn
+and at a 5 ms probe interval. Do not compare the two figures with each other.
 
 ## Page weight
 
@@ -200,7 +245,8 @@ cargo rullst footprint --url https://app.example --page-weight --path /pricing
 
 - **Page weight only.** It needs `--page-weight` and refuses `--bench`
   (which would load the site and needs the app's CPU time) and `--image`.
-  The binary size, idle memory, dependency counts and CPU time are
+  The binary size, idle memory, start-up time, dependency counts and CPU time
+  are
   `NOT MEASURED` with the reason `not measured for a published https:// site`,
   the target's `mode` is `remote_url`, and the report's notes say that only
   the page weight was measured.
@@ -289,6 +335,7 @@ binary_size_bytes = 25_000_000
 idle_rss_bytes = 64_000_000
 dependency_count = 450
 compiled_dependency_count = 380
+startup_ms = 500
 cpu_ms_per_request = 2.0
 bytes_per_request = 60_000
 page_first_visit_bytes = 500_000
@@ -297,7 +344,7 @@ page_requests = 25
 page_third_party_origins = 0
 ```
 
-Every key is optional; `image_size_bytes` is the eleventh. Values are numbers of
+Every key is optional; `image_size_bytes` is the twelfth. Values are numbers of
 0 or more, in bytes, a count or milliseconds as the name says; an unknown key,
 a negative value or a string stops the run before anything is built, so a
 misspelt limit cannot pass unnoticed. `--check-budget` reads this table;
@@ -307,8 +354,9 @@ file instead, for example a stricter budget for the main branch.
 After the report, each limit is **passed** (measured at or under the limit),
 **exceeded** (above it) or **skipped**: its figure was not measured (no
 `--bench` for `cpu_ms_per_request`, no `--page-weight` for the page limits,
-no `--image`, or a platform that cannot read the process), so it is never
-counted as passed. The command exits with status 1 when a limit is exceeded,
+no `--image`, an app found with `--url` for `startup_ms`, which checks the
+median start-up time, or a platform that cannot read the process), so it is
+never counted as passed. The command exits with status 1 when a limit is exceeded,
 after printing the report, and names each one with the measured and allowed
 values on stderr. The JSON report's `budgets` section lists every limit with
 its `allowed`, `measured`, `status` and, when skipped, `reason`.
@@ -341,7 +389,8 @@ credentials and checks the budget:
 ```
 
 Compare figures only on the same runner type: hosted runners vary, so leave
-some headroom in time-based limits such as `cpu_ms_per_request`.
+some headroom in time-based limits such as `cpu_ms_per_request` and
+`startup_ms`.
 
 Rullst's own CI budgets the starters this way: the `Starter footprint
 budgets` job of the repository's `ci.yml` builds the Blank, SaaS and API
@@ -350,8 +399,8 @@ starters in release mode and runs footprint with `--env staging --page-weight
 Their limits are the figures measured on a GitHub-hosted Linux runner plus a
 margin (15 % for the binary, 20 % for idle memory, 5 % for dependencies,
 10 % but at least 1 KiB for bytes, none for page requests and third-party
-origins), and `cpu_ms_per_request` is reported there but not limited,
-because it varies from run to run on shared runners. A starter that grows
+origins), and `cpu_ms_per_request` and the start-up time are reported there
+but not limited, because they vary from run to run on shared runners. A starter that grows
 past a limit fails the job until the growth is removed or the limit is
 raised on purpose.
 
@@ -417,6 +466,10 @@ on the shape:
   `dependency_count` and (since 13.0.0-alpha.6) `compiled_dependency_count`,
   each `{status, value, unit, method, reason}` with `status` `measured` or
   `not_measured`.
+- `startup` (since 13.0.0-alpha.6): `status` (`measured` or
+  `not_measured`), `reason`, `method`, `path`, `runs` (the starts timed, at
+  most five), `samples_ms` (each start's time, in the order they ran),
+  `median_ms`, `min_ms` and `max_ms`, all in milliseconds.
 - `benchmark`: `status` (`run` or `not_run`), its inputs, requests, errors,
   `accept_encoding`, `content_encodings` and, in the same metric shape,
   `cpu_time_seconds`, `cpu_ms_per_request`, `response_bytes` and

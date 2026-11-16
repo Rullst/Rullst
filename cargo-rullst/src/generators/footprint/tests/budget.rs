@@ -118,7 +118,7 @@ fn budgets_are_read_from_rullst_toml_or_a_file() {
 #[test]
 fn unmeasured_figures_are_skipped_never_passed() {
     let every = budget(
-        "[footprint.budgets]\nbinary_size_bytes = 1e9\nimage_size_bytes = 1e9\nidle_rss_bytes = 1e9\ndependency_count = 1000\ncompiled_dependency_count = 300\ncpu_ms_per_request = 100\nbytes_per_request = 1e6\npage_first_visit_bytes = 1e9\npage_repeat_visit_bytes = 1e9\npage_requests = 100\npage_third_party_origins = 5\n",
+        "[footprint.budgets]\nbinary_size_bytes = 1e9\nimage_size_bytes = 1e9\nidle_rss_bytes = 1e9\ndependency_count = 1000\ncompiled_dependency_count = 300\nstartup_ms = 100\ncpu_ms_per_request = 100\nbytes_per_request = 1e6\npage_first_visit_bytes = 1e9\npage_repeat_visit_bytes = 1e9\npage_requests = 100\npage_third_party_origins = 5\n",
     );
     let quiet = budget::check(&every, &sample(false, None));
     assert_eq!(
@@ -129,6 +129,7 @@ fn unmeasured_figures_are_skipped_never_passed() {
             ("idle_rss_bytes", "passed"),
             ("dependency_count", "passed"),
             ("compiled_dependency_count", "passed"),
+            ("startup_ms", "skipped"),
             ("cpu_ms_per_request", "skipped"),
             ("bytes_per_request", "skipped"),
             ("page_first_visit_bytes", "skipped"),
@@ -137,7 +138,7 @@ fn unmeasured_figures_are_skipped_never_passed() {
             ("page_third_party_origins", "skipped"),
         ]
     );
-    assert_eq!((quiet.passed, quiet.exceeded, quiet.skipped), (4, 0, 7));
+    assert_eq!((quiet.passed, quiet.exceeded, quiet.skipped), (4, 0, 8));
     assert_eq!(quiet.status, "passed");
     assert_eq!(quiet.limits[1].measured, None);
     assert_eq!(quiet.limits[1].reason.as_deref(), Some("no image given"));
@@ -146,20 +147,26 @@ fn unmeasured_figures_are_skipped_never_passed() {
     assert_eq!(quiet.limits[4].unit, "count");
     assert_eq!(
         quiet.limits[5].reason.as_deref(),
+        Some(super::super::startup::ALREADY_RUNNING)
+    );
+    assert_eq!(
+        quiet.limits[6].reason.as_deref(),
         Some("no benchmark ran; pass --bench")
     );
     assert_eq!(
-        quiet.limits[10].reason.as_deref(),
+        quiet.limits[11].reason.as_deref(),
         Some("no page was weighed; pass --page-weight")
     );
 
     let measured = budget::check(&every, &sample(true, None));
     assert_eq!(measured.skipped, 1, "{measured:?}");
-    assert_eq!(measured.limits[10].measured, Some(1.0));
-    assert_eq!(measured.limits[7].measured, Some(48_000.0));
-    assert_eq!(measured.limits[8].measured, Some(1_200.0));
-    assert_eq!(measured.limits[9].measured, Some(6.0));
-    assert_eq!(measured.limits[6].measured, Some(1_500.0));
+    assert_eq!(measured.limits[11].measured, Some(1.0));
+    assert_eq!(measured.limits[8].measured, Some(48_000.0));
+    assert_eq!(measured.limits[9].measured, Some(1_200.0));
+    assert_eq!(measured.limits[10].measured, Some(6.0));
+    assert_eq!(measured.limits[7].measured, Some(1_500.0));
+    assert_eq!(measured.limits[5].measured, Some(12.3));
+    assert_eq!(measured.limits[5].unit, "milliseconds");
 
     // The compiled count has a limit of its own, and an unmeasured one is
     // skipped with its reason.

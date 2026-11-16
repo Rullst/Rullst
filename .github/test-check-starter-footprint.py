@@ -24,13 +24,15 @@ def metric(value):
             "reason": None if value is not None else "not readable"}
 
 
-def report(rss=20_000_000, limits=(), status="passed", failure=None, origins=()) -> dict:
+def report(rss=20_000_000, limits=(), status="passed", failure=None, origins=(), startup_ms=41.25) -> dict:
     return {
         "schema": "rullst.footprint.v1", "cli_version": "13.0.0-alpha.5",
         "machine": {"os": "linux", "arch": "x86_64", "logical_cpus": 4, "cpu_model": "Test CPU"},
         "measured": {"binary_size_bytes": metric(8_000_000), "image_size_bytes": metric(None),
                      "idle_rss_bytes": metric(rss), "dependency_count": metric(300),
                      "compiled_dependency_count": metric(250)},
+        "startup": {"status": "measured" if startup_ms is not None else "not_measured",
+                    "median_ms": startup_ms, "runs": 5 if startup_ms is not None else None},
         "benchmark": {"requests": 5000, "http_errors": 0, "content_encodings": ["zstd"],
                       "cpu_ms_per_request": metric(0.12), "bytes_per_request": metric(1234.5)},
         "page_weight": {"status": "measured", "first_visit": {"bytes": 50_000, "requests": 4},
@@ -45,12 +47,13 @@ def limit(name: str, allowed: float, measured: float | None, status: str, reason
 
 
 class PolicyTests(unittest.TestCase):
-    def test_passed_limits_do_not_block_and_cpu_is_never_a_limit(self):
+    def test_passed_limits_do_not_block_and_cpu_and_startup_are_never_limits(self):
         rows, problems = CHECK.evaluate("blank", report(limits=[limit("idle_rss_bytes", 24e6, 20e6, "passed")]),
                                         budgeted=True)
         self.assertEqual(problems, [])
         self.assertEqual([row["name"] for row in rows], list(CHECK.MARGINS))
         self.assertNotIn("cpu_ms_per_request", CHECK.MARGINS)
+        self.assertNotIn("startup_ms", CHECK.MARGINS)
         rss = next(row for row in rows if row["name"] == "idle_rss_bytes")
         self.assertEqual((rss["allowed"], rss["status"], rss["suggested"]), (24e6, "passed", 24_000_000))
 
@@ -88,7 +91,9 @@ class PolicyTests(unittest.TestCase):
         self.assertIn("| blank | `binary_size_bytes` | 8,000,000 | — | reported | 9,200,000 |", summary)
         self.assertIn("| blank | `page_third_party_origins` | 1 | — | reported | 1 |", summary)
         self.assertIn("| blank | `compiled_dependency_count` | 250 | — | reported | 263 |", summary)
-        self.assertIn("| blank | 0.12 | 5,000 | 0 | zstd |", summary)
+        self.assertIn("| blank | 0.12 | 41.25 (5 starts) | 5,000 | 0 | zstd |", summary)
+        unmeasured = CHECK.render({"api": report(startup_ms=None)}, rows, problems)
+        self.assertIn("| api | 0.12 | not measured | 5,000 | 0 | zstd |", unmeasured)
         self.assertIn("[footprint.budgets]\nbinary_size_bytes = 9_200_000\nidle_rss_bytes = 24_000_000\n", summary)
         tomllib.loads(summary.split("```toml\n", 1)[1].split("```", 1)[0])
 
@@ -108,7 +113,8 @@ class BudgetFileTests(unittest.TestCase):
 
     def test_an_unknown_or_missing_limit_table_is_refused(self):
         with tempfile.TemporaryDirectory() as directory:
-            for text in ("[footprint.budgets]\ncpu_ms_per_request = 1\n", "[footprint]\n"):
+            for text in ("[footprint.budgets]\ncpu_ms_per_request = 1\n", "[footprint.budgets]\nstartup_ms = 1\n",
+                         "[footprint]\n"):
                 path = Path(directory) / "starter.toml"
                 path.write_text(text, encoding="utf-8")
                 with self.assertRaises(CHECK.Failure):

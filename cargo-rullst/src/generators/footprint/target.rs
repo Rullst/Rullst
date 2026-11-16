@@ -12,6 +12,8 @@ use std::time::{Duration, Instant};
 
 const STDERR_TAIL_BYTES: usize = 4096;
 const READY_TIMEOUT: Duration = Duration::from_secs(60);
+/// How often readiness is probed; it bounds the start-up time's resolution.
+const PROBE_INTERVAL: Duration = Duration::from_millis(5);
 #[cfg(unix)]
 const STOP_GRACE: Duration = Duration::from_secs(5);
 
@@ -125,6 +127,8 @@ pub(super) fn free_port() -> io::Result<u16> {
 pub(super) struct OwnedApp {
     child: Child,
     stderr: Arc<Mutex<VecDeque<u8>>>,
+    /// Just before the process was spawned: where its start-up time begins.
+    spawned: Instant,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -142,6 +146,7 @@ impl OwnedApp {
     /// the current directory. It shares the terminal's process group so
     /// Ctrl+C stops it too.
     pub(super) fn spawn(binary: &Path, port: u16, environment: &str) -> io::Result<Self> {
+        let spawned = Instant::now();
         let mut child = Command::new(binary)
             .env("RULLST_ENV", environment)
             .env("HOST", "127.0.0.1")
@@ -169,19 +174,24 @@ impl OwnedApp {
                 }
             });
         }
-        Ok(Self { child, stderr })
+        Ok(Self {
+            child,
+            stderr,
+            spawned,
+        })
     }
 
     pub(super) fn pid(&self) -> u32 {
         self.child.id()
     }
 
-    /// Waits until `url` answers with any HTTP status.
+    /// Waits until `url` answers with any HTTP status, and returns the time
+    /// from the spawn to that answer.
     pub(super) async fn wait_ready(
         &mut self,
         client: &reqwest::Client,
         url: &reqwest::Url,
-    ) -> Result<(), StartError> {
+    ) -> Result<Duration, StartError> {
         let deadline = Instant::now() + READY_TIMEOUT;
         while Instant::now() < deadline {
             if let Some(status) = self.child.try_wait()? {
@@ -189,9 +199,9 @@ impl OwnedApp {
             }
             let probe = client.get(url.clone()).timeout(Duration::from_secs(1));
             if probe.send().await.is_ok() {
-                return Ok(());
+                return Ok(self.spawned.elapsed());
             }
-            tokio::time::sleep(Duration::from_millis(100)).await;
+            tokio::time::sleep(PROBE_INTERVAL).await;
         }
         Err(StartError::Timeout(url.to_string()))
     }
