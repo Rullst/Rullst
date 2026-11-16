@@ -346,7 +346,7 @@ alpha.2 rules, because the earlier changes are already in the version it runs. T
 
 ```text
 Source findings (rullst-upgrade-rules-v4): 0 must-change, 1 review
-  Rules: introduced after 13.0.0-alpha.2, the Rullst version this project uses; earlier rules skipped: 100 (findings hidden: 3); --all-rules applies every rule
+  Rules: introduced after 13.0.0-alpha.2, the Rullst version this project uses; earlier rules skipped: 99 (findings hidden: 3); --all-rules applies every rule
 ```
 
 A v12 application, or one whose version cannot be read (path dependencies
