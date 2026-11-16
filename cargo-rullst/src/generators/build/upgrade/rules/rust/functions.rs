@@ -4,12 +4,18 @@
 //! (`V13-LMS-RECORD-PROGRESS`). Test functions and `#[cfg(test)]` modules are
 //! skipped; the body's tokens are read with attributes left out, as in
 //! [`super::super::tokens`].
+//!
+//! A call of the application's own `hash_password` (a path through `crate`,
+//! `self`, `super` or a name the file binds from them or declares) is
+//! reported only when no function of that name in the package bounds its
+//! hashing: the package scan resolves it once every file is read.
 
 use super::super::Collector;
 use super::super::catalog::{CREDENTIAL_RATE_LIMIT, LMS_RECORD_PROGRESS};
 use super::{FileContext, line, mentions};
 use proc_macro2::{Delimiter, TokenStream, TokenTree};
 use quote::ToTokens;
+use std::collections::BTreeSet;
 use std::path::{Component, Path};
 use syn::Attribute;
 use syn::visit::{self, Visit};
@@ -48,11 +54,85 @@ pub(super) fn scan(file: &syn::File, context: &FileContext<'_>, out: &mut Collec
     // The middleware's name in code (a definition or a route layer), never in
     // a comment, string or doc comment.
     let rate_limited = mentions(file.to_token_stream(), "credential_rate_limit");
+    let mut names = Names::default();
+    names.visit_file(file);
     let mut functions = Functions {
         hashing: serves_requests(context.path) && !rate_limited,
+        names,
         out,
     };
     functions.visit_file(file);
+}
+
+/// The names a file binds from the application: `use crate::…`,
+/// `use self::…`, `use super::…` (renames and `self` included), its `mod`
+/// items and its own functions. A path that starts with another name reaches
+/// an external crate, Rullst or a glob import, so it is not the
+/// application's.
+#[derive(Default)]
+struct Names {
+    application: BTreeSet<String>,
+}
+
+impl Names {
+    /// Records `tree`, whose path so far ends at `last` and starts below
+    /// `crate`, `self` or `super` when `local`.
+    fn record(&mut self, tree: &syn::UseTree, local: bool, last: Option<&syn::Ident>) {
+        // The first segment decides; later ones keep what it decided.
+        let starts_local = |ident: &syn::Ident| match last {
+            None => ident == "crate" || ident == "self" || ident == "super",
+            Some(_) => local,
+        };
+        match tree {
+            syn::UseTree::Path(path) => {
+                self.record(&path.tree, starts_local(&path.ident), Some(&path.ident));
+            }
+            // `use crate::auth::{self};` binds `auth`.
+            syn::UseTree::Name(name) if name.ident == "self" => {
+                if let Some(last) = last.filter(|_| local) {
+                    self.application.insert(last.to_string());
+                }
+            }
+            syn::UseTree::Name(name) => {
+                if last.is_some() && local {
+                    self.application.insert(name.ident.to_string());
+                }
+            }
+            syn::UseTree::Rename(rename) => {
+                if last.is_some() && local {
+                    self.application.insert(rename.rename.to_string());
+                }
+            }
+            syn::UseTree::Glob(_) => {}
+            syn::UseTree::Group(group) => {
+                for item in &group.items {
+                    self.record(item, local, last);
+                }
+            }
+        }
+    }
+
+    /// Whether a call whose path starts with `first` (the hasher's own name
+    /// when unqualified) reaches the application's function.
+    fn application(&self, first: &str) -> bool {
+        matches!(first, "crate" | "self" | "super") || self.application.contains(first)
+    }
+}
+
+impl<'ast> Visit<'ast> for Names {
+    fn visit_item_use(&mut self, item: &'ast syn::ItemUse) {
+        self.record(&item.tree, false, None);
+    }
+
+    fn visit_item_mod(&mut self, item: &'ast syn::ItemMod) {
+        self.application.insert(item.ident.to_string());
+        visit::visit_item_mod(self, item);
+    }
+
+    fn visit_item_fn(&mut self, item: &'ast syn::ItemFn) {
+        self.application.insert(item.sig.ident.to_string());
+        visit::visit_item_fn(self, item);
+    }
 }
 
 /// Whether the file at `path` (relative to its package) can hold request
@@ -83,6 +163,7 @@ fn test_code(attributes: &[Attribute]) -> bool {
 struct Functions<'a> {
     /// Whether this file's hashing calls need a bound.
     hashing: bool,
+    names: Names,
     out: &'a mut Collector,
 }
 
@@ -97,11 +178,18 @@ impl Functions<'_> {
             return;
         }
         let tokens = body.to_token_stream();
-        if self.hashing
-            && !acquires_permit(tokens.clone())
-            && let Some(at) = unbounded_hash(tokens.clone())
+        if let Some(name) = HASHERS.iter().find(|hasher| signature.ident == **hasher)
+            && bounds_hashing(tokens.clone(), &self.names)
         {
-            self.out.add(&CREDENTIAL_RATE_LIMIT, at);
+            self.out.add_bounded(name);
+        }
+        if self.hashing && !acquires_permit(tokens.clone()) {
+            for (at, callee) in unbounded_hashes(tokens.clone(), &self.names) {
+                match callee {
+                    Some(name) => self.out.add_call(at, name),
+                    None => self.out.add(&CREDENTIAL_RATE_LIMIT, at),
+                }
+            }
         }
         if signature.ident == "record_progress" && writes_before_claiming(tokens) {
             self.out
@@ -165,10 +253,40 @@ fn arguments(tree: Option<&TokenTree>) -> bool {
     matches!(tree, Some(TokenTree::Group(group)) if group.delimiter() == Delimiter::Parenthesis)
 }
 
-/// The line of the first hashing call that does not run inside the
-/// arguments of [`BOUNDED_HELPER`].
-fn unbounded_hash(stream: TokenStream) -> Option<usize> {
+fn punct(tree: Option<&TokenTree>, character: char) -> bool {
+    matches!(tree, Some(TokenTree::Punct(punct)) if punct.as_char() == character)
+}
+
+/// The first segment of the path that ends at `tokens[index]`, or `None`
+/// for a method call (`.hash_password(…)`) or a qualified type
+/// (`<T as Hasher>::hash_password(…)`), which never name the application's
+/// free function.
+fn path_start(tokens: &[TokenTree], index: usize) -> Option<String> {
+    let before = |offset: usize| index.checked_sub(offset).and_then(|at| tokens.get(at));
+    if punct(before(1), '.') {
+        return None;
+    }
+    let mut start = index;
+    while start >= 2 && punct(tokens.get(start - 1), ':') && punct(tokens.get(start - 2), ':') {
+        match start.checked_sub(3).and_then(|at| tokens.get(at)) {
+            Some(TokenTree::Ident(_)) => start -= 3,
+            Some(TokenTree::Punct(close)) if close.as_char() == '>' => return None,
+            // A leading `::`, as in `::rullst::auth::hash_password`.
+            _ => break,
+        }
+    }
+    match &tokens[start] {
+        TokenTree::Ident(first) => Some(first.to_string()),
+        _ => None,
+    }
+}
+
+/// Every hashing call that does not run inside the arguments of
+/// [`BOUNDED_HELPER`]: its line, and the hasher's name when the call
+/// reaches the application's own function rather than Rullst's.
+fn unbounded_hashes(stream: TokenStream, names: &Names) -> Vec<(usize, Option<&'static str>)> {
     let tokens = without_attributes(stream);
+    let mut found = Vec::new();
     let mut index = 0;
     while index < tokens.len() {
         match &tokens[index] {
@@ -180,20 +298,37 @@ fn unbounded_hash(stream: TokenStream) -> Option<usize> {
                 let defined = index
                     .checked_sub(1)
                     .is_some_and(|before| matches!(&tokens[before], TokenTree::Ident(keyword) if keyword == "fn"));
-                if !defined && HASHERS.iter().any(|hasher| ident == hasher) {
-                    return Some(ident.span().start().line);
+                if let Some(hasher) = HASHERS.iter().find(|hasher| ident == **hasher)
+                    && !defined
+                {
+                    let application =
+                        path_start(&tokens, index).is_some_and(|first| names.application(&first));
+                    found.push((ident.span().start().line, application.then_some(*hasher)));
                 }
             }
-            TokenTree::Group(group) => {
-                if let Some(at) = unbounded_hash(group.stream()) {
-                    return Some(at);
-                }
-            }
+            TokenTree::Group(group) => found.extend(unbounded_hashes(group.stream(), names)),
             _ => {}
         }
         index += 1;
     }
-    None
+    found
+}
+
+/// A call of [`BOUNDED_HELPER`] anywhere in `stream`.
+fn calls_helper(stream: TokenStream) -> bool {
+    let tokens = without_attributes(stream);
+    tokens.iter().enumerate().any(|(index, tree)| match tree {
+        TokenTree::Group(group) => calls_helper(group.stream()),
+        TokenTree::Ident(ident) => ident == BOUNDED_HELPER && arguments(tokens.get(index + 1)),
+        _ => false,
+    })
+}
+
+/// Whether a function body bounds the hashing it does: it takes a semaphore
+/// permit, or it calls [`BOUNDED_HELPER`] and hashes nothing outside it.
+fn bounds_hashing(stream: TokenStream, names: &Names) -> bool {
+    acquires_permit(stream.clone())
+        || (calls_helper(stream.clone()) && unbounded_hashes(stream, names).is_empty())
 }
 
 /// A `.acquire()`-style call anywhere in `stream`.

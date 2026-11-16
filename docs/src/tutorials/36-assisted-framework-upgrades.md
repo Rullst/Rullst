@@ -287,14 +287,32 @@ release:
 | 13.0.0-alpha.3 | `V13-CONNECT-GITHUB-EMAIL`, `V13-ORM-TRANSACTION-ERRORS`, `V13-ORM-SKIP-MANAGED-COLUMNS`, `V13-ORM-DEFAULT-FEATURES` (reworded: `rullst-orm` has no default driver), `V13-RULLST-DEFAULT-FEATURES`, `V13-OMNI-REMOVED`, `V13-OFFLINE-SYNC-REMOVED` |
 | 13.0.0-alpha.4 | `V13-DEPLOY-TARGETS-REMOVED`, `V13-DEPLOY-GENERATORS-REMOVED`, `V13-CLI-SELF-UPDATE-REMOVED`, `V13-CLI-AI-REMOVED`, `V13-ORM-FROM-ROW`, `V13-SQLX-MACROS`, `V13-NEXUS-AI-FEATURE`, `V13-SQLX-TLS-RING` |
 | 13.0.0-alpha.5 | `V13-SQLX-TLS-NATIVE-ROOTS`, `V13-DEPLOY-SQLITE-URL`, `V13-DEPLOY-CADDY-HEALTH`, `V13-CLI-MIGRATION-AUTO-STATUS`, `V13-CLI-BLUEPRINTS-REMOVED` (alpha.4 changes that no alpha.4 rule located; an application already on alpha.4 gets them), `V13-API-ALIAS-PATHS`, `V13-HIDDEN-INTERNALS-PRIVATE`, `V13-SECURITY-STORE-COLLECTIONS`, `V13-ERROR-PAYLOADS`, `V13-SECURITY-GLOBAL-COLLECTIONS`, `V13-CONNECT-JWKS-KEY-SET`, `V13-AI-HTTP-STATUS`, `V13-ISLANDS-REMOVED`, `V13-ISLAND-COMMANDS-REMOVED`, `V13-LIVE-REMOVED`, `V13-LIVE-COMMAND-REMOVED`, `V13-SERVER-FUNCTIONS-REMOVED`, `V13-FRONTEND-ADAPTERS-REMOVED`, `V13-HTML-DYNAMIC-ALPINE-DIRECTIVE`, `V13-IOT-OTA-STATE`, `V13-IOT-CODEC-ERROR-MATCH`, `V13-IOT-SENSOR-CARD-HTML`, `V13-CAPITAL-INVOICE-MINOR-UNITS`, `V13-ORM-ADAPTERS-REMOVED`, `V13-MAIL-MESSAGE-REPLY-TO`, `V13-PRIVACY-CONSENT-CHOICE-MATCH`, `V13-LABS-NON-EXHAUSTIVE-MATCH`, `V13-CLI-GREEN-RENAMED`, `V13-ACADEMY-REMOVED`, `V13-ORM-QDRANT-REMOVED`, `V13-AI-PROVIDER-PRESETS`, `V13-HTMX-2` |
-| 13.0.0-alpha.6 | `V13-HEALTH-FRAMEWORK-VERSION`, `V13-HEALTH-PROBE-VERSION-FIELD`, `V13-CSRF-STATIC-PREFIXES` (the default changes of the 13.0 freeze), `V13-CSRF-COOKIE-IN-PAGE`, `V13-DEPLOY-CADDY-ENCODE` (the masked CSRF token and compressed pages), `V13-ROUTER-BASELINE-LAYERS` (the baseline in every environment), `V13-MAIL-DEPRECATED-REMOVED`, `V13-IOT-OTA-LEGACY-REMOVED`, `V13-NEXUS-INFALLIBLE-BUILD-REMOVED`, `V13-AI-DEPRECATED-REMOVED`, `V13-SECURITY-DEPRECATED-REMOVED`, `V13-QUEUE-PURGE-COMPLETED-REMOVED`, `V13-CONNECT-INFALLIBLE-NEW-REMOVED`, `V13-ROUTE-MARKER-REMOVED`, `V13-ORM-SCHEMA-DIFF-REMOVED` (the removal of every API still deprecated), `V13-ORM-SAVE-MODE`, `V13-AUTH-PASSKEYS-FEATURE` |
+| 13.0.0-alpha.6 | `V13-HEALTH-FRAMEWORK-VERSION` (a default change of the 13.0 freeze) |
+| 13.0.0-alpha.6 | `V13-HEALTH-PROBE-VERSION-FIELD` (a default change of the 13.0 freeze) |
+| 13.0.0-alpha.6 | `V13-CSRF-STATIC-PREFIXES` (a default change of the 13.0 freeze) |
+| 13.0.0-alpha.6 | `V13-CSRF-COOKIE-IN-PAGE` (the masked CSRF token) |
+| 13.0.0-alpha.6 | `V13-DEPLOY-CADDY-ENCODE` (compressed pages) |
+| 13.0.0-alpha.6 | `V13-ROUTER-BASELINE-LAYERS` (the baseline in every environment) |
+| 13.0.0-alpha.6 | `V13-MAIL-DEPRECATED-REMOVED` (an API still deprecated, removed) |
+| 13.0.0-alpha.6 | `V13-IOT-OTA-LEGACY-REMOVED` (an API still deprecated, removed) |
+| 13.0.0-alpha.6 | `V13-NEXUS-INFALLIBLE-BUILD-REMOVED` (an API still deprecated, removed) |
+| 13.0.0-alpha.6 | `V13-AI-DEPRECATED-REMOVED` (an API still deprecated, removed) |
+| 13.0.0-alpha.6 | `V13-SECURITY-DEPRECATED-REMOVED` (an API still deprecated, removed) |
+| 13.0.0-alpha.6 | `V13-QUEUE-PURGE-COMPLETED-REMOVED` (an API still deprecated, removed) |
+| 13.0.0-alpha.6 | `V13-CONNECT-INFALLIBLE-NEW-REMOVED` (an API still deprecated, removed) |
+| 13.0.0-alpha.6 | `V13-ROUTE-MARKER-REMOVED` (an API still deprecated, removed) |
+| 13.0.0-alpha.6 | `V13-ORM-SCHEMA-DIFF-REMOVED` (an API still deprecated, removed) |
+| 13.0.0-alpha.6 | `V13-ORM-SAVE-MODE` (the explicit ORM save mode) |
+| 13.0.0-alpha.6 | `V13-AUTH-PASSKEYS-FEATURE` (passkeys behind a feature) |
+| 13.0.0-alpha.6 | `V13-MEDIA-PROCESSING-MATCH` (Media's `Playable` state) |
 
 A rule is dated by the first release tag whose catalog contains its code
 (`git show v13.0.0-alpha.2:cargo-rullst/src/generators/build/upgrade/rules/catalog.rs`,
 or `git log -S'"V13-..."'` on that file), checked against the CHANGELOG entry
 that names it; a new rule takes the next release. Unit tests check that every
 rule names one of these releases and that this table lists each release's
-rules.
+rules. The release in preparation has one row per rule, so pull requests that
+add rules each add their own line.
 
 The plan takes the application's Rullst version to be the oldest version that
 a Rullst requirement in the workspace manifests admits (`=13.0.0-alpha.3`,
@@ -648,7 +666,7 @@ totals, which every new row or rule would change.
 | LMS concurrent progress saves | (b) review | `V13-LMS-RECORD-PROGRESS` | A `record_progress` function that uses `lesson_progress_events` and whose first SQL write is not the event insert; calls and routes that only name it are not reported |
 | LMS lesson media in Nexus | (b) review | `V13-LMS-MEDIA-KINDS` |  |
 | Blog robots and sitemap | (b) review | `V13-BLOG-ROBOTS-SITEMAP` |  |
-| Generated login and registration | (b) review | `V13-CREDENTIAL-RATE-LIMIT` | `hash_password`/`hash_password_async` calls outside `run_password_work` in a function without a semaphore permit, in a file whose code does not name `credential_rate_limit` (comments and strings do not count); migrations, seeds, `src/bin`, tests, benches, examples and test functions are not reported |
+| Generated login and registration | (b) review | `V13-CREDENTIAL-RATE-LIMIT` | `hash_password`/`hash_password_async` calls outside `run_password_work` in a function without a semaphore permit, in a file whose code does not name `credential_rate_limit` (comments and strings do not count); migrations, seeds, `src/bin`, tests, benches, examples and test functions are not reported. A call of the application's own `hash_password` (through `crate`, `self`, `super`, or a module or function the file imports from them or declares) is not reported when the package defines that function with its hashing under `run_password_work` or a semaphore permit (since 13.0.0-alpha.6); mark a limit the rule does not follow with `rullst-upgrade: reviewed V13-CREDENTIAL-RATE-LIMIT: <reason>` |
 | SaaS user JSON | (b) review | `V13-PASSWORD-HASH-HIDDEN` |  |
 | Registration timestamps | (b) review | `V13-EMPTY-TIMESTAMPS` |  |
 | Billing row timestamps | (b) review | `V13-EMPTY-TIMESTAMPS` |  |
@@ -763,6 +781,7 @@ totals, which every new row or rule would change.
 | ORM `schema_diff` removed | (a) must-change | `V13-ORM-SCHEMA-DIFF-REMOVED` | `rullst_orm::schema_diff` and `rullst::orm::schema_diff` paths, also in `use` trees, and `extract_tables_from_ast`, `ParsedTable` and `ParsedField` in files that name `schema_diff`, at every location; introduced in 13.0.0-alpha.6 (deprecated in 13.0.0-alpha.5) |
 | ORM explicit save mode | (a) must-change | `V13-ORM-SAVE-MODE` | Each `#[derive(Orm)]` or `#[derive(TursoModel)]` struct with neither or both of a `RowSnapshot` field and `#[orm(full_row_save)]`, and each Turso-primary one with a `RowSnapshot` field or without `full_row_save`, at its name; introduced in 13.0.0-alpha.6 |
 | Passkeys feature | (a) must-change | `V13-AUTH-PASSKEYS-FEATURE` | `rullst::auth::passkey` and `rullst_auth::passkey` paths (also through `auth::auth`, and `auth::passkey` in a file that names `rullst::auth` or `rullst_auth`) in `use` items, groups and code, at every location, when no workspace manifest enables `auth-passkeys`, `auth-sqlite` or `auth-passkey-postgres` on `rullst`, or `passkeys`, `sqlite` or `passkey-postgres` on `rullst-auth`, in a dependency or a `[features]` entry; introduced in 13.0.0-alpha.6 |
+| Media processing states | (a) must-change | `V13-MEDIA-PROCESSING-MATCH` | A `match` whose arm patterns name `AwaitingUpload` and that has no catch-all arm, in a file that names `rullst_media`; comparisons and `matches!` keep compiling; introduced in 13.0.0-alpha.6 |
 
 ## Planned simpler update experience
 

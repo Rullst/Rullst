@@ -239,14 +239,48 @@ pub struct ProviderBinding {
     pub environment: Reference,
 }
 
-/// Only Finished from the authoritative API maps to Ready. Webhook codes differ.
+/// A video's processing state, read from the provider's authoritative API.
+///
+/// Only Bunny's API status 4 (`Finished`) maps to `Ready`, and only 8
+/// (`JitPlaylistsCreated`) to `Playable`. Webhook status codes are a separate
+/// numbering and never set this state: a notification only triggers a refresh.
+/// `#[non_exhaustive]` since 13.0.0-alpha.6: match it with a wildcard arm.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Processing {
     AwaitingUpload,
     Processing,
+    /// Watchable before encoding finished (since 13.0.0-alpha.6): Bunny's
+    /// just-in-time encoding created the video's playlists (API status 8,
+    /// `JitPlaylistsCreated`), so Bunny's own player streams it while the
+    /// remaining encoding goes on. Bunny supports just-in-time playback only
+    /// in its player, so [`Processing::allows`] (and the `sqlite` feature's
+    /// `MediaService::playback`) grants only [`PlaybackKind::Embed`] for it.
+    /// Not finished: `Ready`
+    /// still means every resolution (and the MP4 fallback) is done.
+    Playable,
     Ready,
     Failed,
     Missing,
+}
+
+impl Processing {
+    /// Whether a viewer can watch the video now: `Ready`, or `Playable` in the
+    /// provider's own player ([`PlaybackKind::Embed`]). Since 13.0.0-alpha.6.
+    pub fn is_playable(self) -> bool {
+        matches!(self, Self::Ready | Self::Playable)
+    }
+
+    /// Whether this state allows a grant of `kind`: every kind when `Ready`,
+    /// only [`PlaybackKind::Embed`] when `Playable`, none otherwise. The MP4
+    /// fallback also needs [`RemoteVideo::mp4_720p`]. Since 13.0.0-alpha.6.
+    pub fn allows(self, kind: PlaybackKind) -> bool {
+        match self {
+            Self::Ready => true,
+            Self::Playable => kind == PlaybackKind::Embed,
+            _ => false,
+        }
+    }
 }
 
 /// Minimized provider response after identity/status/size validation.

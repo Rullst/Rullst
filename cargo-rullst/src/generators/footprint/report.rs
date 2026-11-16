@@ -19,6 +19,13 @@ pub(super) const NOTES: &[&str] = &[
     "This report is a measurement and an estimate, not a certification, an environmental claim or a comparison with other software; if you publish these figures, you are responsible for how you word them.",
 ];
 
+/// The notes of a published site's report, which holds only its page weight.
+pub(super) const REMOTE_NOTES: &[&str] = &[
+    "Only the page weight was measured: footprint fetched the published site's page and same-origin resources, and measured no binary, memory, CPU or dependency figure.",
+    "Page bytes are response bodies as the site sent them to this machine, compressed as served, without headers; a visitor elsewhere, a CDN cache in another state, cookies or a signed-in session can receive different bytes.",
+    "This report is a measurement, not a certification, an environmental claim or a comparison with other software; if you publish these figures, you are responsible for how you word them.",
+];
+
 /// A measured value with how it was obtained, or why it was not.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct Metric<T> {
@@ -97,7 +104,8 @@ impl Machine {
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct Target {
-    /// `release_build` (started by footprint) or `existing_url`.
+    /// `release_build` (started by footprint), `existing_url` or, for a
+    /// published `https://` site (page weight only), `remote_url`.
     pub mode: &'static str,
     /// `null` when the release build failed before a port was chosen.
     pub url: Option<String>,
@@ -119,6 +127,19 @@ pub(crate) struct Measured {
     /// The packages of `dependency_count` that Cargo compiles (v13,
     /// 13.0.0-alpha.6).
     pub compiled_dependency_count: Metric<u64>,
+}
+
+impl Measured {
+    /// Every figure not measured, for `reason`.
+    pub(super) fn unmeasured(reason: &'static str) -> Self {
+        Self {
+            binary_size_bytes: Metric::not_measured("bytes", reason),
+            image_size_bytes: Metric::not_measured("bytes", reason),
+            idle_rss_bytes: Metric::not_measured("bytes", reason),
+            dependency_count: Metric::not_measured("packages", reason),
+            compiled_dependency_count: Metric::not_measured("packages", reason),
+        }
+    }
 }
 
 /// The optional bounded load and the app's CPU time during it.

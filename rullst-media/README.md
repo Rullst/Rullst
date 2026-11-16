@@ -137,6 +137,7 @@ library key, the same timeouts, no redirects, one bounded GET retry and a 1 MiB
 response cap, and rejects a page whose library, page, size, status or dates
 violate the contract (`Protocol`). Offline (`mock_*`) mode lists a fixed sample
 library of three videos (ready, processing, failed) that `get` does not store.
+A listed status 8 is `Processing::Playable`, as for `get`.
 Listing does not grant ownership: the application decides who may see the
 library and which listed video becomes one of its assets. A thumbnail URL is a
 location, not a playback grant; under CDN token authentication it needs a
@@ -189,7 +190,21 @@ is reported explicitly and is never blindly retried as another POST.
 `upload` refreshes remote state before issuing a grant. Processing completion
 is independent of TUS byte acceptance. Show processing/failure state, allow
 `refresh` for missed notifications, and require the instructor's explicit
-`publish` after the API reports Ready. Completion webhooks never publish.
+`publish` after the API reports `Ready` or `Playable`. Completion webhooks
+never publish.
+
+`Processing` follows Bunny's API status (`VideoModelStatus`), never the
+webhook codes, which are a separate numbering and only trigger a refresh:
+0 is `AwaitingUpload`; 1 to 3 and 7 (`JitSegmenting`) are `Processing`;
+4 (`Finished`) is `Ready`; 5 and 6 are `Failed`. Since 13.0.0-alpha.6,
+8 (`JitPlaylistsCreated`) is `Playable`: with Bunny's just-in-time encoding
+(Premium Encoding) the playlists exist, so Bunny's player streams the video
+while the remaining encoding goes on. Bunny supports just-in-time playback
+only in its own player, so a `Playable` video is publishable and gets
+`PlaybackKind::Embed` grants, while `Hls` and `Mp4_720p` return
+`Unsupported` until it is `Ready`. `Processing::is_playable()` and
+`Processing::allows(kind)` give the same answers to an application.
+`Processing` is `#[non_exhaustive]`: match it with a wildcard arm.
 
 `playback` checks current entitlement, reads current provider readiness and
 fences local withdrawal/deletion in the transaction that issues a grant bounded
@@ -197,9 +212,10 @@ by permission expiry and at most 900 seconds. It is a read, not a leased
 mutation: concurrent viewers never wait for one another's provider reads or
 leases, and a failed, timed-out or dropped request leaves no durable intent. It records a changed observation
 only when the revision is unchanged and no lease is live; a video that is no
-longer ready withdraws publication. Rate-limit the playback route per actor.
-Supported kinds are `Embed`, directory-protected `Hls`, and `Mp4_720p` only when
-the current API reports both MP4 fallback and that resolution. Return the grant
+longer `Ready` or `Playable` withdraws publication. Rate-limit the playback
+route per actor. Supported kinds are `Embed`, directory-protected `Hls`, and
+`Mp4_720p` only when the current API reports both MP4 fallback and that
+resolution; a `Playable` video gets only `Embed`. Return the grant
 using a private `Cache-Control: no-store` response and `Referrer-Policy: no-referrer`;
 never log its URL. Renew through the same authenticated endpoint before expiry.
 The host must handle an expired player gracefully and choose a TTL appropriate

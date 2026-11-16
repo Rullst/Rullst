@@ -8,6 +8,7 @@ mod budget;
 mod failures;
 mod page_weight;
 mod production;
+mod remote;
 mod run;
 pub(super) mod support;
 

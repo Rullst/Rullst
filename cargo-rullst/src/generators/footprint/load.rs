@@ -9,6 +9,10 @@ pub(super) const METHOD: &str = "closed loop: each connection sends the next GET
 /// What every measuring request accepts, as a current browser does.
 pub(super) const ACCEPT_ENCODING: &str = "zstd, br, gzip";
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
+/// Connecting to a published site, TLS included.
+const REMOTE_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
+/// How footprint names itself to a published site.
+const USER_AGENT: &str = concat!("cargo-rullst-footprint/", env!("CARGO_PKG_VERSION"));
 
 /// What one benchmark run observed.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -40,6 +44,27 @@ pub(super) fn client() -> reqwest::Result<reqwest::Client> {
         .redirect(reqwest::redirect::Policy::none())
         .timeout(REQUEST_TIMEOUT)
         .build()
+}
+
+/// The client that weighs a published site's `https://` page: like
+/// [`client`] it follows no redirect and never decompresses a body, so it
+/// counts the bytes the site sends; it refuses plain `http://`, uses the
+/// system's proxy settings and names itself in `User-Agent`.
+pub(super) fn remote_client() -> reqwest::Result<reqwest::Client> {
+    remote_builder().https_only(true).build()
+}
+
+/// [`remote_client`] without the HTTPS-only rule, which loopback tests need.
+fn remote_builder() -> reqwest::ClientBuilder {
+    reqwest::Client::builder()
+        .no_gzip()
+        .no_brotli()
+        .no_zstd()
+        .no_deflate()
+        .redirect(reqwest::redirect::Policy::none())
+        .connect_timeout(REMOTE_CONNECT_TIMEOUT)
+        .timeout(REQUEST_TIMEOUT)
+        .user_agent(USER_AGENT)
 }
 
 /// The response's `Content-Encoding`, `identity` when it has none.
@@ -146,6 +171,28 @@ mod tests {
         });
         assert_eq!(status.as_u16(), 302);
         assert_eq!(server.paths(), ["/redirect"]);
+    }
+
+    #[test]
+    fn the_remote_client_counts_like_the_local_one_and_refuses_plain_http() {
+        let server = TestServer::start();
+        let refused = block_on(remote_client().unwrap().get(server.url("/")).send());
+        assert!(refused.is_err(), "{refused:?}");
+        assert!(server.paths().is_empty());
+        let client = remote_builder().build().unwrap();
+        let (status, body) = block_on(async {
+            let redirect = client.get(server.url("/redirect")).send().await.unwrap();
+            let compressed = client.get(server.url("/compressed")).send().await.unwrap();
+            (redirect.status(), compressed.bytes().await.unwrap())
+        });
+        assert_eq!(status.as_u16(), 302);
+        // The five bytes labelled `br` are not decoded.
+        assert_eq!(body.len(), 5);
+        assert_eq!(server.paths(), ["/redirect", "/compressed"]);
+        let agent = format!("cargo-rullst-footprint/{}", env!("CARGO_PKG_VERSION"));
+        for request in server.requests() {
+            assert_eq!(request.header("user-agent"), Some(agent.as_str()));
+        }
     }
 
     #[test]

@@ -3,7 +3,9 @@
 //! on a repeat visit (the cache the first visit left, per [`cache`]).
 //! Responses are counted as served, compressed when the app compresses
 //! them, without HTTP headers. Third-party origins are listed, never
-//! fetched, so every request stays on the validated loopback origin.
+//! fetched, so every request stays on the validated origin: the app's
+//! loopback origin, or a published site's `https://` origin. The bounds
+//! below hold for both.
 mod cache;
 mod scan;
 
@@ -11,7 +13,7 @@ use cache::{CacheHeaders, Reuse, Validators};
 use scan::{Kind, Reference};
 use serde::Serialize;
 use std::collections::{BTreeSet, HashSet, VecDeque};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 pub(super) const METHOD: &str = "GET of the page and of the same-origin stylesheets, scripts, fonts, images, icons and manifest it references (with the stylesheets' url() and @import), each once, with Accept-Encoding: zstd, br, gzip; bytes are response bodies as served, without headers. The repeat visit reuses a response while Cache-Control max-age (or Expires) keeps it fresh, revalidates it with If-None-Match or If-Modified-Since when it has a validator, and fetches it again otherwise.";
 /// Same-origin responses fetched per visit, redirects included.
@@ -20,6 +22,15 @@ pub(super) const MAX_RESOURCES: usize = 200;
 const MAX_PARSE_BYTES: usize = 4 * 1024 * 1024;
 /// Levels of `@import` followed from the page's stylesheets.
 const MAX_STYLESHEET_DEPTH: usize = 3;
+/// Bytes read of one response; a larger one is an error, left out of the
+/// totals.
+const MAX_RESPONSE_BYTES: u64 = 32 * 1024 * 1024;
+/// Bytes the first visit reads; the references still queued are not fetched.
+const MAX_VISIT_BYTES: u64 = 256 * 1024 * 1024;
+/// Redirects followed in a row from one reference.
+const MAX_REDIRECTS: usize = 5;
+/// How long both visits may take; what is left is not fetched.
+const MAX_WEIGH_TIME: Duration = Duration::from_secs(180);
 
 /// The totals of one visit.
 #[derive(Clone, Debug, Default, PartialEq, Serialize)]
@@ -70,7 +81,8 @@ pub(crate) struct PageWeight {
     /// Distinct third-party URLs the page would load (connection hints such
     /// as `preconnect` only add their origin).
     pub third_party_references: u64,
-    /// Same-origin references left out by the bound on resources.
+    /// Same-origin references left out by a bound: 200 responses, 256 MiB,
+    /// five redirects in a row or 180 seconds.
     pub unfetched: u64,
 }
 
@@ -155,6 +167,9 @@ async fn get(
     let mut body = Vec::new();
     while let Some(chunk) = response.chunk().await.map_err(|error| error.to_string())? {
         bytes = bytes.saturating_add(chunk.len() as u64);
+        if bytes > MAX_RESPONSE_BYTES {
+            return Err("the response exceeds 32 MiB; footprint stopped reading it".into());
+        }
         if keep {
             let room = MAX_PARSE_BYTES.saturating_sub(body.len());
             body.extend_from_slice(&chunk[..chunk.len().min(room)]);
@@ -184,16 +199,26 @@ struct Crawl<'a> {
     client: &'a reqwest::Client,
     origin: reqwest::Url,
     seen: HashSet<String>,
-    queue: VecDeque<(reqwest::Url, Kind, usize)>,
+    /// The URL, its kind, its reference depth and the redirects that led to it.
+    queue: VecDeque<(reqwest::Url, Kind, usize, usize)>,
     entries: Vec<Entry>,
+    /// Body bytes the first visit has read.
+    read: u64,
     third_party: BTreeSet<String>,
     third_party_urls: HashSet<String>,
     unfetched: u64,
 }
 
 impl Crawl<'_> {
-    /// Queues `reference` as written in the document or stylesheet at `from`.
-    fn reference(&mut self, from: &reqwest::Url, reference: &Reference, depth: usize) {
+    /// Queues `reference` as written in the document or stylesheet at `from`,
+    /// or as the `Location` of the `redirects`-th redirect in a row.
+    fn reference(
+        &mut self,
+        from: &reqwest::Url,
+        reference: &Reference,
+        depth: usize,
+        redirects: usize,
+    ) {
         let Ok(mut url) = from.join(&reference.url) else {
             return;
         };
@@ -209,7 +234,8 @@ impl Crawl<'_> {
             return;
         }
         if reference.kind != Kind::Connection && self.seen.insert(url.to_string()) {
-            self.queue.push_back((url, reference.kind, depth));
+            self.queue
+                .push_back((url, reference.kind, depth, redirects));
         }
     }
 
@@ -225,7 +251,7 @@ impl Crawl<'_> {
             .and_then(|response| response.text)
     }
 
-    async fn visit(&mut self, url: reqwest::Url, kind: Kind, depth: usize) {
+    async fn visit(&mut self, url: reqwest::Url, kind: Kind, depth: usize, redirects: usize) {
         let parse = (kind == Kind::Document && depth == 0)
             || (kind == Kind::Stylesheet && depth <= MAX_STYLESHEET_DEPTH);
         let path = match url.query() {
@@ -260,14 +286,19 @@ impl Crawl<'_> {
         resource.content_type = response.content_type.clone();
         resource.content_encoding = response.content_encoding.clone();
         resource.bytes = Some(response.bytes);
+        self.read = self.read.saturating_add(response.bytes);
         if (300..400).contains(&response.status)
             && let Some(location) = response.location.clone()
         {
-            let target = Reference {
-                url: location,
-                kind,
-            };
-            self.reference(&url, &target, depth);
+            if redirects < MAX_REDIRECTS {
+                let target = Reference {
+                    url: location,
+                    kind,
+                };
+                self.reference(&url, &target, depth, redirects + 1);
+            } else {
+                self.unfetched += 1;
+            }
         } else if parse
             && (200..300).contains(&response.status)
             && let Some(text) = self.text(&url, &mut response).await
@@ -285,12 +316,12 @@ impl Crawl<'_> {
                         .and_then(|base| url.join(base).ok())
                         .unwrap_or_else(|| url.clone());
                     for reference in &page.references {
-                        self.reference(&base, reference, depth + 1);
+                        self.reference(&base, reference, depth + 1, 0);
                     }
                 }
             } else {
                 for reference in scan::css(&text) {
-                    self.reference(&url, &reference, depth + 1);
+                    self.reference(&url, &reference, depth + 1, 0);
                 }
             }
         }
@@ -301,8 +332,8 @@ impl Crawl<'_> {
         });
     }
 
-    /// The repeat visit of every first-visit response.
-    async fn repeat(&mut self) -> Visit {
+    /// The repeat visit of every first-visit response, until `deadline`.
+    async fn repeat(&mut self, deadline: Instant) -> Visit {
         let mut visit = Visit {
             bytes: Some(0),
             requests: Some(0),
@@ -313,6 +344,13 @@ impl Crawl<'_> {
             *total = Some(total.unwrap_or(0).saturating_add(amount));
         };
         for entry in &mut self.entries {
+            if Instant::now() >= deadline {
+                entry.resource.repeat = "error";
+                entry.resource.error.get_or_insert_with(|| {
+                    "not revisited: the 180-second limit was reached".into()
+                });
+                continue;
+            }
             let reuse = entry
                 .reuse
                 .as_ref()
@@ -352,38 +390,60 @@ impl Crawl<'_> {
     }
 }
 
-/// Measures the page at `path` on `base`, the app's loopback origin.
+/// Measures the page at `path` on `base`, the validated origin.
 pub(super) async fn measure(
     client: &reqwest::Client,
     base: &reqwest::Url,
     path: &str,
+) -> PageWeight {
+    measure_until(client, base, path, Instant::now() + MAX_WEIGH_TIME).await
+}
+
+/// [`measure`], stopping both visits at `deadline`.
+pub(super) async fn measure_until(
+    client: &reqwest::Client,
+    base: &reqwest::Url,
+    path: &str,
+    deadline: Instant,
 ) -> PageWeight {
     let start = super::target::request_url(base, path);
     let mut crawl = Crawl {
         client,
         origin: base.clone(),
         seen: HashSet::from([start.to_string()]),
-        queue: VecDeque::from([(start, Kind::Document, 0)]),
+        queue: VecDeque::from([(start, Kind::Document, 0, 0)]),
         entries: Vec::new(),
+        read: 0,
         third_party: BTreeSet::new(),
         third_party_urls: HashSet::new(),
         unfetched: 0,
     };
-    while let Some((url, kind, depth)) = crawl.queue.pop_front() {
-        if crawl.entries.len() >= MAX_RESOURCES {
-            crawl.unfetched = 1 + crawl.queue.len() as u64;
+    while let Some((url, kind, depth, redirects)) = crawl.queue.pop_front() {
+        if crawl.entries.len() >= MAX_RESOURCES
+            || crawl.read >= MAX_VISIT_BYTES
+            || Instant::now() >= deadline
+        {
+            crawl.unfetched += 1 + crawl.queue.len() as u64;
             break;
         }
-        crawl.visit(url, kind, depth).await;
+        crawl.visit(url, kind, depth, redirects).await;
     }
-    if let Some(Entry {
-        resource: Resource {
-            error: Some(error), ..
-        },
-        ..
-    }) = crawl.entries.first()
-    {
-        return PageWeight::unmeasured("not_measured", format!("GET {path} failed: {error}"));
+    match crawl.entries.first() {
+        None => {
+            return PageWeight::unmeasured(
+                "not_measured",
+                format!("GET {path} was not sent: the 180-second limit was reached"),
+            );
+        }
+        Some(Entry {
+            resource: Resource {
+                error: Some(error), ..
+            },
+            ..
+        }) => {
+            return PageWeight::unmeasured("not_measured", format!("GET {path} failed: {error}"));
+        }
+        Some(_) => {}
     }
     let first_visit = Visit {
         bytes: Some(
@@ -397,7 +457,7 @@ pub(super) async fn measure(
         from_cache: None,
         not_modified: None,
     };
-    let repeat_visit = crawl.repeat().await;
+    let repeat_visit = crawl.repeat(deadline).await;
     PageWeight {
         status: "measured",
         reason: None,

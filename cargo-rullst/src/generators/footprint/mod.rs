@@ -20,8 +20,10 @@
 //!
 //! Without `--url` it builds the project's release binary (reusing an
 //! existing build), starts it in production mode (or `--env staging`) on a
-//! free loopback port, measures it and stops it. With `--url` it measures an
-//! app already running on loopback. The process exits 0 whenever the
+//! free loopback port, measures it and stops it. With `--url http://…` it
+//! measures an app already running on loopback. With `--url https://…` it
+//! weighs a published site's page (`--page-weight`, nothing else): no
+//! process, binary, memory, CPU or dependency figure. The process exits 0 whenever the
 //! measurement ran. When the build fails or the app does not start or
 //! answer, the report still carries the figures that need no running app,
 //! with the failure inside, and the process exits 1.
@@ -65,6 +67,9 @@ const BUDGET_DOCS: &str = "https://rullst.github.io/Rullst/book/footprint.html#b
 
 pub(crate) fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
     let options = Options::from_matches(matches);
+    if let Some(conflict) = options.remote_conflict() {
+        return Err(conflict.into());
+    }
     // A budget that cannot be used stops the run before anything is built.
     let budget = options
         .budget
@@ -100,17 +105,24 @@ pub(crate) fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
 }
 
 async fn measure(options: &Options) -> Result<Report, Box<dyn Error>> {
-    let client = load::client()?;
+    let remote = options.url.as_ref().is_some_and(target::is_remote);
+    let client = if remote {
+        load::remote_client()?
+    } else {
+        load::client()?
+    };
     let mut subject = match &options.url {
+        Some(base) if remote => subject::remote(base, &options.path),
         Some(base) => subject::existing(&client, base, &options.path).await?,
         None => subject::spawned(&client, &options.path, options.environment).await?,
     };
     let pid = subject.target.pid;
     let idle_rss = pid.and_then(process::rss_bytes);
-    let unmeasured = subject
-        .failure
-        .as_ref()
-        .map_or_else(|| process_reason(pid), Failure::unmeasured);
+    let unmeasured = match &subject.failure {
+        _ if remote => subject::REMOTE,
+        Some(failure) => failure.unmeasured(),
+        None => process_reason(pid),
+    };
     let page_weight = match (options.page_weight, &subject.base) {
         (true, Some(base)) => {
             if !options.json {
@@ -124,6 +136,13 @@ async fn measure(options: &Options) -> Result<Report, Box<dyn Error>> {
         (true, None) => PageWeight::unmeasured("not_measured", unmeasured),
         (false, _) => PageWeight::unmeasured("not_run", "no page was weighed; pass --page-weight"),
     };
+    // A published site that did not answer fails the run, as an
+    // unreachable --url does.
+    if remote && page_weight.status != "measured" {
+        let url = subject.target.url.clone().unwrap_or_default();
+        let reason = page_weight.reason.clone().unwrap_or_default();
+        subject.failure = Some(Failure::remote(&url, &reason));
+    }
     let benchmark = if let (true, Some(base)) = (options.bench, &subject.base) {
         let url = target::request_url(base, &options.path);
         if !options.json {
@@ -144,7 +163,7 @@ async fn measure(options: &Options) -> Result<Report, Box<dyn Error>> {
             &outcome,
             cpu_time(before, after).ok_or_else(|| process_reason(pid)),
         )
-    } else if options.bench {
+    } else if options.bench || remote {
         Benchmark::not_run(unmeasured)
     } else {
         Benchmark::not_run("no benchmark ran; pass --bench")
@@ -152,18 +171,24 @@ async fn measure(options: &Options) -> Result<Report, Box<dyn Error>> {
     if let Some(app) = subject.owned.as_mut() {
         app.stop();
     }
-    let measured = Measured {
-        binary_size_bytes: match (&subject.failure, subject.executable.as_deref()) {
-            (Some(failure), None) => Metric::not_measured("bytes", failure.unmeasured()),
-            (_, executable) => artifacts::binary_size(executable, subject.executable_method),
-        },
-        image_size_bytes: artifacts::image_size(options.image.as_deref()),
-        idle_rss_bytes: match idle_rss {
-            Some(bytes) => Metric::measured(bytes, "bytes", process::METHODS.rss),
-            None => Metric::not_measured("bytes", unmeasured),
-        },
-        dependency_count: artifacts::dependency_count(&std::env::current_dir()?),
-        compiled_dependency_count: compiled::compiled_dependency_count(&std::env::current_dir()?),
+    let measured = if remote {
+        Measured::unmeasured(subject::REMOTE)
+    } else {
+        Measured {
+            binary_size_bytes: match (&subject.failure, subject.executable.as_deref()) {
+                (Some(failure), None) => Metric::not_measured("bytes", failure.unmeasured()),
+                (_, executable) => artifacts::binary_size(executable, subject.executable_method),
+            },
+            image_size_bytes: artifacts::image_size(options.image.as_deref()),
+            idle_rss_bytes: match idle_rss {
+                Some(bytes) => Metric::measured(bytes, "bytes", process::METHODS.rss),
+                None => Metric::not_measured("bytes", unmeasured),
+            },
+            dependency_count: artifacts::dependency_count(&std::env::current_dir()?),
+            compiled_dependency_count: compiled::compiled_dependency_count(
+                &std::env::current_dir()?
+            ),
+        }
     };
     let production = match &options.monitor_url {
         Some(url) => {
@@ -200,7 +225,11 @@ async fn measure(options: &Options) -> Result<Report, Box<dyn Error>> {
         production,
         sci_estimate,
         budgets: budget::Budgets::not_checked(),
-        notes: report::NOTES,
+        notes: if remote {
+            report::REMOTE_NOTES
+        } else {
+            report::NOTES
+        },
         failure: subject.failure,
     })
 }

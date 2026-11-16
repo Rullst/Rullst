@@ -319,6 +319,7 @@ before those.
 | ORM `schema_diff` removed | **Breaking**, from 13.0.0-alpha.6 (deprecated in 13.0.0-alpha.5, first announced for removal in 14.0): `rullst_orm::schema_diff` (`extract_tables_from_ast`, `ParsedTable`, `ParsedField`) was removed with its `syn` and `walkdir` dependencies, which every application with the ORM built. Nothing in Rullst called it, and it has no library replacement: write a migration from the models with `cargo rullst make:migration:auto`, or read their tables and columns with `cargo rullst inspect schema --json`. `cargo rullst upgrade` reports each use (`V13-ORM-SCHEMA-DIFF-REMOVED`). |
 | ORM explicit save mode | **Breaking**, from 13.0.0-alpha.6: every `#[derive(Orm)]` and `#[derive(TursoModel)]` model declares what `save()` writes to a stored row, or fails to compile with an error that shows both choices. A `#[sqlx(skip)] pub snapshot: RowSnapshot` field (`rullst::orm::RowSnapshot`) writes only the columns that changed since the record was read (see ORM dirty tracking); `#[orm(full_row_save)]` on the struct writes every column, which is what a model without the field did until 13.0.0-alpha.5. A full-row save loses updates: when two requests read the same row and change different fields, the later `save()` writes the earlier request's field back as it read it (a student's profile edit erases the XP awarded meanwhile). Prefer the field: struct literals then add `snapshot: RowSnapshot::default()`, and a model that derives Serde marks it `#[serde(skip)]`. Keep `full_row_save` only for a model whose code relies on overwriting the whole row, or call `mark_all_dirty()` before those saves instead. A model with both choices fails too. Turso-primary models always write every column: they declare `#[orm(full_row_save)]`, and a `RowSnapshot` field on them, which they ignored, no longer compiles. `cargo rullst upgrade` reports each model without a valid choice at its struct name. The models the CLI writes have declared the field since 13.0.0-alpha.3; its Turso models (`make:model`, `make:chat-session` and the Turso Blank starter) now declare `full_row_save`, and `generate:models` names the field `row_snapshot` for a table that has a `snapshot` column. |
 | Passkeys feature | **Breaking**, from 13.0.0-alpha.6: `rullst-auth`'s `auth::passkey` module (`PasskeyAuth`, `PasskeyConfig`, `Passkey`, the shared ceremony manager and `SqlitePasskeyStore`) and aws-lc-rs, which checks the ES256 keys and signatures, are compiled only with the new `passkeys` feature, so an application without passkeys builds neither. `sqlite` and `passkey-postgres` include it. In the `rullst` facade, `auth` no longer brings passkeys: enable `auth-passkeys` (`auth-sqlite` and `auth-passkey-postgres` include it). Nexus and the generated starters use no passkeys and do not enable it. The decisions are unchanged: aws-lc-rs replaced `p256` (the public-key check) and `ring` (the signature check) with the same results on differential tests and on the Wycheproof ECDSA P-256 vectors, and high-S signatures are still accepted. Without the feature, code that names `auth::passkey` fails with E0432 or E0433 ("could not find `passkey` in `auth`"); `cargo rullst upgrade` locates it when no manifest of the workspace enables passkeys (`V13-AUTH-PASSKEYS-FEATURE`). No other API changes. |
+| Media processing states | **Breaking**, from 13.0.0-alpha.6 (`rullst-media`): `Processing` is `#[non_exhaustive]` and gained `Playable`. Bunny's API status 8 (`JitPlaylistsCreated`, just-in-time encoding with Premium Encoding) maps to `Playable` instead of `Processing`: its playlists exist, so Bunny's player streams the video while encoding goes on. Status 7 (`JitSegmenting`) stays `Processing`, because the first segments do not exist yet, and `Ready` still means status 4 (`Finished`). Bunny supports just-in-time playback only in its own player, so `MediaService` publishes a `Playable` video and grants it only `PlaybackKind::Embed`; `Hls` and `Mp4_720p` return `MediaError::Unsupported` until it is `Ready`. A published video whose next read is neither `Playable` nor `Ready` is withdrawn, as a `Ready` one was. Webhook status codes are a different numbering and still only trigger a refresh. A `match` on `Processing` outside `rullst-media` needs a wildcard arm; `Processing::is_playable()` and `Processing::allows(kind)` answer whether a video can be watched now and with which kind. `cargo rullst upgrade` reports each exhaustive `match` (`V13-MEDIA-PROCESSING-MATCH`). Reported by the plataforma application. |
 
 The [12.0→12.1 guide](migration-v12-1.md) still applies to applications that have
 not adopted the 12.1 account, payment and deployment changes. Skipping directly
@@ -1043,8 +1044,9 @@ Work through the steps in order.
    - `MUST-CHANGE`: `V13-MAIL-DEPRECATED-REMOVED`,
      `V13-SECURITY-DEPRECATED-REMOVED`, `V13-CONNECT-INFALLIBLE-NEW-REMOVED`,
      `V13-ROUTE-MARKER-REMOVED` and `V13-ORM-SCHEMA-DIFF-REMOVED` (step 5),
-     `V13-ORM-SAVE-MODE` (step 6), `V13-AUTH-PASSKEYS-FEATURE` (step 7) and
-     `V13-HEALTH-PROBE-VERSION-FIELD` (step 8).
+     `V13-ORM-SAVE-MODE` (step 6), `V13-AUTH-PASSKEYS-FEATURE` (step 7),
+     `V13-HEALTH-PROBE-VERSION-FIELD` (step 8) and
+     `V13-MEDIA-PROCESSING-MATCH` (step 17).
    - `REVIEW`: `V13-IOT-OTA-LEGACY-REMOVED`,
      `V13-NEXUS-INFALLIBLE-BUILD-REMOVED`, `V13-AI-DEPRECATED-REMOVED` and
      `V13-QUEUE-PURGE-COMPLETED-REMOVED` (step 5, review findings because
@@ -1053,14 +1055,14 @@ Work through the steps in order.
      (step 10), `V13-CSRF-STATIC-PREFIXES` (step 11), `V13-CSRF-COOKIE-IN-PAGE`
      (step 12) and `V13-DEPLOY-CADDY-ENCODE` (step 15).
 
-   The changes of steps 9, 13, 14, 16 and 17 have no rule: read them even
+   The changes of steps 9, 13, 14, 16 and 18 have no rule: read them even
    when the plan is empty.
 4. **Apply, keeping a failed state.** Code that uses the removed APIs, a
    model without a save mode or passkeys without the feature does not compile
    against alpha.6. Run `cargo rullst upgrade --keep-on-failure`: it pins
    every Rullst dependency to `=13.0.0-alpha.6`, runs `cargo fix` and
    `cargo check --locked`, and, when they fail, keeps the edited files and
-   names the must-change findings. Fix what steps 5 to 8 name; without a
+   names the must-change findings. Fix what steps 5 to 8 and 17 name; without a
    `MUST-CHANGE` finding, a plain `cargo rullst upgrade` is enough.
 5. **Replace the removed deprecated APIs.** Each was deprecated in 12.0.0
    (`schema_diff` in 13.0.0-alpha.5) and has a replacement that reports a
@@ -1210,7 +1212,15 @@ Work through the steps in order.
     follow the Server-side login sessions row: it is opt-in, and cookies
     issued before the switch are refused unless you accept both kinds for
     their remaining lifetime.
-17. **Dependencies and feature graphs** (no rule).
+17. **Handle the media `Playable` state** (Media processing states row,
+    `V13-MEDIA-PROCESSING-MATCH`). `rullst-media`'s `Processing` is
+    `#[non_exhaustive]` and gained `Playable`, Bunny's API status 8
+    (`JitPlaylistsCreated`), which alpha.5 reported as `Processing`. Add a
+    wildcard arm to each `match` on it, and show `Playable` as watchable in
+    Bunny's embedded player (`PlaybackKind::Embed`) and as processing for
+    HLS or MP4 playback, or use `processing.allows(kind)`. `MediaService`
+    now publishes a `Playable` video; `Ready` still means finished.
+18. **Dependencies and feature graphs** (no rule).
     - `cargo rullst make:cors-jwt` middleware generated earlier keeps the
       `jsonwebtoken` 11 its project declares. To move it to 12, the version
       `rullst-connect` and `rullst-auth` (`jwt`) now use, handle the
@@ -1231,13 +1241,13 @@ Work through the steps in order.
       them. An application whose own code makes rustls connections and
       relied on `orm` installing aws-lc-rs as the process default enables
       the facade's `tls` feature (TLS stack of SQLite-only builds row).
-18. **Update scripts, CI and other tools.** Where a workflow or script
+19. **Update scripts, CI and other tools.** Where a workflow or script
     installs a pinned CLI (`cargo install cargo-rullst --version
     =13.0.0-alpha.5`), pin `=13.0.0-alpha.6`. Check the health-probe scripts
     of step 8 and any client that posts to the development server (step 10).
-19. **Validate.** Run `cargo rullst upgrade` again. It makes no further version
+20. **Validate.** Run `cargo rullst upgrade` again. It makes no further version
     edits and checks the result with `cargo fix` and `cargo check --locked`.
-20. **Verify** with the production feature set: `cargo build`, `cargo test`
+21. **Verify** with the production feature set: `cargo build`, `cargo test`
     and `cargo clippy --all-targets -- -D warnings`; then, on staging, sign-in
     and sign-out, every form and htmx request (CSRF), every page with the
     browser's developer console open to catch CSP violations, the health

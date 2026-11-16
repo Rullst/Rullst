@@ -277,8 +277,8 @@ rules! {
         "`robots.txt`/`sitemap.xml` advertise relative URLs that crawlers reject",
         "Copy `public_origin`, `path_segment`, `robots_txt` and `sitemap_xml` from a new Blog project and set `RULLST_PUBLIC_ORIGIN`.";
     CREDENTIAL_RATE_LIMIT: "V13-CREDENTIAL-RATE-LIMIT", Review, "13.0.0-alpha.1", "Generated login and registration",
-        "password hashing in this request code runs outside `run_password_work` or another bounded Argon2 permit, and this file applies no `credential_rate_limit`",
-        "Copy the bounded hashing (`run_password_work`) and `credential_rate_limit` changes and apply them to `POST /login` and `/register`.";
+        "password hashing in this request code runs outside `run_password_work` or another bounded Argon2 permit, and this file applies no `credential_rate_limit`; when the limit lives in another module that this rule does not follow, put `// rullst-upgrade: reviewed V13-CREDENTIAL-RATE-LIMIT: <reason>` on the line above the call",
+        "Copy the bounded hashing (`run_password_work`) and `credential_rate_limit` changes and apply them to `POST /login` and `/register`. A call of the application's own `hash_password` already counts as bounded when the package defines it with its hashing under `run_password_work` or a semaphore permit.";
     PASSWORD_HASH_HIDDEN: "V13-PASSWORD-HASH-HIDDEN", Review, "13.0.0-alpha.1", "SaaS user JSON",
         "`password_hash` is not `#[orm(hidden)]`, so `to_json()`, audit rows and model events carry the hash",
         "Add `#[orm(hidden)]` to the field.";
@@ -525,6 +525,9 @@ rules! {
     PASSKEYS_FEATURE: "V13-AUTH-PASSKEYS-FEATURE", MustChange, "13.0.0-alpha.6", "Passkeys feature",
         "this code uses Rullst's passkeys (`auth::passkey`), which since 13.0.0-alpha.6 compile only with `rullst-auth`'s `passkeys` feature, and no manifest here enables it",
         "Enable `auth-passkeys` on `rullst` (`auth-sqlite` and `auth-passkey-postgres` include it), or `passkeys` on a direct `rullst-auth` dependency (`sqlite` and `passkey-postgres` include it).";
+    MEDIA_PROCESSING_MATCH: "V13-MEDIA-PROCESSING-MATCH", MustChange, "13.0.0-alpha.6", "Media processing states",
+        "`rullst-media`'s `Processing` is `#[non_exhaustive]` since 13.0.0-alpha.6 and gained `Playable`, which Bunny's API status 8 (`JitPlaylistsCreated`, formerly `Processing`) now maps to; a `match` on it without a wildcard arm no longer compiles",
+        "Add an arm for `Processing::Playable` and a wildcard arm (`_ => ...`). `Playable` streams in Bunny's player before encoding finishes: show it as watchable where you embed that player (`PlaybackKind::Embed`) and as processing elsewhere; `Ready` still means finished. `processing.is_playable()` and `processing.allows(kind)` answer both questions without a `match`.";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer

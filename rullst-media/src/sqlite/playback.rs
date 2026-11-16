@@ -85,9 +85,10 @@ impl<P: VideoProvider, C: Clock> MediaService<P, C> {
         until: i64,
     ) -> Result<PlaybackGrant, Error> {
         let remote = remote
-            .filter(|remote| remote.processing == Processing::Ready)
+            .filter(|remote| remote.processing.is_playable())
             .ok_or(Error::Denied)?;
-        if kind == PlaybackKind::Mp4_720p && !remote.mp4_720p {
+        // A `Playable` video streams only in the provider's own player.
+        if !remote.processing.allows(kind) || (kind == PlaybackKind::Mp4_720p && !remote.mp4_720p) {
             return Err(Error::Unsupported);
         }
         let ttl = bounded_ttl(now, until, ttl, 900)?;
@@ -100,7 +101,7 @@ impl<P: VideoProvider, C: Clock> MediaService<P, C> {
 }
 
 fn grantable(asset: &Asset) -> bool {
-    asset.lifecycle == Lifecycle::Active && asset.published && asset.processing == Processing::Ready
+    asset.lifecycle == Lifecycle::Active && asset.published && asset.processing.is_playable()
 }
 
 /// Applies an authoritative read; returns whether any recorded field changed.
@@ -123,7 +124,7 @@ fn observe(record: &mut Record, remote: Option<&RemoteVideo>) -> bool {
             asset.mp4_720p = false;
         }
     }
-    if asset.processing != Processing::Ready {
+    if !asset.processing.is_playable() {
         asset.published = false;
     }
     previous

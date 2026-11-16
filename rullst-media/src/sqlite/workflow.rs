@@ -197,7 +197,7 @@ impl<P: VideoProvider, C: Clock> MediaService<P, C> {
             record.asset.processing = remote.processing;
             record.asset.length_seconds = remote.length_seconds;
             record.asset.mp4_720p = remote.mp4_720p;
-            if remote.processing != Processing::Ready {
+            if !remote.processing.is_playable() {
                 record.asset.published = false;
             }
             if kind == Kind::Create {

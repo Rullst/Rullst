@@ -85,8 +85,10 @@ async fn provider_lifecycle_validates_distinct_api_statuses_and_response_identit
         (4, Processing::Ready),
         (5, Processing::Failed),
         (6, Processing::Failed),
+        // Bunny's just-in-time encoding: segmenting (7) is not watchable
+        // yet; once the playlists exist (8) Bunny's player streams it.
         (7, Processing::Processing),
-        (8, Processing::Processing),
+        (8, Processing::Playable),
     ] {
         fixture
             .remote
