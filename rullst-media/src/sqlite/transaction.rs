@@ -143,3 +143,7 @@ impl<'a, C: Clock> Operation<'a, C> {
         Ok(())
     }
 }
+
+#[cfg(test)]
+#[path = "transaction_tests.rs"]
+mod tests;

@@ -127,3 +127,67 @@ pub(super) struct Status {
     pub success: bool,
     pub status_code: u16,
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn checked(changes: serde_json::Value) -> Result<RemoteVideo, Error> {
+        let mut video = json!({
+            "videoLibraryId": 7,
+            "guid": "12345678-1234-4234-8234-000000000001",
+            "title": "marker",
+            "status": 4,
+            "length": 12,
+            "hasMP4Fallback": true,
+            "availableResolutions": "720p",
+        });
+        for (key, value) in changes.as_object().unwrap() {
+            video[key] = value.clone();
+        }
+        serde_json::from_value::<Video>(video)
+            .unwrap()
+            .checked(LibraryId::new(7).unwrap())
+    }
+
+    fn tags(tags: serde_json::Value) -> Result<RemoteVideo, Error> {
+        checked(json!({ "metaTags": tags }))
+    }
+
+    #[test]
+    fn resolution_lists_are_bounded_at_128_bytes() {
+        let longest = format!("720p,{}", "x".repeat(123));
+        assert_eq!(longest.len(), 128);
+        assert!(
+            checked(json!({ "availableResolutions": longest }))
+                .unwrap()
+                .mp4_720p
+        );
+        assert_eq!(
+            checked(json!({ "availableResolutions": format!("{longest}x") })),
+            Err(Error::Protocol)
+        );
+    }
+
+    #[test]
+    fn meta_tags_are_validated_one_rule_at_a_time() {
+        let video = tags(json!([
+            { "property": "p".repeat(100), "value": "v".repeat(4096) },
+            { "property": "description", "value": "about" },
+            { "property": "a.b_c:d'e\"f-1", "value": null },
+        ]))
+        .unwrap();
+        assert_eq!(video.description, "about");
+        for invalid in [
+            json!([{ "property": "", "value": "v" }]),
+            json!([{ "property": "p".repeat(101), "value": "v" }]),
+            json!([{ "property": "a/b", "value": "v" }]),
+            json!([{ "property": "p", "value": "v".repeat(4097) }]),
+            json!([{ "property": "p", "value": "1" }, { "property": "p", "value": "2" }]),
+        ] {
+            assert_eq!(tags(invalid.clone()), Err(Error::Protocol), "{invalid}");
+        }
+    }
+}

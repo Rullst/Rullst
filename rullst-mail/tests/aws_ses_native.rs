@@ -194,6 +194,68 @@ async fn native_driver_preserves_bounded_rate_limit_metadata() {
     );
 }
 
+#[tokio::test]
+async fn native_driver_rejects_an_acceptance_without_a_message_id() {
+    for body in [r#"{"MessageId":""}"#, r#"{"MessageId":"  "}"#, "{}"] {
+        let (endpoint, request_rx, fixture) = fixture_server(200, body, "application/json");
+        let driver = AwsSesDriver::try_native("us-east-1", ACCESS_KEY_ID, SECRET_ACCESS_KEY, None)
+            .expect("valid native credentials")
+            .try_with_endpoint(endpoint)
+            .expect("loopback endpoint");
+        let error = driver
+            .send(&rejected_message())
+            .await
+            .expect_err("an acceptance without a message ID is not a delivery");
+        let _ = request_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("captured request");
+        fixture.join().expect("fixture thread");
+        assert!(
+            matches!(
+                error,
+                MailError::ProviderResponse {
+                    provider: "aws_ses",
+                    status: 502,
+                    ..
+                }
+            ),
+            "{body}: {error:?}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn native_driver_replaces_an_unsafe_error_code() {
+    let (endpoint, request_rx, fixture) = fixture_server(
+        400,
+        r#"{"message":"rejected","code":"bad@code"}"#,
+        "application/json",
+    );
+    let driver = AwsSesDriver::try_native("us-east-1", ACCESS_KEY_ID, SECRET_ACCESS_KEY, None)
+        .expect("valid native credentials")
+        .try_with_endpoint(endpoint)
+        .expect("loopback endpoint");
+    let error = driver
+        .send(&rejected_message())
+        .await
+        .expect_err("fixture rejects mail");
+    let _ = request_rx
+        .recv_timeout(Duration::from_secs(2))
+        .expect("captured request");
+    fixture.join().expect("fixture thread");
+    let display = error.to_string();
+    assert!(display.contains("AWS SES error unrecognized;"), "{display}");
+    assert!(!display.contains("bad@code"), "{display}");
+}
+
+fn rejected_message() -> Message {
+    Message::new()
+        .to("recipient@example.com")
+        .from("sender@example.com")
+        .subject("Fixture")
+        .text("body")
+}
+
 #[test]
 fn native_configuration_is_fail_closed_and_debug_redacted() {
     assert!(AwsSesDriver::try_native("us-east-1", "", "secret", None).is_err());

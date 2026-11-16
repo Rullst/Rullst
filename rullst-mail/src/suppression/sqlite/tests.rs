@@ -345,3 +345,5 @@ async fn memory_symlink_and_corrupt_schema_targets_fail_closed() {
     ));
     remove_database(&corrupt);
 }
+
+mod bounds;

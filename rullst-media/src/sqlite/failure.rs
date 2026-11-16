@@ -130,3 +130,39 @@ fn stopped(record: Record, expected_revision: i64) -> Result<(Record, OperationF
         _ => Err(Error::Conflict),
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::super::record::{Pending, tests::record};
+    use super::*;
+
+    #[test]
+    fn a_stopped_intent_is_taken_only_at_its_current_revision() {
+        // A metadata update the provider refused, stopped at revision 5.
+        let mut current = record();
+        current.asset.pending = true;
+        current.asset.failure = Some(OperationFailure::Rejected);
+        current.pending = Some(Pending {
+            kind: Kind::Update,
+            dispatched: true,
+            nonce: None,
+            until: 0,
+            revision: 4,
+        });
+        assert_eq!(current.validate(), Ok(()));
+        let Ok((taken, failure)) = stopped(current.clone(), 5) else {
+            panic!("the current revision is accepted");
+        };
+        assert_eq!(taken.asset.revision, 5);
+        assert_eq!(failure, OperationFailure::Rejected);
+        for expected in [4, 6, 0, -5] {
+            assert_eq!(
+                stopped(current.clone(), expected).err(),
+                Some(Error::Conflict),
+                "{expected}"
+            );
+        }
+        assert_eq!(stopped(record(), 5).err(), Some(Error::Conflict));
+    }
+}
