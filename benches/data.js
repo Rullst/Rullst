@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794810310550,
+  "lastUpdate": 1794811880123,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -35559,6 +35559,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1557,
             "range": "± 28",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e8d1da147c51ee729d6140ce849918c00d829672",
+          "message": "Merge pull request #731 from Rullst/perf/v13-alpha6-lazy-nonce-csrf-mask\n\nperf: cheaper per-request security work and a measured SaaS starter",
+          "timestamp": "2026-11-16T03:45:37-03:00",
+          "tree_id": "f3be0e86efe51cdd848f6dca8b7c375c21c320a8",
+          "url": "https://github.com/Rullst/Rullst/commit/e8d1da147c51ee729d6140ce849918c00d829672"
+        },
+        "date": 1794811875236,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 570,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 804,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 392,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1398,
+            "range": "± 21",
             "unit": "ns/iter"
           }
         ]
