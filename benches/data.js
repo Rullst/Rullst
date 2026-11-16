@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794788790486,
+  "lastUpdate": 1794791000107,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -34965,6 +34965,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 959,
             "range": "± 25",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bb32a61df3b989b4dd7c06c9afec99e1dad01705",
+          "message": "Merge pull request #719 from Rullst/docs/v13-alpha6-docs-bundle\n\ndocs(v13): alpha.6 docs bundle: upgrade-doc totals, alpha.5 checklist, MSRV erratum, site note, Studio install",
+          "timestamp": "2026-11-15T21:55:04-03:00",
+          "tree_id": "8ecd66ade2668c942ce5bb2d790aad04ee4e40c2",
+          "url": "https://github.com/Rullst/Rullst/commit/bb32a61df3b989b4dd7c06c9afec99e1dad01705"
+        },
+        "date": 1794790995757,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 699,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 940,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 405,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1687,
+            "range": "± 33",
             "unit": "ns/iter"
           }
         ]
