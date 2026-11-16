@@ -47,6 +47,7 @@ fn global_rate_limit_store() -> &'static DashMap<String, (Instant, AtomicU64)> {
 
 /// Supported rate limiting backend strategies.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[non_exhaustive]
 pub enum RateLimitBackend {
     /// Bounded process-local fixed window using DashMap.
     #[default]

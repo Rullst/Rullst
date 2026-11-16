@@ -25,6 +25,7 @@ const MAX_SIEM_KEY_BYTES: usize = 64;
 
 /// Typed failures that never include event bodies, paths, or key material.
 #[derive(Clone, Debug, thiserror::Error, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum AuthenticatedSiemSpoolError {
     #[error("authenticated SIEM spool capacity must be between 512 bytes and 16 MiB")]
     InvalidCapacity,

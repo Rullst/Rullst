@@ -26,6 +26,7 @@ const FRAME_PREFIX_BYTES: usize = LENGTH_HEX_BYTES + 1 + DIGEST_HEX_BYTES + 1;
 
 /// Typed local-spool failures. Paths and event bodies are deliberately omitted.
 #[derive(Clone, Debug, thiserror::Error, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum SiemSpoolError {
     /// The requested quota is zero, too small, or above the crate ceiling.
     #[error("SIEM spool capacity must be between 512 bytes and 16 MiB")]
