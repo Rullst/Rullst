@@ -378,10 +378,12 @@ def check_database(engine: Engine, project: Path, app: dict, binary: str, comman
 def sqlite_helper(engine: Engine, volume: str, backup: Path, commands: str) -> list[str]:
     """Runs `commands` in the guide's helper container (section 8): Alpine with
     the sqlite3 shell, the data volume at /data and `backup` at /backup. Its
-    output is followed by `ls -ln /data`."""
+    output (with the engine's pull messages) is followed by `ls -ln /data`."""
     script = f"apk add --no-cache sqlite >/dev/null && {commands} && ls -ln /data"
-    return engine.output("run", "--rm", "-v", f"{volume}:/data", "-v", f"{backup}:/backup",
-                         ALPINE_IMAGE, "sh", "-c", script, timeout=300).splitlines()
+    output = engine.output("run", "--rm", "-v", f"{volume}:/data", "-v", f"{backup}:/backup",
+                           ALPINE_IMAGE, "sh", "-c", script, timeout=300)
+    log(output)
+    return output.splitlines()
 
 
 def owned_by_the_app(listing: list[str]) -> dict[str, str]:
@@ -402,10 +404,12 @@ def check_backup(engine: Engine, volume: str, work: Path, account: bool) -> Path
     the session row of the sign-in just made), and the copy is opened."""
     backup = work / f"{engine.project}-backup"
     backup.mkdir()
-    output = sqlite_helper(engine, volume, backup, 'sqlite3 /data/rullst.db "PRAGMA journal_mode" '
+    output = sqlite_helper(engine, volume, backup,
+                           'echo "journal_mode=$(sqlite3 /data/rullst.db "PRAGMA journal_mode")" '
                            '&& sqlite3 /data/rullst.db ".backup /backup/rullst-$(date +%F).db"')
-    expect(output[:1] == ["wal"], f"the app's database is in WAL mode ({output[:1]})")
-    expect("rullst.db-wal" in owned_by_the_app(output[1:]), "the -wal file is next to rullst.db")
+    modes = [line.split("=", 1)[1] for line in output if line.startswith("journal_mode=")]
+    expect(modes == ["wal"], f"the app's database is in WAL mode ({modes})")
+    expect("rullst.db-wal" in owned_by_the_app(output), "the -wal file is next to rullst.db")
     copies = list(backup.glob("rullst-*.db"))
     expect(len(copies) == 1, "the backup command wrote one database copy")
     # immutable: the copy may record WAL mode; it is read without a -wal file.
