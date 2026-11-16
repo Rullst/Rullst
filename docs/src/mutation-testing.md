@@ -42,6 +42,26 @@ received a test or is listed under
   [PR #532](https://github.com/Rullst/Rullst/pull/532): 78 files and 2,435
   mutants, 72 missed at the end. 71 are accepted equivalents; the last one
   needs an open PostgreSQL pool.
+- **`rullst-mail`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+  [PR #748](https://github.com/Rullst/Rullst/pull/748), runs in the
+  maintainer's fork
+  [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml);
+  four files unchanged since `5e6b65c5` keep their runs in this repository):
+  targeted runs of the 53 files, the five PostgreSQL adapter files included
+  (3 have no mutants), gave 1,761 mutants: 1,323 caught, 184 unviable, 13
+  timeouts and 241 missed. 55 of the misses are PostgreSQL adapter branches
+  that the `mail-postgres` contract run
+  ([43910450330](https://github.com/venelouis/rullst-ci/actions/runs/43910450330),
+  136 mutants: 84 caught, 26 unviable, 26 missed, all caught by the targeted
+  runs) catches. New tests killed 170 of the others and two timeouts (a
+  fixture wait and a fuzz loop now have deadlines): delivery observations,
+  account action links, native SES headers, size limits and error codes,
+  failover recovery, the mock, REST, log and memory drivers, plain-text
+  conversion, action links, feedback verification, the suppression stores,
+  attachment decoding and the provider error text. Reruns of the 27 changed
+  files leave 9 of 950 mutants missed and 3 timeouts; the remaining 16 missed
+  mutants are accepted equivalents listed below and the 11 timeouts are
+  listed with the timeouts.
 - **`rullst-messaging`** (re-measured for 13.0.0-alpha.6,
   [PR #711](https://github.com/Rullst/Rullst/pull/711)): targeted
   runs of the 48 files outside `redis_streams/` (7 have no mutants) gave 1,377
@@ -156,8 +176,9 @@ survivors left in the others) and the Studio remote-mode campaign (targeted runs
 `rullst-studio/src/remote` file and of the `rullst-studio` binary with the
 package's tests), the `rullst-macros` campaign (targeted runs of every
 file with the package's unit and stand-in integration tests) and the 13.0
-`rullst-mail` campaign (targeted runs of every file with the package's tests,
-and the `mail-postgres` contract run for the PostgreSQL adapter) gave every missed mutant in their files a test, except these.
+`rullst-mail`, `rullst-media` and `rullst-ai` campaigns (targeted runs of every
+file with the package's tests, and the `mail-postgres` contract run for the
+mail PostgreSQL adapter) gave every missed mutant in their files a test, except these.
 Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
 entry needs the same one-line justification. The pull-request gate (`mutants-pr.yml`) skips an
