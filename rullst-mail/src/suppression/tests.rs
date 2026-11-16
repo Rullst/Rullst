@@ -134,6 +134,56 @@ async fn provider_event_conflicts_and_ambiguous_inputs_fail_closed() {
     );
     assert!(!debug.contains("secret-event-id"));
     assert!(!debug.contains("alice@example.com"));
+    assert_eq!(
+        debug,
+        format!(
+            "SuppressionEvent {{ provider: \"provider\", event_id: \"[REDACTED]\", \
+             recipient: \"[REDACTED]\", reason: Manual, observed_at: {now} }}"
+        )
+    );
+}
+
+#[test]
+fn identifiers_recipients_and_observation_times_are_bounded_exactly() {
+    let now = unix_time().expect("clock");
+    let try_event = |provider: &str, event_id: &str, recipient: &str, observed_at: u64| {
+        SuppressionEvent::try_new(
+            provider,
+            event_id,
+            recipient,
+            SuppressionReason::Manual,
+            observed_at,
+        )
+    };
+    // Provider IDs hold 1 to 64 bytes and event IDs 1 to 128.
+    assert!(try_event(&"p".repeat(64), "event", "reader@example.com", now).is_ok());
+    assert!(try_event("provider", &"e".repeat(128), "reader@example.com", now).is_ok());
+    for (provider, event_id, field) in [
+        (String::new(), "event".to_string(), "provider"),
+        ("p".repeat(65), "event".to_string(), "provider"),
+        ("provider".to_string(), String::new(), "event ID"),
+        ("provider".to_string(), "e".repeat(129), "event ID"),
+    ] {
+        assert_eq!(
+            try_event(&provider, &event_id, "reader@example.com", now).map(|_| ()),
+            Err(SuppressionError::InvalidEvent(field))
+        );
+    }
+    // Up to five minutes of clock skew is accepted.
+    assert!(try_event("provider", "event", "reader@example.com", now + 300).is_ok());
+
+    // The key holds at most 320 bytes, after an internationalized domain is
+    // converted to its longer A-label.
+    let ascii = format!("{}@example.com", "a".repeat(308));
+    assert_eq!(normalize_recipient(&ascii).map(|key| key.len()), Ok(320));
+    let at_limit = format!("{}@bücher.de", "a".repeat(303));
+    assert_eq!(normalize_recipient(&at_limit).map(|key| key.len()), Ok(320));
+    let expanded = format!("{}@bücher.de", "a".repeat(304));
+    assert!(expanded.len() <= 320);
+    assert_eq!(
+        normalize_recipient(&expanded),
+        Err(SuppressionError::InvalidEvent("recipient"))
+    );
 }
 
 struct UnavailableStore;

@@ -336,13 +336,16 @@ fn configuration_payload_and_debug_paths_are_bounded_and_secret_free() {
     for region in ["", "bad_region", &"x".repeat(65)] {
         assert!(AwsSesDriver::try_new(region, "mock_token").is_err());
     }
+    assert!(validate_region(&"x".repeat(64)).is_ok());
     for endpoint in [
         "not-a-url",
         "ftp://example.com/send",
         "http://example.com/send",
         "https://user:secret@example.com/send",
+        "https://user@example.com/send",
+        "https://:secret@example.com/send",
     ] {
-        assert!(validate_endpoint(endpoint).is_err());
+        assert!(validate_endpoint(endpoint).is_err(), "accepted {endpoint}");
     }
 
     let mock = AwsSesDriver::try_new("us-east-1", "mock_ses").unwrap();
