@@ -25,7 +25,6 @@ pub(crate) const MAX_QUEUED: usize = 32;
 
 /// The developer's notification settings, kept in the project list.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub(crate) struct NotificationSettings {
     /// Whether alerts become desktop notifications.
     #[serde(default)]

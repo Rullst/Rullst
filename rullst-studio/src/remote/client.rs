@@ -160,7 +160,7 @@ pub struct MonitorClient {
     client: reqwest::Client,
     limits: FetchLimits,
     legacy: Arc<LegacyProjects>,
-    /// Set when the proxy plan is [`ProxyPlan::Invalid`].
+    /// Set when the proxy plan blocks every request.
     blocked: bool,
 }
 
@@ -187,7 +187,7 @@ impl MonitorClient {
             client,
             limits,
             legacy: Arc::default(),
-            blocked: *plan == ProxyPlan::Invalid,
+            blocked: plan.blocks(),
         })
     }
 

@@ -359,11 +359,18 @@ fn version_1_documents_explain_why_traces_and_security_are_missing() {
 #[test]
 fn the_settings_page_marks_an_unusable_proxy() {
     use crate::remote::preferences::StudioSettings;
-    use crate::remote::proxy::ProxyPlan;
+    use crate::remote::proxy::{ProxyPlan, Unusable};
     let settings = StudioSettings::default();
     let direct = super::preferences::page(&settings, &ProxyPlan::Direct, "t0k3n", None);
     assert!(direct.contains(r#"<p class="text-xs text-slate-300">Connections are direct.</p>"#));
     assert!(direct.contains(r#"name="form_token" value="t0k3n""#));
-    let invalid = super::preferences::page(&settings, &ProxyPlan::Invalid, "t0k3n", None);
-    assert!(invalid.contains(r#"<p class="text-xs text-red-300">The proxy cannot be used"#));
+    let invalid = super::preferences::page(
+        &settings,
+        &ProxyPlan::Invalid(Unusable::Socks("HTTPS_PROXY")),
+        "t0k3n",
+        None,
+    );
+    assert!(invalid.contains(
+        r#"<p class="text-xs text-red-300">HTTPS_PROXY names a SOCKS proxy, which Studio does not support"#
+    ));
 }

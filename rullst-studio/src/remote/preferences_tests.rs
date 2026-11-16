@@ -167,6 +167,10 @@ async fn a_saved_proxy_is_used_at_once_and_shown_without_secrets() {
             StatusCode::UNPROCESSABLE_ENTITY,
         ),
         (save("explicit", "", ""), StatusCode::UNPROCESSABLE_ENTITY),
+        (
+            save("explicit", "socks5://proxy.internal:1080", ""),
+            StatusCode::UNPROCESSABLE_ENTITY,
+        ),
         (save("sideways", "", ""), StatusCode::UNPROCESSABLE_ENTITY),
         (
             save("explicit", &stub.url, ".internal"),

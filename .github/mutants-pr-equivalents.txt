@@ -222,3 +222,24 @@ rullst-connect/src/mock_idp/handlers.rs:290:59: replace > with >= in userinfo_ha
 rullst-connect/src/mock_idp/handlers.rs:294:43: replace > with >= in userinfo_handler
 rullst-connect/src/mock_idp/handlers.rs:463:5: replace server_error -> Response with Default::default()
 rullst-connect/src/provider/id_token.rs:121:13: replace || with && in validate_claims_with_presenters
+
+# rullst-media (13.0 campaign, targeted runs with the package's tests): each
+# name below has a row in docs/src/mutation-testing.md "Accepted equivalent
+# mutants".
+rullst-media/src/bunny/client.rs:259:13: replace || with && in <impl VideoProvider for BunnyStream>::find_created
+rullst-media/src/bunny/signatures.rs:182:51: replace | with ^ in BunnyStream::verify_notification
+rullst-media/src/s3/signing.rs:66:5: replace settings -> SigningSettings with Default::default()
+rullst-media/src/sqlite/access.rs:106:46: replace || with && in MediaService<P, C>::set_publication
+rullst-media/src/sqlite/access.rs:187:17: replace || with && in MediaService<P, C>::upload_with
+rullst-media/src/sqlite/access.rs:188:17: replace || with && in MediaService<P, C>::upload_with
+rullst-media/src/sqlite/failure.rs:30:13: replace || with && in MediaService<P, C>::stop_intent
+rullst-media/src/sqlite/failure.rs:31:13: replace || with && in MediaService<P, C>::stop_intent
+rullst-media/src/sqlite/failure.rs:127:44: replace > with >= in stopped
+rullst-media/src/sqlite/retention.rs:53:21: replace || with && in MediaService<P, C>::purge_deleted
+rullst-media/src/sqlite/retention.rs:54:21: replace || with && in MediaService<P, C>::purge_deleted
+rullst-media/src/sqlite/transaction.rs:104:23: replace > with == in Operation<'a, C>::save
+rullst-media/src/sqlite/transaction.rs:104:23: replace > with >= in Operation<'a, C>::save
+rullst-media/src/sqlite/workflow.rs:188:13: replace || with && in MediaService<P, C>::finish
+rullst-media/src/sqlite/workflow.rs:189:13: replace || with && in MediaService<P, C>::finish
+rullst-media/src/sqlite/workflow.rs:190:13: replace || with && in MediaService<P, C>::finish
+rullst-media/src/sqlite/workflow.rs:208:37: replace || with && in MediaService<P, C>::finish

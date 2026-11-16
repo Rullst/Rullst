@@ -12,8 +12,9 @@ use zeroize::Zeroizing;
 const MAX_RESEALED_CONTROL_ROWS: i64 = 8;
 
 impl<C: Clock> SqliteBroker<C> {
-    /// Opens the encrypted store of a webhook outbox. The keyring is shared,
-    /// so that `WebhookOutbox::open` can try opening again.
+    /// Opens the encrypted store of a webhook outbox, in one attempt:
+    /// `WebhookOutbox::open` tries its whole opening again, within its own
+    /// deadline. The keyring is shared, so that it can.
     pub(crate) async fn connect_webhook_store(
         database_url: String,
         config: BrokerConfig,
@@ -21,7 +22,8 @@ impl<C: Clock> SqliteBroker<C> {
         clock: C,
     ) -> Result<Self> {
         let storage = StorageProfile::Encrypted(keyring);
-        Self::connect_with_profile(database_url, config, clock, storage).await
+        let options = super::file_options(&database_url, super::Waits::BROKER.lock)?;
+        Self::establish(options, config, clock, storage).await
     }
 
     /// Re-encrypts the private control records of `topic` under the primary

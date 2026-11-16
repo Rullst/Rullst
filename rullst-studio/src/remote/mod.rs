@@ -37,6 +37,7 @@ mod proxy;
 mod router;
 mod secure_file;
 mod settings;
+mod stored;
 mod webhook;
 
 #[cfg(test)]
@@ -54,6 +55,8 @@ mod poller_tests;
 #[cfg(test)]
 mod preferences_tests;
 #[cfg(test)]
+mod proxy_env_tests;
+#[cfg(test)]
 mod proxy_tests;
 #[cfg(test)]
 mod router_tests;
@@ -63,6 +66,10 @@ mod server_test;
 mod settings_tests;
 #[cfg(test)]
 mod store_tests;
+#[cfg(test)]
+mod stored_bounds_tests;
+#[cfg(test)]
+mod stored_tests;
 #[cfg(test)]
 mod webhook_tests;
 

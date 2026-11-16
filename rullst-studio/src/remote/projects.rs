@@ -8,15 +8,14 @@ use super::paths::StudioPaths;
 use super::preferences::StudioSettings;
 use super::proxy::ProxySettings;
 use super::secure_file;
+use super::stored::{FORMAT_VERSION, Kept, MAX_FILE_BYTES, StoredFile, StoredProject};
 use reqwest::Url;
-use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::net::IpAddr;
 use std::sync::Mutex;
 
 /// Most projects the list holds.
 pub const MAX_PROJECTS: usize = 32;
-const MAX_FILE_BYTES: u64 = 256 * 1024;
 const MAX_NAME_CHARS: usize = 48;
 const MAX_URL_CHARS: usize = 512;
 const MAX_TOKEN_CHARS: usize = 512;
@@ -35,6 +34,17 @@ pub enum ProjectError {
     Storage,
     /// The project list file is malformed; fix or remove it.
     InvalidFile,
+    /// The project list was written in a later, incompatible file format
+    /// (since 13.0.0-alpha.6). A later 13.x Studio only adds fields, which
+    /// this Studio keeps; only a major release changes the format.
+    #[non_exhaustive]
+    NewerFormat {
+        /// The file's format version.
+        format: u32,
+        /// The major version of the oldest Studio that reads it, when the
+        /// file names one.
+        studio: Option<u32>,
+    },
     /// A name is not 1 to 48 letters, digits, `.`, `_` or `-`, starting with a
     /// letter or digit.
     InvalidName,
@@ -58,14 +68,25 @@ pub enum ProjectError {
     /// 1,440 minutes.
     InvalidSettings,
     /// A proxy URL is not `http://` or `https://` with a host and without
-    /// user information, path, query or fragment, or the exceptions exceed
-    /// 4,096 characters.
+    /// user information, path, query or fragment (SOCKS is not supported), or
+    /// the exceptions exceed 4,096 characters.
     InvalidProxy,
 }
 
 impl fmt::Display for ProjectError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str(match self {
+        let text = match self {
+            Self::NewerFormat { format, studio } => {
+                let reader = match studio {
+                    Some(major) => format!("which needs Rullst Studio {major} or later"),
+                    None => "written by a newer Rullst Studio".to_string(),
+                };
+                return write!(
+                    formatter,
+                    "the project list uses file format {format}, {reader}; this Studio ({}) reads format {FORMAT_VERSION}",
+                    env!("CARGO_PKG_VERSION")
+                );
+            }
             Self::Storage => "the project list or its key could not be read or written",
             Self::InvalidFile => "the project list file is malformed; fix or remove it",
             Self::InvalidName => {
@@ -86,9 +107,10 @@ impl fmt::Display for ProjectError {
             }
             Self::InvalidSettings => "the quiet period must be 1 to 1440 minutes",
             Self::InvalidProxy => {
-                "the proxy must be an http:// or https:// URL with a host and no user, path, query or fragment, and the exceptions at most 4096 characters"
+                "the proxy must be an http:// or https:// URL with a host and no user, path, query or fragment (SOCKS is not supported), and the exceptions at most 4096 characters"
             }
-        })
+        };
+        formatter.write_str(text)
     }
 }
 
@@ -124,33 +146,6 @@ impl Project {
     pub fn monitor_v2_url(&self) -> Option<Url> {
         self.base_url.join(MONITOR_V2_PATH).ok()
     }
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(deny_unknown_fields)]
-struct StoredFile {
-    version: u32,
-    projects: Vec<StoredProject>,
-    /// Absent until a setting differs from its default, so older Studios
-    /// keep reading the file.
-    #[serde(default, skip_serializing_if = "StudioSettings::is_default")]
-    settings: StudioSettings,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(deny_unknown_fields)]
-struct StoredProject {
-    name: String,
-    base_url: String,
-    /// The token sealed with [`SecretKey::seal`].
-    token: String,
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    watch: bool,
-    #[serde(default)]
-    rules: AlertRules,
-    /// The webhook URL sealed with [`SecretKey::seal`].
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    webhook: Option<String>,
 }
 
 /// What to do with a project's webhook when saving its settings.
@@ -246,28 +241,16 @@ impl ProjectStore {
     }
 
     fn read_file(&self) -> Result<StoredFile, ProjectError> {
-        let bytes = secure_file::read_private(&self.paths.projects, MAX_FILE_BYTES)
+        let bytes = secure_file::read_private(&self.paths.projects, MAX_FILE_BYTES as u64)
             .map_err(|_| ProjectError::Storage)?;
-        let Some(bytes) = bytes else {
-            return Ok(StoredFile {
-                version: 1,
-                projects: Vec::new(),
-                settings: StudioSettings::default(),
-            });
-        };
-        let file: StoredFile =
-            serde_json::from_slice(&bytes).map_err(|_| ProjectError::InvalidFile)?;
-        let names_valid = file.projects.iter().all(|project| {
-            validate_name(&project.name).is_ok() && validate_base_url(&project.base_url).is_ok()
-        });
-        if file.version != 1 || file.projects.len() > MAX_PROJECTS || !names_valid {
-            return Err(ProjectError::InvalidFile);
+        match bytes {
+            Some(bytes) => StoredFile::parse(&bytes),
+            None => Ok(StoredFile::empty()),
         }
-        Ok(file)
     }
 
     fn write_file(&self, file: &StoredFile) -> Result<(), ProjectError> {
-        let body = serde_json::to_vec_pretty(file).map_err(|_| ProjectError::Storage)?;
+        let body = file.encode()?;
         secure_file::write_private(&self.paths.projects, &body).map_err(|_| ProjectError::Storage)
     }
 
@@ -292,7 +275,7 @@ impl ProjectStore {
                 Ok(Project {
                     token,
                     watch: stored.watch,
-                    rules: stored.rules,
+                    rules: stored.rules.known,
                     webhook_configured: stored.webhook.is_some(),
                     webhook,
                     name: stored.name,
@@ -325,8 +308,9 @@ impl ProjectStore {
             base_url: base_url.to_string(),
             token: sealed,
             watch: false,
-            rules: AlertRules::default(),
+            rules: Kept::default(),
             webhook: None,
+            extra: Default::default(),
         });
         self.write_file(&file)
     }
@@ -354,7 +338,8 @@ impl ProjectStore {
             .find(|project| project.name == name)
             .ok_or(ProjectError::NotFound)?;
         project.watch = watch;
-        project.rules = rules;
+        // Fields of a newer Studio stay next to the thresholds.
+        project.rules.known = rules;
         match webhook {
             WebhookChange::Keep => {}
             WebhookChange::Clear => project.webhook = None,
@@ -376,7 +361,7 @@ impl ProjectStore {
 
     /// The Studio settings (defaults when none are stored).
     pub(crate) fn settings(&self) -> Result<StudioSettings, ProjectError> {
-        Ok(self.read_file()?.settings)
+        Ok(self.read_file()?.settings.current())
     }
 
     /// Saves the desktop notification settings.
@@ -389,7 +374,7 @@ impl ProjectStore {
         }
         let _guard = self.write.lock().unwrap_or_else(|error| error.into_inner());
         let mut file = self.read_file()?;
-        file.settings.notifications = notifications;
+        file.settings.notifications.known = notifications;
         self.write_file(&file)
     }
 
@@ -400,7 +385,7 @@ impl ProjectStore {
         }
         let _guard = self.write.lock().unwrap_or_else(|error| error.into_inner());
         let mut file = self.read_file()?;
-        file.settings.proxy = proxy;
+        file.settings.proxy.known = proxy;
         self.write_file(&file)
     }
 

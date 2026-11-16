@@ -14,22 +14,14 @@ use axum::response::{IntoResponse, Redirect, Response};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-/// The settings that apply to the whole Studio, kept in the project list.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+/// The settings that apply to the whole Studio, kept in the project list
+/// (see [`super::stored::StoredSettings`]).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct StudioSettings {
     /// Desktop notifications of alerts.
-    #[serde(default)]
     pub(crate) notifications: NotificationSettings,
     /// How Studio reaches projects and webhooks.
-    #[serde(default)]
     pub(crate) proxy: ProxySettings,
-}
-
-impl StudioSettings {
-    pub(crate) fn is_default(&self) -> bool {
-        *self == Self::default()
-    }
 }
 
 async fn settings_response(

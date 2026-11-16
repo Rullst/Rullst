@@ -199,3 +199,7 @@ fn sha256_hex(bytes: &[u8]) -> String {
         .map(|b| format!("{b:02x}"))
         .collect()
 }
+
+#[cfg(test)]
+#[path = "record_tests.rs"]
+pub(super) mod tests;

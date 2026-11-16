@@ -475,6 +475,9 @@ pub const rullst_studio::remote::MIN_POLL_INTERVAL: core::time::Duration
 #[non_exhaustive] pub enum rullst_studio::remote::ProjectError
 pub rullst_studio::remote::ProjectError::Storage
 pub rullst_studio::remote::ProjectError::InvalidFile
+#[non_exhaustive] pub rullst_studio::remote::ProjectError::NewerFormat { .. }
+pub rullst_studio::remote::ProjectError::NewerFormat::format: u32
+pub rullst_studio::remote::ProjectError::NewerFormat::studio: core::option::Option<u32>
 pub rullst_studio::remote::ProjectError::InvalidName
 pub rullst_studio::remote::ProjectError::InvalidUrl
 pub rullst_studio::remote::ProjectError::InvalidToken
