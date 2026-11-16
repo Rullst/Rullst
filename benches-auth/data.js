@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794840482543,
+  "lastUpdate": 1794848106336,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -23637,6 +23637,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4596,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3a46859e7d3a3d3acf8f01cb26c896ad08c004b4",
+          "message": "Merge pull request #743 from Rullst/test/v13-mutants-auth\n\ntest(auth): close 13.0 mutation campaign gaps",
+          "timestamp": "2026-11-16T13:42:29-03:00",
+          "tree_id": "d6d5ae92c96803e47d0f70762e2e52af0521849b",
+          "url": "https://github.com/Rullst/Rullst/commit/3a46859e7d3a3d3acf8f01cb26c896ad08c004b4"
+        },
+        "date": 1794848105329,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 627,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 479,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1131,
+            "range": "± 48",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3017,
+            "range": "± 71",
             "unit": "ns/iter"
           }
         ]
