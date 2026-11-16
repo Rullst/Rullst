@@ -7,9 +7,10 @@ docs/src/pt-BR/ in English. Run after `mdbook build docs`, this sets
 `lang="pt-BR"` on the `<html>` element of every page under <book>/pt-BR/, then
 checks the whole book: each page under a directory of TRANSLATED declares that
 language, every other page the book's own, and each translated Markdown page
-has its HTML page. With --check it only checks, and changes nothing.
+has its HTML page. With --check it only checks, and changes nothing. The
+paths are the repository's docs/book, docs/src and docs/book.toml.
 
-Usage: set-book-language.py [--book docs/book] [--check]
+Usage: set-book-language.py [--check]
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ import sys
 import tomllib
 
 ROOT = Path(__file__).resolve().parent.parent
+DOCS = ROOT / "docs"
 # Book directory of a translation -> its BCP 47 language tag.
 TRANSLATED = {"pt-BR": "pt-BR"}
 HTML_LANG = re.compile(r'(<html\b[^>]*?\blang=")([^"]*)(")', re.IGNORECASE)
@@ -94,23 +96,17 @@ def check(book: Path, source: Path, default: str) -> list[str]:
     return problems
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
-    parser.add_argument("--book", type=Path, default=ROOT / "docs" / "book")
-    parser.add_argument("--source", type=Path, default=ROOT / "docs" / "src")
-    parser.add_argument("--book-toml", type=Path, default=ROOT / "docs" / "book.toml")
-    parser.add_argument("--check", action="store_true", help="only check, change nothing")
-    args = parser.parse_args(argv)
-    book = args.book.resolve()
+def run(book: Path, source: Path, book_toml: Path, check_only: bool) -> int:
+    """Sets (unless `check_only`) and checks the languages of the built `book`."""
     if not book.is_dir():
         print(f"set-book-language: {book} does not exist; run `mdbook build docs` first", file=sys.stderr)
         return 1
-    default = book_language(args.book_toml)
+    default = book_language(book_toml)
     try:
-        if not args.check:
+        if not check_only:
             changed = apply(book, default)
             print(f"set-book-language: declared the translated language on {changed} page(s)")
-        problems = check(book, args.source.resolve(), default)
+        problems = check(book, source, default)
     except Failure as error:
         problems = [str(error)]
     for problem in problems:
@@ -118,6 +114,13 @@ def main(argv: list[str] | None = None) -> int:
     if not problems:
         print(f"set-book-language: every page declares its language ({', '.join(sorted(TRANSLATED))} and {default})")
     return 1 if problems else 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
+    parser.add_argument("--check", action="store_true", help="only check, change nothing")
+    args = parser.parse_args(argv)
+    return run(DOCS / "book", DOCS / "src", DOCS / "book.toml", args.check)
 
 
 if __name__ == "__main__":

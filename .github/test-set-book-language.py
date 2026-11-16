@@ -38,8 +38,7 @@ class BookLanguageTests(unittest.TestCase):
         self.directory.cleanup()
 
     def run_script(self, *extra: str) -> int:
-        return LANGUAGE.main(["--book", str(self.book), "--source", str(self.source),
-                              "--book-toml", str(self.book_toml), *extra])
+        return LANGUAGE.run(self.book, self.source, self.book_toml, check_only="--check" in extra)
 
     def declared(self, page: str) -> str | None:
         return LANGUAGE.declared_language((self.book / page).read_text(encoding="utf-8"))
@@ -83,6 +82,10 @@ class BookLanguageTests(unittest.TestCase):
     def test_the_repository_book_language_is_english(self):
         self.assertEqual(LANGUAGE.book_language(HERE.parent / "docs" / "book.toml"), "en")
         self.assertEqual(LANGUAGE.TRANSLATED, {"pt-BR": "pt-BR"})
+        self.assertEqual(LANGUAGE.DOCS, HERE.parent / "docs")
+
+    def test_a_missing_book_is_reported(self):
+        self.assertEqual(LANGUAGE.run(self.book / "missing", self.source, self.book_toml, check_only=True), 1)
 
 
 if __name__ == "__main__":
