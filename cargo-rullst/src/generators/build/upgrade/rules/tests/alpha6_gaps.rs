@@ -180,6 +180,19 @@ fn comparison_operands_end_at_their_boundaries() {
 }
 
 #[test]
+fn generic_arguments_stay_inside_an_operand() {
+    // Only the `>` of `=>` ends an operand: the turbofish's `>` does not, so
+    // the cookie before it still belongs to the left operand.
+    let source = "fn f(csrf_cookie: Jar, page_token: String) {\n    assert!(csrf_cookie.get::<String>() == page_token);\n}\n";
+    let found = scan_with(source, "lib.rs", &WorkspaceFacts::default());
+    assert_eq!(
+        lines_of("V13-CSRF-TOKEN-COMPARED", &found),
+        [2],
+        "{found:?}"
+    );
+}
+
+#[test]
 fn every_mention_in_an_operand_counts_once_or_more() {
     // Two identifiers of each kind in one operand, and CSRF named twice by
     // literals only: neither cancels the other.
