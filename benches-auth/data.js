@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794835210764,
+  "lastUpdate": 1794840482543,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -23589,6 +23589,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4167,
             "range": "± 96",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b80d89ddad5a8c4f7810284e26d662c995f52939",
+          "message": "Merge pull request #742 from Rullst/ci/v13-alpha6-ci-gaps\n\nci: API starter auth check, first-build measurement, required browser job",
+          "timestamp": "2026-11-16T11:30:34-03:00",
+          "tree_id": "c951571ed483edb71ed84f9b6cbf9eb8ba0c3f26",
+          "url": "https://github.com/Rullst/Rullst/commit/b80d89ddad5a8c4f7810284e26d662c995f52939"
+        },
+        "date": 1794840481831,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 988,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 736,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1737,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4596,
+            "range": "± 10",
             "unit": "ns/iter"
           }
         ]
