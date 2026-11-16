@@ -129,8 +129,11 @@ own records before approving the same operation again.
 ## Durable local evidence
 
 `InMemoryToolAuditTrail` is bounded and process-local; it is intended for local
-development and tests. A single-process service can instead open the built-in
-bounded local trail:
+development and tests. It refuses the events the durable trail refuses (an
+empty or oversized principal, an invalid tool identifier, incomplete or
+oversized approval evidence, or a missing risk outside a denial) with
+`ToolExecutionError::AuditUnavailable`. A single-process service can instead
+open the built-in bounded local trail:
 
 ```rust,no_run
 use rullst_ai::ai::DurableToolAuditTrail;

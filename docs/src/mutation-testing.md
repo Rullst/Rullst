@@ -52,7 +52,14 @@ received a test or is listed under
   1,318 mutants missed and 3 timeouts. The 16 missed mutants left are 13
   accepted equivalents listed below and the three peer-address, status and
   content-type checks of `EgressFetcher::fetch_bytes`, left to live
-  integration testing; the 30 timeouts are listed with the timeouts.
+  integration testing; the 30 timeouts are listed with the timeouts. A
+  follow-up ([PR #750](https://github.com/Rullst/Rullst/pull/750)) removed the redundant code behind four of those
+  equivalents (the end-offset overflow checks of `decode_file`, the
+  `append_exchange` drain guard and the zero-norm check of
+  `cosine_similarity`) and made `InMemoryToolAuditTrail` validate events.
+  Reruns of the four changed files ([43949255885](https://github.com/venelouis/rullst-ci/actions/runs/43949255885), [43949275446](https://github.com/venelouis/rullst-ci/actions/runs/43949275446),
+  [43949290366](https://github.com/venelouis/rullst-ci/actions/runs/43949290366), [43949305052](https://github.com/venelouis/rullst-ci/actions/runs/43949305052)) gave 261 mutants: 234 caught, 27
+  unviable and none missed.
 - **`rullst-iot`** (13.0.0-rc.1 campaign on `cdb68d3b`,
   [PR #749](https://github.com/Rullst/Rullst/pull/749), same fork): targeted
   runs of the 19 files (1 has no mutants) gave 371 mutants: 321 caught, 41
@@ -81,7 +88,10 @@ received a test or is listed under
   attachment decoding and the provider error text. Reruns of the 27 changed
   files leave 9 of 950 mutants missed and 3 timeouts; the remaining 16 missed
   mutants are accepted equivalents listed below and the 11 timeouts are
-  listed with the timeouts.
+  listed with the timeouts. A follow-up ([PR #750](https://github.com/Rullst/Rullst/pull/750)) removed the dead newline
+  check of `strip_html_to_plain_text` behind one of those equivalents; the
+  rerun of `message/plain_text.rs` ([43949242171](https://github.com/venelouis/rullst-ci/actions/runs/43949242171)) caught all 70
+  mutants.
 - **`rullst-messaging`** (re-measured for 13.0.0-alpha.6,
   [PR #711](https://github.com/Rullst/Rullst/pull/711)): targeted
   runs of the 48 files outside `redis_streams/` (7 have no mutants) gave 1,377
@@ -107,7 +117,13 @@ received a test or is listed under
   and protocol checks, the stored-record validation and the SQLite workflow,
   playback and retention guards. The other 17 are accepted equivalents listed
   below. Reruns of the 17 changed files leave 16 of 814 mutants, all accepted
-  equivalents (the seventeenth is the existing `s3/signing.rs` one).
+  equivalents (the seventeenth is the existing `s3/signing.rs` one). A
+  follow-up ([PR #750](https://github.com/Rullst/Rullst/pull/750)) removed the redundant conditions behind six of them (the
+  item bound of `find_created` and the pending-revision and deadline
+  re-checks of `finish` and `stop_intent`) and tested the lease-nonce fence
+  that stays. Reruns of the three files ([43949195438](https://github.com/venelouis/rullst-ci/actions/runs/43949195438),
+  [43949210926](https://github.com/venelouis/rullst-ci/actions/runs/43949210926), [43949227696](https://github.com/venelouis/rullst-ci/actions/runs/43949227696)) gave 128 mutants: 105 caught, 21
+  unviable and 2 missed, the accepted `stopped` and `finish` equivalents.
 - **`rullst-connect`** (13.0.0-alpha.6,
   [PR #718](https://github.com/Rullst/Rullst/pull/718)): targeted runs of the 61
   files outside the PostgreSQL and MySQL login-challenge stores (11 have no
@@ -284,11 +300,9 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-core/src/testing/html_normalize.rs`: `mask_csrf_headers`, `found < copied` with `<=` | `copied` indexes the closing quote of a masked value, so no `x-csrf-token` key can start there. |
 | `rullst-media/src/s3/signing.rs`: `settings` with `Default::default()` | Adapter URLs hold only unreserved characters, `%XX` and `/` without empty or dot segments, so single or double encoding and path normalisation give the same canonical URI. |
 | `rullst-media/src/bunny/signatures.rs`: `BunnyStream::verify_notification`, `(nibble(..) << 4) \| nibble(..)` with `^` | The two nibbles occupy disjoint bits, so OR and XOR build the same byte. |
-| `rullst-media/src/bunny/client.rs`: `find_created`, the `\|\|` between `total_items > 100` and `items.len() > 100` with `&&` | `&&` binds tighter, so the change matters only when exactly one count exceeds 100, and the page's `total_items != items.len()` then rejects it with the same `Protocol`. |
 | `rullst-media/src/sqlite/access.rs`: `MediaService::set_publication`, `record.asset.revision != revision \|\| revision <= 0` with `&&` | `Operation::save` updates only the row at the expected revision, so a stale revision still returns `Conflict`, and a stored revision is always positive. |
 | `rullst-media/src/sqlite/access.rs`: `MediaService::upload_with`, the `\|\|` before `asset.pending` and before `asset.published` with `&&` | The asset comes from a finished refresh lease, so it is active and not pending, and a published asset is playable, which the processing test refuses too. |
 | `rullst-media/src/sqlite/failure.rs`: `stopped`, `expected_revision > 0` with `>=` | Only a record at revision 0 would then pass, and `Record::validate` and the column's `CHECK(revision>0)` never let one load. |
-| `rullst-media/src/sqlite/workflow.rs`: `MediaService::finish`, and `failure.rs`: `MediaService::stop_intent`, the `\|\|` before the pending-revision, nonce and deadline comparisons with `&&` | Every save increments the asset revision, so a record still at the lease's revision is the one `claim` saved, with the lease's pending revision and nonce; a changed revision alone fails `save` with the same `Conflict`, and `tx.until` has already returned `Expired` for a passed deadline. |
 | `rullst-media/src/sqlite/workflow.rs`: `MediaService::finish`, `kind == Kind::Create \|\| kind == Kind::Update` with `&&` | `finish` only receives the result of `execute`, which always returns a video for a create or an update. |
 | `rullst-media/src/sqlite/transaction.rs`: `Operation::save`, `body.len() > 32768` with `==` or `>=` | `Record::validate` and the validated field types bound every field, so a valid record serializes far below 32 KiB. |
 | `rullst-media/src/sqlite/retention.rs`: `MediaService::purge_deleted`, either `\|\|` with `&&` | The SQL selects only deleted bodies updated at or before the cutoff, which `tx.get` decodes from the same row, and `Record::validate` refuses a deleted record with a pending intent, so no operand is ever true. |
@@ -405,7 +419,6 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-mail/src/drivers/memory.rs`: `MailTrap::driver` with `Default::default()` | `MemoryDriver::default()` is `MemoryDriver::new()`, the driver connected to the global trap. |
 | `rullst-mail/src/error.rs`: `bounded_message`, `boundary > 0` with `>=` | `is_char_boundary(0)` is always true, so the loop stops at 0 either way. |
 | `rullst-mail/src/worker.rs`: `prepare_claimed_message`, `send_at > now + CLAIM_CLOCK_SKEW`, and `rullst-mail/src/drivers/resend.rs`: `ResendDriver::send_request`, `send_at > now + MAX_PROVIDER_SCHEDULE`, each with `>=` | They differ only when the schedule equals a `Utc::now()` reading taken inside the call, plus 300 s or 30 days, to the nanosecond. |
-| `rullst-mail/src/message/plain_text.rs`: `strip_html_to_plain_text`, delete the first `!` of `!normalized.is_empty() && !normalized.ends_with('\n')` | The normalized text is always empty or ends with a newline, so the condition never holds; without the `!` it adds only a leading newline, which the final `trim` removes. |
 | `rullst-ai/src/ai/egress.rs`: `EgressPolicy::strict` with `Default::default()` | `strict` already returns `Self::default()`. |
 | `rullst-ai/src/ai/egress.rs`: `is_public_ipv6`, `is_unspecified() \|\| is_loopback()` with `&&` | `::` and `::1` lie outside `2000::/3`, which the next clause rejects. |
 | `rullst-ai/src/ai/guardrails/markdown_inline.rs`: `open_tag_end`, the self-closing `then_some(index + 1)` with `-` or `*` | The tag then ends on or just before its `/`; the byte before that `/` is whitespace, a quote or a name byte, never a bracket. |
@@ -414,9 +427,6 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-ai/src/ai/guardrails/tax_ids.rs`: `token_end`, `bytes.get(index + 1)` with `index - 1` | A separator then joins when a digit precedes it instead of follows it, but the end moves only on digits and a second separator stops both scans, so every token ends at the same digit. |
 | `rullst-ai/src/ai/guardrails/tax_ids.rs`: `is_valid_tax_id`, the CNPJ `all_digits && token.len() == 14` with `\|\|` | `digit_values` still requires exactly 14 digits, which only a 14-digit token or the CNPJ layout holds. |
 | `rullst-ai/src/ai/evaluation/types.rs`: `AiEvaluationReport::schema_version` with `1` | Its fields are private to the evaluation module, whose only constructor, `build_report`, sets `schema_version: 1`; the report has no `Deserialize`. |
-| `rullst-ai/src/ai/durable_audit.rs`: `decode_file`, the record number `events.len() + 1` of the end-offset `checked_add` error with `-` or `*` | `cursor + relative_end` indexes the bytes already read, so the addition never overflows and the error is never built. |
-| `rullst-ai/src/ai/memory.rs`: `InMemoryChatMemory::append_exchange`, `excess > 0` with `>=` | `drain(..0)` removes nothing, so draining a zero excess leaves the history unchanged. |
-| `rullst-ai/src/ai/vector.rs`: `cosine_similarity`, `norm_left == 0.0 \|\| norm_right == 0.0` with `&&` | With one zero norm the divisor is zero, so the quotient is infinite or NaN and the finiteness check that follows also returns `0.0`. |
 
 Timed-out mutants are not counted as caught, and cargo-mutants reports them
 separately. The campaign rewrote the scanning loops of the WAF detector, the

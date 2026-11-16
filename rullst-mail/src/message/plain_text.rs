@@ -95,9 +95,8 @@ pub fn strip_html_to_plain_text(html: &str) -> String {
                 consecutive_newlines += 1;
             }
         } else {
-            if !normalized.is_empty() && !normalized.ends_with('\n') {
-                normalized.push('\n');
-            }
+            // `normalized` is empty or ends with a newline here: every push in
+            // this loop ends with one.
             normalized.push_str(trimmed);
             normalized.push('\n');
             consecutive_newlines = 0;

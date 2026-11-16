@@ -212,20 +212,28 @@ async fn marker_search_reads_one_complete_page_of_one_hundred() {
         provider.find_created(MARKER).await,
         Err(MediaError::Protocol)
     );
-    let full: Vec<_> = (1..=100u32)
-        .map(|i| {
-            let id = format!("12345678-1234-4234-8234-{i:012x}");
-            let title = if i == 42 {
-                MARKER.to_owned()
-            } else {
-                format!("Lesson {i}")
-            };
-            video_json(&id, &title, 0)
-        })
-        .collect();
-    server.json(page(100, 100, full));
+    let videos = |count: u32| -> Vec<_> {
+        (1..=count)
+            .map(|i| {
+                let id = format!("12345678-1234-4234-8234-{i:012x}");
+                let title = if i == 42 {
+                    MARKER.to_owned()
+                } else {
+                    format!("Lesson {i}")
+                };
+                video_json(&id, &title, 0)
+            })
+            .collect()
+    };
+    server.json(page(100, 100, videos(100)));
     let created = provider.find_created(MARKER).await.unwrap().unwrap();
     assert_eq!(created.id.as_str(), "12345678-1234-4234-8234-00000000002a");
+    // A consistent count above one page is refused too.
+    server.json(page(100, 101, videos(101)));
+    assert_eq!(
+        provider.find_created(MARKER).await,
+        Err(MediaError::Protocol)
+    );
 }
 
 #[tokio::test]

@@ -16,12 +16,8 @@ rullst-iot/src/coap.rs:261:35: replace | with ^ in write_option
 # rullst-ai: each name below has a row in docs/src/mutation-testing.md
 # "Accepted equivalent mutants".
 rullst-ai/src/ai/evaluation/types.rs:298:9: replace AiEvaluationReport::schema_version -> u8 with 1
-rullst-ai/src/ai/durable_audit.rs:378:49: replace + with - in decode_file
-rullst-ai/src/ai/durable_audit.rs:378:49: replace + with * in decode_file
 rullst-ai/src/ai/egress.rs:95:9: replace EgressPolicy::strict -> Self with Default::default()
 rullst-ai/src/ai/egress.rs:323:9: replace || with && in is_public_ipv6
-rullst-ai/src/ai/memory.rs:374:19: replace > with >= in <impl ChatMemory for InMemoryChatMemory>::append_exchange
-rullst-ai/src/ai/vector.rs:87:25: replace || with && in cosine_similarity
 rullst-ai/src/ai/guardrails/markdown_code.rs:39:34: replace - with + in indentation
 rullst-ai/src/ai/guardrails/markdown_images.rs:339:61: replace + with * in definition_destination
 rullst-ai/src/ai/guardrails/markdown_inline.rs:83:82: replace + with - in open_tag_end
@@ -247,7 +243,6 @@ rullst-mail/src/pipeline.rs:160:21: replace > with >= in DeliveryPipeline::prepa
 rullst-mail/src/suppression/mod.rs:419:24: replace && with || in ascii_domain
 rullst-mail/src/suppression/mod.rs:419:48: replace && with || in ascii_domain
 rullst-mail/src/drivers/failover.rs:89:68: replace < with <= in FailoverDriver::is_tripped
-rullst-mail/src/message/plain_text.rs:98:16: delete ! in strip_html_to_plain_text
 rullst-mail/src/inspection/sniff.rs:283:36: replace < with <= in root_element
 rullst-mail/src/drivers/memory.rs:130:9: replace MailTrap::driver -> MemoryDriver with Default::default()
 rullst-mail/src/error.rs:213:24: replace > with >= in bounded_message
@@ -262,20 +257,14 @@ rullst-mail/src/security.rs:214:52: replace + with * in href_values
 # rullst-media (13.0 campaign, targeted runs with the package's tests): each
 # name below has a row in docs/src/mutation-testing.md "Accepted equivalent
 # mutants".
-rullst-media/src/bunny/client.rs:259:13: replace || with && in <impl VideoProvider for BunnyStream>::find_created
 rullst-media/src/bunny/signatures.rs:182:51: replace | with ^ in BunnyStream::verify_notification
 rullst-media/src/s3/signing.rs:66:5: replace settings -> SigningSettings with Default::default()
 rullst-media/src/sqlite/access.rs:106:46: replace || with && in MediaService<P, C>::set_publication
 rullst-media/src/sqlite/access.rs:187:17: replace || with && in MediaService<P, C>::upload_with
 rullst-media/src/sqlite/access.rs:188:17: replace || with && in MediaService<P, C>::upload_with
-rullst-media/src/sqlite/failure.rs:30:13: replace || with && in MediaService<P, C>::stop_intent
-rullst-media/src/sqlite/failure.rs:31:13: replace || with && in MediaService<P, C>::stop_intent
-rullst-media/src/sqlite/failure.rs:127:44: replace > with >= in stopped
+rullst-media/src/sqlite/failure.rs:125:44: replace > with >= in stopped
 rullst-media/src/sqlite/retention.rs:53:21: replace || with && in MediaService<P, C>::purge_deleted
 rullst-media/src/sqlite/retention.rs:54:21: replace || with && in MediaService<P, C>::purge_deleted
 rullst-media/src/sqlite/transaction.rs:104:23: replace > with == in Operation<'a, C>::save
 rullst-media/src/sqlite/transaction.rs:104:23: replace > with >= in Operation<'a, C>::save
-rullst-media/src/sqlite/workflow.rs:188:13: replace || with && in MediaService<P, C>::finish
-rullst-media/src/sqlite/workflow.rs:189:13: replace || with && in MediaService<P, C>::finish
-rullst-media/src/sqlite/workflow.rs:190:13: replace || with && in MediaService<P, C>::finish
-rullst-media/src/sqlite/workflow.rs:208:37: replace || with && in MediaService<P, C>::finish
+rullst-media/src/sqlite/workflow.rs:209:37: replace || with && in MediaService<P, C>::finish

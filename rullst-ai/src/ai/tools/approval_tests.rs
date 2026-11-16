@@ -172,3 +172,44 @@ fn durable_tool_audit_events_bound_principal_tool_and_approval() {
         Err("event omits risk for a non-denied outcome")
     );
 }
+
+#[test]
+fn in_memory_tool_audit_trail_refuses_what_the_durable_trail_refuses() {
+    let audit = InMemoryToolAuditTrail::new(4).expect("audit");
+    let mut no_risk = audit_event("user-1", "issue_refund", None);
+    no_risk.risk = None;
+    for (event, reason) in [
+        (
+            audit_event("   ", "issue_refund", None),
+            "event has an invalid principal",
+        ),
+        (
+            audit_event("user-1", "issue refund", None),
+            "event has an invalid tool identifier",
+        ),
+        (
+            audit_event("user-1", "issue_refund", Some(("reviewer-9", "   "))),
+            "event has invalid approval evidence",
+        ),
+        (no_risk, "event omits risk for a non-denied outcome"),
+    ] {
+        assert_eq!(
+            audit.record(event),
+            Err(ToolExecutionError::AuditUnavailable(format!(
+                "AI audit event is invalid: {reason}"
+            )))
+        );
+    }
+    assert_eq!(audit.entries().expect("entries"), Vec::new());
+
+    // A refused event takes no sequence number.
+    let valid = audit_event("user-1", "issue_refund", Some(("reviewer-9", "FIN-42")));
+    assert_eq!(audit.record(valid.clone()), Ok(()));
+    assert_eq!(
+        audit.entries().expect("entries"),
+        vec![RecordedToolAuditEvent {
+            sequence: 1,
+            event: valid,
+        }]
+    );
+}
