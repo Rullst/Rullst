@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794785687560,
+  "lastUpdate": 1794787763268,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -20327,6 +20327,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 327,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "654944c445e464c2b55d4720e6dd70105a07e44d",
+          "message": "Merge pull request #717 from Rullst/fix/v13-alpha6-scalar-docs-csp\n\nfix(core): serve the Scalar docs page with its own nonce CSP",
+          "timestamp": "2026-11-15T20:48:47-03:00",
+          "tree_id": "b5f32c7fa8f2faaa71374b796e3899da67dd210d",
+          "url": "https://github.com/Rullst/Rullst/commit/654944c445e464c2b55d4720e6dd70105a07e44d"
+        },
+        "date": 1794787762504,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1783,
+            "range": "± 39",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 326,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 403,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
