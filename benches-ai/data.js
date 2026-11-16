@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794806832624,
+  "lastUpdate": 1794809861452,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -20615,6 +20615,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 281,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9e80bcbeaff6fb259069f54477c3709c8ee8d376",
+          "message": "Merge pull request #728 from Rullst/feat/v13-alpha6-non-exhaustive-audit\n\nfeat(api)!: non-exhaustive public enums and structs for the 13.0 freeze",
+          "timestamp": "2026-11-16T02:51:57-03:00",
+          "tree_id": "264f02fb2d679c0fd3284d370a809ffb2ae55b94",
+          "url": "https://github.com/Rullst/Rullst/commit/9e80bcbeaff6fb259069f54477c3709c8ee8d376"
+        },
+        "date": 1794809860527,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1746,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 340,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 408,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
