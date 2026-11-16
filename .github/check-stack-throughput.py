@@ -4,10 +4,12 @@
 Blank starter: builds .github/stack-throughput (the router, layers and
 release profile of a `cargo rullst new` application, against this checkout)
 and serves `/json` two ways on one machine: `STACK=generated`
-(`Server::new(router()).run()` with `RULLST_ENV=production`: the production
-security baseline and the access log, writing to a pipe like a container log
-driver) and `STACK=minimal` (the same routes through `axum::serve`, without
-any layer). Each request has no cookie, so the CSRF layer mints a token.
+(`Server::new(router()).run()` with `RULLST_ENV=production`, started in a
+directory with a `static/` folder as a generated project is, so `Server`
+mounts it: the production security baseline, the static mount and the access
+log, writing to a pipe like a container log driver) and `STACK=minimal` (the
+same routes through `axum::serve`, without any layer). Each request has no
+cookie, so the CSRF layer mints a token.
 
 SaaS starter: generates the SaaS starter with the CLI built from this
 checkout (`--default`: SQLite, the strict profile it selects), builds it in
@@ -263,10 +265,11 @@ def get(path: str, cookie: str | None = None) -> tuple[int, dict[str, str], str]
 class Served:
     """One server process on the server CPUs, its stdout read and discarded."""
 
-    def __init__(self, stack: str, server_cpus: str, saas: tuple[Path, Path, dict[str, str]] | None = None):
+    def __init__(self, stack: str, server_cpus: str, cwd: Path,
+                 saas: tuple[Path, Path, dict[str, str]] | None = None):
         env = dict(os.environ, RULLST_ENV="production", HOST="127.0.0.1", PORT=str(PORT), STACK=stack)
         env.pop("RULLST_ACCESS_LOG", None)
-        command, cwd, ready = [str(BINARY)], APP, "/json"
+        command, ready = [str(BINARY)], "/json"
         if stack == "saas":
             if saas is None:
                 raise Failure("the SaaS stack needs its prepared project")
@@ -359,15 +362,26 @@ class Saas:
         self.cookie: str | None = None
 
 
+def blank_directory(work: Path) -> Path:
+    """The working directory of the Blank stacks: a `static/` folder, as in a
+    generated project, so `Server` mounts it as it does there."""
+    directory = work / "blank"
+    (directory / "static").mkdir(parents=True, exist_ok=True)
+    (directory / "static" / "app.css").write_text("body { margin: 0; }\n")
+    return directory
+
+
 def measure(stack: str, bombardier: str, server_cpus: str, client_cpus: str, out: Path, index: int,
-            saas: Saas | None = None) -> dict:
-    served = Served(stack, server_cpus, None if saas is None else (saas.project, saas.binary, saas.settings))
+            saas: Saas | None = None, blank: Path = APP) -> dict:
+    served = Served(stack, server_cpus, blank, None if saas is None else (saas.project, saas.binary, saas.settings))
     path, cookie = "/json", None
     try:
         if stack == "generated":
             missing = missing_security(get("/json")[1])
             if missing:
                 raise Failure("the generated stack's /json lacks " + ", ".join(missing))
+            if get("/static/app.css")[0] != 200:
+                raise Failure("the generated stack does not serve its static/ folder")
         elif stack == "saas" and saas is not None:
             if saas.cookie is None:
                 saas.cookie = sign_up()
@@ -401,9 +415,11 @@ def main() -> int:
         server_cpus, client_cpus = cpus()
         build()
         saas = Saas(*prepare_saas(args.cli.resolve(), args.work.resolve()))
+        blank = blank_directory(args.work.resolve())
         rounds = []
         for index in range(1, ROUNDS + 1):
-            rounds.append({stack: measure(stack, args.bombardier, server_cpus, client_cpus, args.out, index, saas)
+            rounds.append({stack: measure(stack, args.bombardier, server_cpus, client_cpus, args.out, index, saas,
+                                          blank)
                            for stack in STACKS})
         problems = verdict(rounds, min_ratios)
         cpuinfo = Path("/proc/cpuinfo")
