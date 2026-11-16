@@ -301,7 +301,7 @@ before those.
 | Studio `local` feature | **Breaking**, from 13.0.0-alpha.5, only for a direct `rullst-studio` dependency with `default-features = false` and none of `drivers-all`, `strict-sqlite`, `strict-postgres` or `strict-mysql`: the local Studio (`Studio`, `run_studio` and its page modules) is the new `local` feature, which each of those and the facade's `studio` feature enable, so add `features = ["local"]`. `cargo install rullst-studio --no-default-features --features remote` builds the remote Studio without the ORM, Capital and Security crates. |
 | Access-log paths | From 13.0.0-alpha.5, in staging and production the `[HTTP] METHOD path -> status` line of `Server` shows the route that matched (`GET /booking/{token} -> 200`) instead of the request path, and a request that matched no route its path cut to 128 bytes with bytes outside visible ASCII written `%XX`; development and test are unchanged. Log parsers or alerts that match concrete production paths set `[app] access_log_paths = "full"` in `Rullst.toml` or call `Server::access_log_paths(AccessLogPaths::Full)`; `"route"` uses templates everywhere. |
 | Capital invoice minor units | **Breaking**, from 13.0.0-alpha.5: Capital's `Invoice` and `InvoiceItem` hold integer amounts in the currency's smallest unit, like `ChargeReceipt`, instead of `f64`. `InvoiceItem::amount: f64` became `amount_minor: u64` and `Invoice::total: f64` was removed: the total is the checked sum of the items (`total_minor()`, at most 99,999,999). Both structs are `#[non_exhaustive]`: build them with `Invoice::new(invoice_id, customer_email, date, currency)` and `.with_item(description, amount_minor)` (or `InvoiceItem::new`), so 49.90 BRL is `4_990`. The serialized form changes the same way (`amount_minor`, no `total`, an optional `labels` object), so invoice JSON stored by alpha.4 no longer decodes. The HTML and PDF print the new `labels` field: English by default (the same words, now with `<html lang="en">`, the currency code in capitals and a "Description \| Amount" line in the PDF), `with_locale(InvoiceLocale::PtBr)` or `InvoiceLocale::Es` for "Recibo" wording (Capital issues no tax invoice), or edited `InvoiceLabels`. `PaidInvoiceDelivery` takes its subject and PDF name from the title label (`Recibo INV-1`, `recibo-<key>.pdf`) and accepts `subject(...)` and `filename(...)`. `cargo rullst upgrade` reports each struct literal with the old fields (`V13-CAPITAL-INVOICE-MINOR-UNITS`). |
-| Mail Reply-To | From 13.0.0-alpha.5, `rullst_mail::Message` has a `reply_to: Option<String>` field and a `reply_to(...)` builder. The delivery pipeline validates it like `from` (no CR/LF, one mailbox, display names allowed), and the Resend, SendPulse, AWS SES (native and proxy) and SMTP drivers send it; the offline mock and memory drivers keep it. **Breaking** only for a struct literal that lists every field without `..`: add `reply_to: None`, or build the message with `Message::new()` and its builders. Messages serialized without it (queued jobs) still decode, and the field is left out of the serialized form when empty. `cargo rullst upgrade` reports such literals (`V13-MAIL-MESSAGE-REPLY-TO`). |
+| Mail Reply-To | From 13.0.0-alpha.5, `rullst_mail::Message` has a `reply_to: Option<String>` field and a `reply_to(...)` builder. The delivery pipeline validates it like `from` (no CR/LF, one mailbox, display names allowed), and the Resend, SendPulse, AWS SES (native and proxy) and SMTP drivers send it; the offline mock and memory drivers keep it. **Breaking** only for a struct literal that lists every field without `..`: add `reply_to: None`, or build the message with `Message::new()` and its builders (since 13.0.0-alpha.6 `Message` is `#[non_exhaustive]` and only the builders compile; see Non-exhaustive enums and structs). Messages serialized without it (queued jobs) still decode, and the field is left out of the serialized form when empty. `cargo rullst upgrade` reports such literals (`V13-MAIL-MESSAGE-REPLY-TO`). |
 | Capital InfinitePay adapter | From 13.0.0-alpha.5, `InfinitePayProvider::checkout(handle)` (with `with_api_key("inchk_…")` and `with_webhook_url(...)`) works against InfinitePay's public Checkout API: `create_one_off_checkout` creates a link with `POST /links`, the unsigned webhook is read with `parse_payment_notification`, and `confirm_one_off_payment` calls `POST /payment_check` and reports a payment only when InfinitePay confirms it with the server-side amount. The alpha.4 constructor `new(api_key, webhook_secret)` still compiles: it has no handle, keeps its offline fixtures with `mock_*` credentials and refuses live operations, and its `webhook_verification_mode()` returns the new `ConfirmedAtSource` instead of `Real` for a non-mock secret. `create_customer_portal` and `cancel_subscription` return `UnsupportedOperation` even with `mock_*` credentials, because InfinitePay has no portal or subscriptions. |
 | Capital one-off checkout and unsigned notifications | Opt-in from 13.0.0-alpha.5: `OneOffCheckoutRequest` (server-side reference, unit amount in minor units, currency, description, quantity, success and cancel URLs, optional e-mail), `BillingProvider::create_one_off_checkout`, `parse_payment_notification` and `confirm_one_off_payment` (each defaults to `UnsupportedOperation`, so custom providers keep compiling), `OneOffCheckout`, `PaymentNotification`, `OneOffPayment`, `WebhookVerificationMode::ConfirmedAtSource` (the webhook middleware inserts a `PaymentNotification` instead of a `WebhookEvent` for such a provider) and `providers::ProviderRequest`. Stripe implements the one-off checkout with inline `price_data`; `create_one_time_checkout` with a fixed price is unchanged. `StripeCheckoutRequest` and `StripePaymentCheckoutRequest` now accept `http://localhost`, `127.0.0.1` and `[::1]` redirects for `mock_*` keys; a live key still requires HTTPS and fails with `ConfigurationError` before any request. |
 | Labs outcomes and states | **Breaking**, from 13.0.0-alpha.5 (Experimental `rullst-labs`): `ExecutionProfile`, `WorkerOutcome`, `ExecutionFailure`, `TrapKind`, `CaseOutput`, `CaseGrade`, `JobResult`, `JobState` and `ResultEvidence` are `#[non_exhaustive]`, and so are the store-returned `JobView` and `CleanupJob`. A `match` on one of these enums outside `rullst-labs` needs a wildcard arm. `ExecutionFailure` gains `TimeLimit`: a runner that stops an attempt at the wall limit and confirms its teardown reports `Rejected(TimeLimit)` through `complete`, and the job ends `Failed` instead of `Cancelled`, so a learner can tell a time limit from their own cancellation (step 4 of the [runner contract](labs-runner-contract.md)). An alpha.4 process cannot read a job that ended with `TimeLimit`. The protocol v1 wire types, `ToolIdentity` and `RustSource` are unchanged, so existing stores open as before. `cargo rullst upgrade` reports each `match` on these enums without a catch-all arm in a file that names `rullst_labs` (`V13-LABS-NON-EXHAUSTIVE-MATCH`). |
@@ -320,6 +320,7 @@ before those.
 | ORM explicit save mode | **Breaking**, from 13.0.0-alpha.6: every `#[derive(Orm)]` and `#[derive(TursoModel)]` model declares what `save()` writes to a stored row, or fails to compile with an error that shows both choices. A `#[sqlx(skip)] pub snapshot: RowSnapshot` field (`rullst::orm::RowSnapshot`) writes only the columns that changed since the record was read (see ORM dirty tracking); `#[orm(full_row_save)]` on the struct writes every column, which is what a model without the field did until 13.0.0-alpha.5. A full-row save loses updates: when two requests read the same row and change different fields, the later `save()` writes the earlier request's field back as it read it (a student's profile edit erases the XP awarded meanwhile). Prefer the field: struct literals then add `snapshot: RowSnapshot::default()`, and a model that derives Serde marks it `#[serde(skip)]`. Keep `full_row_save` only for a model whose code relies on overwriting the whole row, or call `mark_all_dirty()` before those saves instead. A model with both choices fails too. Turso-primary models always write every column: they declare `#[orm(full_row_save)]`, and a `RowSnapshot` field on them, which they ignored, no longer compiles. `cargo rullst upgrade` reports each model without a valid choice at its struct name. The models the CLI writes have declared the field since 13.0.0-alpha.3; its Turso models (`make:model`, `make:chat-session` and the Turso Blank starter) now declare `full_row_save`, and `generate:models` names the field `row_snapshot` for a table that has a `snapshot` column. |
 | Passkeys feature | **Breaking**, from 13.0.0-alpha.6: `rullst-auth`'s `auth::passkey` module (`PasskeyAuth`, `PasskeyConfig`, `Passkey`, the shared ceremony manager and `SqlitePasskeyStore`) and aws-lc-rs, which checks the ES256 keys and signatures, are compiled only with the new `passkeys` feature, so an application without passkeys builds neither. `sqlite` and `passkey-postgres` include it. In the `rullst` facade, `auth` no longer brings passkeys: enable `auth-passkeys` (`auth-sqlite` and `auth-passkey-postgres` include it). Nexus and the generated starters use no passkeys and do not enable it. The decisions are unchanged: aws-lc-rs replaced `p256` (the public-key check) and `ring` (the signature check) with the same results on differential tests and on the Wycheproof ECDSA P-256 vectors, and high-S signatures are still accepted. Without the feature, code that names `auth::passkey` fails with E0432 or E0433 ("could not find `passkey` in `auth`"); `cargo rullst upgrade` locates it when no manifest of the workspace enables passkeys (`V13-AUTH-PASSKEYS-FEATURE`). No other API changes. |
 | Media processing states | **Breaking**, from 13.0.0-alpha.6 (`rullst-media`): `Processing` is `#[non_exhaustive]` and gained `Playable`. Bunny's API status 8 (`JitPlaylistsCreated`, just-in-time encoding with Premium Encoding) maps to `Playable` instead of `Processing`: its playlists exist, so Bunny's player streams the video while encoding goes on. Status 7 (`JitSegmenting`) stays `Processing`, because the first segments do not exist yet, and `Ready` still means status 4 (`Finished`). Bunny supports just-in-time playback only in its own player, so `MediaService` publishes a `Playable` video and grants it only `PlaybackKind::Embed`; `Hls` and `Mp4_720p` return `MediaError::Unsupported` until it is `Ready`. A published video whose next read is neither `Playable` nor `Ready` is withdrawn, as a `Ready` one was. Webhook status codes are a different numbering and still only trigger a refresh. A `match` on `Processing` outside `rullst-media` needs a wildcard arm; `Processing::is_playable()` and `Processing::allows(kind)` answer whether a video can be watched now and with which kind. `cargo rullst upgrade` reports each exhaustive `match` (`V13-MEDIA-PROCESSING-MATCH`). Reported by the plataforma application. |
+| Non-exhaustive enums and structs | **Breaking**, from 13.0.0-alpha.6, the 13.0 public API freeze: so that a 13.x release can add a variant or a field without breaking applications, the public enums and the structs with public fields that can grow are `#[non_exhaustive]`. The enums are the errors (`StorageError`, `RealtimeError`, `WsError`, `DiError`, `ValidationError`, `TelemetryError`, `SecurityError`, `SriError`, `SiemSpoolError`, `AuthenticatedSiemSpoolError`, `DurableAuditError`, `AgeError`, `ConsentError`) and the statuses, kinds, modes and backends (`SubscriptionStatus`, `ModelOperation`, `ColumnDefault`, `OccurrenceState`, `MissedRunPolicy`, `PromptThreatCategory`, `RateLimitBackend`, `RedisRateLimitMode`, `JwtPolicyMode`, `JwtRevocationMode`, `CeremonyDurability`, `ReplayDurability`, `ConsentDurability`, `AgeMethod`, `RiskLevel`, `ParentPolicy`, `JsonCapability`, `SqlChatBackend`, `DistributedTraceKind`, `QueryFindingKind`, and IoT's `AnomalyState`, `NodeStatus`, `HarvesterState`, `PowerMode`, `PinMode`, `CoapMethod`, `CoapMessageType` and `ModbusFunction`). The structs include Nexus's `FieldMeta`, `RegistryEntry` and `NexusState`; Mail's `Message`, `Attachment`, `ResendDriver` and `SmtpDriver`; Connect's `ConnectUser`, `ExchangeParams`, `AuthCallback`, `HttpRequest`, `HttpResponse` and `TokenExchangeForm`; the WebAuthn types of `auth::passkey`, `Passkey` and `ApplicationJwtClaims`; Capital's `WebhookEvent`, `WebhookEventRecord` and `RevenueMetrics`; Core's `QueuedJob`, `QueuedJobDetail`, `TraceSpan`, `RealtimeMessage` and telemetry snapshots; AI's `Message`, `ToolParam`, `ProviderCapabilities`, `RagRetrievalError` and audit events; the ORM's `PaginationResult`, `PrivacyReport`, `ClaimedOutboxEvent`, `ModelCommittedEvent` and schema `Column`; Security's `TimingGuardConfig` and reports; IoT's data structs; and Studio's settings and reports. A `match` on one of these enums outside its crate needs a wildcard arm, and code outside the crate builds these structs with their constructors, because a literal no longer compiles, with `..Default::default()` either: `FieldMeta::new(name, label, kind).hidden().readonly()`, `RegistryEntry::new`, `NexusState::new`, `Message::new()` and its builders (Mail), `ExchangeParams::new(code).with_code_verifier(verifier).with_expected_nonce(nonce)`, `ConnectUser::new(id, name, access_token)`, `HttpRequest::new`, `HttpResponse::new(status, body)`, `TokenExchangeForm::new`, `Passkey::new`, `WebhookEvent::new(..).with_ends_at(..)`, `WebhookEventRecord::new`, `RevenueMetrics::new`, `QueuedJob::new`, `QueuedJobDetail::new(..).with_error(..)`, `TraceSpan::new`, `ToolParam::new`, AI's `Message::new`, `RagRetrievalError::new`, `RagAuditError::new`, `PaginationResult::new`, `PrivacyReport::new` and `TimingGuardConfig::new`; `AuthCallback` and `ClaimedOutboxEvent` start from `default()` and `ProviderCapabilities` from `PORTABLE` or `NONE`, then take field assignments. Reports, events and snapshots that Rullst returns are read, not built: a test deserializes one. Reading and assigning public fields keeps working. Models generated by the SaaS starter (`src/models/user.rs` and the subscription model) and `make:oauth apple` controllers before alpha.6 build `FieldMeta` and `AuthCallback` with literals; new projects use the constructors. Types whose next variant or field must break callers stay exhaustive and say why in their documentation: Labs' `Action`, `Teardown`, `LeaseStatus` and protocol v1 structs, Privacy's `AgeDecision`, `AgeOutcome`, `Assurance` and `AgeDeclaration`, Auth's `CeremonyKind`, Core's `AttributePresence`, `CompletionStatus` and `AbortStatus`, IoT's `MqttQos` and `PinState`, Studio's `DistributedTraceStatus` and V1 trace wire types, and the newtypes `ValidatedJson`, `ValidatedForm`, `Inject`, `RawHtml` and the ORM's `Json`. `cargo rullst upgrade` reports each `match` without a wildcard arm (`V13-NON-EXHAUSTIVE-MATCH`) and each literal (`V13-NON-EXHAUSTIVE-LITERAL`) in a file that names the type's crate. |
 
 The [12.0→12.1 guide](migration-v12-1.md) still applies to applications that have
 not adopted the 12.1 account, payment and deployment changes. Skipping directly
@@ -933,7 +934,7 @@ steps in order.
     another wording.
 14. **Add `reply_to` to exhaustive `Message` literals** (Mail Reply-To row):
     write `reply_to: None`, or build the message with `Message::new()` and its
-    builders. Use `.reply_to(visitor_email)` where replies should reach someone
+    builders, which alpha.6 requires anyway. Use `.reply_to(visitor_email)` where replies should reach someone
     other than the sender.
 15. **Handle the Privacy, Labs and Supervision changes** (Privacy consent
     choices, Labs outcomes and states and Supervision obscured camera and
@@ -1021,9 +1022,10 @@ steps in order.
 This checklist moves an application from 13.0.0-alpha.5 to 13.0.0-alpha.6.
 The rows above that name alpha.6 are the changes in between. alpha.6 is the
 13.0 feature and public API freeze: it removes every API that was still
-deprecated, makes each ORM model choose what `save()` writes, puts passkeys
-behind a feature, stops the health probes from reporting the framework
-version, and changes the security baseline (CSRF and the secure headers in
+deprecated, makes the public enums and structs that can grow
+`#[non_exhaustive]`, makes each ORM model choose what `save()` writes, puts
+passkeys behind a feature, stops the health probes from reporting the
+framework version, and changes the security baseline (CSRF and the secure headers in
 every environment, a CSRF token masked per response, static files by path
 and a CSP nonce only on HTML responses). The access log is written by a
 background thread, cron fields are checked one by one, and `cargo rullst
@@ -1045,8 +1047,9 @@ Work through the steps in order.
      `V13-SECURITY-DEPRECATED-REMOVED`, `V13-CONNECT-INFALLIBLE-NEW-REMOVED`,
      `V13-ROUTE-MARKER-REMOVED` and `V13-ORM-SCHEMA-DIFF-REMOVED` (step 5),
      `V13-ORM-SAVE-MODE` (step 6), `V13-AUTH-PASSKEYS-FEATURE` (step 7),
-     `V13-HEALTH-PROBE-VERSION-FIELD` (step 8) and
-     `V13-MEDIA-PROCESSING-MATCH` (step 17).
+     `V13-HEALTH-PROBE-VERSION-FIELD` (step 8),
+     `V13-MEDIA-PROCESSING-MATCH` (step 17), and `V13-NON-EXHAUSTIVE-MATCH`
+     and `V13-NON-EXHAUSTIVE-LITERAL` (step 18).
    - `REVIEW`: `V13-IOT-OTA-LEGACY-REMOVED`,
      `V13-NEXUS-INFALLIBLE-BUILD-REMOVED`, `V13-AI-DEPRECATED-REMOVED` and
      `V13-QUEUE-PURGE-COMPLETED-REMOVED` (step 5, review findings because
@@ -1055,14 +1058,15 @@ Work through the steps in order.
      (step 10), `V13-CSRF-STATIC-PREFIXES` (step 11), `V13-CSRF-COOKIE-IN-PAGE`
      (step 12) and `V13-DEPLOY-CADDY-ENCODE` (step 15).
 
-   The changes of steps 9, 13, 14, 16 and 18 have no rule: read them even
+   The changes of steps 9, 13, 14, 16 and 19 have no rule: read them even
    when the plan is empty.
 4. **Apply, keeping a failed state.** Code that uses the removed APIs, a
-   model without a save mode or passkeys without the feature does not compile
+   model without a save mode, passkeys without the feature, or a `match` or
+   struct literal of a type that became `#[non_exhaustive]` does not compile
    against alpha.6. Run `cargo rullst upgrade --keep-on-failure`: it pins
    every Rullst dependency to `=13.0.0-alpha.6`, runs `cargo fix` and
    `cargo check --locked`, and, when they fail, keeps the edited files and
-   names the must-change findings. Fix what steps 5 to 8 and 17 name; without a
+   names the must-change findings. Fix what steps 5 to 8, 17 and 18 name; without a
    `MUST-CHANGE` finding, a plain `cargo rullst upgrade` is enough.
 5. **Replace the removed deprecated APIs.** Each was deprecated in 12.0.0
    (`schema_diff` in 13.0.0-alpha.5) and has a replacement that reports a
@@ -1220,7 +1224,26 @@ Work through the steps in order.
     Bunny's embedded player (`PlaybackKind::Embed`) and as processing for
     HLS or MP4 playback, or use `processing.allows(kind)`. `MediaService`
     now publishes a `Playable` video; `Ready` still means finished.
-18. **Dependencies and feature graphs** (no rule).
+18. **Add wildcard arms and use the constructors** (Non-exhaustive enums and
+    structs row, `V13-NON-EXHAUSTIVE-MATCH`, `V13-NON-EXHAUSTIVE-LITERAL`).
+    The public enums and structs that a 13.x release may extend are
+    `#[non_exhaustive]`. Give each `match` on one of these enums a wildcard
+    arm (`_ => ...`) that treats an unknown error generically and an unknown
+    status, kind or mode as the most cautious case you handle. Build the
+    structs with their constructors instead of a literal, where
+    `..Default::default()` no longer compiles either:
+    `FieldMeta::new(name, label, kind).hidden().readonly()` in hand-written
+    Nexus models (the SaaS starter's `src/models/user.rs` and subscription
+    model have such literals), `AuthCallback::default()` and field
+    assignments in a `make:oauth apple` controller,
+    `ExchangeParams::new(code).with_code_verifier(verifier)`,
+    `ConnectUser::new(id, name, access_token)` and `HttpResponse::new` in
+    custom Connect providers and clients, `WebhookEvent::new` in a custom
+    billing provider, `QueuedJob::new` in a custom queue driver,
+    `Message::new()` with its builders for Mail, and the others the row lists.
+    Reading and assigning public fields keeps working. The decision enums of
+    Labs and Privacy stay exhaustive, so they need no wildcard.
+19. **Dependencies and feature graphs** (no rule).
     - `cargo rullst make:cors-jwt` middleware generated earlier keeps the
       `jsonwebtoken` 11 its project declares. To move it to 12, the version
       `rullst-connect` and `rullst-auth` (`jwt`) now use, handle the
@@ -1241,13 +1264,13 @@ Work through the steps in order.
       them. An application whose own code makes rustls connections and
       relied on `orm` installing aws-lc-rs as the process default enables
       the facade's `tls` feature (TLS stack of SQLite-only builds row).
-19. **Update scripts, CI and other tools.** Where a workflow or script
+20. **Update scripts, CI and other tools.** Where a workflow or script
     installs a pinned CLI (`cargo install cargo-rullst --version
     =13.0.0-alpha.5`), pin `=13.0.0-alpha.6`. Check the health-probe scripts
     of step 8 and any client that posts to the development server (step 10).
-20. **Validate.** Run `cargo rullst upgrade` again. It makes no further version
+21. **Validate.** Run `cargo rullst upgrade` again. It makes no further version
     edits and checks the result with `cargo fix` and `cargo check --locked`.
-21. **Verify** with the production feature set: `cargo build`, `cargo test`
+22. **Verify** with the production feature set: `cargo build`, `cargo test`
     and `cargo clippy --all-targets -- -D warnings`; then, on staging, sign-in
     and sign-out, every form and htmx request (CSRF), every page with the
     browser's developer console open to catch CSP violations, the health

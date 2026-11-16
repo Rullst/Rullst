@@ -305,6 +305,8 @@ release:
 | 13.0.0-alpha.6 | `V13-ORM-SAVE-MODE` (the explicit ORM save mode) |
 | 13.0.0-alpha.6 | `V13-AUTH-PASSKEYS-FEATURE` (passkeys behind a feature) |
 | 13.0.0-alpha.6 | `V13-MEDIA-PROCESSING-MATCH` (Media's `Playable` state) |
+| 13.0.0-alpha.6 | `V13-NON-EXHAUSTIVE-MATCH` (the non-exhaustive public enums) |
+| 13.0.0-alpha.6 | `V13-NON-EXHAUSTIVE-LITERAL` (the non-exhaustive public structs) |
 
 A rule is dated by the first release tag whose catalog contains its code
 (`git show v13.0.0-alpha.2:cargo-rullst/src/generators/build/upgrade/rules/catalog.rs`,
@@ -782,6 +784,7 @@ totals, which every new row or rule would change.
 | ORM explicit save mode | (a) must-change | `V13-ORM-SAVE-MODE` | Each `#[derive(Orm)]` or `#[derive(TursoModel)]` struct with neither or both of a `RowSnapshot` field and `#[orm(full_row_save)]`, and each Turso-primary one with a `RowSnapshot` field or without `full_row_save`, at its name; introduced in 13.0.0-alpha.6 |
 | Passkeys feature | (a) must-change | `V13-AUTH-PASSKEYS-FEATURE` | `rullst::auth::passkey` and `rullst_auth::passkey` paths (also through `auth::auth`, and `auth::passkey` in a file that names `rullst::auth` or `rullst_auth`) in `use` items, groups and code, at every location, when no workspace manifest enables `auth-passkeys`, `auth-sqlite` or `auth-passkey-postgres` on `rullst`, or `passkeys`, `sqlite` or `passkey-postgres` on `rullst-auth`, in a dependency or a `[features]` entry; introduced in 13.0.0-alpha.6 |
 | Media processing states | (a) must-change | `V13-MEDIA-PROCESSING-MATCH` | A `match` whose arm patterns name `AwaitingUpload` and that has no catch-all arm, in a file that names `rullst_media`; comparisons and `matches!` keep compiling; introduced in 13.0.0-alpha.6 |
+| Non-exhaustive enums and structs | (a) must-change | `V13-NON-EXHAUSTIVE-MATCH`, `V13-NON-EXHAUSTIVE-LITERAL` | A `match` without a catch-all arm whose arm patterns name one of the enums that became `#[non_exhaustive]` and one of its variants; a struct literal (also inside `vec![...]`) of one of the structs that did, whose fields are all fields of that struct; and a call of the tuple structs `RagRetrievalError` and `RagAuditError`; each in a file that names the type's crate (`rullst_<crate>` or `<crate>::`, any `rullst` path for Core), so an application's own type of the same name is left alone; introduced in 13.0.0-alpha.6 |
 
 ## Planned simpler update experience
 
