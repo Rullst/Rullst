@@ -206,6 +206,54 @@ fn the_terminal_report_announces_the_benchmark_on_stderr() {
 /// Nothing answers on the port: the JSON report still carries the figures
 /// that need no running app, with the failure inside, and run fails.
 #[test]
+fn a_published_site_reports_its_page_weight_only_and_fails_when_unreachable() {
+    // Nothing listens on port 1, so the HTTPS connection is refused at once.
+    let url = "https://127.0.0.1:1";
+    let (_, outcome, shown, _) = footprint_at(Some(url), &["--page-weight", "--json"]);
+    assert!(
+        outcome.starts_with("https://127.0.0.1:1/: GET / failed: "),
+        "{outcome}"
+    );
+    let report: serde_json::Value = serde_json::from_str(&shown).unwrap();
+    assert_eq!(report["target"]["mode"], "remote_url");
+    assert_eq!(report["target"]["url"], "https://127.0.0.1:1/");
+    assert_eq!(report["target"]["pid"], serde_json::Value::Null);
+    let reason = "not measured for a published https:// site: footprint weighs only its page";
+    assert_eq!(report["target"]["process_lookup"], reason);
+    for figure in [
+        "binary_size_bytes",
+        "image_size_bytes",
+        "idle_rss_bytes",
+        "dependency_count",
+        "compiled_dependency_count",
+    ] {
+        let metric = &report["measured"][figure];
+        assert_eq!(metric["status"], "not_measured", "{figure}");
+        assert_eq!(metric["reason"], reason, "{figure}");
+    }
+    assert_eq!(report["benchmark"]["status"], "not_run");
+    assert_eq!(report["benchmark"]["cpu_time_seconds"]["reason"], reason);
+    assert_eq!(report["page_weight"]["status"], "not_measured");
+    assert_eq!(report["failure"]["stage"], "reach");
+    assert_eq!(report["failure"]["title"], "Site not reachable");
+    assert!(
+        report["notes"][0]
+            .as_str()
+            .unwrap()
+            .starts_with("Only the page weight was measured"),
+        "{report}"
+    );
+    // The refusals stop the run before any request.
+    let (_, outcome, _, _) = footprint_at(Some(url), &["--bench", "--page-weight"]);
+    assert!(outcome.starts_with("--bench loads the app"), "{outcome}");
+    let (_, outcome, _, _) = footprint_at(Some(url), &[]);
+    assert_eq!(
+        outcome,
+        "footprint only weighs the page of a published https:// site: add --page-weight"
+    );
+}
+
+#[test]
 fn an_unreachable_app_still_reports_the_static_figures_and_the_failure() {
     let port = super::super::target::free_port().unwrap();
     let url = format!("http://127.0.0.1:{port}");

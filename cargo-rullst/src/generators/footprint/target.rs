@@ -1,6 +1,7 @@
-//! What gets measured: a loopback-only URL or the project's release binary
-//! started on a free loopback port. [`super::process`] finds the process
-//! listening on a URL's port.
+//! What gets measured: a loopback `http://` URL, a published site's
+//! `https://` URL (page weight only), or the project's release binary started
+//! on a free loopback port. [`super::process`] finds the process listening on
+//! a loopback URL's port.
 use std::collections::VecDeque;
 use std::io::{self, Read};
 use std::net::IpAddr;
@@ -18,10 +19,12 @@ const STOP_GRACE: Duration = Duration::from_secs(5);
 pub(crate) enum UrlError {
     #[error("`{0}` is not a valid URL")]
     Invalid(String),
-    #[error("only http:// URLs are supported, such as http://127.0.0.1:3000")]
+    #[error(
+        "use http:// for an app on this machine (http://127.0.0.1:3000) or https:// for a published site"
+    )]
     Scheme,
     #[error(
-        "footprint measures loopback addresses only (127.0.0.0/8, ::1 or localhost); `{0}` is not loopback"
+        "an http:// URL must be on loopback (127.0.0.0/8, ::1 or localhost) and `{0}` is not; weigh a published site's page with https:// and --page-weight"
     )]
     NotLoopback(String),
     #[error("the URL must not contain credentials, a query or a fragment")]
@@ -30,12 +33,15 @@ pub(crate) enum UrlError {
     Path,
 }
 
-/// Accepts `http://` origins on loopback only; `localhost` becomes
-/// `127.0.0.1` so name resolution can never leave the machine.
+/// Accepts an `http://` origin on loopback, where `localhost` becomes
+/// `127.0.0.1` so name resolution can never leave the machine, or an
+/// `https://` origin of a published site, which is weighed only
+/// ([`is_remote`]). Neither may carry credentials, a path, a query or a
+/// fragment.
 pub(crate) fn validate_url(raw: &str) -> Result<reqwest::Url, UrlError> {
     let mut url =
         reqwest::Url::parse(raw.trim()).map_err(|_| UrlError::Invalid(raw.to_string()))?;
-    if url.scheme() != "http" {
+    if !matches!(url.scheme(), "http" | "https") {
         return Err(UrlError::Scheme);
     }
     if !url.username().is_empty()
@@ -47,6 +53,9 @@ pub(crate) fn validate_url(raw: &str) -> Result<reqwest::Url, UrlError> {
     }
     if url.path() != "/" {
         return Err(UrlError::Path);
+    }
+    if is_remote(&url) {
+        return Ok(url);
     }
     let host = url.host_str().unwrap_or_default().to_string();
     if host.eq_ignore_ascii_case("localhost") {
@@ -70,6 +79,13 @@ pub(crate) fn validate_url(raw: &str) -> Result<reqwest::Url, UrlError> {
         return Err(UrlError::NotLoopback(host));
     }
     Ok(url)
+}
+
+/// Whether `url` is a published site's `https://` origin: footprint fetches
+/// its page and resources only, and measures no process, binary or
+/// dependency figure for it.
+pub(crate) fn is_remote(url: &reqwest::Url) -> bool {
+    url.scheme() == "https"
 }
 
 /// `base` with `path` (and its optional query); the host never changes.

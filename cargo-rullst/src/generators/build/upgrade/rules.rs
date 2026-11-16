@@ -29,7 +29,7 @@ mod tokens;
 
 use super::manifest::ManifestUpgradePlan;
 use semver::Version;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
@@ -176,11 +176,38 @@ impl SourceScan {
 #[derive(Default)]
 struct Collector {
     lines: BTreeMap<(&'static str, usize), &'static Rule>,
+    /// `V13-CREDENTIAL-RATE-LIMIT` at calls of an application function named
+    /// like a hasher, by line: reported unless the package defines that
+    /// function with its hashing bounded ([`Self::add_bounded`]).
+    calls: BTreeMap<usize, &'static str>,
+    /// Hasher-named functions of this file whose hashing is bounded.
+    bounded: BTreeSet<&'static str>,
 }
 
 impl Collector {
     fn add(&mut self, rule: &'static Rule, line: usize) {
         self.lines.entry((rule.code, line.max(1))).or_insert(rule);
+    }
+
+    /// A call of the application's own `callee` at `line`, which needs a
+    /// bound unless `callee` is defined with one.
+    fn add_call(&mut self, line: usize, callee: &'static str) {
+        self.calls.entry(line.max(1)).or_insert(callee);
+    }
+
+    /// This file defines `name` (a hasher's name) with its hashing bounded.
+    fn add_bounded(&mut self, name: &'static str) {
+        self.bounded.insert(name);
+    }
+
+    /// The calls a definition in another file may still resolve, and the
+    /// bounded definitions of this file, which then stay out of
+    /// [`Self::finish`].
+    fn take_calls(&mut self) -> (BTreeMap<usize, &'static str>, BTreeSet<&'static str>) {
+        (
+            std::mem::take(&mut self.calls),
+            std::mem::take(&mut self.bounded),
+        )
     }
 
     /// Removes the review locations a marker in `text` covers and returns
@@ -195,11 +222,24 @@ impl Collector {
             }
             !covered
         });
+        self.calls.retain(|line, _| {
+            let covered = reviewed::covers(&lines, *line, &catalog::CREDENTIAL_RATE_LIMIT);
+            if covered {
+                dropped.push(&catalog::CREDENTIAL_RATE_LIMIT);
+            }
+            !covered
+        });
         dropped
     }
 
-    /// Appends the findings by line, then code.
-    fn finish(self, path: &Path, findings: &mut Vec<SourceFinding>) {
+    /// Appends the findings by line, then code, with the calls this file's
+    /// own bounded definitions do not resolve.
+    fn finish(mut self, path: &Path, findings: &mut Vec<SourceFinding>) {
+        for (line, callee) in std::mem::take(&mut self.calls) {
+            if !self.bounded.contains(callee) {
+                self.add(&catalog::CREDENTIAL_RATE_LIMIT, line);
+            }
+        }
         let mut hits: Vec<_> = self.lines.into_iter().collect();
         hits.sort_by_key(|((code, line), _)| (*line, *code));
         findings.extend(hits.into_iter().map(|((_, line), rule)| SourceFinding {
@@ -275,6 +315,9 @@ fn scan_package(
 ) -> Result<(), Box<dyn std::error::Error>> {
     // The first `Server::new` and whether a marker covers its health rule.
     let mut server_start: Option<(PathBuf, usize, bool)> = None;
+    // Calls of application hashers, resolved once every file is read.
+    let mut calls: Vec<(PathBuf, usize, &'static str)> = Vec::new();
+    let mut bounded: BTreeSet<&'static str> = BTreeSet::new();
     let mut mounts_health = false;
     let mut entries = 0usize;
     for entry in WalkDir::new(package_root)
@@ -326,8 +369,25 @@ fn scan_package(
             Err(_) => scan.unscanned.push(path.to_path_buf()),
         }
         scan.reviewed.extend(collector.drop_reviewed(&text));
+        let (file_calls, file_bounded) = collector.take_calls();
+        calls.extend(
+            file_calls
+                .into_iter()
+                .map(|(line, callee)| (path.to_path_buf(), line, callee)),
+        );
+        bounded.extend(file_bounded);
         collector.finish(path, &mut scan.findings);
     }
+    scan.findings.extend(
+        calls
+            .into_iter()
+            .filter(|(_, _, callee)| !bounded.contains(callee))
+            .map(|(path, line, _)| SourceFinding {
+                rule: &catalog::CREDENTIAL_RATE_LIMIT,
+                path,
+                line,
+            }),
+    );
     match server_start {
         Some(_) if mounts_health => {}
         Some((_, _, true)) => scan.reviewed.push(&catalog::HEALTH_PROBES),

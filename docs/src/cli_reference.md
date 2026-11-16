@@ -2217,20 +2217,25 @@ beside the lab's bytes per request.
 Without `--url` it builds the release binary (reusing an existing build),
 starts it with `RULLST_ENV=production` (or `--env staging`, which accepts the
 starters' mock billing credentials) on a free `127.0.0.1` port, measures it
-and stops it. With `--url` it measures an app already running on loopback and
-refuses any other host; it makes no network calls beyond loopback, the local
-container engine and the `--monitor-url` you pass, and never fetches grid
-intensity.
+and stops it. With an `http://` `--url` it measures an app already running on
+loopback and refuses any other host. Since 13.0.0-alpha.6 an `https://`
+`--url` weighs a published site's page as visitors download it, with the
+server's compression: it needs `--page-weight`, refuses `--bench` and
+`--image`, and reports the binary, memory, dependency and CPU figures as not
+measured. It makes no network calls beyond loopback, the `https://` origin
+you pass, the local container engine and the `--monitor-url` you pass, and
+never fetches grid intensity.
 
 ```bash
 cargo rullst footprint --env staging --bench --page-weight --check-budget
 cargo rullst footprint --image my-app:latest
 cargo rullst footprint --url http://127.0.0.1:3000 --path /health --bench --json
 cargo rullst footprint --page-weight
+cargo rullst footprint --url https://app.example --page-weight
 cargo rullst footprint --bench --cpu-watts 15 --network-kwh-per-gb 0.059 --grid-intensity 120
 ```
 
-* **Flags:** `--url <http://127.0.0.1:PORT>`, `--env <production|staging>`
+* **Flags:** `--url <http://127.0.0.1:PORT|https://ORIGIN>`, `--env <production|staging>`
   (default `production`; not with `--url`), `--path <PATH>` (default `/`),
   `--image <NAME>`, `--bench`, `--duration <10s|1m|1500ms>` (default `10s`,
   1 s to 10 min; needs `--bench`), `--concurrency <N>` (default 4, at most

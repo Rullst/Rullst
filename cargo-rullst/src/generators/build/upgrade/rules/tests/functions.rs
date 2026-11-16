@@ -276,3 +276,195 @@ fn routes() { routes! { post("/progress" => record_progress) } }
         .is_empty()
     );
 }
+
+/// The plataforma's `src/auth.rs`: `hash_password` runs Rullst's hasher under
+/// its own `run_password_work`, whose semaphore permit bounds it, and the
+/// file applies `credential_rate_limit` to the public login.
+const PLATFORM_AUTH: &str = r#"
+use rullst::async_runtime::tokio::sync::Semaphore;
+static PASSWORD_WORK: LazyLock<Arc<Semaphore>> = LazyLock::new(|| Arc::new(Semaphore::new(4)));
+pub async fn run_password_work<T, F>(work: F) -> Result<T, PasswordWorkError>
+where
+    F: FnOnce() -> T + Send + 'static,
+    T: Send + 'static,
+{
+    let permit = rullst::runtime::time::timeout(WAIT, Arc::clone(&*PASSWORD_WORK).acquire_owned()).await;
+    let _permit = permit.map_err(|_| PasswordWorkError::Busy)?;
+    spawn_blocking(work).await.map_err(|_| PasswordWorkError::Failed)
+}
+pub async fn hash_password(password: String) -> Result<String, String> {
+    match run_password_work(move || rullst::auth::hash_password(&password)).await {
+        Ok(Ok(hash)) => Ok(hash),
+        _ => Err("busy".into()),
+    }
+}
+pub async fn credential_rate_limit(request: Request, next: Next) -> Response {
+    next.run(request).await
+}
+"#;
+
+/// The three pages of the plataforma report (item 46), each calling the
+/// application's `auth::hash_password` from another module.
+const PLATFORM_PAGES: [(&str, &str); 3] = [
+    (
+        "src/pages/admin.rs",
+        "use crate::auth;\nuse rullst::html;\npub async fn guardian(form: Form<G>) -> Response {\n    let hash = auth::hash_password(form.password.clone()).await;\n    page(hash)\n}\n",
+    ),
+    (
+        "src/pages/admin_import.rs",
+        "use crate::{auth, db, util};\npub async fn import(rows: Vec<Row>) {\n    for row in rows {\n        let hash = auth::hash_password(row.password).await;\n    }\n}\n",
+    ),
+    (
+        "src/pages/family.rs",
+        "use crate::auth;\npub async fn change(form: Form<C>) -> Response {\n    let ok = auth::run_password_work(move || verify(&form.current)).await;\n    let hash = auth::hash_password(form.new.clone()).await;\n    page(ok, hash)\n}\n",
+    ),
+];
+
+/// The `V13-CREDENTIAL-RATE-LIMIT` findings of a package holding `files`,
+/// as (path, line), and the rules that markers left out.
+fn package_findings(files: &[(&str, &str)]) -> (Vec<(String, usize)>, Vec<&'static str>) {
+    let root = std::env::temp_dir().join(format!("rullst-rules-hashers-{}", rand::random::<u64>()));
+    for (path, text) in files {
+        let path = root.join(path);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    }
+    let mut scan = SourceScan::default();
+    scan_package(&root, &WorkspaceFacts::default(), &mut scan).unwrap();
+    std::fs::remove_dir_all(&root).unwrap();
+    let found = scan
+        .findings
+        .iter()
+        .filter(|finding| finding.rule.code == CREDENTIAL)
+        .map(|finding| {
+            let relative = finding.path.strip_prefix(&root).unwrap();
+            (relative.to_string_lossy().replace('\\', "/"), finding.line)
+        })
+        .collect();
+    let reviewed = scan.reviewed.iter().map(|rule| rule.code).collect();
+    (found, reviewed)
+}
+
+fn with_pages(auth: &'static str) -> Vec<(&'static str, &'static str)> {
+    std::iter::once(("src/auth.rs", auth))
+        .chain(PLATFORM_PAGES)
+        .collect()
+}
+
+#[test]
+fn a_call_of_the_applications_bounded_hasher_in_another_module_is_not_reviewed() {
+    assert_eq!(
+        package_findings(&with_pages(PLATFORM_AUTH)),
+        (vec![], vec![])
+    );
+    // The same package whose `hash_password` hashes without a bound: each
+    // call is reported, and the wrapper's own file applies the rate limit.
+    let unbounded = "pub async fn hash_password(password: String) -> Result<String, String> {\n    rullst::auth::hash_password(&password).map_err(|e| e.to_string())\n}\npub async fn credential_rate_limit(r: Request, n: Next) -> Response { n.run(r).await }\n";
+    let expected = vec![
+        ("src/pages/admin.rs".to_string(), 4),
+        ("src/pages/admin_import.rs".to_string(), 4),
+        ("src/pages/family.rs".to_string(), 4),
+    ];
+    assert_eq!(
+        package_findings(&with_pages(unbounded)),
+        (expected.clone(), vec![])
+    );
+    // Without any definition of `hash_password` in the package, too.
+    assert_eq!(package_findings(&PLATFORM_PAGES), (expected, vec![]));
+    // A semaphore permit in the wrapper bounds it as well.
+    let permit = "pub async fn hash_password(p: String) -> String {\n    let _permit = PERMITS.acquire().await;\n    spawn_blocking(move || rullst::auth::hash_password(&p)).await\n}\n";
+    assert_eq!(package_findings(&with_pages(permit)), (vec![], vec![]));
+    // A wrapper that calls the helper but also hashes outside it is not bounded.
+    let leaky = "pub async fn hash_password(p: String) -> String {\n    let _ = run_password_work(move || warm()).await;\n    rullst::auth::hash_password(&p)\n}\npub async fn credential_rate_limit(r: Request, n: Next) -> Response { n.run(r).await }\n";
+    assert_eq!(package_findings(&with_pages(leaky)).0.len(), 3);
+}
+
+#[test]
+fn a_reviewed_marker_resolves_a_limit_the_rule_does_not_follow() {
+    let marked = "use crate::auth;\npub async fn guardian(form: Form<G>) -> Response {\n    // rullst-upgrade: reviewed V13-CREDENTIAL-RATE-LIMIT: auth::hash_password runs under auth::run_password_work\n    let hash = auth::hash_password(form.password.clone()).await;\n    page(hash)\n}\n";
+    assert_eq!(
+        package_findings(&[("src/pages/admin.rs", marked)]),
+        (vec![], vec![CREDENTIAL])
+    );
+    let message = CATALOG
+        .iter()
+        .find(|rule| rule.code == CREDENTIAL)
+        .unwrap()
+        .message;
+    assert!(
+        message.contains(
+            "`// rullst-upgrade: reviewed V13-CREDENTIAL-RATE-LIMIT: <reason>` on the line above the call"
+        ),
+        "{message}"
+    );
+}
+
+#[test]
+fn calls_that_reach_rullsts_hasher_stay_reported_next_to_a_bounded_wrapper() {
+    for (label, page) in [
+        (
+            "rullst::auth imported as auth",
+            "use rullst::auth;\npub async fn a(p: String) {\n    let _ = auth::hash_password(&p);\n}\n",
+        ),
+        (
+            "rullst_auth renamed",
+            "use rullst_auth as auth;\npub async fn a(p: String) {\n    let _ = auth::hash_password(&p);\n}\n",
+        ),
+        (
+            "an unqualified import",
+            "use rullst::auth::{hash_password, verify_password};\npub async fn a(p: String) {\n    let _ = hash_password(&p);\n}\n",
+        ),
+        (
+            "a Rullst glob",
+            "use rullst::prelude::*;\npub async fn a(p: String) {\n    let _ = hash_password(&p);\n}\n",
+        ),
+        (
+            "an external crate",
+            "// No import.\npub async fn a(p: String) {\n    let _ = passwords::hash_password(&p);\n}\n",
+        ),
+        (
+            "a glob of the application's module",
+            "use crate::auth::*;\npub async fn a(p: String) {\n    let _ = hash_password(&p);\n}\n",
+        ),
+        (
+            "a full path",
+            "// No import.\npub async fn a(p: String) {\n    let _ = ::rullst::auth::hash_password(&p);\n}\n",
+        ),
+        (
+            "a method",
+            "// No import.\npub async fn a(p: String) {\n    let _ = argon.hash_password(p.as_bytes(), &salt);\n}\n",
+        ),
+        (
+            "a qualified type",
+            "// No import.\npub async fn a(p: String) {\n    let _ = <Argon2 as PasswordHasher>::hash_password(&argon, p.as_bytes(), &salt);\n}\n",
+        ),
+    ] {
+        assert_eq!(
+            package_findings(&[("src/auth.rs", PLATFORM_AUTH), ("src/pages/a.rs", page)]).0,
+            [("src/pages/a.rs".to_string(), 3)],
+            "{label}"
+        );
+    }
+    // An application path wins over a Rullst glob, and `mod` declares one.
+    for page in [
+        "use rullst::prelude::*;\nuse crate::auth;\npub async fn a(p: String) {\n    let _ = auth::hash_password(p).await;\n}\n",
+        "mod auth;\npub async fn a(p: String) {\n    let _ = auth::hash_password(p).await;\n}\n",
+        "pub async fn a(p: String) {\n    let _ = crate::auth::hash_password(p).await;\n    let _ = super::auth::hash_password(p).await;\n}\n",
+        "use crate::auth::hash_password;\npub async fn a(p: String) {\n    let _ = hash_password(p).await;\n}\n",
+    ] {
+        assert_eq!(
+            package_findings(&[("src/auth.rs", PLATFORM_AUTH), ("src/pages/a.rs", page)]),
+            (vec![], vec![]),
+            "{page}"
+        );
+    }
+}
+
+#[test]
+fn a_single_file_resolves_calls_of_its_own_bounded_hasher() {
+    let own = "pub async fn hash_password(p: String) -> String {\n    run_password_work(move || rullst::auth::hash_password(&p)).await\n}\npub async fn register(p: String) {\n    let _ = hash_password(p).await;\n    let _ = rullst::auth::hash_password(\"x\");\n}\n";
+    // Rullst's hasher outside the helper is still reported, at its own line.
+    assert_eq!(lines_at(own, "src/lib.rs", CREDENTIAL), [6]);
+    let unresolved = "pub async fn register(p: String) {\n    let _ = crate::auth::hash_password(p).await;\n    let _ = hash_password_async(p).await;\n}\n";
+    assert_eq!(lines_at(unresolved, "src/lib.rs", CREDENTIAL), [2, 3]);
+}

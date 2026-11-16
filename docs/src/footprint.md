@@ -45,6 +45,9 @@ cargo rullst footprint --image my-app:latest --bench --duration 10s
 # Measure an app that is already running on loopback, and weigh its home page
 cargo rullst footprint --url http://127.0.0.1:3000 --page-weight --bench
 
+# Weigh the home page of the published site, as visitors download it
+cargo rullst footprint --url https://app.example --page-weight
+
 # Add an SCI estimate from your own power, network and grid figures
 cargo rullst footprint --bench --cpu-watts 15 --network-kwh-per-gb 0.059 --grid-intensity 120 --json
 
@@ -99,10 +102,11 @@ MSYS_NO_PATHCONV=1 cargo rullst footprint --path /
    Production refuses to start without production settings, such as the SaaS
    starter's real billing credentials; set them, or pass `--env staging`,
    which accepts the starters' mock credentials and is recorded in the report.
-   With `--url`, it measures an app that is already running. The URL must be
-   `http://` on a loopback address (`127.0.0.0/8`, `::1` or `localhost`, which
-   is pinned to `127.0.0.1`); anything else is refused before a request is
-   sent.
+   With `--url`, it measures an app that is already running. An `http://`
+   URL must be on a loopback address (`127.0.0.0/8`, `::1` or `localhost`,
+   which is pinned to `127.0.0.1`); an `https://` URL is a published site,
+   whose page alone is weighed ([A published site](#a-published-site));
+   anything else is refused before a request is sent.
 2. **Idle memory**, read right after the app answers.
 3. **Page weight (only with `--page-weight`)**, described below.
 4. **Benchmark (only with `--bench`).** `--concurrency` connections (default
@@ -125,8 +129,9 @@ stderr with a fix chosen from the app's own error (its last stderr lines) and
 the first lines of a failed build's log.
 
 The command makes no network calls beyond loopback, the local container
-engine and, only with `--monitor-url`, the application's monitor, and never
-fetches carbon intensity data. The release build itself may download crates as
+engine, the published site's `https://` origin when `--url` names one, and,
+only with `--monitor-url`, the application's monitor, and never fetches
+carbon intensity data. The release build itself may download crates as
 any `cargo build` does.
 
 ## Page weight
@@ -148,7 +153,10 @@ would, then again as a browser that kept what the first visit cached:
   requests (`fetch`, dynamic `import()`, htmx requests) are not run. Every
   `url()` of a stylesheet counts, whether or not an element on the page uses
   it, and `loading="lazy"` images count as loaded. At most 200 responses are
-  loaded; the rest is reported as `unfetched`.
+  loaded, each at most 32 MiB (a larger one is an error, left out of the
+  totals), at most 256 MiB in all, and at most five redirects in a row, all
+  within 180 seconds for both visits; what a bound leaves out is reported as
+  `unfetched`.
 - **Third parties.** URLs on another origin are listed by origin and counted,
   never fetched: the app's page weight does not include them, and a
   `preconnect` or `dns-prefetch` hint adds only its origin.
@@ -179,6 +187,37 @@ app sends pages uncompressed, and since 13.0.0-alpha.6 the `Caddyfile` that
 files are pre-compressed), and a
 page that differs per user (a session, a nonce) can weigh differently for
 each visitor.
+
+### A published site
+
+Since 13.0.0-alpha.6, `--url` also takes the `https://` origin of a published
+site, to weigh what a visitor downloads with the server's (or CDN's)
+compression:
+
+```bash
+cargo rullst footprint --url https://app.example --page-weight --path /pricing
+```
+
+- **Page weight only.** It needs `--page-weight` and refuses `--bench`
+  (which would load the site and needs the app's CPU time) and `--image`.
+  The binary size, idle memory, dependency counts and CPU time are
+  `NOT MEASURED` with the reason `not measured for a published https:// site`,
+  the target's `mode` is `remote_url`, and the report's notes say that only
+  the page weight was measured.
+- **The same counting.** The requests send `Accept-Encoding: zstd, br,
+  gzip`, nothing is decompressed, and bytes are bodies as the site sent them,
+  without headers, under the bounds above. Only the `https://` origin is
+  fetched: a redirect to another host (from the bare domain to `www.`, for
+  example) is listed as a third party and not followed, so pass the final
+  origin. The origin takes no credentials, path, query or fragment (put the
+  path in `--path`).
+- **What it is.** One visit from this machine, with no cookies or login: a
+  visitor elsewhere, a CDN cache in another state or a signed-in page can
+  receive different bytes. The client follows the system's proxy settings,
+  connects within 5 seconds, waits at most 10 seconds per response and names
+  itself `cargo-rullst-footprint/<version>` in `User-Agent`. A site that
+  cannot be reached ends the run with status 1, as an unreachable `--url`
+  does.
 
 ## What is estimated: SCI
 
@@ -337,7 +376,8 @@ in production (or the reverse) stands out.
   a loopback address such as an SSH tunnel, and never after a redirect.
 - **The URL** is the application's origin (`https://app.example`, the monitor
   path is added) or the full monitor URL; credentials, a query or a fragment
-  are refused. It is the only address outside loopback the command contacts.
+  are refused. Apart from an `https://` `--url`, it is the only address
+  outside loopback the command contacts.
 - **What is read** is what the monitor publishes: route patterns and counters,
   never request data. An application whose Rullst is older than
   13.0.0-alpha.5 reports no bytes; the section then says so.
@@ -370,7 +410,8 @@ on Linux and macOS, the CPU model.
 section. Every key is always present (null when unknown) so scripts can rely
 on the shape:
 
-- `target`: `mode` (`release_build` or `existing_url`), the URL (`null` when
+- `target`: `mode` (`release_build`, `existing_url` or, for a published
+  `https://` site, `remote_url`), the URL (`null` when
   the build failed before a port was chosen), PID and how it was found.
 - `measured`: `binary_size_bytes`, `image_size_bytes`, `idle_rss_bytes`,
   `dependency_count` and (since 13.0.0-alpha.6) `compiled_dependency_count`,
@@ -409,8 +450,11 @@ on the shape:
 limits; `1` when the release build failed or the app could not be started or
 reached (after printing the report with `failure`), when a budget limit was
 exceeded (after printing the report), or when the budget file cannot be used
-(before measuring); `2` for invalid arguments, including a non-loopback
-`--url`, a plain-HTTP `--monitor-url` or an estimate input without `--bench`.
+(before measuring), or when an `https://` `--url` comes without
+`--page-weight` or with `--bench` or `--image` (before any request); `2` for
+invalid arguments, including a non-loopback `http://` `--url`, a plain-HTTP
+`--monitor-url` or an estimate input without `--bench`. A published site that
+cannot be reached also exits with `1`, after the report.
 
 ## Changes from `green` and the earlier `footprint`
 
