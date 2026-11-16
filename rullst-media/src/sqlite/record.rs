@@ -104,8 +104,7 @@ impl Record {
                 && self.pending.is_none())
             || (a.lifecycle == Lifecycle::Deleted
                 && (a.published || a.pending || a.processing != Processing::Missing))
-            || (a.published
-                && (a.lifecycle != Lifecycle::Active || a.processing != Processing::Ready))
+            || (a.published && (a.lifecycle != Lifecycle::Active || !a.processing.is_playable()))
         {
             return Err(Error::Configuration);
         }

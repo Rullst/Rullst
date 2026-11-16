@@ -290,7 +290,8 @@ async fn pending_or_failed_processing_never_publishes_and_recovery_needs_deliber
         .await
         .unwrap();
     let video = created.video.unwrap();
-    for status in [0, 1, 2, 3, 5, 6, 7, 8] {
+    // 8 (`JitPlaylistsCreated`) is `Playable` and publishable (tests/playable.rs).
+    for status in [0, 1, 2, 3, 5, 6, 7] {
         fixture
             .remote
             .lock()

@@ -108,7 +108,7 @@ impl<P: VideoProvider, C: Clock> MediaService<P, C> {
         }
         if publish
             && (record.asset.lifecycle != Lifecycle::Active
-                || record.asset.processing != Processing::Ready
+                || !record.asset.processing.is_playable()
                 || record.pending.is_some())
         {
             return Err(Error::Conflict);

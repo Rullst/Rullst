@@ -68,11 +68,18 @@ impl Video {
     }
 }
 
-/// The API status codes; only Finished (4) is `Ready`. Webhook codes differ.
+/// The API status codes (`VideoModelStatus`); only Finished (4) is `Ready`.
+/// Webhook codes are a different numbering and never reach this function.
+///
+/// 7 (`JitSegmenting`) is still `Processing`: Bunny's just-in-time encoding
+/// creates the first segments before any playback can start. 8
+/// (`JitPlaylistsCreated`) is `Playable`: the playlists exist, so Bunny's
+/// player streams the video while encoding goes on.
 pub(super) fn processing(status: u8) -> Result<Processing, Error> {
     Ok(match status {
         0 => Processing::AwaitingUpload,
-        1..=3 | 7..=8 => Processing::Processing,
+        1..=3 | 7 => Processing::Processing,
+        8 => Processing::Playable,
         4 => Processing::Ready,
         5..=6 => Processing::Failed,
         _ => return Err(Error::Protocol),

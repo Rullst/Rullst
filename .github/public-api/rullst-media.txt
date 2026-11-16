@@ -178,12 +178,16 @@ impl core::marker::Sync for rullst_media::PlaybackKind
 impl core::marker::Unpin for rullst_media::PlaybackKind
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_media::PlaybackKind
 impl core::panic::unwind_safe::UnwindSafe for rullst_media::PlaybackKind
-pub enum rullst_media::Processing
+#[non_exhaustive] pub enum rullst_media::Processing
 pub rullst_media::Processing::AwaitingUpload
 pub rullst_media::Processing::Processing
+pub rullst_media::Processing::Playable
 pub rullst_media::Processing::Ready
 pub rullst_media::Processing::Failed
 pub rullst_media::Processing::Missing
+impl rullst_media::Processing
+pub fn rullst_media::Processing::allows(self, kind: rullst_media::PlaybackKind) -> bool
+pub fn rullst_media::Processing::is_playable(self) -> bool
 impl core::clone::Clone for rullst_media::Processing
 impl core::cmp::Eq for rullst_media::Processing
 impl core::cmp::PartialEq for rullst_media::Processing

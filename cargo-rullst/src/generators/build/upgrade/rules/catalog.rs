@@ -525,6 +525,9 @@ rules! {
     PASSKEYS_FEATURE: "V13-AUTH-PASSKEYS-FEATURE", MustChange, "13.0.0-alpha.6", "Passkeys feature",
         "this code uses Rullst's passkeys (`auth::passkey`), which since 13.0.0-alpha.6 compile only with `rullst-auth`'s `passkeys` feature, and no manifest here enables it",
         "Enable `auth-passkeys` on `rullst` (`auth-sqlite` and `auth-passkey-postgres` include it), or `passkeys` on a direct `rullst-auth` dependency (`sqlite` and `passkey-postgres` include it).";
+    MEDIA_PROCESSING_MATCH: "V13-MEDIA-PROCESSING-MATCH", MustChange, "13.0.0-alpha.6", "Media processing states",
+        "`rullst-media`'s `Processing` is `#[non_exhaustive]` since 13.0.0-alpha.6 and gained `Playable`, which Bunny's API status 8 (`JitPlaylistsCreated`, formerly `Processing`) now maps to; a `match` on it without a wildcard arm no longer compiles",
+        "Add an arm for `Processing::Playable` and a wildcard arm (`_ => ...`). `Playable` streams in Bunny's player before encoding finishes: show it as watchable where you embed that player (`PlaybackKind::Embed`) and as processing elsewhere; `Ready` still means finished. `processing.is_playable()` and `processing.allows(kind)` answer both questions without a `match`.";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer
