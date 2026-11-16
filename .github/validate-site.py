@@ -440,6 +440,7 @@ def validate_static_page(path: Path, lang: str, page: str, pt_page: str | None, 
     return privacy, source
 
 
+COMPARE_PAGE = "compare/index.html"
 CHECKED_CODE = re.compile(r'<p class="compare-checked" id="checked">(.*?)</p>', re.DOTALL)
 
 
@@ -469,13 +470,13 @@ def validate_comparison(home: Document, home_pt: Document, assembler) -> None:
         howto = re.search(r'<div class="benchmark-howto">(.*?)</div>', text, re.DOTALL)
         assert howto and len(re.findall(r"<li>", howto[1])) == 4, f"{name}: needs the four-point benchmark-howto block"
         assert text.index('class="benchmark-howto"') < text.index(assembler.BENCHMARK_START), f"{name}: benchmark-howto goes before the results"
-        minimal = assembler.TEXT[lang]["names"]["Rullst (minimal)"]
+        minimal = assembler.TEXT[lang]["names"][assembler.MINIMAL]
         assert f'"{minimal}"' in howto[1] and "cargo rullst new" in howto[1], f"{name}: benchmark-howto must explain {minimal}"
     assert "/compare/" in home.links and "/pt-br/comparar/" in home_pt.links, "landing pages must link the comparison"
     with tempfile.TemporaryDirectory(prefix="rullst-root-site-") as temp:
         assembler.assemble(Path(temp) / "data", benchmarks=BENCHMARK_FIXTURE)
         run_link = '<a href="https://github.com/Rullst/Benchmarks/actions/runs/1">'
-        for page, lang, expected in (("compare/index.html", "en", ("0.48× Axum", "(90,486)", "3.50 ms", "version 13.0.0-alpha.6", "Not in this measurement run.",
+        for page, lang, expected in ((COMPARE_PAGE, "en", ("0.48× Axum", "(90,486)", "3.50 ms", "version 13.0.0-alpha.6", "Not in this measurement run.",
                                                         "Fixture note: these numbers are not measurements of <code>cargo rullst new</code> starters; "
                                                         "`&lt;b&gt;` and a lone ` stay text.</p>",
                                                         "1.00× Axum", "(114,422)", run_link)),
@@ -491,9 +492,9 @@ def validate_comparison(home: Document, home_pt: Document, assembler) -> None:
             # generated app's layers, then Loco and Topcoat.
             rows = re.search(r'<ul class="benchmark-rows">(.*?)</ul>', rendered, re.DOTALL)
             titles = re.findall(r'<li><h3>([^<]*?) ?(?:<span>|</h3>)', rows[1] if rows else "")
-            assert titles == ["Rullst", assembler.TEXT[lang]["names"]["Rullst (minimal)"], "Loco", "Topcoat"], f"{page}: benchmark rows {titles}"
+            assert titles == ["Rullst", assembler.TEXT[lang]["names"][assembler.MINIMAL], "Loco", "Topcoat"], f"{page}: benchmark rows {titles}"
             variants = re.findall(r'<p class="benchmark-variant">(.*?)</p>', rendered)
-            assert variants == [assembler.TEXT[lang]["variants"][row] for row in ("Rullst", "Rullst (minimal)")], f"{page}: variant labels {variants}"
+            assert variants == [assembler.TEXT[lang]["variants"][row] for row in ("Rullst", assembler.MINIMAL)], f"{page}: variant labels {variants}"
     # Backtick spans of a note: only short, balanced ones without markup become <code>.
     for note, html in (("`a` & `b`", "<code>a</code> &amp; <code>b</code>"), ("`a", "`a"), ("``", "``"), ("` `", "` `"),
                        ("`" + "x" * 81 + "`", "`" + "x" * 81 + "`"), ("`x\ny`", "`x\ny`"), ('`"q"`', "<code>&quot;q&quot;</code>"),
@@ -511,9 +512,9 @@ def validate_comparison(home: Document, home_pt: Document, assembler) -> None:
         # The minimal row is extra: data without it shows the other rows and no placeholder for it.
         bad.write_text('{"schema": "rullst.benchmarks.latest.v1", "measured_on": "2026-11-20", "results": [{"framework": "Rullst", "version": "1.0.0", "json_rps": 1}]}')
         assembler.assemble(Path(temp) / "no-minimal", benchmarks=bad)
-        rendered = (Path(temp) / "no-minimal" / "compare/index.html").read_text(encoding="utf-8")
+        rendered = (Path(temp) / "no-minimal" / COMPARE_PAGE).read_text(encoding="utf-8")
         assert "<li><h3>Rullst <span>" in rendered and "<li><h3>Rullst (minimal)" not in rendered, "a missing minimal row must be left out"
-        assert 'class="benchmark-pending"' in (Path(temp) / "bad" / "compare/index.html").read_text(encoding="utf-8"), (
+        assert 'class="benchmark-pending"' in (Path(temp) / "bad" / COMPARE_PAGE).read_text(encoding="utf-8"), (
             "invalid benchmark data must keep the pending text"
         )
 

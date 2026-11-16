@@ -74,8 +74,9 @@ BENCHMARK_SCHEMA = "rullst.benchmarks.latest.v1"
 # The rows shown, in order. "Rullst" is the default variant, the application
 # `cargo rullst new` generates; "Rullst (minimal)" is the framework without that
 # application's middleware, an extra row shown only when the data has it.
-ROWS = ("Rullst", "Rullst (minimal)", "Loco", "Topcoat")
-OPTIONAL_ROWS = ("Rullst (minimal)",)
+MINIMAL = "Rullst (minimal)"
+ROWS = ("Rullst", MINIMAL, "Loco", "Topcoat")
+OPTIONAL_ROWS = (MINIMAL,)
 # Result key -> English label, Portuguese label, unit, decimals.
 METRICS = {
     "json_rps": ("JSON responses per second", "Respostas JSON por segundo", "", 0),
@@ -95,10 +96,10 @@ TEXT = {
         "run": "Measurement run",
         "missing": "Not in this measurement run.",
         "version": "version",
-        "names": {"Rullst (minimal)": "Rullst (minimal)"},
+        "names": {MINIMAL: "Rullst (minimal)"},
         "variants": {
             "Rullst": "As <code>cargo rullst new</code> generates it, with its security layers on.",
-            "Rullst (minimal)": "The framework without the generated app's security layers.",
+            MINIMAL: "The framework without the generated app's security layers.",
         },
     },
     "pt-BR": {
@@ -106,10 +107,10 @@ TEXT = {
         "run": "Execução da medição",
         "missing": "Fora desta rodada de medição.",
         "version": "versão",
-        "names": {"Rullst (minimal)": "Rullst (mínimo)"},
+        "names": {MINIMAL: "Rullst (mínimo)"},
         "variants": {
             "Rullst": "Como o <code>cargo rullst new</code> gera, com as camadas de segurança ligadas.",
-            "Rullst (minimal)": "O framework sem as camadas de segurança do app gerado.",
+            MINIMAL: "O framework sem as camadas de segurança do app gerado.",
         },
     },
 }
@@ -233,6 +234,21 @@ def metric_value(key: str, value: float, ratio: float | None, lang: str) -> str:
     return f'{format_number(ratio, 2, lang)}× Axum <span class="benchmark-absolute">({absolute})</span>'
 
 
+def render_row(name: str, row: dict | None, lang: str) -> str:
+    """One framework's card; "" for a missing optional row."""
+    if row is None:
+        return "" if name in OPTIONAL_ROWS else f'<li><h3>{name}</h3><p>{TEXT[lang]["missing"]}</p></li>'
+    metrics = "".join(
+        f'<div><dt>{escape(METRICS[key][0 if lang == "en" else 1])}</dt>'
+        f'<dd>{metric_value(key, value, row.get("ratios", {}).get(key), lang)}</dd></div>'
+        for key, value in row["metrics"].items()
+    )
+    title = TEXT[lang]["names"].get(name, name)
+    variant = TEXT[lang]["variants"].get(name)
+    variant = f'<p class="benchmark-variant">{variant}</p>' if variant else ""
+    return f'<li><h3>{title} <span>{TEXT[lang]["version"]} {escape(row["version"])}</span></h3>{variant}<dl>{metrics}</dl></li>'
+
+
 def render_benchmarks(results: dict, lang: str) -> str:
     """HTML for the comparison page's results block, escaped throughout."""
     measured = results["measured_on"]
@@ -250,23 +266,7 @@ def render_benchmarks(results: dict, lang: str) -> str:
         attribute = "" if note_lang == lang else ' lang="en"'
         lines.append(f'<p class="benchmark-note"{attribute}>{render_note(note)}</p>')
     lines.append('<ul class="benchmark-rows">')
-    for name in ROWS:
-        row = results["rows"].get(name)
-        if row is None:
-            if name not in OPTIONAL_ROWS:
-                lines.append(f'<li><h3>{name}</h3><p>{TEXT[lang]["missing"]}</p></li>')
-            continue
-        metrics = "".join(
-            f'<div><dt>{escape(METRICS[key][0 if lang == "en" else 1])}</dt>'
-            f'<dd>{metric_value(key, value, row.get("ratios", {}).get(key), lang)}</dd></div>'
-            for key, value in row["metrics"].items()
-        )
-        title = TEXT[lang]["names"].get(name, name)
-        variant = TEXT[lang]["variants"].get(name)
-        variant = f'<p class="benchmark-variant">{variant}</p>' if variant else ""
-        lines.append(
-            f'<li><h3>{title} <span>{TEXT[lang]["version"]} {escape(row["version"])}</span></h3>{variant}<dl>{metrics}</dl></li>'
-        )
+    lines.extend(item for name in ROWS if (item := render_row(name, results["rows"].get(name), lang)))
     lines.append("</ul>")
     return "\n".join(lines)
 

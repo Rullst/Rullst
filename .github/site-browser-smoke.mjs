@@ -18,7 +18,8 @@ const profile = await mkdtemp(join(tmpdir(), "rullst-site-chromium-"));
 // (its numbers are not measurements) and served under /_rendered/.
 const rendered = await mkdtemp(join(tmpdir(), "rullst-site-rendered-"));
 await copyFile(join(root, ".github/fixtures/site-benchmarks.json"), join(rendered, "benchmarks.json"));
-execFileSync("python3", [join(root, ".github/assemble-organization-site.py"), "--out", join(rendered, "site"), "--benchmarks"],
+// An absolute interpreter path, not a PATH lookup (Ubuntu and macOS both have it).
+execFileSync("/usr/bin/python3", [join(root, ".github/assemble-organization-site.py"), "--out", join(rendered, "site"), "--benchmarks"],
   { cwd: rendered, stdio: ["ignore", "ignore", "inherit"] });
 const outputIndex = process.argv.indexOf("--screenshots");
 const output = outputIndex < 0 ? null : process.argv[outputIndex + 1];
