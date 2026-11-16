@@ -106,11 +106,7 @@ async fn upload_only_offline_manages_videos_but_never_delivers() {
         ));
     }
     let (body, signature) = signed_body();
-    let headers = WebhookHeaders {
-        version: "v1",
-        algorithm: "hmac-sha256",
-        signature: &signature,
-    };
+    let headers = WebhookHeaders::new("v1", "hmac-sha256", &signature);
     assert!(matches!(
         provider.verify_notification(headers, &body),
         Err(MediaError::Unsupported)

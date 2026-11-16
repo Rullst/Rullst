@@ -163,7 +163,7 @@ impl core::marker::Sync for rullst_media::PlaybackGrant
 impl core::marker::Unpin for rullst_media::PlaybackGrant
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_media::PlaybackGrant
 impl core::panic::unwind_safe::UnwindSafe for rullst_media::PlaybackGrant
-pub enum rullst_media::PlaybackKind
+#[non_exhaustive] pub enum rullst_media::PlaybackKind
 pub rullst_media::PlaybackKind::Embed
 pub rullst_media::PlaybackKind::Hls
 pub rullst_media::PlaybackKind::Mp4_720p
@@ -200,10 +200,12 @@ impl core::marker::Sync for rullst_media::Processing
 impl core::marker::Unpin for rullst_media::Processing
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_media::Processing
 impl core::panic::unwind_safe::UnwindSafe for rullst_media::Processing
-pub struct rullst_media::ProviderBinding
+#[non_exhaustive] pub struct rullst_media::ProviderBinding
 pub rullst_media::ProviderBinding::library: rullst_media::LibraryId
 pub rullst_media::ProviderBinding::mode: rullst_media::ProviderMode
 pub rullst_media::ProviderBinding::environment: rullst_media::Reference
+impl rullst_media::ProviderBinding
+pub fn rullst_media::ProviderBinding::new(library: rullst_media::LibraryId, mode: rullst_media::ProviderMode, environment: rullst_media::Reference) -> Self
 impl core::clone::Clone for rullst_media::ProviderBinding
 impl core::cmp::Eq for rullst_media::ProviderBinding
 impl core::cmp::PartialEq for rullst_media::ProviderBinding
@@ -215,7 +217,7 @@ impl core::marker::Sync for rullst_media::ProviderBinding
 impl core::marker::Unpin for rullst_media::ProviderBinding
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_media::ProviderBinding
 impl core::panic::unwind_safe::UnwindSafe for rullst_media::ProviderBinding
-pub enum rullst_media::ProviderMode
+#[non_exhaustive] pub enum rullst_media::ProviderMode
 pub rullst_media::ProviderMode::Offline
 pub rullst_media::ProviderMode::ProtocolFixture
 pub rullst_media::ProviderMode::RemoteUnvalidated
@@ -250,7 +252,7 @@ impl core::marker::Sync for rullst_media::Reference
 impl core::marker::Unpin for rullst_media::Reference
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_media::Reference
 impl core::panic::unwind_safe::UnwindSafe for rullst_media::Reference
-pub struct rullst_media::RemoteVideo
+#[non_exhaustive] pub struct rullst_media::RemoteVideo
 pub rullst_media::RemoteVideo::id: rullst_media::VideoId
 pub rullst_media::RemoteVideo::library: rullst_media::LibraryId
 pub rullst_media::RemoteVideo::title: alloc::string::String
@@ -258,6 +260,8 @@ pub rullst_media::RemoteVideo::description: alloc::string::String
 pub rullst_media::RemoteVideo::processing: rullst_media::Processing
 pub rullst_media::RemoteVideo::length_seconds: u32
 pub rullst_media::RemoteVideo::mp4_720p: bool
+impl rullst_media::RemoteVideo
+pub fn rullst_media::RemoteVideo::new(id: rullst_media::VideoId, library: rullst_media::LibraryId, title: impl core::convert::Into<alloc::string::String>, description: impl core::convert::Into<alloc::string::String>, processing: rullst_media::Processing, length_seconds: u32, mp4_720p: bool) -> Self
 impl core::clone::Clone for rullst_media::RemoteVideo
 impl core::cmp::Eq for rullst_media::RemoteVideo
 impl core::cmp::PartialEq for rullst_media::RemoteVideo
@@ -406,10 +410,12 @@ pub fn rullst_media::VideoProvider::playback(&self, video: &rullst_media::VideoI
 pub fn rullst_media::VideoProvider::update(&self, video: &rullst_media::VideoId, metadata: &rullst_media::Metadata) -> impl core::future::future::Future<Output = core::result::Result<(), rullst_media::MediaError>> + core::marker::Send
 pub fn rullst_media::VideoProvider::upload(&self, video: &rullst_media::VideoId, now: i64, ttl_seconds: u32) -> core::result::Result<rullst_media::UploadGrant, rullst_media::MediaError>
 pub fn rullst_media::VideoProvider::upload_declared(&self, video: &rullst_media::VideoId, now: i64, ttl_seconds: u32, declaration: &rullst_media::UploadDeclaration) -> core::result::Result<rullst_media::UploadGrant, rullst_media::MediaError>
-pub struct rullst_media::WebhookHeaders<'a>
+#[non_exhaustive] pub struct rullst_media::WebhookHeaders<'a>
 pub rullst_media::WebhookHeaders::version: &'a str
 pub rullst_media::WebhookHeaders::algorithm: &'a str
 pub rullst_media::WebhookHeaders::signature: &'a str
+impl<'a> rullst_media::WebhookHeaders<'a>
+pub fn rullst_media::WebhookHeaders::new(version: &'a str, algorithm: &'a str, signature: &'a str) -> Self
 impl<'a> core::marker::Send for rullst_media::WebhookHeaders<'a>
 impl<'a> core::marker::Sync for rullst_media::WebhookHeaders<'a>
 impl<'a> core::marker::Unpin for rullst_media::WebhookHeaders<'a>
@@ -567,7 +573,7 @@ impl core::marker::Send for rullst_media::s3::S3Storage
 impl core::marker::Sync for rullst_media::s3::S3Storage
 impl core::marker::Unpin for rullst_media::s3::S3Storage
 pub mod rullst_media::sqlite
-pub struct rullst_media::sqlite::Asset
+#[non_exhaustive] pub struct rullst_media::sqlite::Asset
 pub rullst_media::sqlite::Asset::id: rullst_media::Reference
 pub rullst_media::sqlite::Asset::scope: rullst_media::Scope
 pub rullst_media::sqlite::Asset::owner: rullst_media::Reference
@@ -593,7 +599,7 @@ impl core::marker::Sync for rullst_media::sqlite::Asset
 impl core::marker::Unpin for rullst_media::sqlite::Asset
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_media::sqlite::Asset
 impl core::panic::unwind_safe::UnwindSafe for rullst_media::sqlite::Asset
-pub enum rullst_media::sqlite::Lifecycle
+#[non_exhaustive] pub enum rullst_media::sqlite::Lifecycle
 pub rullst_media::sqlite::Lifecycle::Creating
 pub rullst_media::sqlite::Lifecycle::Active
 pub rullst_media::sqlite::Lifecycle::Deleting

@@ -143,11 +143,11 @@ impl MachineRequestVerifier for Verify {
             .media
             .provider()
             .verify_notification(
-                WebhookHeaders {
-                    version: header("x-bunnystream-signature-version")?,
-                    algorithm: header("x-bunnystream-signature-algorithm")?,
-                    signature: header("x-bunnystream-signature")?,
-                },
+                WebhookHeaders::new(
+                    header("x-bunnystream-signature-version")?,
+                    header("x-bunnystream-signature-algorithm")?,
+                    header("x-bunnystream-signature")?,
+                ),
                 &bytes,
             )
             .map_err(|_| MachineEndpointError::Unauthorized)?;

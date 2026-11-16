@@ -43,9 +43,14 @@ fn wildcards_comparisons_and_other_enums_are_not_reported() {
         "enum Upload { AwaitingUpload, Done }\nfn a(u: Upload) -> bool { match u { Upload::AwaitingUpload => false, Upload::Done => true } }\n",
         &[],
     );
-    // A match on another enum of a file that names the crate.
+    // A match on another enum of a file that names the crate: `Action` stays
+    // exhaustive, while `PlaybackKind` is reported by the non-exhaustive rule.
+    assert_only(
+        "use rullst_media::Action;\nfn a(k: Action) -> u8 { match k { Action::Manage => 0, Action::Play => 1 } }\n",
+        &[],
+    );
     assert_only(
         "use rullst_media::PlaybackKind;\nfn a(k: PlaybackKind) -> u8 { match k { PlaybackKind::Embed => 0, PlaybackKind::Hls => 1, PlaybackKind::Mp4_720p | PlaybackKind::Original => 2 } }\n",
-        &[],
+        &["V13-NON-EXHAUSTIVE-MATCH"],
     );
 }

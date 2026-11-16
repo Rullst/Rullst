@@ -25,11 +25,11 @@ pub struct ExampleVideo {
 impl ExampleVideo {
     pub fn offline(library: LibraryId) -> Result<Self, MediaError> {
         Ok(Self {
-            binding: ProviderBinding {
+            binding: ProviderBinding::new(
                 library,
-                mode: ProviderMode::Offline,
-                environment: Reference::new("example-video")?,
-            },
+                ProviderMode::Offline,
+                Reference::new("example-video")?,
+            ),
             videos: Mutex::new(BTreeMap::new()),
         })
     }
@@ -84,15 +84,15 @@ impl VideoProvider for ExampleVideo {
     }
 
     async fn create(&self, marker: &str) -> Result<RemoteVideo, MediaError> {
-        let video = RemoteVideo {
-            id: Self::id_for(marker)?,
-            library: self.binding.library,
-            title: marker.to_owned(),
-            description: String::new(),
-            processing: Processing::AwaitingUpload,
-            length_seconds: 0,
-            mp4_720p: false,
-        };
+        let video = RemoteVideo::new(
+            Self::id_for(marker)?,
+            self.binding.library,
+            marker.to_owned(),
+            String::new(),
+            Processing::AwaitingUpload,
+            0,
+            false,
+        );
         self.videos()?.insert(video.id.clone(), video.clone());
         Ok(video)
     }

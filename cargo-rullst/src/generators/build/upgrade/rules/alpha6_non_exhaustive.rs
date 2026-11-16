@@ -52,6 +52,9 @@ RateLimitBackend security Memory Distributed
 RedisRateLimitMode security Distributed OfflineMock
 DistributedTraceKind studio Http Sql Ai Job Cache Application
 QueryFindingKind studio RepeatedOperation SlowOperation
+PlaybackKind media Embed Hls Mp4_720p Original
+ProviderMode media Offline ProtocolFixture RemoteUnvalidated
+Lifecycle media Creating Active Deleting Deleted
 ";
 
 /// One struct with named fields per line: its name, its crate and its fields.
@@ -156,6 +159,10 @@ AlertRules studio unreachable error_rate_percent p95_ms p99_ms queue_pending que
 FetchLimits studio max_bytes timeout connect_timeout
 Retention studio max_age_seconds max_samples_per_project max_alerts
 StudioPaths studio projects key history
+ProviderBinding media library mode environment
+RemoteVideo media id library title description processing length_seconds mp4_720p
+WebhookHeaders media version algorithm signature
+Asset media id scope owner metadata video lifecycle processing published pending revision updated_at length_seconds mp4_720p failure
 ThreatRadarStats studio honeypot_traps_blocked active_ip_bans xss_sanitizations rbac_violations_prevented log_redactions zero_trust_mismatches schema_violations sri_signed_assets mfa_verifications deception_hits cswsh_blocks rate_limit_blocks siem_dispatches login_jail_bans dlp_secrets_masked secure_headers_applied idor_warnings timing_guard_protected prompt_injections_blocked audit_chain_integrity threat_level live_events
 ";
 

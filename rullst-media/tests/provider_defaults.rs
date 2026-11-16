@@ -8,24 +8,24 @@ struct Minimal {
 }
 
 fn video(title: &str) -> RemoteVideo {
-    RemoteVideo {
-        id: VideoId::new("12345678-1234-4234-8234-123456789abc").unwrap(),
-        library: LibraryId::new(7).unwrap(),
-        title: title.to_owned(),
-        description: String::new(),
-        processing: Processing::AwaitingUpload,
-        length_seconds: 0,
-        mp4_720p: false,
-    }
+    RemoteVideo::new(
+        VideoId::new("12345678-1234-4234-8234-123456789abc").unwrap(),
+        LibraryId::new(7).unwrap(),
+        title.to_owned(),
+        String::new(),
+        Processing::AwaitingUpload,
+        0,
+        false,
+    )
 }
 
 impl VideoProvider for Minimal {
     fn binding(&self) -> ProviderBinding {
-        ProviderBinding {
-            library: LibraryId::new(7).unwrap(),
-            mode: ProviderMode::Offline,
-            environment: Reference::new("defaults").unwrap(),
-        }
+        ProviderBinding::new(
+            LibraryId::new(7).unwrap(),
+            ProviderMode::Offline,
+            Reference::new("defaults").unwrap(),
+        )
     }
     async fn create(&self, marker: &str) -> Result<RemoteVideo, MediaError> {
         Ok(video(marker))

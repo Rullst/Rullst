@@ -2,6 +2,7 @@ use crate::{MediaError as Error, Metadata, Processing, Reference, Scope, VideoId
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum Lifecycle {
     Creating,
     Active,
@@ -13,6 +14,7 @@ pub enum Lifecycle {
 /// are displayed only to authorized callers and never accepted as ownership.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct Asset {
     pub id: Reference,
     pub scope: Scope,

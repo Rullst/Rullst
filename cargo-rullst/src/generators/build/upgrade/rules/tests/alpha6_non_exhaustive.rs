@@ -126,3 +126,13 @@ fn test_code_is_reported_because_it_no_longer_compiles_either() {
         "{in_tests_directory:?}"
     );
 }
+
+#[test]
+fn media_types_are_reported_in_files_that_name_rullst_media() {
+    let source = "use rullst_media::{PlaybackKind, RemoteVideo, WebhookHeaders};\nfn player(kind: PlaybackKind) -> &'static str {\n    match kind {\n        PlaybackKind::Embed => \"iframe\",\n        PlaybackKind::Hls | PlaybackKind::Mp4_720p | PlaybackKind::Original => \"video\",\n    }\n}\nfn headers<'a>(v: &'a str, a: &'a str, s: &'a str) -> WebhookHeaders<'a> {\n    WebhookHeaders { version: v, algorithm: a, signature: s }\n}\n";
+    assert_eq!(found(source, MATCH), [3]);
+    assert_eq!(found(source, LITERAL), [9]);
+    // `Action` and `Scope` stay exhaustive on purpose.
+    let kept = "use rullst_media::{Action, Scope};\nfn f(a: Action) -> u8 { match a { Action::Manage => 1, Action::Play => 2 } }\n";
+    assert_eq!(found(kept, MATCH), Vec::<usize>::new());
+}
