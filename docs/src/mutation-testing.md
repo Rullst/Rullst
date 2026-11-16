@@ -65,10 +65,12 @@ received a test or is listed under
   two stores. New tests killed 119 of the misses and a redundant empty check of
   the token snapshot envelope was removed. Reruns of the 13 changed files leave
   9 of 1,162 mutants: 8 accepted equivalents (seven in the mock IdP handlers and
-  the `id_token.rs` nonce one) and one still missed: `token_handler` with the
-  `||` before the client-ID comparison replaced by `&&` accepts an expired
-  authorization code, which only a test waiting out the mock IdP's five-minute
-  code lifetime could show.
+  the `id_token.rs` nonce one) and one missed: `token_handler` with the `||`
+  before the client-ID comparison replaced by `&&` accepts an expired
+  authorization code. Since 13.0.0-alpha.6 the mock IdP reads the time from a
+  crate-private clock that its tests set (the public `mock_router` keeps the
+  system clock), and a test that exchanges a code 299 and 300 seconds after
+  issuing it kills that mutant, which leaves the eight accepted equivalents.
 - **`rullst-nexus`**: first measured in PR #532 (26 files, 876 mutants). New
   tests killed 170 of the 171 first misses, one is an accepted equivalent, and
   one real defect was fixed.
