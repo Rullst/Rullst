@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794833656852,
+  "lastUpdate": 1794835420928,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -23732,6 +23732,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cdb68d3b07a6a72ae2fad5fb689d25c107de97b1",
+          "message": "Merge pull request #738 from Rullst/feat/v13-alpha6-studio-forward-compat\n\nfeat(studio): forward-compatible project list; proxy variables by scheme",
+          "timestamp": "2026-11-16T09:59:21-03:00",
+          "tree_id": "29bebcebd6fe9fa2d395bcd9e112175b2629ecae",
+          "url": "https://github.com/Rullst/Rullst/commit/cdb68d3b07a6a72ae2fad5fb689d25c107de97b1"
+        },
+        "date": 1794835420304,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5493,
+            "range": "± 73",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 544,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 13,
             "range": "± 0",
             "unit": "ns/iter"
           }
