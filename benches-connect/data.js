@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794833536664,
+  "lastUpdate": 1794835280133,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -14583,6 +14583,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 353,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cdb68d3b07a6a72ae2fad5fb689d25c107de97b1",
+          "message": "Merge pull request #738 from Rullst/feat/v13-alpha6-studio-forward-compat\n\nfeat(studio): forward-compatible project list; proxy variables by scheme",
+          "timestamp": "2026-11-16T09:59:21-03:00",
+          "tree_id": "29bebcebd6fe9fa2d395bcd9e112175b2629ecae",
+          "url": "https://github.com/Rullst/Rullst/commit/cdb68d3b07a6a72ae2fad5fb689d25c107de97b1"
+        },
+        "date": 1794835279522,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 583,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
