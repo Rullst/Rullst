@@ -20,7 +20,11 @@ const MARKER: &str = "rullst-video-00112233445566778899aabbccddeeff";
 struct Bucket {
     objects: BTreeMap<String, (String, Vec<u8>)>,
     requests: Vec<String>,
+    /// `{method} {content-type} {whether the signature covers content-type}`.
+    signed_types: Vec<String>,
     unavailable: bool,
+    /// Answers every request with this status instead.
+    status: Option<StatusCode>,
 }
 type Shared = Arc<Mutex<Bucket>>;
 
@@ -47,8 +51,15 @@ async fn object(
     };
     let mut bucket = bucket.lock().unwrap();
     bucket.requests.push(format!("{method} {}", uri.path()));
+    let signs_type = header("authorization").contains("SignedHeaders=content-type;");
+    bucket
+        .signed_types
+        .push(format!("{method} {} {signs_type}", header("content-type")));
     if bucket.unavailable {
         return StatusCode::SERVICE_UNAVAILABLE.into_response();
+    }
+    if let Some(status) = bucket.status {
+        return status.into_response();
     }
     let signed = header("authorization")
         .starts_with("AWS4-HMAC-SHA256 Credential=fixture_access/20")
@@ -213,4 +224,99 @@ async fn provider_failures_are_typed_and_tampered_metadata_is_rejected() {
             .unwrap_err(),
         MediaError::NotFound
     );
+}
+
+#[tokio::test]
+async fn sidecars_are_bounded_at_sixteen_kibibytes() {
+    let (storage, bucket) = fixture().await;
+    let created = storage.create(MARKER).await.unwrap();
+    let metadata_key = format!("course/{}/metadata.json", created.id.as_str());
+    let mut body = format!(
+        r#"{{"version":1,"video":"{}","title":"Lesson","description":"{}"}}"#,
+        created.id.as_str(),
+        "d".repeat(4096)
+    )
+    .into_bytes();
+    body.resize(16_384, b' ');
+    let sidecar = |bytes: Vec<u8>| {
+        bucket
+            .lock()
+            .unwrap()
+            .objects
+            .insert(metadata_key.clone(), ("application/json".into(), bytes));
+    };
+    sidecar(body.clone());
+    let current = storage.get(&created.id).await.unwrap().unwrap();
+    assert_eq!(current.title, "Lesson");
+    assert_eq!(current.description.len(), 4096);
+    body.push(b' ');
+    sidecar(body);
+    assert_eq!(
+        storage.get(&created.id).await.unwrap_err(),
+        MediaError::Protocol
+    );
+}
+
+#[tokio::test]
+async fn client_errors_are_rejections_and_only_puts_sign_the_json_type() {
+    let (storage, bucket) = fixture().await;
+    let created = storage.create(MARKER).await.unwrap();
+    storage.get(&created.id).await.unwrap().unwrap();
+    storage.delete(&created.id).await.unwrap();
+    assert_eq!(
+        bucket.lock().unwrap().signed_types,
+        [
+            "PUT application/json true",
+            "GET  false",
+            "HEAD  false",
+            "DELETE  false",
+            "DELETE  false",
+        ]
+    );
+    for status in [StatusCode::BAD_REQUEST, StatusCode::FORBIDDEN] {
+        bucket.lock().unwrap().status = Some(status);
+        assert_eq!(
+            storage.get(&created.id).await.unwrap_err(),
+            MediaError::Rejected,
+            "{status}"
+        );
+    }
+}
+
+#[test]
+fn protocol_fixtures_need_fixture_keys_and_a_loopback_endpoint() {
+    let config = |endpoint: &str, access: &str, secret: &str| {
+        S3Config::custom(
+            LibraryId::new(5).unwrap(),
+            endpoint,
+            "us-east-1",
+            "videos",
+            S3Credentials::new(access, secret).unwrap(),
+        )
+        .unwrap()
+    };
+    let storage = S3Storage::for_protocol_tests(config(
+        "http://127.0.0.1:9",
+        "fixture_access",
+        "fixture_secret",
+    ))
+    .unwrap();
+    assert_eq!(
+        format!("{storage:?}"),
+        "S3Storage { binding: ProviderBinding { library: LibraryId(5), mode: ProtocolFixture, environment: Reference(\"21f5fe801690014c4dc02b03273001ded4f17a208672ddd482fa2069102cfdb3\") }, .. }"
+    );
+    for (endpoint, access, secret) in [
+        (
+            "https://minio.example.com",
+            "fixture_access",
+            "fixture_secret",
+        ),
+        ("http://127.0.0.1:9", "mock_access", "mock_secret"),
+    ] {
+        assert_eq!(
+            S3Storage::for_protocol_tests(config(endpoint, access, secret)).unwrap_err(),
+            MediaError::Configuration,
+            "{endpoint} {access}"
+        );
+    }
 }

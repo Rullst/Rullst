@@ -57,6 +57,17 @@ received a test or is listed under
   `redis_streams/` (excluded from the gate) was measured with targeted runs
   and the `messaging-redis` contract run: 202 mutants, of which only the
   accepted `Remote::decode` arm survives both.
+- **`rullst-media`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+  [PR #747](https://github.com/Rullst/Rullst/pull/747), runs in the
+  maintainer's fork
+  [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)):
+  targeted runs of the 32 files (5 have no mutants) gave 1,194 mutants: 877
+  caught, 127 unviable, no timeout and 190 missed. New tests killed 173: the
+  Bunny response, grant, webhook and meta-tag bounds, the S3 configuration
+  and protocol checks, the stored-record validation and the SQLite workflow,
+  playback and retention guards. The other 17 are accepted equivalents listed
+  below. Reruns of the 17 changed files leave 16 of 814 mutants, all accepted
+  equivalents (the seventeenth is the existing `s3/signing.rs` one).
 - **`rullst-connect`** (13.0.0-alpha.6,
   [PR #718](https://github.com/Rullst/Rullst/pull/718)): targeted runs of the 61
   files outside the PostgreSQL and MySQL login-challenge stores (11 have no
@@ -229,6 +240,15 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-core/src/queue/deferral/window.rs`: `TimeWindow::intervals`, `day < until_ms` with `<=` | The extra day starts at or after `until_ms`, so it never yields an interval. |
 | `rullst-core/src/testing/html_normalize.rs`: `mask_csrf_headers`, `found < copied` with `<=` | `copied` indexes the closing quote of a masked value, so no `x-csrf-token` key can start there. |
 | `rullst-media/src/s3/signing.rs`: `settings` with `Default::default()` | Adapter URLs hold only unreserved characters, `%XX` and `/` without empty or dot segments, so single or double encoding and path normalisation give the same canonical URI. |
+| `rullst-media/src/bunny/signatures.rs`: `BunnyStream::verify_notification`, `(nibble(..) << 4) \| nibble(..)` with `^` | The two nibbles occupy disjoint bits, so OR and XOR build the same byte. |
+| `rullst-media/src/bunny/client.rs`: `find_created`, the `\|\|` between `total_items > 100` and `items.len() > 100` with `&&` | `&&` binds tighter, so the change matters only when exactly one count exceeds 100, and the page's `total_items != items.len()` then rejects it with the same `Protocol`. |
+| `rullst-media/src/sqlite/access.rs`: `MediaService::set_publication`, `record.asset.revision != revision \|\| revision <= 0` with `&&` | `Operation::save` updates only the row at the expected revision, so a stale revision still returns `Conflict`, and a stored revision is always positive. |
+| `rullst-media/src/sqlite/access.rs`: `MediaService::upload_with`, the `\|\|` before `asset.pending` and before `asset.published` with `&&` | The asset comes from a finished refresh lease, so it is active and not pending, and a published asset is playable, which the processing test refuses too. |
+| `rullst-media/src/sqlite/failure.rs`: `stopped`, `expected_revision > 0` with `>=` | Only a record at revision 0 would then pass, and `Record::validate` and the column's `CHECK(revision>0)` never let one load. |
+| `rullst-media/src/sqlite/workflow.rs`: `MediaService::finish`, and `failure.rs`: `MediaService::stop_intent`, the `\|\|` before the pending-revision, nonce and deadline comparisons with `&&` | Every save increments the asset revision, so a record still at the lease's revision is the one `claim` saved, with the lease's pending revision and nonce; a changed revision alone fails `save` with the same `Conflict`, and `tx.until` has already returned `Expired` for a passed deadline. |
+| `rullst-media/src/sqlite/workflow.rs`: `MediaService::finish`, `kind == Kind::Create \|\| kind == Kind::Update` with `&&` | `finish` only receives the result of `execute`, which always returns a video for a create or an update. |
+| `rullst-media/src/sqlite/transaction.rs`: `Operation::save`, `body.len() > 32768` with `==` or `>=` | `Record::validate` and the validated field types bound every field, so a valid record serializes far below 32 KiB. |
+| `rullst-media/src/sqlite/retention.rs`: `MediaService::purge_deleted`, either `\|\|` with `&&` | The SQL selects only deleted bodies updated at or before the cutoff, which `tx.get` decodes from the same row, and `Record::validate` refuses a deleted record with a pending intent, so no operand is ever true. |
 | `rullst-mail/src/facade/driver.rs`: `DigestHasher::finish` with `1` | `finish` is never called; the digest is read from the SHA-256 state. |
 | `rullst-mail/src/facade/driver.rs`: delete the `(Some(_), Some(_))` arm of `ses_credentials` | That arm exists only without the `aws-ses` feature, which the all-feature build does not compile. |
 | `cargo-rullst/src/generators/audit_report/a11y.rs`: `attributes`, the end `index + 1` after `>` with `index - 1` or `index * 1` | The tag scanner resumes at the next `<`; the byte before a closing `>` cannot open a tag, because a tag name never starts with `>`. |
