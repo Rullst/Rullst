@@ -137,14 +137,17 @@ Encrypt, provider accounts, Arm images and reboots are not covered.
 
 On Linux, the `cli-profiles-relational` shard runs
 `.github/check-auth-starter-sql.py` against disposable PostgreSQL 15, MySQL 8.4
-and MariaDB 11.4 servers: a Blank starter is migrated, given two rows, extended
-with `cargo rullst auth` and migrated again. SQL checks the six added columns,
-the unique `users_email_unique` index, the placeholder e-mails, the unchanged
-starter schema and rows and the migration records; the application signs up an
-account over HTTP (Argon2id hash); `db:rollback` must restore the starter
-exactly and keep every row, and a second `db:migrate` must succeed. It runs on
-`main` pushes, nightly, with the `full-matrix` label and in manual runs. The
-API and SaaS starters and other server versions are not covered.
+and MariaDB 11.4 servers: a Blank starter and an API starter are each
+migrated, given two rows, extended with `cargo rullst auth` and migrated again.
+SQL checks the six added columns, the unique `users_email_unique` index, the
+placeholder e-mails, the unchanged starter schema and rows, the migration
+records and the `rullst_auth_sessions` table; the application signs up an
+account over HTTP through the generated form sign-up (Argon2id hash, one
+registered session; the API starter has no sign-up of its own and applies CSRF
+to this one); `db:rollback` must restore the starter exactly and keep every
+row, and a second `db:migrate` must succeed. It runs on `main` pushes, nightly,
+with the `full-matrix` label and in manual runs. The SaaS starter (which
+already has accounts) and other server versions are not covered.
 
 `First-hour documentation` runs `.github/check-first-hour.py`: in reading
 order, it runs the blocks marked `<!-- first-hour: … -->` in the README

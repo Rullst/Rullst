@@ -21,6 +21,7 @@ SPEC.loader.exec_module(MODULE)
 
 CLI = MODULE.ROOT / "cargo-rullst/src"
 STARTER_MAIN = CLI / "blueprints/blank/src/main.rs.template"
+API_STARTER_MAIN = CLI / "blueprints/blank/src/main.api.rs.template"
 ACCOUNT_MIGRATION = CLI / "generators/auth/users_account_columns_migration.rs.template"
 SERVERS = {server.name: server for server in MODULE.SERVERS}
 
@@ -37,6 +38,21 @@ class GeneratedFilesTests(unittest.TestCase):
         self.assertNotIn("security::csrf_middleware", mounted)
         with self.assertRaises(MODULE.Failure):
             MODULE.mount_signup_routes(source.replace("post(\"/clicked\" => clicked),", ""))
+
+    def test_the_api_starter_router_takes_the_same_signup_routes(self):
+        source = API_STARTER_MAIN.read_text()
+        mounted = MODULE.mount_signup_routes(source, "api")
+        self.assertEqual(mounted.count('get("/register" => controllers::auth_controller::register_view)'), 1)
+        self.assertEqual(mounted.count('post("/api/messages" => create_message)'), 1)
+        self.assertIn("middlewares::auth_middleware::auth_middleware", mounted)
+        self.assertLess(mounted.index('.route("/register"'), mounted.index("rullst::health::health_router()"))
+        # The sign-up is not a bearer machine endpoint, so CSRF applies to it.
+        self.assertNotIn('"/register", api_token', mounted)
+        with self.assertRaises(MODULE.Failure):
+            MODULE.mount_signup_routes(source)
+        with self.assertRaises(MODULE.Failure):
+            MODULE.mount_signup_routes(STARTER_MAIN.read_text(), "api")
+        self.assertEqual(MODULE.STARTERS, ("blank", "api"))
 
     def test_the_mounted_handlers_are_the_ones_auth_generates(self):
         controller = (CLI / "generators/auth/auth_controller.rs.template").read_text()
