@@ -179,7 +179,9 @@ async fn adaptive_scenario_uses_prior_output_but_report_retains_no_raw_content()
     assert_eq!(report.turns()[0].response_bytes(), "marker-42".len());
     assert!(report.turns()[0].prompt_bytes() > 0);
 
+    assert_eq!(report.turns()[1].turn(), 2);
     let prompts = prompts.lock().expect("prompt lock");
+    assert_eq!(report.turns()[0].prompt_bytes(), prompts[0].len());
     assert!(prompts[1].contains("marker-42"));
     let report_json = serde_json::to_string(&report).expect("report serializes");
     assert!(!report_json.contains("marker-42"));
@@ -459,6 +461,10 @@ fn policy_rejects_every_unbounded_configuration() {
     assert!(AiEvaluationPolicy::try_new(1, 1, 1, Duration::ZERO).is_err());
     assert!(AiEvaluationPolicy::try_new(1, 1, 1, Duration::from_secs(301)).is_err());
     assert_eq!(AiEvaluationPolicy::default().max_turns(), 8);
+    // Each ceiling itself is accepted: 32 turns, 16 KiB, 2 MiB and 5 minutes.
+    let ceilings = AiEvaluationPolicy::try_new(32, 16_384, 2_097_152, Duration::from_secs(300))
+        .expect("ceilings are inclusive");
+    assert_eq!(ceilings.max_turns(), 32);
 }
 
 #[test]
