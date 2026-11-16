@@ -313,4 +313,120 @@ mod tests {
             started.elapsed()
         );
     }
+
+    #[test]
+    fn event_and_response_budgets_include_their_last_byte() {
+        // A 131,072-byte event is accepted, buffered or complete.
+        let content = "x".repeat(131_072 - 6);
+        let mut decoder = SseDecoder::new(4 * 1_024 * 1_024);
+        let pending = decoder
+            .push(format!("data: {content}").as_bytes())
+            .expect("a maximal pending event");
+        assert!(pending.is_empty());
+        assert_eq!(
+            decoder.push(b"\n\n").expect("a maximal event"),
+            vec![data(&content)]
+        );
+        for over in [format!("data: {content}x"), format!("data: {content}x\n\n")] {
+            let mut decoder = SseDecoder::new(4 * 1_024 * 1_024);
+            assert!(matches!(
+                decoder.push(over.as_bytes()),
+                Err(AiError::StreamProtocol(
+                    "one server-sent event exceeds its byte limit"
+                ))
+            ));
+        }
+
+        let mut budget = SseDecoder::new(4);
+        assert!(budget.push(b"four").expect("exactly four bytes").is_empty());
+        assert!(matches!(
+            budget.push(b"x"),
+            Err(AiError::StreamProtocol(
+                "response bytes exceed the stream byte limit"
+            ))
+        ));
+    }
+
+    /// Answers one request with `content_type` and `body`; every wait is bounded.
+    async fn serve(content_type: &'static str, body: &'static str) -> String {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("fixture binds");
+        let url = format!("http://{}/stream", listener.local_addr().expect("address"));
+        tokio::spawn(async move {
+            let Ok(Ok((mut stream, _))) =
+                tokio::time::timeout(Duration::from_secs(2), listener.accept()).await
+            else {
+                return;
+            };
+            let mut request = Vec::new();
+            let mut chunk = [0_u8; 1_024];
+            while !request.windows(4).any(|bytes| bytes == b"\r\n\r\n") {
+                match tokio::time::timeout(Duration::from_secs(2), stream.read(&mut chunk)).await {
+                    Ok(Ok(count)) if count > 0 => request.extend_from_slice(&chunk[..count]),
+                    _ => return,
+                }
+            }
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            let _ = tokio::time::timeout(
+                Duration::from_secs(2),
+                stream.write_all(response.as_bytes()),
+            )
+            .await;
+        });
+        url
+    }
+
+    async fn read_from(
+        content_type: &'static str,
+        max_response_bytes: usize,
+    ) -> Result<(bool, Vec<String>), AiError> {
+        let url = serve(content_type, "data: x\n\n").await;
+        let client = reqwest::Client::builder()
+            .no_proxy()
+            .build()
+            .expect("client");
+        let mut seen = Vec::new();
+        let stopped = tokio::time::timeout(
+            Duration::from_secs(5),
+            read_stream(
+                client.get(url),
+                "fixture",
+                max_response_bytes,
+                &AiCancellation::new(),
+                |frame| {
+                    seen.push(frame.data);
+                    Ok(Flow::Continue)
+                },
+            ),
+        )
+        .await
+        .expect("bounded stream")?;
+        Ok((stopped, seen))
+    }
+
+    #[tokio::test]
+    async fn stream_headers_bound_the_declared_length_and_require_event_streams() {
+        // The 9-byte body may declare exactly the budget, not one byte more.
+        assert_eq!(
+            read_from("text/event-stream", 9).await.expect("9 bytes"),
+            (false, vec!["x".to_string()])
+        );
+        assert!(matches!(
+            read_from("text/event-stream", 8).await,
+            Err(AiError::StreamProtocol(
+                "declared response length exceeds the stream byte limit"
+            ))
+        ));
+        assert!(matches!(
+            read_from("application/json", 1_024).await,
+            Err(AiError::StreamProtocol(
+                "response content type is not text/event-stream"
+            ))
+        ));
+    }
 }

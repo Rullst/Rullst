@@ -37,6 +37,26 @@ received a test or is listed under
   plural-variant map was removed. The final runs gave 432 mutants: 314 caught,
   117 unviable, 1 timeout (listed below) and no survivor; a mutant whose
   expansion no longer compiles in an integration test counts as unviable.
+- **`rullst-ai`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+  [PR #749](https://github.com/Rullst/Rullst/pull/749), runs in the
+  maintainer's fork
+  [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)):
+  targeted runs of the 52 files (3 have no mutants, among them the MySQL
+  statement file) gave 2,173 mutants: 1,652 caught, 205 unviable, 35
+  timeouts and 281 missed. New tests killed 265 of the misses and 5 timeouts
+  (tests without deadlines now have one): provider capabilities and trait
+  defaults, the fallback chain, image and response size bounds, streaming,
+  SSE and provider stream parsing, audit delivery and durable audit frames,
+  tool approval and validation, RAG, conversation memory, the mock provider,
+  presets and evaluation bounds. Reruns of the 33 changed files leave 4 of
+  1,318 mutants missed and 3 timeouts. The 16 missed mutants left are 13
+  accepted equivalents listed below and the three peer-address, status and
+  content-type checks of `EgressFetcher::fetch_bytes`, left to live
+  integration testing; the 30 timeouts are listed with the timeouts.
+- **`rullst-iot`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+  [PR #749](https://github.com/Rullst/Rullst/pull/749), same fork): targeted
+  runs of the 19 files (1 has no mutants) gave 371 mutants: 321 caught, 41
+  unviable, no timeout and 9 missed, all accepted equivalents listed below.
 - **`rullst-core`**: the files the first pass left
   ([PR #465](https://github.com/Rullst/Rullst/pull/465)) were finished in
   [PR #532](https://github.com/Rullst/Rullst/pull/532): 78 files and 2,435
@@ -393,6 +413,10 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-ai/src/ai/guardrails/markdown_code.rs`: `indentation`, the tab step `4 - column % 4` with `4 + column % 4` | Indentation is only compared with 4, and either step takes a tab to at least four columns. |
 | `rullst-ai/src/ai/guardrails/tax_ids.rs`: `token_end`, `bytes.get(index + 1)` with `index - 1` | A separator then joins when a digit precedes it instead of follows it, but the end moves only on digits and a second separator stops both scans, so every token ends at the same digit. |
 | `rullst-ai/src/ai/guardrails/tax_ids.rs`: `is_valid_tax_id`, the CNPJ `all_digits && token.len() == 14` with `\|\|` | `digit_values` still requires exactly 14 digits, which only a 14-digit token or the CNPJ layout holds. |
+| `rullst-ai/src/ai/evaluation/types.rs`: `AiEvaluationReport::schema_version` with `1` | Its fields are private to the evaluation module, whose only constructor, `build_report`, sets `schema_version: 1`; the report has no `Deserialize`. |
+| `rullst-ai/src/ai/durable_audit.rs`: `decode_file`, the record number `events.len() + 1` of the end-offset `checked_add` error with `-` or `*` | `cursor + relative_end` indexes the bytes already read, so the addition never overflows and the error is never built. |
+| `rullst-ai/src/ai/memory.rs`: `InMemoryChatMemory::append_exchange`, `excess > 0` with `>=` | `drain(..0)` removes nothing, so draining a zero excess leaves the history unchanged. |
+| `rullst-ai/src/ai/vector.rs`: `cosine_similarity`, `norm_left == 0.0 \|\| norm_right == 0.0` with `&&` | With one zero norm the divisor is zero, so the quotient is infinite or NaN and the finiteness check that follows also returns `0.0`. |
 
 Timed-out mutants are not counted as caught, and cargo-mutants reports them
 separately. The campaign rewrote the scanning loops of the WAF detector, the
@@ -479,6 +503,11 @@ every test of the file reaches, so no single test can fail first:
   `mark_fenced` and `span_contents` as `*=`, and `blank_code` with
   `code[group_start] || is_blank(...)` as `&&`, which stops on a blank line.
   The guardrail tests reach these scans, which then never finish.
+- `rullst-ai/src/ai/providers/sse.rs`: `SseDecoder::push` with
+  `boundary + delimiter_bytes` as `-`, and `event_boundary` returning
+  `Some((0, 0))` or `Some((1, 0))`, so the decoder parses the same event
+  again forever in every streaming test (a data event adds one frame per
+  turn, which reaches the address-space limit only after the timeout).
 
 `rullst-security/src/timing_guard.rs`: `TimingScope::finish` with the jitter
 `%` replaced by `+` does not loop: it sleeps for up to 72 minutes in the

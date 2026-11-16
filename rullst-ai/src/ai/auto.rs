@@ -286,4 +286,14 @@ mod tests {
                 .is_empty()
         );
     }
+
+    #[test]
+    fn live_keys_are_labelled_live_and_debug_lists_only_names() {
+        let config = resolve(&[("OPENAI_API_KEY", "sk-fixture-live")]).unwrap();
+        assert_eq!(config.provider_names(), ["OpenAI"]);
+        assert_eq!(
+            format!("{config:?}"),
+            r#"AutoAiConfig { providers: ["OpenAI"], .. }"#
+        );
+    }
 }

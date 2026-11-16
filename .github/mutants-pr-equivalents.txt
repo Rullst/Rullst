@@ -13,6 +13,22 @@ rullst-iot/src/coap.rs:206:18: replace | with ^ in CoapRequest::write_to
 rullst-iot/src/coap.rs:206:52: replace | with ^ in CoapRequest::write_to
 rullst-iot/src/coap.rs:261:35: replace | with ^ in write_option
 
+# rullst-ai: each name below has a row in docs/src/mutation-testing.md
+# "Accepted equivalent mutants".
+rullst-ai/src/ai/evaluation/types.rs:298:9: replace AiEvaluationReport::schema_version -> u8 with 1
+rullst-ai/src/ai/durable_audit.rs:378:49: replace + with - in decode_file
+rullst-ai/src/ai/durable_audit.rs:378:49: replace + with * in decode_file
+rullst-ai/src/ai/egress.rs:95:9: replace EgressPolicy::strict -> Self with Default::default()
+rullst-ai/src/ai/egress.rs:323:9: replace || with && in is_public_ipv6
+rullst-ai/src/ai/memory.rs:374:19: replace > with >= in <impl ChatMemory for InMemoryChatMemory>::append_exchange
+rullst-ai/src/ai/vector.rs:87:25: replace || with && in cosine_similarity
+rullst-ai/src/ai/guardrails/markdown_code.rs:39:34: replace - with + in indentation
+rullst-ai/src/ai/guardrails/markdown_images.rs:339:61: replace + with * in definition_destination
+rullst-ai/src/ai/guardrails/markdown_inline.rs:83:82: replace + with - in open_tag_end
+rullst-ai/src/ai/guardrails/markdown_inline.rs:83:82: replace + with * in open_tag_end
+rullst-ai/src/ai/guardrails/tax_ids.rs:71:28: replace + with - in token_end
+rullst-ai/src/ai/guardrails/tax_ids.rs:97:20: replace && with || in is_valid_tax_id
+
 # rullst-orm: compiled only without a strict driver feature (SQLx Any pool), so
 # absent from the gate's --all-features build; default-feature tests cover them.
 rullst-orm/src/schema/schema_builder.rs:78:8: delete ! in prepare_postgres_enums
