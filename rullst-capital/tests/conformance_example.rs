@@ -87,6 +87,11 @@ impl<A: ExamplePayApi> BillingProvider for ExamplePay<A> {
         &self,
         request: &OneOffCheckoutRequest,
     ) -> Result<OneOffCheckout, CapitalError> {
+        // ExamplePay notifies one endpoint per account: refuse a per-checkout
+        // notification URL instead of ignoring it.
+        if request.notification_url().is_some() {
+            return Err(unsupported("per-checkout notification URL"));
+        }
         let url = self.api.create_link(request).await?;
         // Binds the returned URL to the server-side request and checks it.
         OneOffCheckout::from_verified_provider_response(self.name(), request, url)?

@@ -118,7 +118,11 @@ and for a tag that does not exist, `POST /links` answers 404
 InfinitePay's webhook is unsigned (`WebhookVerificationMode::ConfirmedAtSource`):
 the middleware hands the handler a status-free `PaymentNotification`, and only
 `confirm_one_off_payment`, which calls `payment_check` and compares the amount
-with the stored request, reports a payment. A custom adapter supplies its own
+with the stored request, reports a payment (with its `payment_method()` and
+`installments()`). Since anyone can post to an unsigned webhook, an
+application may give each link its own address with
+`OneOffCheckoutRequest::with_notification_url`, carrying a per-link token it
+checks before confirming. A custom adapter supplies its own
 durable orchestration, atomic event processing and reconciliation.
 
 Rullst also supplies canonical Axum/Actix webhook middleware for supported

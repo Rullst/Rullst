@@ -109,6 +109,11 @@ fn confirmation_is_paid_only_for_a_complete_paid_bound_session() {
     assert_eq!(payment.state(), OneOffPaymentState::Paid);
     assert_eq!(payment.paid_amount_minor(), 7_500);
     assert_eq!(payment.transaction_id(), Some("cs_test_42"));
+    // The session names the methods it offered, not the one used.
+    assert_eq!(
+        (payment.payment_method(), payment.installments()),
+        (None, None)
+    );
 
     for status in ["open", "complete", "expired"] {
         let mut unpaid = session();
@@ -153,6 +158,30 @@ async fn mock_key_is_offline_and_never_paid() {
             .await
             .is_err()
     );
+}
+
+#[tokio::test]
+async fn a_per_checkout_notification_url_is_refused_with_every_key() {
+    let notified = request()
+        .with_notification_url("https://app.example/webhooks/stripe?token=t")
+        .unwrap();
+    for key in ["mock_key", "", "sk_test_fixture"] {
+        assert!(
+            matches!(
+                StripeProvider::new(key, "whsec_fixture")
+                    .create_one_off_checkout(&notified)
+                    .await,
+                Err(CapitalError::UnsupportedOperation(message))
+                    if message.contains("per-checkout notification URL")
+            ),
+            "{key:?}"
+        );
+    }
+    let checkout = StripeProvider::new("mock_key", "mock_webhook")
+        .create_one_off_checkout(&request())
+        .await
+        .unwrap();
+    assert_eq!(checkout.notification_url(), None);
 }
 
 #[tokio::test]
@@ -288,6 +317,19 @@ mod fixture {
         assert_eq!(seen[1].0, "cs_test_42");
         assert_eq!(seen[1].1["authorization"], "Bearer sk_test_x");
         assert_eq!(seen[1].1["stripe-version"], "2025-03-31.basil");
+    }
+
+    #[tokio::test]
+    async fn a_notification_url_never_reaches_stripe() {
+        let (base, stripe) = serve(session(), paid()).await;
+        let notified = request()
+            .with_notification_url("https://app.example/webhooks/stripe")
+            .unwrap();
+        assert!(matches!(
+            create_at(&base, "sk_test_x", &notified).await,
+            Err(CapitalError::UnsupportedOperation(_))
+        ));
+        assert!(stripe.seen.lock().unwrap().is_empty());
     }
 
     #[tokio::test]

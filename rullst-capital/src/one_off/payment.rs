@@ -1,6 +1,6 @@
 //! What names a one-off payment, and what the provider confirmed about it.
 
-use super::OneOffCheckoutRequest;
+use super::{OneOffCheckoutRequest, PaymentMethod};
 use crate::error::CapitalError;
 
 const MAX_IDENTIFIER_LEN: usize = 255;
@@ -113,6 +113,8 @@ pub struct OneOffPayment {
     paid_amount_minor: u64,
     currency: String,
     transaction_id: Option<String>,
+    payment_method: Option<PaymentMethod>,
+    installments: Option<u8>,
     request_digest: [u8; 32],
 }
 
@@ -172,8 +174,30 @@ impl OneOffPayment {
             paid_amount_minor,
             currency: request.currency().to_string(),
             transaction_id: None,
+            payment_method: None,
+            installments: None,
             request_digest: request.request_digest(),
         }
+    }
+
+    /// Records how the buyer paid, as the provider reported it. Since
+    /// 13.0.0-alpha.6.
+    pub fn with_payment_method(mut self, method: PaymentMethod) -> Self {
+        self.payment_method = Some(method);
+        self
+    }
+
+    /// Records in how many instalments the buyer paid (1 for a single
+    /// payment), as the provider reported it. Zero fails with
+    /// [`CapitalError::PayloadParseError`]. Since 13.0.0-alpha.6.
+    pub fn with_installments(mut self, installments: u8) -> Result<Self, CapitalError> {
+        if installments == 0 {
+            return Err(CapitalError::PayloadParseError(
+                "a payment has at least one instalment".into(),
+            ));
+        }
+        self.installments = Some(installments);
+        Ok(self)
     }
 
     /// Records the provider's payment identifier.
@@ -226,6 +250,19 @@ impl OneOffPayment {
         self.transaction_id.as_deref()
     }
 
+    /// How the buyer paid, when the provider reports it (InfinitePay's
+    /// `capture_method`); `None` otherwise, as for Stripe. Informational: it
+    /// never changes [`Self::is_paid`]. Since 13.0.0-alpha.6.
+    pub fn payment_method(&self) -> Option<&PaymentMethod> {
+        self.payment_method.as_ref()
+    }
+
+    /// In how many instalments the buyer paid, when the provider reports it
+    /// (InfinitePay's `installments`); `None` otherwise. Since 13.0.0-alpha.6.
+    pub fn installments(&self) -> Option<u8> {
+        self.installments
+    }
+
     /// [`OneOffCheckoutRequest::request_digest`] of the confirmed request.
     pub fn request_digest(&self) -> [u8; 32] {
         self.request_digest
@@ -241,6 +278,8 @@ impl std::fmt::Debug for OneOffPayment {
             .field("amount_minor", &self.amount_minor)
             .field("paid_amount_minor", &self.paid_amount_minor)
             .field("currency", &self.currency)
+            .field("payment_method", &self.payment_method)
+            .field("installments", &self.installments)
             .finish_non_exhaustive()
     }
 }

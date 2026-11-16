@@ -105,7 +105,7 @@ async fn infinitepay_confirms_at_the_source_against_a_local_checkout_api() {
             .iter()
             .filter(|case| case.outcome() == CaseOutcome::Passed)
             .count(),
-        9
+        10
     );
 }
 

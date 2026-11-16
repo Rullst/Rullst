@@ -127,11 +127,16 @@ an adapter for another such gateway follows the same contract:
   `invoice_id`); the middleware inserts it into the request extensions;
 - implement `create_one_off_checkout` from the server-side
   `OneOffCheckoutRequest`, never from amounts the browser sent, and return
-  `OneOffCheckout::from_verified_provider_response`;
+  `OneOffCheckout::from_verified_provider_response`. When the request has a
+  `notification_url()`, send it as that checkout's notification address and
+  call `with_notification_url_sent()` on the checkout, or, when the gateway
+  has no per-checkout address, return `UnsupportedOperation`; never ignore it;
 - implement `confirm_one_off_payment` with the gateway's own lookup and return
   `OneOffPayment::paid(provider, request, charged, paid, currency)`, which fails
   unless the charged amount equals the request's total and the currency
-  matches, or `OneOffPayment::unpaid`.
+  matches, or `OneOffPayment::unpaid`. Add what the gateway reports about how
+  the buyer paid with `with_payment_method(PaymentMethod::from_provider_name(name)?)`
+  and `with_installments(count)?`; leave them out when it reports nothing.
 
 The handler loads the request it persisted by `notification.reference()`,
 calls `confirm_one_off_payment` and marks the order paid, idempotently, only
