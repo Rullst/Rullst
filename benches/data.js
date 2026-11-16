@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794816351456,
+  "lastUpdate": 1794823004257,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -35721,6 +35721,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1343,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fc8c05016f38058919dd60f6af0ff04c77ff71c3",
+          "message": "Merge pull request #735 from Rullst/perf/v13-alpha6-sqlite-wal\n\nperf(orm): opt-in WAL journal for SQLite pools and WAL in generated starters",
+          "timestamp": "2026-11-16T06:52:19-03:00",
+          "tree_id": "8a8139bbe1c72e92d855057863dd5304b8fd5cd7",
+          "url": "https://github.com/Rullst/Rullst/commit/fc8c05016f38058919dd60f6af0ff04c77ff71c3"
+        },
+        "date": 1794822999862,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 557,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 763,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 318,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1305,
+            "range": "± 16",
             "unit": "ns/iter"
           }
         ]
