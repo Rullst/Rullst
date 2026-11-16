@@ -7,10 +7,12 @@ runs `cargo rullst deploy`, copies the project as docs/src/vm-deployment.md
 Caddyfile with Docker or rootless Podman. Checks /health over HTTPS through
 Caddy (its local CA), the HTTP redirect, the unpublished app port, the
 hardening, compressed pages whose CSRF token is masked per response,
-pre-compressed static files, a migrated SQLite database (SaaS: an account) in
+pre-compressed static files, Server-Sent Events streamed through the
+Caddyfile's `encode` (Blank), a migrated SQLite database (SaaS: an account) in
 its volume across `compose restart`, and the logs. The generated deployment files are never
 modified: the unpublished release crates enter the build context as packaged
-archives through `[patch.crates-io]`, as in .github/test-packaged-distribution.sh.
+archives through `[patch.crates-io]`, as in .github/test-packaged-distribution.sh,
+and the Blank project gets one route the starters lack, an event stream.
 """
 
 from __future__ import annotations
@@ -32,8 +34,8 @@ import tempfile
 import time
 import tomllib
 
-from vm_deploy_http import (Failure, check_application, check_compression, check_https, expect,
-                            log)
+from vm_deploy_http import (EVENTS, Failure, check_application, check_compression, check_event_stream,
+                            check_https, expect, log)
 
 ROOT = Path(__file__).resolve().parent.parent
 STARTERS = ("blank", "saas")
@@ -47,6 +49,38 @@ PATCH_DIRECTORY = "rullst-ci-packages"
 DATABASE_SUFFIXES = (".db", ".sqlite", ".sqlite3")
 TIMINGS: list[tuple[str, float]] = []
 MANIFEST = "Cargo.toml"
+# The Blank router's last line, after which add_event_stream mounts its route.
+ROUTER_ANCHOR = ".merge_axum(rullst::health::health_router())"
+EVENT_STREAM = """
+// Added by .github/check-vm-deploy.py, not by the CLI: a Server-Sent Events
+// stream with an event every 500 ms, which the check reads through the
+// generated Caddyfile's `encode` (the starters serve no event stream).
+mod deploy_smoke_events {
+    use rullst::realtime::{BroadcastManager, RealtimeSse, RealtimeSseConfig};
+    use rullst::web::axum::response::Response;
+    use std::sync::{Arc, OnceLock};
+    use std::time::Duration;
+
+    static STREAM: OnceLock<(Arc<BroadcastManager>, RealtimeSse)> = OnceLock::new();
+
+    pub async fn events() -> Response {
+        let (channels, sse) = STREAM.get_or_init(|| {
+            let channels = Arc::new(BroadcastManager::new());
+            let ticker = Arc::clone(&channels);
+            rullst::runtime::spawn(async move {
+                let mut tick: u64 = 0;
+                loop {
+                    rullst::runtime::time::sleep(Duration::from_millis(500)).await;
+                    tick += 1;
+                    let _ = ticker.publish("deploy-smoke", "tick", &format!("tick {tick}"));
+                }
+            });
+            (channels, RealtimeSse::new(RealtimeSseConfig::new()))
+        });
+        sse.channel(channels, "deploy-smoke")
+    }
+}
+"""
 
 
 @contextlib.contextmanager
@@ -176,7 +210,7 @@ def create_project(starter: str, env: dict[str, str], version: str,
 
 
 def patch_release_crates(project: Path, extracted: Path, crates: list[str], version: str) -> None:
-    """The only harness change to the project: archives inside the build context."""
+    """The harness change to every project: archives inside the build context."""
     target = project / PATCH_DIRECTORY
     target.mkdir()
     paths = {}
@@ -187,6 +221,20 @@ def patch_release_crates(project: Path, extracted: Path, crates: list[str], vers
     manifest.write_text(manifest.read_text() + patch_section(paths))
     # The Dockerfile builds with --locked: "Generate and commit Cargo.lock".
     run(["cargo", "generate-lockfile"], cwd=project, timeout=600)
+
+
+def add_event_stream(project: Path) -> None:
+    """Mounts EVENT_STREAM at EVENTS on the Blank router (src/main.rs, or
+    src/lib.rs with hot reload); no deployment file changes."""
+    sources = [project / "src" / name for name in ("main.rs", "lib.rs")]
+    holders = [path for path in sources if path.is_file() and ROUTER_ANCHOR in path.read_text()]
+    expect(len(holders) == 1 and holders[0].read_text().count(ROUTER_ANCHOR) == 1,
+           f"the Blank router ends with `{ROUTER_ANCHOR}` once")
+    source = holders[0]
+    route = (f'{ROUTER_ANCHOR}\n    .merge_axum(rullst::web::axum::Router::new()'
+             f'.route("{EVENTS}", rullst::web::axum::routing::get(deploy_smoke_events::events)))')
+    source.write_text(source.read_text().replace(ROUTER_ANCHOR, route) + EVENT_STREAM)
+    log(f"added the event stream route {EVENTS} to {source.relative_to(project)}")
 
 
 def production_settings(starter: str) -> str:
@@ -397,6 +445,8 @@ def deploy(engine: Engine, starter: str, vm: Path, work: Path) -> None:
         check_database(engine, vm, app, binary, "db:migrate")
         check_application(starter, ca, password, registered=False)
         check_compression(starter, ca)
+        if starter == "blank":
+            check_event_stream(ca)
         restart(engine, vm)
         app_id, _ = wait_until_healthy(engine, first_start=False)
         check_https(ca)
@@ -429,6 +479,8 @@ def main() -> int:
         with step(f"{starter}: create the project and run `cargo rullst deploy`"):
             project, digests = create_project(starter, env, version, work)
             patch_release_crates(project, extracted, crates, version)
+            if starter == "blank":
+                add_event_stream(project)
             vm = copy_to_vm(project, starter, work)
             # The guide's offline check of the production settings file.
             run(["cargo", "rullst", "deploy:doctor", "--env-file", ".env.production"],

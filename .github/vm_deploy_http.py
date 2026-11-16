@@ -8,9 +8,11 @@ import json
 from pathlib import Path
 import re
 import ssl
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import zlib
 
 ACCOUNT_NAME = "Deploy Smoke"
 # Every starter ships the htmx client; the Blank page links its hashed name.
@@ -18,6 +20,14 @@ HTMX = "/static/htmx-2.0.11.min.js"
 HASHED_HTMX = re.compile(r"/static/htmx-2\.0\.11\.min\.[0-9a-f]{16}\.js")
 # A form's CSRF field: the cookie token masked for that response.
 TOKEN_FIELD = re.compile(r'name="_token" value="([A-Za-z0-9_-]{86})"')
+# The Server-Sent Events route check-vm-deploy.py adds to the Blank project,
+# which publishes `event: tick` with `data: tick N` every 500 ms.
+EVENTS = "/deploy-smoke/events"
+TICK = re.compile(r"^event: tick\r?\ndata: tick ([0-9]+)\r?$", re.MULTILINE)
+# What clients offer: nothing, each coding of the Caddyfile's `encode zstd
+# gzip` alone, and a browser's list (Caddy then prefers zstd).
+EVENT_ENCODINGS = ("identity", "gzip", "zstd", "gzip, deflate, br, zstd")
+EVENT_COUNT = 3
 
 
 class Failure(Exception):
@@ -75,9 +85,9 @@ class Client:
         with self.open(request) as response:
             return response.status, response.headers, response.read(2 * 1024 * 1024)
 
-    def open(self, request: urllib.request.Request):
+    def open(self, request: urllib.request.Request, timeout: float = 30):
         try:
-            return self.opener.open(request, timeout=30)
+            return self.opener.open(request, timeout=timeout)
         except urllib.error.HTTPError as error:
             return error
         except OSError as error:  # URLError is an OSError
@@ -180,3 +190,70 @@ def check_compression(starter: str, ca: Path) -> None:
             immutable = path != HTMX
             expect(("immutable" in cache) == immutable,
                    f"GET {path} with {coding} keeps its caching ({cache})")
+
+
+def event_decoder(coding: str | None):
+    """Decodes an event stream as it arrives: a function from received bytes
+    to the text they complete, or None for zstd without Python's
+    `compression.zstd` (3.14+), whose arrival is then checked undecoded."""
+    if coding is None:
+        return lambda data: data.decode(errors="replace")
+    if coding == "gzip":
+        decompressor = zlib.decompressobj(16 + zlib.MAX_WBITS)
+        return lambda data: decompressor.decompress(data).decode(errors="replace")
+    if coding == "zstd":
+        try:
+            from compression import zstd  # type: ignore[import-not-found]
+        except ImportError:
+            return None
+        decompressor = zstd.ZstdDecompressor()
+        return lambda data: decompressor.decompress(data).decode(errors="replace")
+    raise Failure(f"the event stream came with an unexpected Content-Encoding: {coding}")
+
+
+def read_events(response, accepted: str) -> str:
+    """Reads the open stream until EVENT_COUNT events arrived (undecoded: data
+    from as many reads, at least half a second apart), and says what arrived
+    when. Each read waits at most the response's 10-second timeout."""
+    served = response.headers.get("Content-Encoding")
+    decode = event_decoder(served)
+    text, arrivals, ticks, started = "", [], [], time.monotonic()
+    while time.monotonic() - started < 15:
+        try:
+            chunk = response.read1(64 * 1024)
+        except OSError as error:  # a socket timeout is an OSError
+            raise Failure(f"the event stream (Accept-Encoding: {accepted}, served {served}) sent nothing "
+                          f"for 10 seconds after {len(arrivals)} reads: {error}") from error
+        if not chunk:
+            raise Failure(f"the event stream (Accept-Encoding: {accepted}) ended after {len(arrivals)} reads")
+        arrivals.append(time.monotonic() - started)
+        if decode is None:
+            if len(arrivals) >= EVENT_COUNT and arrivals[-1] - arrivals[0] >= 0.5:
+                return f"{served}, {len(arrivals)} reads within {arrivals[-1]:.1f}s, not decoded (no compression.zstd)"
+            continue
+        text += decode(chunk)
+        ticks = [int(number) for number in TICK.findall(text)]
+        if len(ticks) >= EVENT_COUNT:
+            expect(ticks == sorted(set(ticks)), f"the events arrive once and in order ({ticks})")
+            return f"{served or 'identity'}, ticks {ticks[0]} to {ticks[-1]} within {arrivals[-1]:.1f}s"
+    raise Failure(f"{len(ticks)} events and {len(arrivals)} reads within 15 seconds "
+                  f"(Accept-Encoding: {accepted}, served {served})")
+
+
+def check_event_stream(ca: Path) -> None:
+    """Server-Sent Events pass Caddy's `encode` one by one: with each
+    Accept-Encoding, events published every 500 ms arrive while the stream
+    stays open, instead of waiting in a compression buffer."""
+    client = Client(ca)
+    for accepted in EVENT_ENCODINGS:
+        request = urllib.request.Request(f"https://localhost{EVENTS}", headers={
+            "Accept": "text/event-stream", "Accept-Encoding": accepted, "Cache-Control": "no-cache"})
+        with client.open(request, timeout=10) as response:
+            kind = response.headers.get("Content-Type") or ""
+            served = response.headers.get("Content-Encoding")
+            expect(response.status == 200 and kind.startswith("text/event-stream")
+                   and (accepted != "identity" or served is None),
+                   f"GET {EVENTS} with Accept-Encoding: {accepted} opens an event stream "
+                   f"({response.status}, {kind}, {served})")
+            arrived = read_events(response, accepted)
+        log(f"ok: events stream through Caddy with Accept-Encoding: {accepted} ({arrived})")
