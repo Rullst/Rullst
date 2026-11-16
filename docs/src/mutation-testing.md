@@ -99,6 +99,17 @@ received a test or is listed under
 - **`rullst-nexus`**: first measured in PR #532 (26 files, 876 mutants). New
   tests killed 170 of the 171 first misses, one is an accepted equivalent, and
   one real defect was fixed.
+- **`rullst-security`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+  [PR #746](https://github.com/Rullst/Rullst/pull/746), runs in the
+  maintainer's fork
+  [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)):
+  targeted runs of the 47 files (6 have no mutants, and the Redis rate
+  limiter ran with the Redis service) gave 1,752 mutants: 1,548 caught, 155
+  unviable, 20 missed and 29 timeouts. The 20 missed mutants are accepted
+  equivalents listed below and the 29 timeouts are the non-allocating loops
+  of `log_redactor.rs`, the DLP masking and byte-range readers, the login
+  guard index and the user-agent scan listed under the timeouts, and the
+  jitter of `TimingScope::finish`.
 - **`cargo-rullst`** ([PR #557](https://github.com/Rullst/Rullst/pull/557),
   13.0.0-alpha.4): targeted runs with the CLI's library tests measured 83 CLI
   files and 3,189 mutants of the self-update, audit and IDOR scanner, `add`
@@ -333,8 +344,8 @@ every test of the file reaches, so no single test can fail first:
 - `rullst-security/src/log_redactor.rs`: the bearer, identifier, separator
   and escaped-quote scans, where an index step (`+= 1`, `+= 2`) becomes `-`
   or `*`, a key offset (`cursor + offset`, `key_start +
-  key.len()`) becomes `-` or `*`, or `identifier_continuation` returns `0` or
-  `1`, and the scan finds the same key or byte again forever.
+  key.len()`) becomes `-` or `*`, or `identifier_continuation` returns an end
+  of `0` or `1`, and the scan finds the same key or byte again forever.
 - `rullst-security/src/dlp/byteranges.rs`: `Lines::next`, where the
   non-empty filter is negated or the next-line offset (`start + offset + 1`)
   becomes `-` or `*`, and the reader returns the same line forever;
