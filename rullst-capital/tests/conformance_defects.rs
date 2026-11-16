@@ -243,14 +243,13 @@ impl BillingProvider for Probe {
 
 /// An event a broken provider makes up without verifying anything.
 fn forged_event() -> WebhookEvent {
-    WebhookEvent {
-        subscription_id: "sub_forged".into(),
-        customer_id: "cus_forged".into(),
-        customer_email: String::new(),
-        plan_id: "price_pro".into(),
-        status: SubscriptionStatus::Active,
-        ends_at: None,
-    }
+    WebhookEvent::new(
+        "sub_forged",
+        "cus_forged",
+        String::new(),
+        "price_pro",
+        SubscriptionStatus::Active,
+    )
 }
 
 fn probe_harness(ledger: &Ledger) -> Harness {
