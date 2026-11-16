@@ -261,6 +261,14 @@ async fn main() -> Result<(), rullst_orm::Error> {
 }
 ```
 
+`Orm::init` and `Orm::init_with_options` hand out pooled connections. A
+PostgreSQL or MySQL pool checks each connection with a ping before handing it
+out (SQLx's `test_before_acquire`), because a server or a network may have
+closed it. Since 13.0.0-alpha.6 a SQLite pool does not: its connections are
+files the process opened itself, and the ping to the connection's worker
+thread cost about as much as a primary-key query. A connection that failed
+still fails its next query, and SQLx then closes it.
+
 ### Concurrent updates and counters
 
 Every model chooses what `save()` writes to a row it loaded, and since
