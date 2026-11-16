@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794860313045,
+  "lastUpdate": 1794864908176,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -14793,6 +14793,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 338,
             "range": "± 13",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a709c8802ae675ea78805aa0b9ee81f1cc2345cf",
+          "message": "Merge pull request #750 from Rullst/refactor/v13-alpha6-redundant-conditions\n\nrefactor: remove redundant conditions behind 13.0 equivalent mutants",
+          "timestamp": "2026-11-16T18:18:20-03:00",
+          "tree_id": "fe3415b713d88767445508d056cfdd2f5541497a",
+          "url": "https://github.com/Rullst/Rullst/commit/a709c8802ae675ea78805aa0b9ee81f1cc2345cf"
+        },
+        "date": 1794864907532,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 379,
+            "range": "± 11",
             "unit": "ns/iter"
           }
         ]
