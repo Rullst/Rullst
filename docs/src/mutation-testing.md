@@ -52,7 +52,14 @@ received a test or is listed under
   1,318 mutants missed and 3 timeouts. The 16 missed mutants left are 13
   accepted equivalents listed below and the three peer-address, status and
   content-type checks of `EgressFetcher::fetch_bytes`, left to live
-  integration testing; the 30 timeouts are listed with the timeouts.
+  integration testing; the 30 timeouts are listed with the timeouts. A
+  follow-up ([PR #750](https://github.com/Rullst/Rullst/pull/750)) removed the redundant code behind four of those
+  equivalents (the end-offset overflow checks of `decode_file`, the
+  `append_exchange` drain guard and the zero-norm check of
+  `cosine_similarity`) and made `InMemoryToolAuditTrail` validate events.
+  Reruns of the four changed files ([43949255885](https://github.com/venelouis/rullst-ci/actions/runs/43949255885), [43949275446](https://github.com/venelouis/rullst-ci/actions/runs/43949275446),
+  [43949290366](https://github.com/venelouis/rullst-ci/actions/runs/43949290366), [43949305052](https://github.com/venelouis/rullst-ci/actions/runs/43949305052)) gave 261 mutants: 234 caught, 27
+  unviable and none missed.
 - **`rullst-iot`** (13.0.0-rc.1 campaign on `cdb68d3b`,
   [PR #749](https://github.com/Rullst/Rullst/pull/749), same fork): targeted
   runs of the 19 files (1 has no mutants) gave 371 mutants: 321 caught, 41
@@ -81,7 +88,10 @@ received a test or is listed under
   attachment decoding and the provider error text. Reruns of the 27 changed
   files leave 9 of 950 mutants missed and 3 timeouts; the remaining 16 missed
   mutants are accepted equivalents listed below and the 11 timeouts are
-  listed with the timeouts.
+  listed with the timeouts. A follow-up ([PR #750](https://github.com/Rullst/Rullst/pull/750)) removed the dead newline
+  check of `strip_html_to_plain_text` behind one of those equivalents; the
+  rerun of `message/plain_text.rs` ([43949242171](https://github.com/venelouis/rullst-ci/actions/runs/43949242171)) caught all 70
+  mutants.
 - **`rullst-messaging`** (re-measured for 13.0.0-alpha.6,
   [PR #711](https://github.com/Rullst/Rullst/pull/711)): targeted
   runs of the 48 files outside `redis_streams/` (7 have no mutants) gave 1,377
@@ -107,7 +117,13 @@ received a test or is listed under
   and protocol checks, the stored-record validation and the SQLite workflow,
   playback and retention guards. The other 17 are accepted equivalents listed
   below. Reruns of the 17 changed files leave 16 of 814 mutants, all accepted
-  equivalents (the seventeenth is the existing `s3/signing.rs` one).
+  equivalents (the seventeenth is the existing `s3/signing.rs` one). A
+  follow-up ([PR #750](https://github.com/Rullst/Rullst/pull/750)) removed the redundant conditions behind six of them (the
+  item bound of `find_created` and the pending-revision and deadline
+  re-checks of `finish` and `stop_intent`) and tested the lease-nonce fence
+  that stays. Reruns of the three files ([43949195438](https://github.com/venelouis/rullst-ci/actions/runs/43949195438),
+  [43949210926](https://github.com/venelouis/rullst-ci/actions/runs/43949210926), [43949227696](https://github.com/venelouis/rullst-ci/actions/runs/43949227696)) gave 128 mutants: 105 caught, 21
+  unviable and 2 missed, the accepted `stopped` and `finish` equivalents.
 - **`rullst-connect`** (13.0.0-alpha.6,
   [PR #718](https://github.com/Rullst/Rullst/pull/718)): targeted runs of the 61
   files outside the PostgreSQL and MySQL login-challenge stores (11 have no
