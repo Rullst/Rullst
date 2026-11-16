@@ -3,6 +3,10 @@ use serde::{Deserialize, Serialize};
 
 /// Opaque bindings sent to an untrusted worker. No tenant/learner identity or
 /// expected answers are needed inside the compiler/interpreter process.
+///
+/// Exhaustive on purpose: a wire contract of protocol version 1
+/// (`deny_unknown_fields`); a new field is a new protocol version that every
+/// runner implements.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AttemptBinding {
@@ -146,6 +150,9 @@ pub enum WorkerOutcome {
     },
     Rejected(ExecutionFailure),
 }
+/// Exhaustive on purpose: a wire contract of protocol version 1
+/// (`deny_unknown_fields`); a new field is a new protocol version that every
+/// runner implements.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct WorkerOutput {

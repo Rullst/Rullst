@@ -4,6 +4,9 @@ use std::collections::BTreeSet;
 
 /// Instructor-owned exact grader input. Never send expected answers to workers
 /// or students; worker outputs are evaluated on the trusted side.
+///
+/// Exhaustive on purpose: a stored grading contract (`deny_unknown_fields`);
+/// another input shape is a new execution profile, not a new field.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct GraderCase {

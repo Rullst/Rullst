@@ -69,6 +69,10 @@ impl From<ContentHash> for String {
 }
 
 /// Resolve under server-authenticated tenant/course membership, not form claims.
+///
+/// Exhaustive on purpose: the authorization scope; another dimension would
+/// change every authorization check, so it must break the code that builds a
+/// scope.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Scope {

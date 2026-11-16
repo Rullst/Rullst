@@ -1,6 +1,8 @@
 use crate::{LabError, Reference, Scope};
 use std::future::Future;
 
+/// Exhaustive on purpose: the host's authorizer maps every action to a
+/// permission, and a new action must not fall into a catch-all grant.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Action {
     /// Current course membership before looking up a job; does not grant access
