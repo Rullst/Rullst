@@ -218,7 +218,11 @@ impl BillingProvider for StripeProvider {
     /// Creates a card-only `mode=payment` Checkout Session with inline
     /// `price_data`: no pre-created price or customer is needed, the quantity
     /// is the request's, and discounts, adaptive pricing and automatic tax are
-    /// off. The Idempotency-Key is derived from the request digest.
+    /// off. The Idempotency-Key is derived from the request digest. Stripe
+    /// notifies the webhook endpoints configured on the account, so a request
+    /// with a [`notification_url`](OneOffCheckoutRequest::notification_url)
+    /// fails with [`CapitalError::UnsupportedOperation`], also with a `mock_*`
+    /// key.
     async fn create_one_off_checkout(
         &self,
         request: &OneOffCheckoutRequest,
@@ -229,7 +233,10 @@ impl BillingProvider for StripeProvider {
     /// Reads the Checkout Session named by the notification's transaction ID
     /// (`cs_…`, from [`OneOffCheckout::session_id`] or a signed event) and
     /// reports it paid only when it is complete, paid, and bound to the
-    /// request's reference, total and currency.
+    /// request's reference, total and currency. The session reports the
+    /// payment methods it offered, not the one used, so the payment's
+    /// [`payment_method`](OneOffPayment::payment_method) and
+    /// [`installments`](OneOffPayment::installments) are `None`.
     async fn confirm_one_off_payment(
         &self,
         request: &OneOffCheckoutRequest,

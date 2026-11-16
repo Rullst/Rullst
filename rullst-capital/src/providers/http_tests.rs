@@ -115,6 +115,43 @@ fn redirects_accept_loopback_http_until_a_live_dispatch() {
     }
 }
 
+#[test]
+fn notification_urls_require_bounded_credential_free_https() {
+    for valid in [
+        "https://app.example/webhooks/infinitepay",
+        "https://app.example/webhooks/infinitepay?charge=42&token=AbC-_9",
+        "https://app.example:8443/hook",
+    ] {
+        validate_notification_url(valid).expect(valid);
+    }
+    for invalid in [
+        "http://app.example/hook",
+        "http://localhost:3000/hook",
+        "http://127.0.0.1/hook",
+        "https://app.example/hook#token",
+        "https://user:pass@app.example/hook",
+        "https://user@app.example/hook",
+        "https://:pass@app.example/hook",
+        "https://app.example/a b",
+        "https://app.example/\u{1}",
+        "ftp://app.example/hook",
+        "/hook",
+        "",
+    ] {
+        assert!(
+            matches!(
+                validate_notification_url(invalid),
+                Err(CapitalError::ConfigurationError(_))
+            ),
+            "{invalid}"
+        );
+    }
+    let longest = format!("https://app.example/{}", "x".repeat(2048 - 20));
+    assert_eq!(longest.len(), 2048);
+    validate_notification_url(&longest).expect("2048 bytes");
+    assert!(validate_notification_url(&format!("{longest}x")).is_err());
+}
+
 #[tokio::test]
 async fn malformed_request_is_permanent_and_redacted_before_transport() {
     let client = build_client().expect("bounded client");

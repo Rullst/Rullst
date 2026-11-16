@@ -34,10 +34,11 @@ passed case could not exercise. `passed()` is true when no case failed;
 `assert_passed()` fails a test with the whole report:
 
 ```text
-conformance of examplepay: 8 passed, 1 failed, 0 skipped
+conformance of examplepay: 9 passed, 1 failed, 0 skipped
   ok mode.declared
   ok checkout.inputs_validated
   ok checkout.server_side_amount
+  ok checkout.notification_url
   ok offline.deterministic
   ok notification.forged_refused
   ok notification.replay_idempotent
@@ -76,6 +77,7 @@ a `BillingHarness`, which supplies what only the implementer knows:
 | `mode.declared` | `webhook_verification_mode()` returns a mode |
 | `checkout.inputs_validated` | plan checkout refuses blank e-mail addresses and plans |
 | `checkout.server_side_amount` | the one-off checkout is bound to the server-side request (`request_digest`) and names the provider |
+| `checkout.notification_url` | a request with a per-checkout `notification_url` (13.0.0-alpha.6) gets a checkout that reports it sent (`OneOffCheckout::notification_url`), or `UnsupportedOperation`; it is never ignored |
 | `offline.deterministic` | the same checkout input gives the same result |
 | `notification.forged_refused` | `handle_webhook` refuses invented, stripped, zeroed and tampered deliveries, and every body of a provider that confirms at the source |
 | `notification.replay_idempotent` | reading the same authentic delivery twice gives the same event or notification |
@@ -122,6 +124,10 @@ conformance_example`. Points the kit enforced while the adapter was written:
   body before verifying fails `notification.forged_refused`.
 - Operations the gateway does not offer return `UnsupportedOperation`, which
   satisfies `errors.typed_no_panic`; fabricating success would not.
+- ExamplePay notifies one endpoint per account, so it refuses a request with a
+  `notification_url` with `UnsupportedOperation`. Ignoring the URL fails
+  `checkout.notification_url`; an adapter that sends it calls
+  `OneOffCheckout::with_notification_url_sent`.
 
 For a gateway whose webhooks are unsigned, declare
 `WebhookVerificationMode::ConfirmedAtSource`, implement

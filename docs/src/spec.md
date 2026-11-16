@@ -3981,11 +3981,28 @@ proves payment. `PaymentNotification` names the payment without a status.
 `OneOffPayment::paid` fails with `InvalidCharge` unless the provider's charged
 amount equals the request's total, the currency matches and the paid amount is
 not lower (it may be higher when the buyer pays instalment fees);
-`OneOffPaymentState::Mock` never counts as paid. Stripe creates a card-only
+`OneOffPaymentState::Mock` never counts as paid. Since 13.0.0-alpha.6 a
+payment also carries, when the provider reports them, how the buyer paid
+(`payment_method()`: `PaymentMethod::Pix`, `CreditCard` or `Other` with the
+provider's name of 1 to 64 ASCII letters, digits, `_` or `-`, stored in
+lowercase; the enum is `#[non_exhaustive]`) and the number of instalments
+(`installments()`, 1 to 255); both are informational and never change
+`is_paid()`. `OneOffCheckoutRequest::with_notification_url` (13.0.0-alpha.6)
+names a per-checkout notification URL instead of the provider's default:
+HTTPS, no credentials or fragment, at most 2048 bytes, query allowed. It is
+hashed into the request digest after the other fields, so a request without
+one keeps its 13.0.0-alpha.5 digest. A provider that cannot notify a
+per-checkout URL refuses the request with `UnsupportedOperation`; an adapter
+that sends it calls `OneOffCheckout::with_notification_url_sent`, and
+`OneOffCheckout::notification_url()` reports it. Stripe creates a card-only
 `mode=payment` Checkout Session with inline `price_data`, the request's
 quantity, disabled discounts, adaptive pricing and automatic tax, and an
 Idempotency-Key derived from the request digest; it confirms by reading the
 session back (`complete` and `paid`, bound reference, total and currency).
+Stripe notifies the account's configured webhook endpoints, so it refuses a
+request with a notification URL (also with a `mock_*` key), and its session
+reports the offered payment methods, not the one used, so its payments have
+no `payment_method()` or `installments()`.
 
 ### 6.2.2. InfinitePay Adapter
 
@@ -3995,12 +4012,15 @@ enables `options.single_payment`) and `with_webhook_url` the per-link
 notification URL. `create_one_off_checkout` requires BRL and at least 100 cents
 per unit and sends `POST /links` (`handle`, one item with `quantity`, `price`
 and `description`, `order_nsu` = reference, `redirect_url` = success URL,
-`webhook_url`, optional `customer.email`); only an HTTPS `infinitepay.io` link
+`webhook_url`: the request's notification URL, else the provider's; optional
+`customer.email`); only an HTTPS `infinitepay.io` link
 is accepted. `parse_payment_notification` reads `order_nsu`, `transaction_nsu`
 and `invoice_slug` (or `slug`) from a body of at most 64 KiB and ignores its
 amounts and status. `confirm_one_off_payment` sends `POST /payment_check`
 (`handle`, `order_nsu`, `transaction_nsu`, `slug`) and is paid only for
-`success` and `paid` with `amount` equal to the request's total. Plan checkout,
+`success` and `paid` with `amount` equal to the request's total; a paid answer
+maps `capture_method` (`pix`, `credit_card`) to `payment_method()` and
+`installments` to `installments()`, leaving out a value it cannot read. Plan checkout,
 portal, subscriptions, usage, coupons and trials return `UnsupportedOperation`.
 An empty or `mock_*` handle runs offline fixtures. `InfinitePayProvider::new`
 remains for its offline fixtures and has no handle for live operations.
