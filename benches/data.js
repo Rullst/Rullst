@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794791760792,
+  "lastUpdate": 1794792421619,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -35127,6 +35127,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 891,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5d2047eb92d5551b4479723b2de7c40bf40cea4e",
+          "message": "Merge pull request #720 from Rullst/feat/v13-i18n-cldr-more-locales\n\nfeat(i18n): add CLDR 48 data for Latin American Spanish and ten currencies",
+          "timestamp": "2026-11-15T22:23:34-03:00",
+          "tree_id": "b8437e8f8435eb3948fd62905b2041bf73f69cdb",
+          "url": "https://github.com/Rullst/Rullst/commit/5d2047eb92d5551b4479723b2de7c40bf40cea4e"
+        },
+        "date": 1794792418564,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 381,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 527,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 255,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 967,
+            "range": "± 20",
             "unit": "ns/iter"
           }
         ]
