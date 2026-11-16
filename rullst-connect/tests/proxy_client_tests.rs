@@ -52,15 +52,10 @@ async fn explicit_authenticated_proxy_routes_request_and_sends_basic_auth() {
     let client = ReqwestClient::try_with_proxy_basic_auth(&proxy_url, "proxy_user", "proxy_pass")
         .expect("valid loopback authenticated proxy");
     let response = client
-        .execute(HttpRequest {
-            method: "GET".into(),
-            url: "http://origin.example.invalid/oauth/token".to_string(),
-            headers: reqwest::header::HeaderMap::new(),
-            form: None,
-            json: None,
-            basic_auth: None,
-            bearer_auth: None,
-        })
+        .execute(HttpRequest::new(
+            "GET",
+            "http://origin.example.invalid/oauth/token",
+        ))
         .await
         .expect("proxied response");
 

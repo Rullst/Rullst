@@ -56,6 +56,7 @@ const REDACTED: &str = "[REDACTED]";
 ///
 /// `Debug` output redacts the code, PKCE verifier and nonce.
 #[derive(Default, Clone)]
+#[non_exhaustive]
 pub struct ExchangeParams<'a> {
     /// The authorization code received from the authorization server callback.
     pub auth_code: &'a str,
@@ -63,6 +64,31 @@ pub struct ExchangeParams<'a> {
     pub code_verifier: Option<&'a str>,
     /// Expected nonce for OpenID Connect ID token verification.
     pub expected_nonce: Option<&'a str>,
+}
+
+impl<'a> ExchangeParams<'a> {
+    /// The parameters for an authorization code, without a PKCE verifier or
+    /// an expected nonce. The struct is `#[non_exhaustive]` since
+    /// 13.0.0-alpha.6, so code outside this crate builds it here.
+    pub fn new(auth_code: &'a str) -> Self {
+        Self {
+            auth_code,
+            code_verifier: None,
+            expected_nonce: None,
+        }
+    }
+
+    /// The same parameters with the PKCE code verifier (RFC 7636).
+    pub fn with_code_verifier(mut self, code_verifier: &'a str) -> Self {
+        self.code_verifier = Some(code_verifier);
+        self
+    }
+
+    /// The same parameters with the nonce the ID token must carry.
+    pub fn with_expected_nonce(mut self, expected_nonce: &'a str) -> Self {
+        self.expected_nonce = Some(expected_nonce);
+        self
+    }
 }
 
 impl std::fmt::Debug for ExchangeParams<'_> {
@@ -78,6 +104,7 @@ impl std::fmt::Debug for ExchangeParams<'_> {
 
 /// Standard form payload for OAuth2 authorization code exchange.
 #[derive(serde::Serialize)]
+#[non_exhaustive]
 pub struct TokenExchangeForm<'a> {
     /// Client ID of the OAuth application.
     pub client_id: &'a str,
@@ -96,11 +123,29 @@ pub struct TokenExchangeForm<'a> {
     pub code_verifier: Option<&'a str>,
 }
 
+impl<'a> TokenExchangeForm<'a> {
+    /// The form of a public client, without a secret, grant type or PKCE
+    /// verifier; set those fields on the value. The struct is
+    /// `#[non_exhaustive]` since 13.0.0-alpha.6, so providers outside this
+    /// crate build it here.
+    pub fn new(client_id: &'a str, code: &'a str, redirect_uri: &'a str) -> Self {
+        Self {
+            client_id,
+            client_secret: None,
+            code,
+            grant_type: None,
+            redirect_uri,
+            code_verifier: None,
+        }
+    }
+}
+
 /// The response containing token information from a standard OAuth2 exchange.
 ///
 /// `Debug` output redacts the access and refresh tokens. The fields remain
 /// plaintext `String`s, so callers must not log or persist them directly.
 #[derive(Clone, serde::Deserialize)]
+#[non_exhaustive]
 pub struct Oauth2TokenResponse {
     /// Bearer access token string.
     pub access_token: String,

@@ -86,10 +86,9 @@ async fn mock_feature_serves_offline_identities() {
     assert_eq!(provider.credential_mode(), CredentialMode::Mock);
 
     let user = provider
-        .get_user(rullst_connect::provider::ExchangeParams {
-            auth_code: "mock_authorization_code",
-            ..Default::default()
-        })
+        .get_user(rullst_connect::provider::ExchangeParams::new(
+            "mock_authorization_code",
+        ))
         .await
         .expect("the mock feature serves an offline identity");
     assert_eq!(user.id, "1");
@@ -150,10 +149,7 @@ async fn test_github_get_user_success() {
     .with_http_client(intercept_client);
 
     // 4. Perform the full get_user flow!
-    let params = rullst_connect::provider::ExchangeParams {
-        auth_code: "fake_auth_code_999",
-        ..Default::default()
-    };
+    let params = rullst_connect::provider::ExchangeParams::new("fake_auth_code_999");
     let user = provider.get_user(params).await.unwrap();
 
     assert_eq!(user.id, "123456");
@@ -199,10 +195,7 @@ async fn test_github_token_error() {
     .unwrap()
     .with_http_client(intercept_client);
 
-    let params = rullst_connect::provider::ExchangeParams {
-        auth_code: "bad_code",
-        ..Default::default()
-    };
+    let params = rullst_connect::provider::ExchangeParams::new("bad_code");
     let err = provider.get_user(params).await.unwrap_err();
 
     assert!(matches!(
@@ -300,10 +293,7 @@ async fn test_github_get_user_missing_access_token() {
     .unwrap()
     .with_http_client(intercept_client);
 
-    let params = rullst_connect::provider::ExchangeParams {
-        auth_code: "some_code",
-        ..Default::default()
-    };
+    let params = rullst_connect::provider::ExchangeParams::new("some_code");
     let err = provider.get_user(params).await.unwrap_err();
     assert!(matches!(
         err,
@@ -344,10 +334,7 @@ async fn test_github_get_user_missing_id() {
     .unwrap()
     .with_http_client(intercept_client);
 
-    let params = rullst_connect::provider::ExchangeParams {
-        auth_code: "some_code",
-        ..Default::default()
-    };
+    let params = rullst_connect::provider::ExchangeParams::new("some_code");
     let err = provider.get_user(params).await.unwrap_err();
     assert!(matches!(
         err,
@@ -482,10 +469,7 @@ async fn test_google_get_user_wiremock() {
     .unwrap()
     .with_http_client(intercept_client);
 
-    let params = rullst_connect::provider::ExchangeParams {
-        auth_code: "google_code",
-        ..Default::default()
-    };
+    let params = rullst_connect::provider::ExchangeParams::new("google_code");
     let user = provider.get_user(params).await.unwrap();
     assert_eq!(user.id, "google-user-999");
     assert_eq!(user.name, "Jane Google");
@@ -530,10 +514,7 @@ async fn test_discord_get_user_wiremock() {
     .unwrap()
     .with_http_client(intercept_client);
 
-    let params = rullst_connect::provider::ExchangeParams {
-        auth_code: "discord_code",
-        ..Default::default()
-    };
+    let params = rullst_connect::provider::ExchangeParams::new("discord_code");
     let user = provider.get_user(params).await.unwrap();
     assert_eq!(user.id, "80351110224678912");
     assert_eq!(user.email.as_deref(), Some("nelly@discord.com"));
@@ -573,10 +554,7 @@ async fn test_facebook_get_user_wiremock() {
     .unwrap()
     .with_http_client(intercept_client);
 
-    let params = rullst_connect::provider::ExchangeParams {
-        auth_code: "fb_code",
-        ..Default::default()
-    };
+    let params = rullst_connect::provider::ExchangeParams::new("fb_code");
     let user = provider.get_user(params).await.unwrap();
     assert_eq!(user.id, "10000123456789");
     assert_eq!(user.name, "Mark Developer");
@@ -616,10 +594,7 @@ async fn test_microsoft_get_user_wiremock() {
     .unwrap()
     .with_http_client(intercept_client);
 
-    let params = rullst_connect::provider::ExchangeParams {
-        auth_code: "ms_code",
-        ..Default::default()
-    };
+    let params = rullst_connect::provider::ExchangeParams::new("ms_code");
     let user = provider.get_user(params).await.unwrap();
     assert_eq!(user.id, "ms-user-guid-1234");
     assert_eq!(user.name, "Satya Azure");
@@ -659,10 +634,7 @@ async fn test_linkedin_get_user_wiremock() {
     .unwrap()
     .with_http_client(intercept_client);
 
-    let params = rullst_connect::provider::ExchangeParams {
-        auth_code: "li_code",
-        ..Default::default()
-    };
+    let params = rullst_connect::provider::ExchangeParams::new("li_code");
     let user = provider.get_user(params).await.unwrap();
     assert_eq!(user.id, "li-sub-123");
     assert_eq!(user.name, "Reid Professional");
@@ -704,11 +676,8 @@ async fn test_x_get_user_wiremock() {
     .unwrap()
     .with_http_client(intercept_client);
 
-    let params = rullst_connect::provider::ExchangeParams {
-        auth_code: "x_code",
-        code_verifier: Some("verifier_123"),
-        ..Default::default()
-    };
+    let params =
+        rullst_connect::provider::ExchangeParams::new("x_code").with_code_verifier("verifier_123");
     let user = provider.get_user(params).await.unwrap();
     assert_eq!(user.id, "2244994945");
     assert_eq!(user.name, "Twitter Dev");
@@ -750,10 +719,7 @@ async fn test_auth0_get_user_wiremock() {
     .unwrap()
     .with_http_client(intercept_client);
 
-    let params = rullst_connect::provider::ExchangeParams {
-        auth_code: "auth0_code",
-        ..Default::default()
-    };
+    let params = rullst_connect::provider::ExchangeParams::new("auth0_code");
     let user = provider.get_user(params).await.unwrap();
     assert_eq!(user.id, "auth0|607f1f77bcf86cd799439011");
     assert_eq!(user.email.as_deref(), Some("user@auth0.com"));
@@ -830,17 +796,13 @@ async fn test_mock_idp_router_execution() {
 #[test]
 fn connect_user_serialization_is_credential_free() {
     use rullst_connect::user::ConnectUser;
-    let user = ConnectUser {
-        id: "usr_123".to_string(),
-        name: "Test User".to_string(),
-        email: Some("test@example.com".to_string()),
-        email_verified: Some(true),
-        avatar_url: Some("https://example.com/avatar.png".to_string()),
-        raw_data: serde_json::json!({"provider_raw": true}),
-        access_token: secrecy::SecretString::from("tok_secret".to_string()),
-        refresh_token: Some(secrecy::SecretString::from("ref_secret".to_string())),
-        expires_in: Some(3600),
-    };
+    let mut user = ConnectUser::new("usr_123", "Test User", "tok_secret");
+    user.email = Some("test@example.com".to_string());
+    user.email_verified = Some(true);
+    user.avatar_url = Some("https://example.com/avatar.png".to_string());
+    user.raw_data = serde_json::json!({"provider_raw": true});
+    user.refresh_token = Some(secrecy::SecretString::from("ref_secret".to_string()));
+    user.expires_in = Some(3600);
 
     let serialized = serde_json::to_string(&user).unwrap();
     assert!(serialized.contains("usr_123"));

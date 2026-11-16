@@ -83,10 +83,7 @@ async fn callback_google(Query(query): Query<AuthRequest>) -> impl IntoResponse 
         Err(error) => return Html(format!("Invalid Google configuration: {error}")),
     };
 
-    let params = rullst_connect::provider::ExchangeParams {
-        auth_code: &query.code,
-        ..Default::default()
-    };
+    let params = rullst_connect::provider::ExchangeParams::new(&query.code);
     match provider.get_user(params).await {
         Ok(user) => Html(format!(
             "<h2>Welcome, {}!</h2><p>Email: {:?}</p><p>ID: {}</p><img src='{:?}'>",
@@ -119,10 +116,7 @@ async fn callback_github(Query(query): Query<AuthRequest>) -> impl IntoResponse 
         Err(error) => return Html(format!("Invalid GitHub configuration: {error}")),
     };
 
-    let params = rullst_connect::provider::ExchangeParams {
-        auth_code: &query.code,
-        ..Default::default()
-    };
+    let params = rullst_connect::provider::ExchangeParams::new(&query.code);
     match provider.get_user(params).await {
         Ok(user) => Html(format!(
             "<h2>Welcome, {}!</h2><p>Email: {:?}</p><p>ID: {}</p><img src='{:?}'>",
