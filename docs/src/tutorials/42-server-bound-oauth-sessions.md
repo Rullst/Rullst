@@ -357,11 +357,11 @@ async fn apple_callback(
         .as_deref()
         .ok_or_else(|| ConnectError::Token("missing code".to_string()))?;
     apple
-        .get_user(ExchangeParams {
-            auth_code: code,
-            code_verifier: Some(&challenge.code_verifier),
-            expected_nonce: Some(&challenge.nonce),
-        })
+        .get_user(
+            ExchangeParams::new(code)
+                .with_code_verifier(&challenge.code_verifier)
+                .with_expected_nonce(&challenge.nonce),
+        )
         .await
 }
 ```
