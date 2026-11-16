@@ -2185,7 +2185,10 @@ binary size, a local container image's size (`--image`, through `docker` or
 `podman image inspect`), the app's idle resident memory, the third-party
 dependency count from `Cargo.lock` and, since 13.0.0-alpha.6, how many of those
 packages Cargo compiles for the project (`cargo tree --edges normal,build`, the
-host platform and the default features); with `--bench`, the app process's CPU time
+host platform and the default features) and the start-up time of the binary it
+starts (the median of up to five cold starts, each from the spawn to the first
+answer to `GET --path`, probed every 5 ms; the report says how many starts it
+timed); with `--bench`, the app process's CPU time
 and the response bytes it served during a bounded closed-loop loopback load,
 and both per request; with `--page-weight`, the bytes and requests of the
 `--path` page and its same-origin resources on a first and a repeat visit
@@ -2216,13 +2219,17 @@ beside the lab's bytes per request.
 
 Without `--url` it builds the release binary (reusing an existing build),
 starts it with `RULLST_ENV=production` (or `--env staging`, which accepts the
-starters' mock billing credentials) on a free `127.0.0.1` port, measures it
-and stops it. With an `http://` `--url` it measures an app already running on
-loopback and refuses any other host. Since 13.0.0-alpha.6 an `https://`
-`--url` weighs a published site's page as visitors download it, with the
-server's compression: it needs `--page-weight`, refuses `--bench` and
-`--image`, and reports the binary, memory, dependency and CPU figures as not
-measured. It makes no network calls beyond loopback, the `https://` origin
+starters' mock billing credentials) on a free `127.0.0.1` port, up to five
+times to time its start-up, measures the last start and stops it. With an
+`http://` `--url` it measures an app already running on loopback, whose
+start-up time is not measured, and refuses any other host. Since
+13.0.0-alpha.6 an `https://` `--url` weighs a published site's page as
+visitors download it, with the server's compression: it needs
+`--page-weight`, refuses `--bench` and `--image`, and reports the binary,
+memory, start-up, dependency and CPU figures as not measured. The start-up
+time is not the `startup_s` of the Rullst/Benchmarks suite, which times
+containers at a 0.25 s probe interval; footprint times the local binary
+([start-up time](footprint.md#start-up-time)). It makes no network calls beyond loopback, the `https://` origin
 you pass, the local container engine and the `--monitor-url` you pass, and
 never fetches grid intensity.
 
