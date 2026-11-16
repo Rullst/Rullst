@@ -120,6 +120,43 @@ is covered by `rullst-core` tests.
 For a JSON endpoint, replace `ValidatedForm` with `ValidatedJson`; the DTO and
 handler body remain the same.
 
+### Read or add field failures
+
+A constraint failure is `ValidationError::ValidationError { errors, is_htmx }`,
+whose `errors` is a `rullst::FieldErrors` (since 13.0.0-alpha.6; before, the
+`validator` crate's `ValidationErrors`). `errors.messages()` and
+`errors.codes()` map each field path to its messages and validator codes,
+and `errors.as_any().downcast_ref::<validator::ValidationErrors>()` reaches
+the `validator` errors themselves, whose parameters hold the rejected input.
+A check that only the handler can make, such as a taken email address, joins
+the payload's own failures in the same `422` response:
+
+```rust
+use rullst::{FieldErrors, Validate, ValidationError};
+
+#[derive(Validate)]
+struct Signup {
+    #[validate(email(message = "Enter an email address"))]
+    email: String,
+}
+
+fn check(signup: &Signup, taken: bool, is_htmx: bool) -> Result<(), ValidationError> {
+    let mut errors = FieldErrors::validate(signup).err().unwrap_or_default();
+    if taken {
+        errors.add("email", "taken", "This email address is already registered");
+    }
+    if errors.is_empty() {
+        return Ok(());
+    }
+    // REST clients get {"errors": {"email": ["This email address is already registered"]}}.
+    Err(ValidationError::ValidationError { errors, is_htmx })
+}
+
+let signup = Signup { email: "ana@example.com".to_string() };
+assert!(check(&signup, false, false).is_ok());
+assert!(check(&signup, true, false).is_err());
+```
+
 ---
 
 ## Step 3: Send the CSRF token with browser forms

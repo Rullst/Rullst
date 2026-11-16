@@ -311,3 +311,39 @@ async fn a_trusted_unsampled_parent_keeps_its_children_unsampled() {
     separator.replace_range(35..36, "a");
     assert!(TraceParent::try_new(separator).is_err());
 }
+
+/// Since 13.0.0-alpha.6 `layer` returns an opaque `Layer`: it still composes
+/// boxed and with a per-layer filter, and `TraceParent` still reaches the
+/// trace context of its spans through the box and the filter.
+#[tokio::test]
+async fn the_opaque_layer_composes_boxed_and_filtered() {
+    let runtime = DistributedTelemetry::try_new(
+        TelemetryConfig::try_new("fixture", "mock_offline", ["operation"]).unwrap(),
+    )
+    .unwrap();
+    let boxed: Box<dyn tracing_subscriber::Layer<tracing_subscriber::Registry> + Send + Sync> =
+        Box::new(
+            runtime
+                .layer()
+                .with_filter(tracing_subscriber::filter::LevelFilter::INFO),
+        );
+    let subscriber = tracing_subscriber::registry().with(boxed);
+    tracing::subscriber::with_default(subscriber, || {
+        let mut headers = HeaderMap::new();
+        headers.insert("traceparent", HeaderValue::from_static(PARENT));
+        let span = tracing::info_span!(parent:None,"operation");
+        TraceParent::apply_incoming(&span, &headers, ParentPolicy::TrustedPeer).unwrap();
+        assert_eq!(
+            &TraceParent::capture(&span).unwrap().as_str()[3..35],
+            &PARENT[3..35]
+        );
+        drop(span);
+        // Below the filter's level: never reaches the exporter.
+        drop(tracing::debug_span!(parent:None,"operation"));
+    });
+    runtime.flush().await.unwrap();
+    let status = runtime.shutdown().await.unwrap();
+    assert_eq!(status.forwarded_spans, 1);
+    assert_eq!(status.offline_spans, 1);
+    assert_eq!(status.rejected_spans, 0);
+}

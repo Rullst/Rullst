@@ -200,10 +200,8 @@ async fn htmx_fragments_escape_messages_and_fields() {
     assert!(!body.contains("<script>"), "{body}");
     assert!(body.contains("&lt;script&gt;"), "{body}");
 
-    let mut errors = validator::ValidationErrors::new();
-    let mut field_error = validator::ValidationError::new("custom");
-    field_error.message = Some("<b onmouseover=x>bad</b>".into());
-    errors.add("name", field_error);
+    let mut errors = FieldErrors::new();
+    errors.add("name", "custom", "<b onmouseover=x>bad</b>");
     let body = body_string(
         ValidationError::ValidationError {
             errors,
@@ -341,4 +339,159 @@ async fn display_and_debug_never_contain_the_rejected_values() {
         "Validation error: email (email), password (length)"
     );
     assert!(debug.contains("\"password\": [\"length\"]"), "{debug}");
+}
+
+async fn body_json(response: Response) -> serde_json::Value {
+    serde_json::from_str(&body_string(response).await).unwrap()
+}
+
+/// The JSON a REST client receives for a constraint failure keeps its
+/// pre-alpha.6 shape: `{"errors": {"<path>": ["<message>", …]}}`.
+#[tokio::test]
+async fn the_json_response_shape_is_unchanged() {
+    let req = Request::builder()
+        .header("content-type", "application/json")
+        .body(axum::body::Body::from(
+            r#"{"username": "ab", "email": "invalid-email"}"#,
+        ))
+        .unwrap();
+    let err = ValidatedJson::<TestPayload>::from_request(req, &())
+        .await
+        .unwrap_err();
+    let response = err.into_response();
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        response.headers()[axum::http::header::CONTENT_TYPE],
+        "application/json"
+    );
+    assert_eq!(
+        body_json(response).await,
+        serde_json::json!({
+            "errors": {
+                "username": ["Username too short"],
+                "email": ["Must be a valid email"]
+            }
+        })
+    );
+
+    // A constraint without a message gets the generic one.
+    let req = Request::builder()
+        .header("content-type", "application/json")
+        .body(axum::body::Body::from(
+            r#"{"password": "short", "email": "a@example.com"}"#,
+        ))
+        .unwrap();
+    let err = ValidatedJson::<Login>::from_request(req, &())
+        .await
+        .unwrap_err();
+    assert_eq!(
+        body_json(err.into_response()).await,
+        serde_json::json!({ "errors": { "password": ["Invalid value for field 'password'"] } })
+    );
+}
+
+#[tokio::test]
+async fn field_errors_list_messages_and_codes_by_path() {
+    let req = Request::builder()
+        .header("content-type", "application/json")
+        .body(axum::body::Body::from(
+            r#"{"address": {"zip": "1"}, "previous": [{"zip": "2"}]}"#,
+        ))
+        .unwrap();
+    let ValidationError::ValidationError { errors, .. } =
+        ValidatedJson::<Signup>::from_request(req, &())
+            .await
+            .unwrap_err()
+    else {
+        panic!("expected a validation failure");
+    };
+    assert!(!errors.is_empty());
+    assert_eq!(
+        errors.messages(),
+        std::collections::BTreeMap::from([
+            ("address.zip".to_string(), vec!["Zip too short".to_string()]),
+            (
+                "previous[0].zip".to_string(),
+                vec!["Zip too short".to_string()]
+            ),
+        ])
+    );
+    assert_eq!(
+        errors.codes(),
+        std::collections::BTreeMap::from([
+            ("address.zip".to_string(), vec!["length".to_string()]),
+            ("previous[0].zip".to_string(), vec!["length".to_string()]),
+        ])
+    );
+    assert_eq!(
+        format!("{errors:?}"),
+        r#"FieldErrors({"address.zip": ["length"], "previous[0].zip": ["length"]})"#
+    );
+
+    // The `validator` errors stay reachable without naming their type here.
+    let reported = errors
+        .as_any()
+        .downcast_ref::<validator::ValidationErrors>()
+        .unwrap();
+    assert!(reported.errors().contains_key("address"));
+    assert!(reported.errors().contains_key("previous"));
+}
+
+#[tokio::test]
+async fn added_failures_are_rendered_with_the_payload_ones() {
+    assert!(FieldErrors::new().is_empty());
+    assert!(
+        FieldErrors::validate(&TestPayload {
+            username: "venelouis".to_string(),
+            email: "vene@rullst.dev".to_string(),
+        })
+        .is_ok()
+    );
+    let mut added = FieldErrors::new();
+    added.add("email", "taken", "Email taken");
+    assert!(!added.is_empty());
+    assert!(
+        added
+            .as_any()
+            .downcast_ref::<validator::ValidationErrors>()
+            .unwrap()
+            .is_empty()
+    );
+
+    let mut errors = FieldErrors::validate(&TestPayload {
+        username: "ab".to_string(),
+        email: "vene@rullst.dev".to_string(),
+    })
+    .unwrap_err();
+    errors.add("email", "taken", "Email taken");
+    errors.add("username", "reserved", "Username reserved");
+    assert_eq!(errors.codes()["username"], ["length", "reserved"]);
+    assert_eq!(errors.codes()["email"], ["taken"]);
+    let body = body_json(
+        ValidationError::ValidationError {
+            errors: errors.clone(),
+            is_htmx: false,
+        }
+        .into_response(),
+    )
+    .await;
+    assert_eq!(
+        body,
+        serde_json::json!({
+            "errors": {
+                "username": ["Username too short", "Username reserved"],
+                "email": ["Email taken"]
+            }
+        })
+    );
+    let fragment = body_string(
+        ValidationError::ValidationError {
+            errors,
+            is_htmx: true,
+        }
+        .into_response(),
+    )
+    .await;
+    assert!(fragment.contains("Email taken"), "{fragment}");
+    assert!(fragment.contains("Username reserved"), "{fragment}");
 }

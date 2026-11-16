@@ -197,6 +197,23 @@ impl !core::panic::unwind_safe::UnwindSafe for rullst_core::FeatureManager
 impl core::marker::Send for rullst_core::FeatureManager
 impl core::marker::Sync for rullst_core::FeatureManager
 impl core::marker::Unpin for rullst_core::FeatureManager
+pub struct rullst_core::FieldErrors
+impl rullst_core::FieldErrors
+pub fn rullst_core::FieldErrors::add(&mut self, field: impl core::convert::Into<alloc::string::String>, code: impl core::convert::Into<alloc::string::String>, message: impl core::convert::Into<alloc::string::String>)
+pub fn rullst_core::FieldErrors::as_any(&self) -> &(dyn core::any::Any + core::marker::Send + core::marker::Sync)
+pub fn rullst_core::FieldErrors::codes(&self) -> alloc::collections::btree::map::BTreeMap<alloc::string::String, alloc::vec::Vec<alloc::string::String>>
+pub fn rullst_core::FieldErrors::is_empty(&self) -> bool
+pub fn rullst_core::FieldErrors::messages(&self) -> alloc::collections::btree::map::BTreeMap<alloc::string::String, alloc::vec::Vec<alloc::string::String>>
+pub fn rullst_core::FieldErrors::new() -> Self
+pub fn rullst_core::FieldErrors::validate<T: validator::traits::Validate + ?core::marker::Sized>(value: &T) -> core::result::Result<(), Self>
+impl core::clone::Clone for rullst_core::FieldErrors
+impl core::default::Default for rullst_core::FieldErrors
+impl core::fmt::Debug for rullst_core::FieldErrors
+impl core::marker::Send for rullst_core::FieldErrors
+impl core::marker::Sync for rullst_core::FieldErrors
+impl core::marker::Unpin for rullst_core::FieldErrors
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::FieldErrors
+impl core::panic::unwind_safe::UnwindSafe for rullst_core::FieldErrors
 #[non_exhaustive] pub struct rullst_core::HtmxRequest
 pub rullst_core::HtmxRequest::is_htmx: bool
 pub rullst_core::HtmxRequest::trigger: core::option::Option<alloc::string::String>
@@ -1159,7 +1176,7 @@ pub rullst_core::ValidationError::ExtractionError { .. }
 pub rullst_core::ValidationError::ExtractionError::message: alloc::string::String
 pub rullst_core::ValidationError::ExtractionError::is_htmx: bool
 pub rullst_core::ValidationError::ValidationError { .. }
-pub rullst_core::ValidationError::ValidationError::errors: validator::types::ValidationErrors
+pub rullst_core::ValidationError::ValidationError::errors: rullst_core::FieldErrors
 pub rullst_core::ValidationError::ValidationError::is_htmx: bool
 impl axum_core::response::into_response::IntoResponse for rullst_core::ValidationError
 impl core::error::Error for rullst_core::ValidationError
@@ -3226,7 +3243,7 @@ impl rullst_core::telemetry::distributed::DistributedTelemetry
 pub async fn rullst_core::telemetry::distributed::DistributedTelemetry::flush(&self) -> core::result::Result<(), rullst_core::telemetry::distributed::TelemetryError>
 pub async fn rullst_core::telemetry::distributed::DistributedTelemetry::shutdown(self) -> core::result::Result<rullst_core::telemetry::distributed::TelemetryStatus, rullst_core::telemetry::distributed::TelemetryError>
 pub fn rullst_core::telemetry::distributed::DistributedTelemetry::is_mock(&self) -> bool
-pub fn rullst_core::telemetry::distributed::DistributedTelemetry::layer<S>(&self) -> tracing_opentelemetry::layer::OpenTelemetryLayer<S, opentelemetry_sdk::trace::tracer::SdkTracer> where S: tracing_core::subscriber::Subscriber + for<'lookup> tracing_subscriber::registry::LookupSpan<'lookup>
+pub fn rullst_core::telemetry::distributed::DistributedTelemetry::layer<S>(&self) -> impl tracing_subscriber::layer::Layer<S> + core::marker::Send + core::marker::Sync + 'static + use<S> where S: tracing_core::subscriber::Subscriber + for<'lookup> tracing_subscriber::registry::LookupSpan<'lookup> + core::marker::Send + core::marker::Sync
 pub fn rullst_core::telemetry::distributed::DistributedTelemetry::status(&self) -> rullst_core::telemetry::distributed::TelemetryStatus
 pub fn rullst_core::telemetry::distributed::DistributedTelemetry::try_new(config: rullst_core::telemetry::distributed::TelemetryConfig) -> core::result::Result<Self, rullst_core::telemetry::distributed::TelemetryError>
 impl !core::panic::unwind_safe::RefUnwindSafe for rullst_core::telemetry::distributed::DistributedTelemetry
@@ -3525,6 +3542,7 @@ impl core::marker::Unpin for rullst_core::uploads::UploadedFile
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::uploads::UploadedFile
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::uploads::UploadedFile
 pub mod rullst_core::validation
+pub use rullst_core::validation::FieldErrors = struct rullst_core::FieldErrors
 pub use rullst_core::validation::Validate = proc_derive validator_derive::Validate
 pub use rullst_core::validation::Validate = trait validator::traits::Validate
 pub use rullst_core::validation::ValidatedForm = struct rullst_core::ValidatedForm

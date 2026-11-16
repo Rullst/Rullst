@@ -214,7 +214,7 @@ pub use uploads::{
     UploadPolicy, UploadScanner,
 };
 #[cfg(not(target_arch = "wasm32"))]
-pub use validation::{Validate, ValidatedForm, ValidatedJson, ValidationError};
+pub use validation::{FieldErrors, Validate, ValidatedForm, ValidatedJson, ValidationError};
 #[cfg(not(target_arch = "wasm32"))]
 pub use ws::{WebSocket, WsError};
 

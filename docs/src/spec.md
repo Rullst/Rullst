@@ -1542,6 +1542,10 @@ pressure, unavailable/slow collectors, TLS denial, exact package consumption and
 flush/shutdown require executable evidence. Sampling, retention, collector access,
 durability, availability and deployment operations remain host responsibilities;
 trace delivery is best effort, not an audit ledger or application transaction.
+`DistributedTelemetry::layer` returns an opaque
+`impl tracing_subscriber::Layer<S> + Send + Sync + 'static` (since
+13.0.0-alpha.6), so the OpenTelemetry crates behind it are private
+dependencies that a 13.x release may update.
 The implementation and actual collector/TLS/process evidence are documented in
 [the tracing guide](distributed-tracing.md). Hosted source/package admission
 passed in PR #236; final release admission remains separate. Legacy initialization uses compatible threaded export and the corrected
@@ -4609,7 +4613,9 @@ provider](capital-custom-provider.md)); the
   inspects the same relational backends with bound lookup values and strict
   normalized Mermaid identifiers, lists each column once and pairs composite
   foreign-key columns by key position. The read-only API reference requires an
-  application-supplied `OpenApi`.
+  application-supplied OpenAPI document: any `serde::Serialize` value (the
+  `OpenApi` of any utoipa version, or a `serde_json::Value`, since
+  13.0.0-alpha.6), whose OpenAPI 3.1 or 3.2 operations it lists.
 * Request SSE records method, URI, status, and latency without bodies or headers.
   Environment values are redacted by default; an allowlisted value is also
   redacted when it carries URL user information, a bearer token or a

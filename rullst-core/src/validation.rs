@@ -7,6 +7,11 @@ use axum::{
 use std::collections::HashMap;
 pub use validator::Validate;
 
+#[path = "validation_field_errors.rs"]
+mod field_errors;
+pub use field_errors::FieldErrors;
+use field_errors::message_or_default;
+
 /// Error type returned by [`ValidatedForm`] and [`ValidatedJson`] extractors.
 /// Automatically renders HTMX-friendly HTML error components for HTMX requests,
 /// or standard JSON responses for REST clients: `422` for a payload that fails
@@ -33,6 +38,10 @@ pub use validator::Validate;
 /// `validator` derive stores each rejected input as a `value` parameter, so
 /// the raw errors (which can hold a password or other personal data) are
 /// never formatted.
+///
+/// Since 13.0.0-alpha.6 a constraint failure carries [`FieldErrors`], read
+/// through Rullst types, instead of the `validator` crate's
+/// `ValidationErrors`.
 #[non_exhaustive]
 pub enum ValidationError {
     /// A deserialization error occurred before validation could run (e.g. malformed JSON body).
@@ -42,10 +51,10 @@ pub enum ValidationError {
         /// `true` if the request was triggered by HTMX (`HX-Request: true` header present).
         is_htmx: bool,
     },
-    /// The payload was extracted successfully but failed `validator::Validate` constraints.
+    /// The payload was extracted successfully but failed its [`Validate`] constraints.
     ValidationError {
-        /// The set of field-level validation errors returned by the `validator` crate.
-        errors: validator::ValidationErrors,
+        /// The field-level failures: messages and codes by field path.
+        errors: FieldErrors,
         /// `true` if the request was triggered by HTMX (`HX-Request: true` header present).
         is_htmx: bool,
     },
@@ -60,7 +69,7 @@ impl std::fmt::Display for ValidationError {
             }
             ValidationError::ValidationError { errors, .. } => {
                 f.write_str("Validation error: ")?;
-                for (index, (path, codes)) in error_codes(errors).iter().enumerate() {
+                for (index, (path, codes)) in errors.codes().iter().enumerate() {
                     if index > 0 {
                         f.write_str(", ")?;
                     }
@@ -82,25 +91,11 @@ impl std::fmt::Debug for ValidationError {
                 .finish(),
             ValidationError::ValidationError { errors, is_htmx } => f
                 .debug_struct("ValidationError")
-                .field("errors", &error_codes(errors))
+                .field("errors", &errors.codes())
                 .field("is_htmx", is_htmx)
                 .finish(),
         }
     }
-}
-
-/// Field paths and their validator codes, sorted; never parameters or values.
-fn error_codes(
-    errors: &validator::ValidationErrors,
-) -> std::collections::BTreeMap<String, Vec<String>> {
-    let mut codes = std::collections::BTreeMap::<String, Vec<String>>::new();
-    visit_field_errors(errors, "", &mut |path, field_error| {
-        codes
-            .entry(path.to_string())
-            .or_default()
-            .push(field_error.code.to_string());
-    });
-    codes
 }
 
 impl std::error::Error for ValidationError {}
@@ -156,46 +151,13 @@ fn htmx_fragment(status: StatusCode, html: String) -> Response {
     response
 }
 
-/// Visits every field error, including those of `#[validate(nested)]`
-/// structs (`address.zip`) and lists (`items[0].name`), with its field path.
-fn visit_field_errors(
-    errors: &validator::ValidationErrors,
-    prefix: &str,
-    visit: &mut impl FnMut(&str, &validator::ValidationError),
-) {
-    for (field, kind) in errors.errors() {
-        let path = if prefix.is_empty() {
-            field.to_string()
-        } else {
-            format!("{prefix}.{field}")
-        };
-        match kind {
-            validator::ValidationErrorsKind::Field(field_errors) => {
-                for field_error in field_errors {
-                    visit(&path, field_error);
-                }
-            }
-            validator::ValidationErrorsKind::Struct(inner) => {
-                visit_field_errors(inner, &path, visit);
-            }
-            validator::ValidationErrorsKind::List(items) => {
-                for (index, inner) in items {
-                    visit_field_errors(inner, &format!("{path}[{index}]"), visit);
-                }
-            }
-        }
-    }
-}
-
-fn format_errors(errors: &validator::ValidationErrors) -> HashMap<String, Vec<String>> {
+/// The messages of each field path, in the map the JSON response serializes.
+fn format_errors(errors: &FieldErrors) -> HashMap<String, Vec<String>> {
     let mut map: HashMap<String, Vec<String>> = HashMap::new();
-    visit_field_errors(errors, "", &mut |path, field_error| {
-        let message = field_error
-            .message
-            .as_ref()
-            .map(|message| message.to_string())
-            .unwrap_or_else(|| format!("Invalid value for field '{path}'"));
-        map.entry(path.to_string()).or_default().push(message);
+    errors.visit(&mut |path, _, message| {
+        map.entry(path.to_string())
+            .or_default()
+            .push(message_or_default(path, message));
     });
     map
 }
@@ -272,7 +234,7 @@ pub struct ValidatedForm<T>(pub T);
 
 impl<T, S> FromRequest<S> for ValidatedForm<T>
 where
-    T: validator::Validate + serde::de::DeserializeOwned + 'static,
+    T: Validate + serde::de::DeserializeOwned + 'static,
     S: Send + Sync,
 {
     type Rejection = ValidationError;
@@ -289,8 +251,7 @@ where
             .await
             .map_err(|e| extraction_error(e.status(), e.body_text(), is_htmx))?;
 
-        value
-            .validate()
+        FieldErrors::validate(&value)
             .map_err(|errors| ValidationError::ValidationError { errors, is_htmx })?;
 
         Ok(ValidatedForm(value))
@@ -306,7 +267,7 @@ pub struct ValidatedJson<T>(pub T);
 
 impl<T, S> FromRequest<S> for ValidatedJson<T>
 where
-    T: validator::Validate + serde::de::DeserializeOwned + 'static,
+    T: Validate + serde::de::DeserializeOwned + 'static,
     S: Send + Sync,
 {
     type Rejection = ValidationError;
@@ -324,8 +285,7 @@ where
             .await
             .map_err(|e| extraction_error(e.status(), e.body_text(), is_htmx))?;
 
-        value
-            .validate()
+        FieldErrors::validate(&value)
             .map_err(|errors| ValidationError::ValidationError { errors, is_htmx })?;
 
         Ok(ValidatedJson(value))

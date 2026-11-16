@@ -162,7 +162,12 @@ public signatures, trait implementations or re-exports, such as
 stays on the version line below. Before the 13.0 freeze, planned for
 13.0.0-alpha.6, dependencies move to their current major so that 13.x starts
 from current lines: 13.0.0-alpha.6 moves ed25519-dalek to 3, jsonwebtoken to
-12 and jsonschema to 0.61, which the public API does not expose.
+12 and jsonschema to 0.61, which the public API does not expose. The same
+release takes three pre-1.0 crates that break every few months out of the
+public API, so that 13.x releases can update them as private dependencies:
+`opentelemetry_sdk` and `tracing-opentelemetry`
+(`DistributedTelemetry::layer` returns an `impl tracing_subscriber::Layer`)
+and `utoipa` (`Studio::with_openapi` takes any `serde::Serialize` document).
 
 | Crate | 13.x line | Where the API exposes it |
 | :--- | :--- | :--- |
@@ -172,7 +177,6 @@ from current lines: 13.0.0-alpha.6 moves ed25519-dalek to 3, jsonwebtoken to
 | `axum` | `0.8` | `rullst::web::axum`, `Router`, handlers and extractors of Core, Auth, Security, Capital, Connect, Nexus and Studio |
 | `chrono` | `0.4` | Core date formatting, `rullst::orm::chrono`, Mail and Capital |
 | `http` | `1` | `rullst::http` and the header, method and status types of the web crates |
-| `opentelemetry_sdk` | `0.33` | Core `DistributedTelemetry::layer` (`telemetry`) |
 | `pgvector` | `0.4` | `rullst::orm::Vector` (`orm-pgvector`) |
 | `redis` | `1` | ORM: `Orm::redis_client` and `Orm::redis_manager` (`redis` feature), deliberately: they hand the application the ORM's own Redis client and connection manager |
 | `secrecy` | `0.10` | Connect tokens (`SecretString`, `prelude::ExposeSecret`) |
@@ -185,14 +189,12 @@ from current lines: 13.0.0-alpha.6 moves ed25519-dalek to 3, jsonwebtoken to
 | `tower-http` | `0.7` | `rullst::web::tower_http` |
 | `tower-layer` | `0.3` | `Layer` bounds of `Router` and middleware |
 | `tower-service` | `0.3` | `Service` bounds and implementations of middleware |
-| `tower-sessions` | `0.15` | Connect: `begin_oauth_session` and the session extractors |
+| `tower-sessions` | `0.15` | Connect's opt-in `axum-session` feature: `begin_oauth_session`, `begin_oidc_session` and the `AuthSession`/`AuthSessionForm` extractors, which read the `Session` that the application's `SessionManagerLayer` inserts (`rullst_connect::challenge` needs no session layer) |
 | `tracing` | `0.1` | Core telemetry (`TraceParent`) |
 | `tracing-core` | `0.1` | Core `RedactPersonalDataLayer` |
-| `tracing-opentelemetry` | `0.34` | Core `DistributedTelemetry::layer` (`telemetry`) |
-| `tracing-subscriber` | `0.3` | Core `RedactPersonalDataLayer` implements its `Layer` |
+| `tracing-subscriber` | `0.3` | Core `RedactPersonalDataLayer` implements its `Layer`; `DistributedTelemetry::layer` (`telemetry`) returns an `impl Layer` |
 | `url` | `2` | AI `ValidatedEgressUrl::into_url` and Connect |
-| `utoipa` | `6` | Studio: `Studio::with_openapi` |
-| `validator` | `0.21` | `rullst::Validate`, `ValidatedForm` and `ValidatedJson` |
+| `validator` | `0.21` | `rullst::Validate` (the trait and its derive) and the bound of `ValidatedForm` and `ValidatedJson`; since 13.0.0-alpha.6 `ValidationError` carries Rullst's `FieldErrors` instead of `validator::ValidationErrors` |
 | `zeroize` | `1` | `Zeroizing` values returned by Auth, Labs and Security |
 
 Since 13.0.0-alpha.5 no public error variant or `From` conversion names a
@@ -203,6 +205,22 @@ chain. Security's collections are private behind methods (`SecurityStore`,
 `JsonWebKeySet`. `reqwest`, `base64`, `dashmap` and `jsonwebtoken` are
 therefore no longer public dependencies; `redis` stays one on purpose, and
 `serde_json` only through `Value` arguments and results.
+
+Since 13.0.0-alpha.6 `DistributedTelemetry::layer` returns an opaque
+`impl tracing_subscriber::Layer<S> + Send + Sync + 'static`, Studio's
+`with_openapi` and `api_playground::router` take any `serde::Serialize`
+document (the `OpenApi` of any utoipa version, or a `serde_json::Value`),
+and `ValidationError::ValidationError` carries `FieldErrors`, whose
+`messages()` and `codes()` return Rullst types. `opentelemetry_sdk`,
+`tracing-opentelemetry` and `utoipa` are therefore private dependencies.
+`validator` stays public with a smaller surface: `#[derive(Validate)]`
+expands to `::validator::…` paths in the application, so the trait the
+extractors require must be the application's `validator` 0.21; replacing
+it would take a Rullst derive macro. `tower-sessions` also stays public,
+for a reason a trait cannot remove: the extractors read the `Session` that
+the application's own `SessionManagerLayer` puts in the request, which is
+found only when both use the same `tower-sessions` line. The `challenge`
+module is Connect's flow without it.
 
 Types that one of these crates takes from its own dependencies (for example
 `axum-core`, `serde_core`, the SQLx drivers, `tokio-macros` or `actix-http`)
@@ -216,6 +234,14 @@ follow the line of the crate listed.
   upstream release and the fix cannot be backported, a 13.x minor release may
   take that update. The CHANGELOG marks it as a security exception, with
   migration notes.
+- **Newer major side by side.** A 13.x minor release may also support a
+  newer, incompatible major of a public dependency behind a new opt-in Cargo
+  feature, next to the 13.x line, when both can be compiled into one
+  application (for example a second `axum-session` feature for a newer
+  `tower-sessions`, with its own extractors). The default features stay on
+  the 13.x line in the table above, and the opt-in feature is documented
+  with the line it follows; the newer line becomes the default only in a
+  major release.
 - Private dependencies, which do not appear in the public API, may change in
   any release.
 - Over time Rullst prefers its own types for the commonly used surface.

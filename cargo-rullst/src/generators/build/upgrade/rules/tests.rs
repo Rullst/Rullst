@@ -17,6 +17,7 @@ mod alpha6_media;
 mod alpha6_non_exhaustive;
 mod alpha6_orm_save_mode;
 mod alpha6_passkeys;
+mod alpha6_public_deps;
 mod data;
 mod docs;
 mod files;
@@ -444,14 +445,9 @@ fn register(items: &[u8], password: &str) -> User {
 }
 
 #[test]
-fn utoipa_and_mfa_rules_depend_on_their_context() {
+fn openapi_documents_of_any_utoipa_version_and_mfa_rules_depend_on_their_context() {
+    // Since 13.0.0-alpha.6 `with_openapi` takes any utoipa version's document.
     let source = "fn studio(doc: OpenApi) { Studio::new().with_openapi(doc); }";
-    let old = WorkspaceFacts {
-        utoipa_below_6: true,
-        ..WorkspaceFacts::default()
-    };
-    let found = scan_with(source, "lib.rs", &old);
-    assert_eq!(found, vec![("V13-STUDIO-UTOIPA-6", 1)]);
     assert!(scan_with(source, "lib.rs", &WorkspaceFacts::default()).is_empty());
 
     let mfa = "#[derive(Deserialize)]\npub struct Verify {\n    pub secret: String,\n}\n";

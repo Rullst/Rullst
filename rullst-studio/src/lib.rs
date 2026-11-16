@@ -32,8 +32,6 @@ use axum::Router;
 use rullst_core::Queue;
 #[cfg(feature = "local")]
 use std::sync::Arc;
-#[cfg(feature = "local")]
-use utoipa::openapi::OpenApi;
 
 #[cfg_attr(mutants, mutants::skip)]
 pub mod access;
@@ -97,7 +95,7 @@ pub mod traces_visualizer;
 /// enables).
 #[cfg(feature = "local")]
 pub struct Studio {
-    openapi: Option<OpenApi>,
+    openapi: Option<api_playground::Document>,
     queue: Option<Queue>,
     cache: Option<rullst_core::Cache>,
     distributed_traces: distributed_traces::DistributedTraceStore,
@@ -123,8 +121,11 @@ impl Studio {
         }
     }
 
-    pub fn with_openapi(mut self, openapi: OpenApi) -> Self {
-        self.openapi = Some(openapi);
+    /// Mounts the API reference (`/studio/api`) for `openapi`: any value that
+    /// serializes to an OpenAPI document, such as `ApiDoc::openapi()` of any
+    /// utoipa version or a `serde_json::Value`. See [`api_playground`].
+    pub fn with_openapi(mut self, openapi: impl serde::Serialize) -> Self {
+        self.openapi = Some(api_playground::Document::new(&openapi));
         self
     }
 
@@ -163,7 +164,7 @@ impl Studio {
             .merge(security_radar::stats_router());
 
         if let Some(openapi) = self.openapi {
-            router = router.merge(api_playground::router(openapi));
+            router = router.merge(api_playground::mount(openapi));
         }
 
         if let Some(queue) = self.queue {
@@ -185,6 +186,7 @@ mod tests {
     use axum::{body::Body, http::Request};
     #[cfg(debug_assertions)]
     use tower::ServiceExt;
+    use utoipa::openapi::OpenApi;
 
     #[cfg(debug_assertions)]
     #[tokio::test]

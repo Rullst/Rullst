@@ -140,11 +140,18 @@ impl DistributedTelemetry {
 
     /// Creates a composable tracing layer. Other subscriber layers have their own
     /// metadata policy; this profile cannot redact their independently emitted data.
-    pub fn layer<S>(
-        &self,
-    ) -> tracing_opentelemetry::OpenTelemetryLayer<S, opentelemetry_sdk::trace::SdkTracer>
+    ///
+    /// The layer's concrete type is not part of the API (since 13.0.0-alpha.6),
+    /// so that a 13.x release can update the OpenTelemetry crates behind it: it
+    /// composes like any other `tracing_subscriber` layer (`registry().with(..)`,
+    /// `.with_filter(..)`, `.boxed()`). It does not borrow `self`. [`TraceParent`]
+    /// reads and writes the trace context of spans recorded through it.
+    pub fn layer<S>(&self) -> impl tracing_subscriber::Layer<S> + Send + Sync + 'static + use<S>
     where
-        S: tracing::Subscriber + for<'lookup> tracing_subscriber::registry::LookupSpan<'lookup>,
+        S: tracing::Subscriber
+            + for<'lookup> tracing_subscriber::registry::LookupSpan<'lookup>
+            + Send
+            + Sync,
     {
         tracing_opentelemetry::layer().with_tracer(self.provider.tracer("rullst.minimized"))
     }

@@ -83,6 +83,70 @@ async fn the_page_the_document_and_the_former_swagger_location_are_mounted() {
     assert_eq!(get(&app, "/api").await.status(), StatusCode::NOT_FOUND);
 }
 
+/// The page and the JSON document that `router` builds from a serialized
+/// document are byte for byte those of the typed utoipa document it came
+/// from, whether it arrives as the utoipa value or as a `serde_json::Value`.
+#[tokio::test]
+async fn any_serializable_document_is_served_and_rendered_as_the_typed_one() {
+    let typed_page = studio_layout(render_reference(&sample()), None, &[]);
+    let typed_json = serde_json::to_vec(&sample()).unwrap();
+    for app in [router(sample()), router(&sample())] {
+        assert_eq!(text(get(&app, "/studio/api").await).await, typed_page);
+        let json = get(&app, "/studio/api/openapi.json").await;
+        assert_eq!(json.status(), StatusCode::OK);
+        assert_eq!(text(json).await.into_bytes(), typed_json);
+    }
+
+    // A `Value` serializes its keys in its own order; the document is the same.
+    let value = serde_json::to_value(sample()).unwrap();
+    let app = router(&value);
+    assert_eq!(text(get(&app, "/studio/api").await).await, typed_page);
+    let served: serde_json::Value =
+        serde_json::from_str(&text(get(&app, "/studio/api/openapi.json").await).await).unwrap();
+    assert_eq!(served, value);
+}
+
+#[tokio::test]
+async fn a_document_studio_cannot_list_is_still_served() {
+    let swagger = json!({
+        "openapi": "3.0.3",
+        "info": { "title": "Legacy", "version": "1" },
+        "paths": { "/legacy": { "get": { "responses": { "200": { "description": "ok" } } } } }
+    });
+    let app = router(&swagger);
+    let page = get(&app, "/studio/api").await;
+    assert_eq!(page.status(), StatusCode::OK);
+    let html = text(page).await;
+    assert!(html.contains("could not read the supplied document as one"));
+    assert!(html.contains(r#"href="/studio/api/openapi.json""#));
+    assert!(!html.contains("/legacy"));
+    let served: serde_json::Value =
+        serde_json::from_str(&text(get(&app, "/studio/api/openapi.json").await).await).unwrap();
+    assert_eq!(served, swagger);
+}
+
+#[tokio::test]
+async fn a_document_that_fails_to_serialize_is_reported() {
+    struct Unserializable;
+    impl serde::Serialize for Unserializable {
+        fn serialize<S: serde::Serializer>(&self, _: S) -> Result<S::Ok, S::Error> {
+            Err(serde::ser::Error::custom("not a document"))
+        }
+    }
+    let app = router(Unserializable);
+    assert!(
+        text(get(&app, "/studio/api").await)
+            .await
+            .contains("The OpenAPI document could not be serialized.")
+    );
+    let json = get(&app, "/studio/api/openapi.json").await;
+    assert_eq!(json.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    assert_eq!(
+        text(json).await,
+        "The OpenAPI document could not be serialized."
+    );
+}
+
 #[test]
 fn the_page_lists_operations_without_scripts_or_remote_assets() {
     let html = studio_layout(render_reference(&sample()), None, &[]);

@@ -153,11 +153,17 @@ separate WebSocket telemetry transport or zero runtime overhead.
   every data statement names that schema so that `search_path` cannot select a
   same-named table elsewhere. This does not supply application tenant/RBAC,
   audit history, undo, or a shared-production database administrator.
-- The API reference appears only when the application supplies its `OpenApi`
+- The API reference appears only when the application supplies its OpenAPI
   document with `Studio::with_openapi`; Studio does not reverse-engineer
   arbitrary Axum routes. It is read-only: it shows at most 500 operations and
   512 characters of each text field, and it does not send requests to the
   application (use the JSON document with an external client for that).
+  Since 13.0.0-alpha.6 the document is any `serde::Serialize` value: the
+  `OpenApi` of any utoipa version (`ApiDoc::openapi()`) or a
+  `serde_json::Value` read from a file. Studio serializes it once and serves
+  those bytes; the page lists the operations of an OpenAPI 3.1 or 3.2
+  document, and for another one (such as 3.0) says that it cannot list them
+  and links the JSON.
 - The request SSE records method, URI, status and latency. It deliberately does
   not capture bodies or headers, which commonly contain credentials and PII.
 - The jobs view lists the 50 most recent records exposed by a supplied queue;

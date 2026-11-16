@@ -156,16 +156,6 @@ fn relies_on_default_driver(declaration: &toml::Value) -> bool {
     defaults && !selects_driver
 }
 
-/// The lowest major and minor a declaration's requirement admits.
-fn minimum(declaration: &toml::Value) -> Option<(u64, u64)> {
-    let requirement = declaration
-        .as_str()
-        .or_else(|| declaration.get("version").and_then(toml::Value::as_str))?;
-    let parsed = semver::VersionReq::parse(requirement).ok()?;
-    let comparator = parsed.comparators.first()?;
-    Some((comparator.major, comparator.minor.unwrap_or(0)))
-}
-
 /// The features v13 removed from a Rullst package, with their rule:
 /// `V13-POLYGLOT-FEATURE`, `V13-OFFLINE-SYNC-REMOVED`,
 /// `V13-ORM-ADAPTERS-REMOVED` and `V13-ORM-QDRANT-REMOVED`.
@@ -281,14 +271,6 @@ pub(super) fn manifest_findings(
                         plan.path.clone(),
                         dependency_line(&plan.original, &key),
                     ));
-                }
-                "utoipa" => {
-                    facts.utoipa_below_6 |=
-                        minimum(&declaration).is_some_and(|(major, _)| major < 6);
-                }
-                "utoipa-axum" => {
-                    facts.utoipa_below_6 |=
-                        minimum(&declaration).is_some_and(|(major, minor)| major == 0 && minor < 3);
                 }
                 _ => {}
             }
