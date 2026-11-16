@@ -1713,11 +1713,21 @@ pub use rullst_core::http = module http
 pub mod rullst_core::i18n
 pub struct rullst_core::i18n::Currency
 impl rullst_core::i18n::Currency
+pub const rullst_core::i18n::Currency::ARS: Self
+pub const rullst_core::i18n::Currency::AUD: Self
 pub const rullst_core::i18n::Currency::BRL: Self
+pub const rullst_core::i18n::Currency::CAD: Self
+pub const rullst_core::i18n::Currency::CHF: Self
+pub const rullst_core::i18n::Currency::CLP: Self
+pub const rullst_core::i18n::Currency::CNY: Self
+pub const rullst_core::i18n::Currency::COP: Self
 pub const rullst_core::i18n::Currency::EUR: Self
 pub const rullst_core::i18n::Currency::GBP: Self
 pub const rullst_core::i18n::Currency::JPY: Self
+pub const rullst_core::i18n::Currency::MXN: Self
+pub const rullst_core::i18n::Currency::PEN: Self
 pub const rullst_core::i18n::Currency::USD: Self
+pub const rullst_core::i18n::Currency::UYU: Self
 pub fn rullst_core::i18n::Currency::code(&self) -> &str
 pub fn rullst_core::i18n::Currency::minor_digits(&self) -> u8
 pub fn rullst_core::i18n::Currency::new(code: impl core::convert::Into<alloc::string::String>, minor_digits: u8) -> core::result::Result<Self, rullst_core::i18n::CurrencyError>
@@ -1800,6 +1810,7 @@ impl core::panic::unwind_safe::UnwindSafe for rullst_core::i18n::Decimal
 pub const rullst_core::i18n::LOCALE_COOKIE: &str
 pub struct rullst_core::i18n::Locale
 impl rullst_core::i18n::Locale
+pub fn rullst_core::i18n::Locale::currency_name(&self, currency: rullst_core::i18n::Currency) -> core::option::Option<&'static str>
 pub fn rullst_core::i18n::Locale::format_currency(&self, minor_units: i64, currency: rullst_core::i18n::Currency) -> alloc::string::String
 pub fn rullst_core::i18n::Locale::format_data_tag(&self) -> &'static str
 pub fn rullst_core::i18n::Locale::format_date(&self, date: &impl chrono::traits::Datelike, style: rullst_core::i18n::DateStyle) -> alloc::string::String

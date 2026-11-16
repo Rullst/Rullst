@@ -2488,16 +2488,24 @@ the same server-authoritative controls.
   78 and CLDR's date patterns by `.github/generate-i18n-format-data.py`; no
   runtime data or network). Data exist for `ar`, `cs`, `de`, `en`, `en-GB`,
   `es`, `fr`, `he`, `it`, `ja`, `ko`, `nl`, `pl`, `pt`, `pt-PT`, `ro`, `ru`,
-  `tr`, `uk` and `zh`; another tag uses its `language-REGION` entry, else its
-  language's, else `en`'s (`Locale::format_data_tag`). Numbers use the
+  `tr`, `uk` and `zh`, and since 13.0.0-alpha.6 for `es-419`, `es-AR`,
+  `es-CL`, `es-CO`, `es-MX`, `es-PE` and `es-UY`; another tag uses its
+  `language-REGION` entry, else its language's, else `en`'s
+  (`Locale::format_data_tag`; CLDR's parent locales are not followed, so
+  `es-VE` uses `es`). Numbers use the
   locale's decimal and grouping separators, minimum grouping digits (`es`,
   `it`, `pl`, `pt-PT` write `1234`), minus sign and Latin digits, and show
   every fraction digit of the `Decimal` (`Decimal::round_half_even` and
   `round_half_up` round explicitly). Percentages multiply the ratio by 100.
-  `Currency` (`BRL`, `USD`, `EUR`, `GBP`, `JPY` constants with localized
-  symbols; `Currency::new(code, minor_digits)` for other ISO codes, written
-  as the code; `CurrencyError::{InvalidCode, TooManyDigits}`) takes amounts
-  in integer minor units, so no floating-point rounding occurs. `DateStyle`
+  `Currency` (`BRL`, `USD`, `EUR`, `GBP`, `JPY` constants, and since
+  13.0.0-alpha.6 `ARS`, `MXN`, `CLP`, `COP`, `PEN`, `UYU`, `CAD`, `AUD`,
+  `CHF`, `CNY`, with localized symbols and ISO 4217 minor digits;
+  `Currency::new(code, minor_digits)` for other ISO codes, written as the
+  code; `CurrencyError::{InvalidCode, TooManyDigits}`) takes amounts in
+  integer minor units, so no floating-point rounding occurs.
+  `Locale::currency_name(Currency)` (13.0.0-alpha.6) returns the CLDR
+  display name of a currency with a constant in the locale's data, else
+  `None`. `DateStyle`
   is `Short`, `Medium`, `Long`, `Full` (CLDR's date formats) or `Numeric`
   (CLDR's `yMd` skeleton); `TimeStyle` is `Short` or `Medium` (no zone
   names); both are `#[non_exhaustive]`. Date and time are joined with CLDR's
