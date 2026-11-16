@@ -109,8 +109,11 @@ require `MediaError::Unsupported` instead. The kit checks marker validation,
 the create/get/update/delete lifecycle, grant expiry, mode, HTTPS and TTL
 bounds, bounded listing pages and offline determinism, and returns a
 `ConformanceReport`. Run it against the offline mode or a disposable library:
-it creates and deletes videos. An application-owned adapter creates its own
-grants with `UploadGrant::new(&binding, video, protocol, endpoint, signature,
+it creates and deletes videos. An application-owned adapter reports its
+binding with `ProviderBinding::new(library, mode, environment)` and its videos
+with `RemoteVideo::new(id, library, title, description, processing,
+length_seconds, mp4_720p)` (both `#[non_exhaustive]` since 13.0.0-alpha.6),
+and creates its own grants with `UploadGrant::new(&binding, video, protocol, endpoint, signature,
 expires_at)` and `PlaybackGrant::new(&binding, url, expires_at)`, which take
 the binding's library and mode and refuse non-HTTPS or credential-bearing URLs,
 empty or non-ASCII signatures and impossible expiry times with `InvalidInput`;
@@ -242,7 +245,8 @@ and keyboard playback; it does not claim Bunny iframe accessibility conformance.
 
 Accept a bounded exact raw body (4096 bytes maximum), before JSON conversion.
 Require exactly one each of Bunny's signature version, algorithm and signature
-headers at ingress; call `verify_notification` with those values. The adapter verifies
+headers at ingress; call `verify_notification` with those values
+(`WebhookHeaders::new(version, algorithm, signature)`). The adapter verifies
 v1/HMAC-SHA256 using the **read-only library key**, constant-time comparison,
 library identity and documented status range. Pass only `VerifiedNotification`
 to `MediaService::notification`. Use Core's exact `MachineEndpoint` signature

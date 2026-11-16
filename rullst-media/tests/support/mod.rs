@@ -350,13 +350,6 @@ pub fn notification(provider: &BunnyStream, video: &VideoId, status: u8) -> Veri
         .map(|b| format!("{b:02x}"))
         .collect();
     provider
-        .verify_notification(
-            WebhookHeaders {
-                version: "v1",
-                algorithm: "hmac-sha256",
-                signature: &signature,
-            },
-            &body,
-        )
+        .verify_notification(WebhookHeaders::new("v1", "hmac-sha256", &signature), &body)
         .unwrap()
 }

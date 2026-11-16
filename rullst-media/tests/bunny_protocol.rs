@@ -176,14 +176,7 @@ async fn webhook_authenticates_exact_bytes_version_and_library_without_status_au
     ] {
         assert!(
             provider
-                .verify_notification(
-                    WebhookHeaders {
-                        version,
-                        algorithm,
-                        signature: &sig
-                    },
-                    &payload
-                )
+                .verify_notification(WebhookHeaders::new(version, algorithm, &sig), &payload)
                 .is_err()
         );
     }
@@ -208,11 +201,7 @@ async fn webhook_authenticates_exact_bytes_version_and_library_without_status_au
         assert!(
             provider
                 .verify_notification(
-                    WebhookHeaders {
-                        version: "v1",
-                        algorithm: "hmac-sha256",
-                        signature: &signature
-                    },
+                    WebhookHeaders::new("v1", "hmac-sha256", &signature),
                     payload.as_bytes()
                 )
                 .is_err()

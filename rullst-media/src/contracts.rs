@@ -100,6 +100,10 @@ impl From<LibraryId> for i64 {
 }
 
 /// Construct from server-authenticated context, never directly from form claims.
+///
+/// Exhaustive on purpose: the authorization scope; another dimension would
+/// change every authorization check, so it must break the code that builds a
+/// scope.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Scope {
@@ -115,6 +119,8 @@ impl Scope {
     }
 }
 
+/// Exhaustive on purpose: the host's authorizer maps every action to a
+/// permission, and a new action must not fall into a catch-all grant.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Action {
     Manage,
@@ -223,6 +229,7 @@ impl From<Metadata> for MetadataWire {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum ProviderMode {
     Offline,
     ProtocolFixture,
@@ -232,11 +239,25 @@ pub enum ProviderMode {
 /// Identifies a configured provider environment, not a user's authority.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct ProviderBinding {
     pub library: LibraryId,
     pub mode: ProviderMode,
     /// Opaque server configuration identity; changing environment requires a new store.
     pub environment: Reference,
+}
+
+impl ProviderBinding {
+    /// The binding a [`VideoProvider`](crate::VideoProvider) reports from
+    /// `binding()`. The struct is `#[non_exhaustive]` since 13.0.0-alpha.6,
+    /// so providers outside this crate build it here.
+    pub fn new(library: LibraryId, mode: ProviderMode, environment: Reference) -> Self {
+        Self {
+            library,
+            mode,
+            environment,
+        }
+    }
 }
 
 /// A video's processing state, read from the provider's authoritative API.
@@ -285,6 +306,7 @@ impl Processing {
 
 /// Minimized provider response after identity/status/size validation.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct RemoteVideo {
     pub id: VideoId,
     pub library: LibraryId,
@@ -297,7 +319,33 @@ pub struct RemoteVideo {
     pub mp4_720p: bool,
 }
 
+impl RemoteVideo {
+    /// A video as a [`VideoProvider`](crate::VideoProvider) reads it from its
+    /// provider. The struct is `#[non_exhaustive]` since 13.0.0-alpha.6, so
+    /// providers outside this crate build it here.
+    pub fn new(
+        id: VideoId,
+        library: LibraryId,
+        title: impl Into<String>,
+        description: impl Into<String>,
+        processing: Processing,
+        length_seconds: u32,
+        mp4_720p: bool,
+    ) -> Self {
+        Self {
+            id,
+            library,
+            title: title.into(),
+            description: description.into(),
+            processing,
+            length_seconds,
+            mp4_720p,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PlaybackKind {
     Embed,
     Hls,
@@ -420,10 +468,24 @@ impl std::fmt::Debug for UploadGrant {
 
 /// All headers must occur exactly once at ingress; duplicate header handling is
 /// owned by the HTTP adapter, before constructing this borrowed value.
+#[non_exhaustive]
 pub struct WebhookHeaders<'a> {
     pub version: &'a str,
     pub algorithm: &'a str,
     pub signature: &'a str,
+}
+
+impl<'a> WebhookHeaders<'a> {
+    /// The signature headers of one notification, as the HTTP adapter read
+    /// them. The struct is `#[non_exhaustive]` since 13.0.0-alpha.6, so code
+    /// outside this crate builds it here.
+    pub fn new(version: &'a str, algorithm: &'a str, signature: &'a str) -> Self {
+        Self {
+            version,
+            algorithm,
+            signature,
+        }
+    }
 }
 
 /// Authenticated notification, never a publication/ownership or fresh-state grant.
