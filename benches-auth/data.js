@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794787514520,
+  "lastUpdate": 1794789357991,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -22919,6 +22919,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4231,
             "range": "± 12",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f88a94d1a6277eeb58257cc9109c2bc00df48a81",
+          "message": "Merge pull request #718 from Rullst/test/v13-alpha6-mutants-connect\n\ntest(connect): mutation campaign for alpha.6",
+          "timestamp": "2026-11-15T21:19:18-03:00",
+          "tree_id": "a362faba224f8e537d18f9f85357f6c1da6b1f93",
+          "url": "https://github.com/Rullst/Rullst/commit/f88a94d1a6277eeb58257cc9109c2bc00df48a81"
+        },
+        "date": 1794789357234,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 625,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 518,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1214,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2981,
+            "range": "± 107",
             "unit": "ns/iter"
           }
         ]
