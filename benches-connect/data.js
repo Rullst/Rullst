@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794793011860,
+  "lastUpdate": 1794794260744,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -14255,6 +14255,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 266,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a7c98c026d75688b4e4fe75b7ce0c893db003003",
+          "message": "Merge pull request #721 from Rullst/ci/v13-alpha6-sse-scalar-checks\n\nci: SSE through the generated Caddy and Scalar /docs in Chromium",
+          "timestamp": "2026-11-15T22:40:20-03:00",
+          "tree_id": "a4e3c03cc10586ba31c8682f50ad326a45c0ca17",
+          "url": "https://github.com/Rullst/Rullst/commit/a7c98c026d75688b4e4fe75b7ce0c893db003003"
+        },
+        "date": 1794794259879,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 547,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
