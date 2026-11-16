@@ -13,6 +13,7 @@ use async_trait::async_trait;
 
 /// An SMTP mail driver
 #[cfg(feature = "mail-smtp")]
+#[non_exhaustive]
 pub struct SmtpDriver {
     /// SMTP server hostname or IP.
     pub host: String,

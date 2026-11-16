@@ -14,6 +14,7 @@ use async_trait::async_trait;
 const MAX_PROVIDER_SCHEDULE: chrono::TimeDelta = chrono::TimeDelta::days(30);
 
 /// A Resend HTTP REST API driver
+#[non_exhaustive]
 pub struct ResendDriver {
     /// Resend API token.
     pub api_key: String,
