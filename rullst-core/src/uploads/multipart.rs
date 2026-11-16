@@ -231,10 +231,12 @@ impl MultipartPolicy {
 /// The CSRF middleware reads a multipart body only until its first `_token`
 /// field ends, within the first 64 KiB, so render `_token` as the form's
 /// first field, before any file input, or send the `X-CSRF-Token` header.
-/// Otherwise staging and production answer `403` before the handler runs,
-/// and in every other environment [`Self::read`] fails with
+/// Otherwise the CSRF middleware answers `403` before the handler runs; since
+/// 13.0.0-alpha.6 `Server` mounts it in every environment, development and
+/// test included. Without the middleware (a router that runs without the
+/// security baseline) [`Self::read`] fails with
 /// [`MultipartError::CsrfTokenTooLate`] (also `403`, with the same message),
-/// so the mistake shows up in development.
+/// so the mistake shows up in development either way.
 ///
 /// # WAF
 ///

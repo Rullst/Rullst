@@ -40,8 +40,11 @@ received a test or is listed under
 - **`rullst-core`**: the files the first pass left
   ([PR #465](https://github.com/Rullst/Rullst/pull/465)) were finished in
   [PR #532](https://github.com/Rullst/Rullst/pull/532): 78 files and 2,435
-  mutants, 72 missed at the end. 71 are accepted equivalents; the last one
-  needs an open PostgreSQL pool.
+  mutants, 72 missed at the end. 71 are accepted equivalents. The last one,
+  the `pool_ready` guard of `run_artisan_command`, needs an open PostgreSQL
+  pool: since 13.0.0-alpha.3 `rullst-core/tests/artisan_open_pool.rs` opens one
+  in a PostgreSQL testcontainer, so a run with Docker, such as one on the
+  hosted runners, kills it; a run without Docker skips that test (see below).
 - **`rullst-messaging`** (re-measured for 13.0.0-alpha.6,
   [PR #711](https://github.com/Rullst/Rullst/pull/711)): targeted
   runs of the 48 files outside `redis_streams/` (7 have no mutants) gave 1,377
@@ -115,6 +118,27 @@ choice-code decoding and, in `passkey-postgres` and `auth-recovery-postgres`,
 most branches of `manager.rs` and the recovery files have unit tests: a
 contract run reports those mutants as missed, and a targeted run of the file
 catches them.
+
+### Planned before 13.0.0-rc.1
+
+Recorded on 16 November 2026. Campaigns for `rullst-mail`, `rullst-ai`,
+`rullst-auth`, `rullst-security`, `rullst-privacy`, `rullst-iot`,
+`rullst-labs`, `rullst-media` and `rullst-supervision` run on hosted runners
+after 13.0.0-alpha.6 and before 13.0.0-rc.1. Earlier v13 campaigns measured
+some or all of their files (see
+[accepted equivalent mutants](#accepted-equivalent-mutants)), not the
+13.0.0-alpha.6 source. Each survivor gets a test or is listed below as an
+accepted equivalent with its reason, and each crate then gets an entry in the
+campaign status above.
+
+The `rullst-mail` campaign was started on the 13.0.0-alpha.6 development
+source (commit `5e6b65c5`). Targeted runs of four files, unchanged since, gave
+210 mutants and no timeout: `validator.rs` 35 (34 caught, 1 unviable),
+`pipeline.rs` 52 (34 caught, 7 unviable, 11 missed), `suppression/mod.rs` 81
+(65 caught, 7 unviable, 9 missed) and `drivers/aws_ses.rs` 42 (33 caught,
+7 unviable, 2 missed), in runs 43726484317, 43726494711, 43726978533 and
+43727720830. The 22 missed mutants have no test or accepted-equivalent entry
+yet.
 
 ## Accepted equivalent mutants
 

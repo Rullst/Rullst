@@ -501,6 +501,13 @@ Work items for later prereleases, not shipped features. They add no milestone
 to the counts above. The order is reports from the platforms upgraded to
 alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
 
+- **Mutation campaigns before rc.1.** Campaigns for `rullst-mail`,
+  `rullst-ai`, `rullst-auth`, `rullst-security`, `rullst-privacy`,
+  `rullst-iot`, `rullst-labs`, `rullst-media` and `rullst-supervision` run
+  after 13.0.0-alpha.6 and before 13.0.0-rc.1, each survivor fixed with a test
+  or documented as an accepted equivalent
+  ([plan](docs/src/mutation-testing.md#planned-before-1300-rc1)). The
+  `rullst-mail` campaign was started: four files measured, 22 survivors open.
 - **Reports from the platforms upgraded to 13.0.0-alpha.6.** They choose the
   fixes of rc.1, as the reports on alpha.1 to alpha.5 chose those of the next
   prerelease.

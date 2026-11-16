@@ -45,9 +45,11 @@ presence of a pattern over modelling what it does:
   `#[path]` (also inside `cfg_attr`; `r#` forms included), with literal paths
   forwarded through a `macro_rules!` resolved at each call site. Those targets
   become inputs of the fuzz packages that reach the referring package, and
-  included code is scanned again. Today this adds the 93 book pages of
-  `rullst/src/book_doctests.rs` and six `.github/fixtures` sources of the
-  facade's tests to `rullst/fuzz`.
+  included code is scanned again. Today this adds the book pages that
+  `rullst/src/book_doctests.rs` includes and the `.github/fixtures` sources
+  that the facade's tests include to `rullst/fuzz`; the scan of
+  `.github/fuzz_build_graph.py` finds them on every run, so this page does
+  not count them.
 - **Global inputs of every package.** The root `Cargo.toml`,
   `rust-toolchain(.toml)`, `.cargo/**`, every `.gitattributes`, the target
   inventory, release-line policy, `.github/validate-fuzz-targets.py`, every

@@ -281,10 +281,13 @@ for you to fix.
   `docs/src/mutation-testing.md` lists `rullst-orm`, `rullst-orm-macros`,
   `rullst-core`, `rullst-nexus`, Studio's remote mode and `cargo-rullst`, and,
   in this release, `rullst-macros`, `rullst-messaging` and `rullst-connect`.
-  `rullst-ai`, `rullst-auth`, `rullst-security`, `rullst-mail`, `rullst-iot`,
-  `rullst-privacy`, `rullst-labs`, `rullst-media` and `rullst-supervision` have
-  no 13.0 campaign there; the v12 baseline measured the crates v12 had, and
-  the pull-request gate mutates the lines each change touches. 30
+  `rullst-mail`, `rullst-ai`, `rullst-auth`, `rullst-security`,
+  `rullst-privacy`, `rullst-iot`, `rullst-labs`, `rullst-media` and
+  `rullst-supervision` were measured, in some or all of their files, only by
+  earlier v13 campaigns, not on this release's source, and the pull-request
+  gate mutates the lines each change touches; their campaigns are planned
+  after this release and before 13.0.0-rc.1, and the `rullst-mail` one was
+  started ([plan](https://github.com/Rullst/Rullst/blob/main/docs/src/mutation-testing.md#planned-before-1300-rc1)). 30
   `cargo-rullst` mutants remain from its first campaign, all size or count
   bounds that only very large projects reach, in six files outside the
   pull-request mutation gate (`generators/build/upgrade/backup.rs`,

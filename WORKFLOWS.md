@@ -140,9 +140,12 @@ On Linux, the `cli-profiles-relational` shard runs
 and MariaDB 11.4 servers: a Blank starter is migrated, given two rows, extended
 with `cargo rullst auth` and migrated again. SQL checks the six added columns,
 the unique `users_email_unique` index, the placeholder e-mails, the unchanged
-starter schema and rows and the migration records; the application signs up an
-account over HTTP (Argon2id hash); `db:rollback` must restore the starter
-exactly and keep every row, and a second `db:migrate` must succeed. It runs on
+starter schema and rows, the migration records and the `password_reset_tokens`
+and `rullst_auth_sessions` tables; the application signs up an account over
+HTTP (Argon2id hash) and registers the sign-in in `rullst_auth_sessions`, which
+stores only a digest of the cookie's session secret; `db:rollback` must restore
+the starter exactly (its sessions migration drops `rullst_auth_sessions`) and
+keep every row, and a second `db:migrate` must succeed. It runs on
 `main` pushes, nightly, with the `full-matrix` label and in manual runs. The
 API and SaaS starters and other server versions are not covered.
 
