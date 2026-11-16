@@ -1,11 +1,12 @@
 //! Locale formatting of numbers, percentages, money, dates and times.
 //!
-//! The data are CLDR 48 tables for 20 locales (`ar`, `cs`, `de`, `en`,
-//! `en-GB`, `es`, `fr`, `he`, `it`, `ja`, `ko`, `nl`, `pl`, `pt`, `pt-PT`,
-//! `ro`, `ru`, `tr`, `uk`, `zh`), generated from ICU 78 and from CLDR's date
+//! The data are CLDR 48 tables for 27 locales (`ar`, `cs`, `de`, `en`,
+//! `en-GB`, `es`, `es-419`, `es-AR`, `es-CL`, `es-CO`, `es-MX`, `es-PE`,
+//! `es-UY`, `fr`, `he`, `it`, `ja`, `ko`, `nl`, `pl`, `pt`, `pt-PT`, `ro`,
+//! `ru`, `tr`, `uk`, `zh`), generated from ICU 78 and from CLDR's date
 //! patterns, and compiled in: nothing is loaded at runtime. A tag uses its
-//! `language-REGION` data when listed (`en-GB`, `pt-PT`), else its
-//! language's (`pt-BR` → `pt`, `es-MX` → `es`, `zh-Hant` → `zh`), else
+//! `language-REGION` data when listed (`en-GB`, `es-MX`), else its
+//! language's (`pt-BR` → `pt`, `es-VE` → `es`, `zh-Hant` → `zh`), else
 //! `en`'s. Every language listed writes Latin digits and the Gregorian
 //! calendar.
 
@@ -46,11 +47,13 @@ pub enum TimeStyle {
 }
 
 /// An ISO 4217 currency and its number of minor-unit digits, for
-/// [`Locale::format_currency`].
+/// [`Locale::format_currency`] and [`Locale::currency_name`].
 ///
-/// `BRL`, `USD`, `EUR`, `GBP` and `JPY` are written with each locale's
-/// symbol (`R$`, `US$`, `$`, `€`, `£`, `¥`); any other code is written as
-/// the code (`CHF 12.50`).
+/// The currencies with a constant (`BRL`, `USD`, `EUR`, `GBP`, `JPY`,
+/// `ARS`, `MXN`, `CLP`, `COP`, `PEN`, `UYU`, `CAD`, `AUD`, `CHF`, `CNY`) are
+/// written with each locale's symbol (`R$`, `US$`, `$`, `€`, `S/`, `CA$`,
+/// …) and have a localized name; any other code is written as the code
+/// (`SEK 12.50`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Currency {
     code: [u8; 3],
@@ -80,6 +83,28 @@ impl Currency {
     pub const GBP: Self = Self::known(*b"GBP", 2);
     /// Japanese yen, no minor digits.
     pub const JPY: Self = Self::known(*b"JPY", 0);
+    /// Argentine peso, 2 minor digits (centavos).
+    pub const ARS: Self = Self::known(*b"ARS", 2);
+    /// Mexican peso, 2 minor digits (centavos).
+    pub const MXN: Self = Self::known(*b"MXN", 2);
+    /// Chilean peso, no minor digits.
+    pub const CLP: Self = Self::known(*b"CLP", 0);
+    /// Colombian peso, 2 minor digits (centavos) as in ISO 4217. CLDR shows
+    /// whole pesos; for that form pass whole pesos with
+    /// `Currency::new("COP", 0)`.
+    pub const COP: Self = Self::known(*b"COP", 2);
+    /// Peruvian sol, 2 minor digits (céntimos).
+    pub const PEN: Self = Self::known(*b"PEN", 2);
+    /// Uruguayan peso, 2 minor digits (centésimos).
+    pub const UYU: Self = Self::known(*b"UYU", 2);
+    /// Canadian dollar, 2 minor digits (cents).
+    pub const CAD: Self = Self::known(*b"CAD", 2);
+    /// Australian dollar, 2 minor digits (cents).
+    pub const AUD: Self = Self::known(*b"AUD", 2);
+    /// Swiss franc, 2 minor digits (centimes).
+    pub const CHF: Self = Self::known(*b"CHF", 2);
+    /// Chinese yuan (renminbi), 2 minor digits (fen).
+    pub const CNY: Self = Self::known(*b"CNY", 2);
 
     const fn known(code: [u8; 3], minor_digits: u8) -> Self {
         Self { code, minor_digits }
@@ -127,9 +152,11 @@ pub(super) struct NumberData {
     pub(super) negative: &'static str,
     /// Positive and negative percent patterns.
     pub(super) percent: [&'static str; 2],
-    /// Positive and negative patterns for `data_numbers::CURRENCIES`, then
-    /// for any other code (`¤`).
-    pub(super) currency: [[&'static str; 2]; 6],
+    /// Positive and negative patterns, `|`-separated, for each of
+    /// `data_numbers::CURRENCIES` and then for any other code (`¤`).
+    pub(super) currency: &'static str,
+    /// CLDR display names of `data_numbers::CURRENCIES`, `|`-separated.
+    pub(super) currency_names: &'static str,
 }
 
 /// One locale's date and time patterns and names.
@@ -141,8 +168,8 @@ pub(super) struct DateData {
     pub(super) time: [&'static str; 2],
     /// Date (`{1}`) and time (`{0}`) joined, by date style.
     pub(super) glue: [&'static str; 4],
-    /// Abbreviated and wide month names, January first.
-    pub(super) months: [&'static str; 2],
+    /// The 12 abbreviated then the 12 wide month names, January first.
+    pub(super) months: &'static str,
     /// Wide weekday names, Monday first.
     pub(super) weekdays: &'static str,
     /// The `a` field before and after noon.
@@ -212,6 +239,15 @@ impl Locale {
         number::currency(self.number_data(), minor_units, currency)
     }
 
+    /// The currency's CLDR display name in this locale, for the currencies
+    /// with a [`Currency`] constant: `"Argentine Peso"` (en), `"peso
+    /// argentino"` (es-AR), `"Peso argentino"` (pt-BR). `None` for any other
+    /// code. A locale without data names currencies in English, as it
+    /// formats like `en`.
+    pub fn currency_name(&self, currency: Currency) -> Option<&'static str> {
+        number::currency_name(self.number_data(), currency)
+    }
+
     /// A calendar date in the locale's pattern for `style`:
     /// `22/10/2026` (pt-BR, `Short`), `October 22, 2026` (en, `Long`).
     ///
@@ -252,3 +288,8 @@ mod tests;
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 #[path = "cldr_tests.rs"]
 mod cldr_tests;
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[path = "cldr_date_tests.rs"]
+mod cldr_date_tests;
