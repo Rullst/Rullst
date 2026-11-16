@@ -70,6 +70,8 @@ pub struct DeclarationForm {
 pub async fn submit(
     Extension(state): Extension<Arc<AgeGateState>>,
     Extension(user_id): Extension<i32>,
+    // The account `auth_middleware` loaded, rendered by the dashboard.
+    Extension(user): Extension<crate::models::user::User>,
     csrf: Option<Extension<rullst::security::CsrfToken>>,
     nonce: Option<Extension<rullst::security::CspNonce>>,
     headers: HeaderMap,
@@ -88,7 +90,7 @@ pub async fn submit(
     )).await;
     match assessment {
         Ok(Ok(result)) if result.decision() == AgeDecision::Allowed => {
-            no_store(super::auth_controller::dashboard(Extension(user_id), csrf, nonce).await)
+            no_store(super::auth_controller::dashboard(Extension(user), csrf, nonce).await)
         }
         Ok(Err(AgeError::StoreUnavailable | AgeError::StoreCapacity | AgeError::StoreConfiguration)) | Err(_) => unavailable(),
         _ => denied(),
