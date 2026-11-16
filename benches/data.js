@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794797576430,
+  "lastUpdate": 1794805884859,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -35397,6 +35397,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1967,
             "range": "± 37",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9b5c8f2d43e2d28c6a40e43a13281ecbdb5d70ea",
+          "message": "Merge pull request #729 from Rullst/fix/v13-alpha6-pre-rc-small-fixes\n\nfix: small pre-rc fixes (upgrade rules in test code, mock IdP clock, pt-BR lang, docs)",
+          "timestamp": "2026-11-16T02:06:33-03:00",
+          "tree_id": "004527695e35ec2e85b93b0fe498ed6e4a63b057",
+          "url": "https://github.com/Rullst/Rullst/commit/9b5c8f2d43e2d28c6a40e43a13281ecbdb5d70ea"
+        },
+        "date": 1794805880844,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 541,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 716,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 332,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1526,
+            "range": "± 47",
             "unit": "ns/iter"
           }
         ]
