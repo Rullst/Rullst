@@ -88,13 +88,16 @@ async fn the_page_the_document_and_the_former_swagger_location_are_mounted() {
 /// from, whether it arrives as the utoipa value or as a `serde_json::Value`.
 #[tokio::test]
 async fn any_serializable_document_is_served_and_rendered_as_the_typed_one() {
-    let typed_page = studio_layout(render_reference(&sample()), None, &[]);
-    let typed_json = serde_json::to_vec(&sample()).unwrap();
-    for app in [router(sample()), router(&sample())] {
+    let typed = sample();
+    let typed_page = studio_layout(render_reference(&typed), None, &[]);
+    for app in [router(sample()), router(&typed)] {
         assert_eq!(text(get(&app, "/studio/api").await).await, typed_page);
         let json = get(&app, "/studio/api/openapi.json").await;
         assert_eq!(json.status(), StatusCode::OK);
-        assert_eq!(text(json).await.into_bytes(), typed_json);
+        assert_eq!(
+            text(json).await.into_bytes(),
+            serde_json::to_vec(&typed).unwrap()
+        );
     }
 
     // A `Value` serializes its keys in its own order; the document is the same.
