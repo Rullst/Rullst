@@ -45,6 +45,9 @@ pub use attribute::optional_attr;
 ///     "<p><em>reviewed</em></p>"
 /// );
 /// ```
+///
+/// Exhaustive on purpose: a newtype over trusted HTML that callers build as
+/// `RawHtml(html)`; the string is all it carries.
 pub struct RawHtml(pub String);
 
 impl RawHtml {

@@ -6,6 +6,7 @@ use std::sync::RwLock;
 
 /// Represents a single telemetry span (HTTP request, ORM query, AI prompt).
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct TraceSpan {
     /// Name of the operation (e.g. "GET /api/users", "SELECT * FROM users").
     pub name: String,
@@ -15,6 +16,25 @@ pub struct TraceSpan {
     pub duration_us: u64,
     /// Epoch timestamp in seconds.
     pub timestamp: u64,
+}
+
+impl TraceSpan {
+    /// A span to pass to [`SpanCollector::record`]. The struct is
+    /// `#[non_exhaustive]` since 13.0.0-alpha.6, so code outside this crate
+    /// builds it here.
+    pub fn new(
+        name: impl Into<String>,
+        kind: impl Into<String>,
+        duration_us: u64,
+        timestamp: u64,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            kind: kind.into(),
+            duration_us,
+            timestamp,
+        }
+    }
 }
 
 /// In-memory circular buffer collector for distributed trace spans.

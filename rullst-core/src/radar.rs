@@ -52,6 +52,7 @@ pub(crate) fn recorded_boot_time() -> u64 {
 
 /// Instantaneous telemetry snapshot data model.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[non_exhaustive]
 pub struct RadarSnapshot {
     /// Uptime in seconds.
     pub uptime_seconds: u64,

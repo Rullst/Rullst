@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 /// The counter values of a [`SecurityStore`](super::SecurityStore) at one moment.
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct TelemetrySnapshot {
     /// [`SecurityStore::sanitizations_count`](super::SecurityStore::sanitizations_count).
     pub sanitizations: u64,
