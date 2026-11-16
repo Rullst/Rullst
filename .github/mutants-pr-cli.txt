@@ -69,6 +69,7 @@ cargo-rullst/src/generators/footprint/procfs.rs
 cargo-rullst/src/generators/footprint/render.rs
 cargo-rullst/src/generators/footprint/report.rs
 cargo-rullst/src/generators/footprint/sci.rs
+cargo-rullst/src/generators/footprint/startup.rs
 cargo-rullst/src/generators/footprint/subject.rs
 cargo-rullst/src/generators/footprint/target.rs
 cargo-rullst/src/generators/iot_sign/key.rs

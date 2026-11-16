@@ -96,7 +96,9 @@ received a test or is listed under
   13.0.0-alpha.5 the command became `footprint` (`generators/footprint/`), its
   Linux process lookup moved to `process/linux.rs` and its start-up to
   `subject.rs`, both listed; the new page-weight, macOS and Windows files are
-  not listed yet.
+  not listed yet. In 13.0.0-alpha.6 `startup.rs` (the start-up time) was
+  measured with a targeted run on the library tests (run 43809422834): 34
+  mutants, 30 caught and 4 unviable, no survivor, so it is listed too.
 - **Studio remote mode** (20 files, measured with the `cargo-rullst` campaign):
   no survivor left.
 - **`rullst-capital`**: 29 mutants that only a live Stripe response reaches
