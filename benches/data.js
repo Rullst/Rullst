@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794794767819,
+  "lastUpdate": 1794796956916,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -35289,6 +35289,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1941,
             "range": "± 29",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d253c2d166be610cd2b5e21982d6801269db4315",
+          "message": "Merge pull request #725 from Rullst/feat/v13-alpha6-media-playable\n\nfeat(media)!: Processing::Playable for Bunny's just-in-time playlists (status 8)",
+          "timestamp": "2026-11-15T23:37:59-03:00",
+          "tree_id": "4b0d54f9d8c174f184009868cdbb742da928ffae",
+          "url": "https://github.com/Rullst/Rullst/commit/d253c2d166be610cd2b5e21982d6801269db4315"
+        },
+        "date": 1794796952969,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 539,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 721,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 338,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1498,
+            "range": "± 16",
             "unit": "ns/iter"
           }
         ]
