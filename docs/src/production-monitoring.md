@@ -437,6 +437,34 @@ again). A copy of the project list alone (a dotfile repository, a backup of
 `~/.config`) reveals no token. Malware running as your user can still read
 both files; the operating system keychain is not used.
 
+### Studio versions that share the project list
+
+Several Studio versions can use the same project list (a newer `rullst-studio`
+next to an older one, or after a downgrade). Since 13.0.0-alpha.6:
+
+- **Fields of a newer Studio are kept.** A Studio reads a project list that a
+  later 13.x Studio wrote, uses the fields it knows and writes the others back
+  unchanged when it saves, so a newer Studio's settings and alert rules
+  survive an older one. Unknown fields are bounded: at most 32 per object,
+  names of at most 64 bytes and 16 KiB of JSON per object, and the whole file
+  at most 256 KiB; Studio refuses a file over these bounds.
+- **Known fields are still checked.** Names, base URLs, alert thresholds and
+  notification settings must be valid, as when you save them, or the file is
+  refused as malformed. The proxy setting is checked when it is used: a
+  choice this Studio cannot apply (a proxy mode it does not know, a SOCKS URL)
+  is kept as written and stops every connection, with a status on the
+  Settings page that says why, until you choose another one there.
+- **`version` changes only with an incompatible format.** It is `1`. A later
+  13.x Studio only adds fields and never raises it. A Studio refuses a list
+  with a higher version, without changing it, and names the Studio that reads
+  it, for example "the project list uses file format 2, which needs Rullst
+  Studio 14 or later; this Studio (13.0.0) reads format 1".
+- **Studios older than 13.0.0-alpha.6 refuse any field they do not know.**
+  13.0.0-alpha.6 and later write a new setting only when it differs from its
+  default, so an alpha.5 Studio keeps reading the list until you enable
+  desktop notifications, choose a proxy, or set a p99 or security-events alert
+  rule. Update every Studio that reads the same list before you do.
+
 ### History and alerts
 
 On the **Alerts** page, tick **Watch** for a project: while Studio runs, it
@@ -533,29 +561,41 @@ Studio reaches your projects and webhooks:
 | Choice | Behaviour |
 | --- | --- |
 | Connect directly (default) | Proxy variables are ignored, as before. |
-| Use `HTTPS_PROXY` and `NO_PROXY` | The proxy of `HTTPS_PROXY` (or `https_proxy`) in the environment that started `rullst-studio`, except for the hosts of `NO_PROXY` (or `no_proxy`). Without `HTTPS_PROXY`, connections are direct. `HTTP_PROXY` is never used. |
+| Use the proxy variables of Studio's environment | The variables of the environment that started `rullst-studio`, chosen by the target's scheme as curl and reqwest choose them: `HTTPS_PROXY` (else `ALL_PROXY`) for `https://`, `HTTP_PROXY` (else `ALL_PROXY`) for `http://`, except for the hosts of `NO_PROXY`. Each is read upper case first, then lower case (`https_proxy`, `http_proxy`, `all_proxy`, `no_proxy`); a blank one counts as unset. Without them, connections are direct. |
 | Use this proxy | An `http://` or `https://` proxy URL saved in the project list, without a user name or password, and an optional exception list. |
 
-- Only `https://` connections use a proxy, as an HTTP `CONNECT` tunnel: the
-  proxy relays the TLS stream and sees the host and port, never the token,
-  the path or the document. Certificates are still validated against the
-  monitored host.
+- In practice only `https://` connections use a proxy, as an HTTP `CONNECT`
+  tunnel: the proxy relays the TLS stream and sees the host and port, never
+  the token, the path or the document. Certificates are still validated
+  against the monitored host.
 - Plain `http://` connections, which Studio makes only to loopback (an SSH
   tunnel), and connections to a loopback host (`localhost`, `127.0.0.0/8`,
-  `::1`) are always direct.
+  `::1`) are always direct, so `HTTP_PROXY` never changes where Studio
+  connects; Studio still checks it.
+- A proxy URL is `http://` or `https://` with a host and an optional port;
+  a value without a scheme (`proxy.internal:3128`) means `http://`, as curl
+  assumes. **SOCKS proxies (`socks5://`, `socks5h://`, `socks4://`) are not
+  supported**: such a value is refused and named on the Settings page (for
+  example "ALL_PROXY names a SOCKS proxy, which Studio does not support"),
+  never ignored. Reach a SOCKS-only network through an HTTP proxy in front of
+  it, or an SSH tunnel to the application (above).
 - Exceptions use the `NO_PROXY` syntax: host names, which also match their
   subdomains (a leading dot is optional), IP addresses, CIDR ranges such as
   `10.0.0.0/8`, or `*` for every host, separated by commas or spaces (at
-  most 4,096 characters).
-- A proxy that needs a password can only come from `HTTPS_PROXY`
-  (`http://user:password@proxy:3128`); Studio never stores it, and the
-  Settings page shows only the proxy's scheme, host and port. SOCKS proxies
-  are not supported.
-- When the chosen proxy cannot be used (an invalid `HTTPS_PROXY`, for
-  example), Studio connects to nothing and every project shows "the proxy
-  setting cannot be used", instead of quietly connecting directly.
+  most 4,096 characters). They apply to both schemes.
+- A proxy that needs a password comes from the environment
+  (`HTTPS_PROXY=http://user:password@proxy:3128`, or `HTTP_PROXY` and
+  `ALL_PROXY`); Studio never stores it, and the Settings page shows only the
+  proxy's scheme, host and port.
+- When a variable or setting that Studio would use cannot be used (a SOCKS or
+  malformed URL in any of the variables above, or exceptions over 4,096
+  characters), Studio connects to nothing: the Settings page names the
+  variable or setting, and every project shows "the proxy setting cannot be
+  used", instead of quietly connecting directly. A variable that no target
+  uses (`ALL_PROXY` when both `HTTPS_PROXY` and `HTTP_PROXY` are set) is not
+  read.
 - A change applies to the next read, without restarting Studio; a change of
-  `HTTPS_PROXY` needs a restart of `rullst-studio`.
+  the environment needs a restart of `rullst-studio`.
 
 ## Limits
 

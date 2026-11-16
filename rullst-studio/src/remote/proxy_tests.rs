@@ -1,10 +1,12 @@
-//! Proxy routing: settings, `HTTPS_PROXY`/`NO_PROXY` rules and requests
-//! through a local proxy stub (`TM-STUDIO-3`, `REMOTE-13`).
+//! Proxy routing: settings, the proxy variables by target scheme, `NO_PROXY`
+//! rules and requests through a local proxy stub (`TM-STUDIO-3`,
+//! `REMOTE-13`).
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::client::{FetchError, FetchLimits, MonitorClient};
 use super::projects::{Project, ProjectStore};
-use super::proxy::{ProxyMode, ProxyPlan, ProxyRoute, ProxySettings, parse_proxy_url};
+use super::proxy::{ProxyMode, ProxyPlan, ProxyRoute, ProxySettings, Unusable, parse_proxy_url};
+use super::proxy_env_tests::{proxies, through};
 use super::server_test::{TOKEN, TempDir};
 use super::webhook::{WebhookClient, WebhookPayload};
 use reqwest::Url;
@@ -12,7 +14,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-fn url(value: &str) -> Url {
+pub(super) fn url(value: &str) -> Url {
     Url::parse(value).unwrap()
 }
 
@@ -20,7 +22,7 @@ fn route(no_proxy: &str) -> ProxyRoute {
     ProxyRoute::new(url("http://proxy.internal:3128"), no_proxy)
 }
 
-fn proxied(route: &ProxyRoute, target: &str) -> bool {
+pub(super) fn proxied(route: &ProxyRoute, target: &str) -> bool {
     route.proxy_for(&url(target)).is_some()
 }
 
@@ -33,10 +35,11 @@ fn proxy_urls_are_http_or_https_with_a_host_only() {
         ("http://user:secret@proxy.internal:3128", false, false),
         ("http://user@proxy.internal", false, false),
         ("socks5://proxy.internal:1080", false, false),
+        ("socks5h://user:secret@proxy.internal", true, false),
         ("http://proxy.internal/path", false, false),
         ("http://proxy.internal/?q=1", false, false),
         ("http://proxy.internal/#f", false, false),
-        ("proxy.internal:3128", false, false),
+        ("ftp://proxy.internal", false, false),
         ("", false, false),
     ] {
         assert_eq!(
@@ -49,17 +52,32 @@ fn proxy_urls_are_http_or_https_with_a_host_only() {
     assert_eq!(longest.len(), 2_048);
     assert!(parse_proxy_url(&longest, false).is_some());
     assert!(parse_proxy_url(&format!("{longest}x"), false).is_none());
+    // Without a scheme, `http://` is meant, as curl assumes.
+    assert_eq!(
+        parse_proxy_url(" proxy.internal:3128 ", false),
+        Some(url("http://proxy.internal:3128"))
+    );
+    assert_eq!(
+        parse_proxy_url("user:secret@proxy.internal", true),
+        Some(url("http://user:secret@proxy.internal"))
+    );
+    assert_eq!(parse_proxy_url("user:secret@proxy.internal", false), None);
 }
 
 #[test]
-fn only_https_to_other_hosts_goes_through_the_proxy() {
+fn loopback_is_always_direct() {
     let route = route("");
     assert_eq!(
         route.proxy_for(&url("https://shop.example/_rullst/monitor/v2")),
         Some(url("http://proxy.internal:3128"))
     );
+    assert_eq!(
+        route.proxy_for(&url("http://shop.example/")),
+        Some(url("http://proxy.internal:3128"))
+    );
     for direct in [
-        "http://shop.example/",
+        "http://localhost:8080/",
+        "http://127.0.0.1:9000/",
         "https://localhost:8443/",
         "https://LOCALHOST/",
         "https://app.localhost/",
@@ -67,6 +85,7 @@ fn only_https_to_other_hosts_goes_through_the_proxy() {
         "https://127.8.9.10/",
         "https://[::1]:9000/",
         "https://[::ffff:127.0.0.1]/",
+        "ftp://shop.example/",
     ] {
         assert!(!proxied(&route, direct), "{direct}");
     }
@@ -128,69 +147,6 @@ fn prefix_lengths_are_exact_and_bounded() {
     }
 }
 
-fn environment(vars: &[(&str, &str)]) -> ProxyPlan {
-    let settings = ProxySettings {
-        mode: ProxyMode::Environment,
-        ..ProxySettings::default()
-    };
-    ProxyPlan::resolve(&settings, |name| {
-        vars.iter()
-            .find(|(key, _)| *key == name)
-            .map(|(_, value)| value.to_string())
-    })
-}
-
-#[test]
-fn the_environment_mode_reads_https_proxy_and_no_proxy() {
-    assert_eq!(environment(&[]), ProxyPlan::Direct);
-    assert_eq!(environment(&[("HTTPS_PROXY", " ")]), ProxyPlan::Direct);
-    // HTTP_PROXY is never used: plain HTTP goes only to loopback.
-    assert_eq!(
-        environment(&[("HTTP_PROXY", "http://p:1")]),
-        ProxyPlan::Direct
-    );
-    let upper = environment(&[
-        ("HTTPS_PROXY", "http://user:secret@upper:3128"),
-        ("https_proxy", "http://lower:3128"),
-        ("NO_PROXY", "skip.example"),
-        ("no_proxy", "other.example"),
-    ]);
-    let ProxyPlan::Through(route) = &upper else {
-        panic!("{upper:?}");
-    };
-    assert_eq!(
-        route.proxy_for(&url("https://shop.example/")),
-        Some(url("http://user:secret@upper:3128"))
-    );
-    assert!(!proxied(route, "https://skip.example/"));
-    assert!(proxied(route, "https://other.example/"));
-    assert_eq!(route.display(), "http://upper:3128");
-    let lower = environment(&[
-        ("HTTPS_PROXY", ""),
-        ("https_proxy", "https://lower.example"),
-        ("no_proxy", "other.example"),
-    ]);
-    let ProxyPlan::Through(route) = &lower else {
-        panic!("{lower:?}");
-    };
-    assert_eq!(route.display(), "https://lower.example");
-    assert!(!proxied(route, "https://other.example/"));
-    assert_eq!(
-        environment(&[("HTTPS_PROXY", "socks5://p:1080")]),
-        ProxyPlan::Invalid
-    );
-    let longest = "a,".repeat(2_048);
-    assert!(matches!(
-        environment(&[("HTTPS_PROXY", "http://p:1"), ("NO_PROXY", &longest)]),
-        ProxyPlan::Through(_)
-    ));
-    let long = format!("{longest}a");
-    assert_eq!(
-        environment(&[("HTTPS_PROXY", "http://p:1"), ("NO_PROXY", &long)]),
-        ProxyPlan::Invalid
-    );
-}
-
 #[test]
 fn explicit_and_direct_modes_ignore_the_environment() {
     let anything = |_: &str| Some("http://env-proxy:3128".to_string());
@@ -203,28 +159,51 @@ fn explicit_and_direct_modes_ignore_the_environment() {
         url: Some("http://proxy.internal:3128".to_string()),
         no_proxy: "skip.example".to_string(),
     };
-    let ProxyPlan::Through(route) = ProxyPlan::resolve(&explicit, anything) else {
-        panic!("explicit proxy");
-    };
-    assert_eq!(route.display(), "http://proxy.internal:3128");
-    assert!(!proxied(&route, "https://skip.example/"));
+    let plan = ProxyPlan::resolve(&explicit, anything);
+    assert_eq!(
+        proxies(&plan),
+        (
+            Some(url("http://proxy.internal:3128")),
+            Some(url("http://proxy.internal:3128"))
+        )
+    );
+    assert!(!proxied(through(&plan), "https://skip.example/"));
     assert!(explicit.valid());
-    for invalid in [
-        ProxySettings {
-            url: None,
-            ..explicit.clone()
-        },
-        ProxySettings {
-            url: Some("http://user:secret@proxy.internal".to_string()),
-            ..explicit.clone()
-        },
-        ProxySettings {
-            no_proxy: "a".repeat(4_097),
-            ..explicit.clone()
-        },
+    for (invalid, unusable) in [
+        (
+            ProxySettings {
+                url: None,
+                ..explicit.clone()
+            },
+            Unusable::Malformed("The saved proxy URL"),
+        ),
+        (
+            ProxySettings {
+                url: Some("http://user:secret@proxy.internal".to_string()),
+                ..explicit.clone()
+            },
+            Unusable::Malformed("The saved proxy URL"),
+        ),
+        (
+            ProxySettings {
+                url: Some("socks5://proxy.internal".to_string()),
+                ..explicit.clone()
+            },
+            Unusable::Socks("The saved proxy URL"),
+        ),
+        (
+            ProxySettings {
+                no_proxy: "a".repeat(4_097),
+                ..explicit.clone()
+            },
+            Unusable::LongExceptions("The saved exception list"),
+        ),
     ] {
         assert!(!invalid.valid(), "{invalid:?}");
-        assert_eq!(ProxyPlan::resolve(&invalid, anything), ProxyPlan::Invalid);
+        assert_eq!(
+            ProxyPlan::resolve(&invalid, anything),
+            ProxyPlan::Invalid(unusable)
+        );
     }
     let environment = ProxySettings {
         mode: ProxyMode::Environment,
@@ -233,24 +212,55 @@ fn explicit_and_direct_modes_ignore_the_environment() {
     };
     assert!(environment.valid());
     assert!(ProxySettings::default().valid());
+    let newer = ProxySettings {
+        mode: ProxyMode::Newer("pac".to_string()),
+        ..ProxySettings::default()
+    };
+    assert!(!newer.valid());
+    assert_eq!(
+        ProxyPlan::resolve(&newer, anything),
+        ProxyPlan::Invalid(Unusable::NewerMode)
+    );
 }
 
 #[test]
 fn the_settings_page_describes_each_plan_without_credentials() {
     assert_eq!(ProxyPlan::Direct.describe(), "Connections are direct.");
-    let through = ProxyPlan::Through(ProxyRoute::new(
-        url("http://user:secret@proxy.internal:3128"),
-        "",
-    ));
-    assert_eq!(
-        through.describe(),
-        "https:// connections go through http://proxy.internal:3128 as a CONNECT tunnel, except to loopback and the listed exceptions."
-    );
-    assert!(
-        ProxyPlan::Invalid
-            .describe()
-            .contains("connects to nothing")
-    );
+    for (proxy, shown) in [
+        (
+            "http://user:secret@proxy.internal:3128",
+            "http://proxy.internal:3128",
+        ),
+        ("https://proxy.internal", "https://proxy.internal"),
+    ] {
+        let through = ProxyPlan::Through(ProxyRoute::new(url(proxy), ""));
+        assert_eq!(
+            through.describe(),
+            format!(
+                "https:// connections go through {shown} as a CONNECT tunnel, except to loopback and the listed exceptions."
+            )
+        );
+    }
+    for (unusable, text) in [
+        (
+            Unusable::Malformed("HTTPS_PROXY"),
+            "HTTPS_PROXY is not a usable proxy URL (http:// or https:// with a host and port only), so Studio connects to nothing: fix it or choose another option.",
+        ),
+        (
+            Unusable::Socks("all_proxy"),
+            "all_proxy names a SOCKS proxy, which Studio does not support, so it connects to nothing: use an http:// or https:// proxy, or choose another option.",
+        ),
+        (
+            Unusable::LongExceptions("NO_PROXY"),
+            "NO_PROXY is longer than 4096 characters, so Studio connects to nothing: shorten it or choose another option.",
+        ),
+        (
+            Unusable::NewerMode,
+            "A newer Studio saved a proxy choice this Studio does not know, so it connects to nothing: choose one here and save.",
+        ),
+    ] {
+        assert_eq!(ProxyPlan::Invalid(unusable).describe(), text);
+    }
 }
 
 /// A proxy that records each request head it receives and refuses it.
@@ -363,7 +373,8 @@ async fn loopback_and_no_proxy_hosts_are_reached_directly() {
 #[tokio::test]
 async fn an_unusable_proxy_sends_nothing() {
     let directory = TempDir::new("proxy-invalid");
-    let client = MonitorClient::with_proxy(limits(), &ProxyPlan::Invalid).unwrap();
+    let client =
+        MonitorClient::with_proxy(limits(), &ProxyPlan::Invalid(Unusable::NewerMode)).unwrap();
     let shop = project(&directory, "shop", "https://shop.example/");
     assert_eq!(
         client.fetch(&shop).await.unwrap_err(),
@@ -380,7 +391,7 @@ async fn an_unusable_proxy_sends_nothing() {
         message: "shop could not be read",
         at: 1,
     };
-    let webhooks = WebhookClient::new(&ProxyPlan::Invalid).unwrap();
+    let webhooks = WebhookClient::new(&ProxyPlan::Invalid(Unusable::Socks("HTTPS_PROXY"))).unwrap();
     assert_eq!(
         webhooks.deliver("https://hooks.example/x", &payload).await,
         "failed: the proxy setting cannot be used"

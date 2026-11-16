@@ -83,6 +83,22 @@ as `CspSecurityLayer` or `HtmlSanitizer`) stay outside this rule, because
 their unit expression is how applications build them: adding a field to a
 public unit struct is a v14 change.
 
+Files that Rullst writes and reads back on a developer's machine follow the
+same contract. Since 13.0.0-alpha.6 the standalone Studio's project list
+(`projects.json`) is forward compatible within 13.x: a 13.x Studio reads the
+list that any later 13.x Studio wrote, keeps the fields it does not know and
+writes them back unchanged. A later 13.x release only adds fields (within the
+documented bounds); it does not change the type of an existing field, the
+values an older Studio accepts in it or the meaning of a value, and adds a
+new field for that instead. The proxy setting is the exception, because it is
+checked when used: an older Studio keeps a proxy mode or URL it cannot apply
+and connects to nothing until another is chosen. The file's `version` counts
+incompatible changes: only a major release may raise it, and a Studio refuses
+a higher version, without changing the file, with a message that names the
+Studio that reads it. Studios before 13.0.0-alpha.6 refuse unknown fields, so
+the rule holds from 13.0.0-alpha.6 on
+([details](production-monitoring.md#studio-versions-that-share-the-project-list)).
+
 The `cargo-rullst` package is the exception. Its library is the CLI's
 implementation, shared by its binaries and tests, and is not a public API: the
 stable contract is the CLI's commands, flags, exit codes and versioned `--json`

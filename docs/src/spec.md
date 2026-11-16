@@ -4771,7 +4771,19 @@ Phase 2 of the production monitor; threat model `TM-STUDIO-3`; guide:
   under `rullst/studio`, and `projects.key` (32 random bytes) under the data
   directory (`$XDG_DATA_HOME`/`~/.local/share`/`%LOCALAPPDATA%`). Files are
   written atomically, owner-only (`0600` in `0700` directories on Unix), read
-  with a size bound, never through a symlink; unknown fields are rejected. At
+  with a size bound (256 KiB), never through a symlink. Since 13.0.0-alpha.6
+  the format is forward compatible: `version` (1) changes only with an
+  incompatible format, which only a major release may introduce, and a file
+  with a higher version is refused unchanged with a message naming the
+  oldest Studio that reads it (its `min_studio_version`); fields this Studio
+  does not know are kept and written back unchanged, at most 32 per object,
+  with names of at most 64 bytes and 16 KiB of JSON per object; known fields
+  keep their types and bounds (names, base URLs, alert thresholds,
+  notification settings), while the proxy setting is checked when used and
+  one this Studio cannot apply (an unknown mode, a SOCKS URL) blocks every
+  request. New settings are written only when they differ from their
+  defaults, so a Studio before 13.0.0-alpha.6, which refuses unknown fields,
+  reads the file until one is set. At
   most 32 projects; names are 1–48 of `[A-Za-z0-9._-]` starting with a letter
   or digit. Tokens are sealed with AES-256-GCM (random 96-bit nonce) with
   the project name and normalized base URL as associated data; a token that
@@ -4784,14 +4796,19 @@ Phase 2 of the production monitor; threat model `TM-STUDIO-3`; guide:
   2 failure is reported, not downgraded. It follows no redirect, validates
   certificates, and bounds each read to 1 MiB, 5 s total and 3 s to connect.
   Since 13.0.0-alpha.6 the Settings page's proxy choice (`settings.proxy` in
-  the project list: `direct` by default, `environment` for
-  `HTTPS_PROXY`/`https_proxy` and `NO_PROXY`/`no_proxy`, or `explicit` with an
-  `http`/`https` URL without user information, path, query or fragment and a
-  `NO_PROXY`-syntax exception list of at most 4,096 characters) applies to
-  project reads and webhooks through reqwest's own proxy support: only
-  `https` requests to non-loopback hosts outside the exceptions go through
-  the proxy, as a `CONNECT` tunnel; an unusable proxy makes every request
-  fail with a fixed status instead of connecting directly. Saving rebuilds
+  the project list: `direct` by default, `environment` for the variables by
+  target scheme, `HTTPS_PROXY` else `ALL_PROXY` for `https` and `HTTP_PROXY`
+  else `ALL_PROXY` for `http`, each upper case before lower case, with
+  `NO_PROXY`/`no_proxy`, or `explicit` with an `http`/`https` URL without
+  user information, path, query or fragment and a `NO_PROXY`-syntax
+  exception list of at most 4,096 characters) applies to project reads and
+  webhooks through reqwest's own proxy support. A scheme-less value means
+  `http://`. Loopback hosts and the exceptions are always direct, and Studio
+  sends `http` only to loopback, so only `https` requests go through the
+  proxy, as a `CONNECT` tunnel. SOCKS is not supported: a `socks*://` value,
+  like a malformed one or over-long exceptions, makes every request fail with
+  a fixed status, and the Settings page names the variable or setting,
+  instead of connecting directly. Saving rebuilds
   both HTTP clients.
   It accepts only `200`, a JSON content type and the schema of the path read
   (`rullst.monitor.v2` needs its `traces` and `security` sections) with
