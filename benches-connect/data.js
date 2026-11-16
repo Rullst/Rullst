@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794787545961,
+  "lastUpdate": 1794789408893,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -14195,6 +14195,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 540,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f88a94d1a6277eeb58257cc9109c2bc00df48a81",
+          "message": "Merge pull request #718 from Rullst/test/v13-alpha6-mutants-connect\n\ntest(connect): mutation campaign for alpha.6",
+          "timestamp": "2026-11-15T21:19:18-03:00",
+          "tree_id": "a362faba224f8e537d18f9f85357f6c1da6b1f93",
+          "url": "https://github.com/Rullst/Rullst/commit/f88a94d1a6277eeb58257cc9109c2bc00df48a81"
+        },
+        "date": 1794789408119,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 256,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
