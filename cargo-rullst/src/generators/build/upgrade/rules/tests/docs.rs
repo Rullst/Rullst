@@ -226,16 +226,35 @@ fn the_rules_by_release_table_lists_the_rules_of_each_release() {
             rule.introduced
         );
     }
+    // A release may take several rows. Since 13.0.0-alpha.6 each rule has its
+    // own row, so pull requests that add rules never edit the same line.
+    let mut listed: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
     for cells in &table {
-        let (release, listed) = (cells[0].as_str(), cells[1].as_str());
+        let (release, rules) = (cells[0].as_str(), cells[1].as_str());
         let introduced = codes_introduced_in(release);
         if release == "13.0.0-alpha.1" {
-            assert_eq!(listed, format!("The other {} rules", introduced.len()));
-        } else {
-            assert_eq!(backticked_codes(listed), introduced, "{release}");
+            assert_eq!(rules, format!("The other {} rules", introduced.len()));
+            continue;
         }
+        let codes = backticked_codes(rules);
+        if !SHARED_ROW_RELEASES.contains(&release) {
+            assert_eq!(codes.len(), 1, "{release}: one rule per row: {rules}");
+        }
+        listed.entry(release).or_default().extend(codes);
+    }
+    for (release, codes) in listed {
+        assert_eq!(codes, codes_introduced_in(release), "{release}");
     }
 }
+
+/// The releases whose rules share one row of "Rules by release"; later
+/// releases list one rule per row.
+const SHARED_ROW_RELEASES: [&str; 4] = [
+    "13.0.0-alpha.2",
+    "13.0.0-alpha.3",
+    "13.0.0-alpha.4",
+    "13.0.0-alpha.5",
+];
 
 #[test]
 fn the_table_parser_reads_cells_and_stops_at_the_next_heading() {
