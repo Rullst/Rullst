@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794852704332,
+  "lastUpdate": 1794857123131,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -36205,6 +36205,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 950,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "658ecbdd266ac67d3a5128bf5805652d3fd7ffe8",
+          "message": "Merge pull request #748 from Rullst/test/v13-mutants-mail\n\ntest(mail): close 13.0 mutation campaign gaps",
+          "timestamp": "2026-11-16T16:20:23-03:00",
+          "tree_id": "9a3cacd5d65c9c06834f8d26aba78bf374a4296b",
+          "url": "https://github.com/Rullst/Rullst/commit/658ecbdd266ac67d3a5128bf5805652d3fd7ffe8"
+        },
+        "date": 1794857117692,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 578,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 842,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 387,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1420,
+            "range": "± 20",
             "unit": "ns/iter"
           }
         ]
