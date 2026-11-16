@@ -5843,6 +5843,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "rullst-mail-postmark-example"
+version = "13.0.0-alpha.5"
+dependencies = [
+ "async-trait",
+ "base64 0.23.1",
+ "chrono",
+ "reqwest",
+ "rullst-mail",
+ "serde_json",
+ "sha2 0.11.1",
+ "subtle",
+ "tokio",
+]
+
+[[package]]
 name = "rullst-media"
 version = "13.0.0-alpha.5"
 dependencies = [

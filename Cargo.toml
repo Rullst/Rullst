@@ -10,6 +10,7 @@ members = [
     "examples/lms",
     "examples/iot-gateway",
     "examples/webgpu",
+    "examples/mail-postmark-driver",
     "rullst-core",
     "rullst-auth",
     "rullst-mail",
