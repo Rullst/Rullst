@@ -1158,7 +1158,9 @@ jobs:
     # templates, the components, the frontend tools, html!, Core's pages,
     # assets, headers, CSRF or Scalar page, or these checks change (a first
     # step decides). Branch pushes skip it, so their job inventory is
-    # unchanged. It is not a required release job.
+    # unchanged. Since 13.0.0-alpha.6 it is a required release job
+    # (.github/release-required-workflows.json); it is not a required
+    # pull-request check.
     needs: scope
     if: >-
       !cancelled() && github.event_name != 'push' &&

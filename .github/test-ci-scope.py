@@ -266,8 +266,9 @@ class WorkflowGuardTests(unittest.TestCase):
         # reads their job inventory), always runs in full manual runs and its
         # own diagnostic, and filters pull requests by path in its first step.
         # The first-hour documentation, starter browser and starter footprint
-        # jobs follow the same rules; none is a required release job
-        # (release-required-workflows.json).
+        # jobs follow the same rules. Of these, only the starter browser job
+        # is a required release job (release-required-workflows.json, since
+        # 13.0.0-alpha.6), so a full manual run always runs it.
         required = json.loads((HERE / "release-required-workflows.json").read_text())
         required_jobs = {name for workflow in required["workflows"] for name in workflow.get("required_jobs", [])}
         for shard, script, name in (("vm-deployment", "check-vm-deploy.py", "Generated VM deployment"),
@@ -289,7 +290,8 @@ class WorkflowGuardTests(unittest.TestCase):
                 self.assertNotIn("runtime_required", guard)
                 self.assertIn(f"python3 .github/{script}", body)
                 self.assertIn("if [ \"$EVENT_NAME\" != pull_request ]", body)
-                self.assertFalse(any(job.startswith(name) for job in required_jobs))
+                self.assertEqual(any(job.startswith(name) for job in required_jobs),
+                                 shard == "starter-browsers")
                 for other in ("check", "test"):
                     self.assertIn(f"inputs.shard != '{shard}'", jobs[other].split("    runs-on:", 1)[0])
         options = (HERE / "workflows/ci.yml").read_text().split("    inputs:", 1)[1].split("  schedule:", 1)[0]
@@ -318,7 +320,7 @@ class WorkflowGuardTests(unittest.TestCase):
         self.assertIn("Cargo\\.(toml|lock)|rust-toolchain\\.toml|rullst[a-z-]*/", footprint)
         # `cargo rullst auth` against PostgreSQL, MySQL and MariaDB runs after
         # the relational profiles on Linux, with the CLI that shard built.
-        auth = jobs["test"].split("Run cargo rullst auth on Blank starters", 1)[1].split("      - name:", 1)[0]
+        auth = jobs["test"].split("Run cargo rullst auth on Blank and API starters", 1)[1].split("      - name:", 1)[0]
         self.assertIn("if: runner.os == 'Linux' && matrix.shard == 'cli-profiles-relational'", auth)
         self.assertIn("run: python3 .github/check-auth-starter-sql.py --cli target/debug/cargo-rullst", auth)
 
