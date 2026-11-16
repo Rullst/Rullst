@@ -26,10 +26,8 @@ impl<P: VideoProvider, C: Clock> MediaService<P, C> {
         let revision = record.asset.revision;
         let pending = record.pending.as_mut().ok_or(Error::Conflict)?;
         tx.until(Some(pending.until))?;
-        if revision != previous.revision
-            || pending.revision != previous.revision
-            || pending.nonce.as_deref() != Some(&lease.nonce)
-        {
+        // The same fence as `finish`: the nonce also fixes the pending revision.
+        if revision != previous.revision || pending.nonce.as_deref() != Some(&lease.nonce) {
             return Err(Error::Conflict);
         }
         pending.nonce = None;

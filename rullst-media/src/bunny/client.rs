@@ -256,7 +256,6 @@ impl VideoProvider for BunnyStream {
         if page.current_page != 1
             || page.items_per_page != 100
             || page.total_items > 100
-            || page.items.len() > 100
             || page.total_items as usize != page.items.len()
         {
             return Err(Error::Protocol);
