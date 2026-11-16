@@ -8,6 +8,7 @@ use axum::{
 };
 use base64::{Engine, engine::general_purpose::STANDARD};
 use rand::Rng;
+use std::sync::{Arc, OnceLock};
 
 pub use crate::config::DEFAULT_CSP_TEMPLATE;
 
@@ -28,34 +29,82 @@ pub struct SecurityHeadersApplied;
 ///
 /// Handlers and renderers can extract this value with `Extension<CspNonce>` and add
 /// `nonce="..."` to trusted inline `<script>` or `<style>` elements.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct CspNonce(String);
+///
+/// The value is 128 bits from a CSPRNG (`rand`'s thread-local ChaCha12
+/// generator, seeded and reseeded from the operating system's random source),
+/// in standard base64. The nonce the security layers attach to a request
+/// draws it on first use: when a handler or renderer reads it, or when the
+/// header layer needs it for the policy of an HTML response. A request that
+/// never reads it and does not answer with a document draws nothing. Clones
+/// share one value, so the page and its `Content-Security-Policy` header
+/// always agree, and every request gets a value of its own.
+#[derive(Clone)]
+pub struct CspNonce(Arc<OnceLock<String>>);
+
+/// A fresh nonce value: 16 bytes from the thread's CSPRNG in base64.
+fn draw_nonce() -> String {
+    let mut bytes = [0_u8; 16];
+    rand::rng().fill_bytes(&mut bytes);
+    STANDARD.encode(bytes)
+}
 
 impl CspNonce {
-    /// Generates a fresh 128-bit nonce using the operating system random source.
+    /// Generates a fresh 128-bit nonce now, from the CSPRNG described on
+    /// [`CspNonce`].
     pub fn generate() -> Self {
-        let mut bytes = [0_u8; 16];
-        rand::rng().fill_bytes(&mut bytes);
-        Self(STANDARD.encode(bytes))
+        Self(Arc::new(OnceLock::from(draw_nonce())))
     }
 
-    /// Returns the nonce value for an HTML `nonce` attribute.
+    /// A nonce whose value is drawn the first time any clone reads it.
+    fn deferred() -> Self {
+        Self(Arc::new(OnceLock::new()))
+    }
+
+    /// Returns the nonce value for an HTML `nonce` attribute, drawing it on
+    /// the first call.
     pub fn as_str(&self) -> &str {
-        &self.0
+        self.0.get_or_init(draw_nonce)
+    }
+
+    /// Whether the value was drawn: always for [`CspNonce::generate`], and
+    /// for the nonce of a request once anything read it.
+    #[cfg(test)]
+    pub(crate) fn is_drawn(&self) -> bool {
+        self.0.get().is_some()
     }
 
     /// Returns the nonce already associated with a request or creates and stores a fresh one.
     ///
     /// Security layers should use this helper instead of unconditionally replacing the request
     /// extension so independently composed layers and the renderer share one nonce identity.
+    /// The stored nonce draws its value on first use (see [`CspNonce`]); the returned clone
+    /// shares it.
     pub fn get_or_insert(extensions: &mut axum::http::Extensions) -> Self {
         if let Some(nonce) = extensions.get::<Self>() {
             return nonce.clone();
         }
 
-        let nonce = Self::generate();
+        let nonce = Self::deferred();
         extensions.insert(nonce.clone());
         nonce
+    }
+}
+
+impl PartialEq for CspNonce {
+    /// Nonces are equal when their values are, drawing both.
+    fn eq(&self, other: &Self) -> bool {
+        self.as_str() == other.as_str()
+    }
+}
+
+impl Eq for CspNonce {}
+
+impl std::fmt::Debug for CspNonce {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_tuple("CspNonce")
+            .field(&self.as_str())
+            .finish()
     }
 }
 
@@ -353,6 +402,7 @@ where
     // Reuse a nonce installed by an outer security layer. Generated applications and
     // integrations may compose more than one header layer; replacing the request nonce here
     // would make the renderer use a different value from the final CSP response header.
+    // Its value is drawn only if the handler reads it or the response is a document.
     let nonce = CspNonce::get_or_insert(req.extensions_mut());
 
     let mut response = next(req).await;

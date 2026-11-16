@@ -27,6 +27,9 @@ mod tests;
 mod headers_tests;
 
 #[cfg(test)]
+mod csp_nonce_tests;
+
+#[cfg(test)]
 mod machine_client_tests;
 
 #[cfg(kani)]
