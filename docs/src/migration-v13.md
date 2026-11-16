@@ -40,13 +40,15 @@ Rows without rules still need a reading. An application already on a 13.0
 prerelease gets only the rules introduced after its version, and the plan says
 how many earlier rules it skipped; `--all-rules` applies every rule
 ([rules by release](tutorials/36-assisted-framework-upgrades.md#rules-by-release)).
-An application that already runs 13.0.0-alpha.4 follows the shorter
-[alpha.4 to alpha.5 checklist](#upgrading-an-alpha4-application-to-alpha5);
-one on 13.0.0-alpha.3 follows the
+An application that already runs 13.0.0-alpha.5 follows the shorter
+[alpha.5 to alpha.6 checklist](#upgrading-an-alpha5-application-to-alpha6);
+one on 13.0.0-alpha.4 follows the
+[alpha.4 to alpha.5 checklist](#upgrading-an-alpha4-application-to-alpha5)
+first, one on 13.0.0-alpha.3 the
 [alpha.3 to alpha.4 checklist](#upgrading-an-alpha3-application-to-alpha4)
-first, and one on 13.0.0-alpha.2 the
+before that, and one on 13.0.0-alpha.2 the
 [alpha.2 to alpha.3 checklist](#upgrading-an-alpha2-application-to-alpha3)
-before that.
+before those.
 
 ## Changes from the published 12.1.0 source
 
@@ -1012,6 +1014,234 @@ steps in order.
     and `cargo clippy --all-targets -- -D warnings`; then, on staging, every
     page that used an island or a Live component, with the browser's
     developer console open to catch CSP violations, before production.
+
+## Upgrading an alpha.5 application to alpha.6
+
+This checklist moves an application from 13.0.0-alpha.5 to 13.0.0-alpha.6.
+The rows above that name alpha.6 are the changes in between. alpha.6 is the
+13.0 feature and public API freeze: it removes every API that was still
+deprecated, makes each ORM model choose what `save()` writes, puts passkeys
+behind a feature, stops the health probes from reporting the framework
+version, and changes the security baseline (CSRF and the secure headers in
+every environment, a CSRF token masked per response, static files by path
+and a CSP nonce only on HTML responses). The access log is written by a
+background thread, cron fields are checked one by one, and `cargo rullst
+auth` sets up server-side login sessions. Each item below names the
+`cargo rullst upgrade` rule that locates it, or says that no rule does.
+Work through the steps in order.
+
+1. **Prepare.** Work on a branch with a clean tree and a committed
+   `Cargo.lock`, record the current `cargo test` result, and back up every
+   database (check that the backup restores).
+2. **Install the alpha.6 CLI.**
+   `cargo install cargo-rullst --version =13.0.0-alpha.6 --locked --force`,
+   then `rullst --version` must print `13.0.0-alpha.6`.
+3. **Inspect.** `cargo rullst upgrade --dry-run` applies only the rules
+   introduced after 13.0.0-alpha.5, and since alpha.6 it reports a rule at
+   every line it matches, so expect more locations than an alpha.5 plan
+   showed. These rules can appear:
+   - `MUST-CHANGE`: `V13-MAIL-DEPRECATED-REMOVED`,
+     `V13-SECURITY-DEPRECATED-REMOVED`, `V13-CONNECT-INFALLIBLE-NEW-REMOVED`,
+     `V13-ROUTE-MARKER-REMOVED` and `V13-ORM-SCHEMA-DIFF-REMOVED` (step 5),
+     `V13-ORM-SAVE-MODE` (step 6), `V13-AUTH-PASSKEYS-FEATURE` (step 7) and
+     `V13-HEALTH-PROBE-VERSION-FIELD` (step 8).
+   - `REVIEW`: `V13-IOT-OTA-LEGACY-REMOVED`,
+     `V13-NEXUS-INFALLIBLE-BUILD-REMOVED`, `V13-AI-DEPRECATED-REMOVED` and
+     `V13-QUEUE-PURGE-COMPLETED-REMOVED` (step 5, review findings because
+     another type can have a method of that name),
+     `V13-HEALTH-FRAMEWORK-VERSION` (step 8), `V13-ROUTER-BASELINE-LAYERS`
+     (step 10), `V13-CSRF-STATIC-PREFIXES` (step 11), `V13-CSRF-COOKIE-IN-PAGE`
+     (step 12) and `V13-DEPLOY-CADDY-ENCODE` (step 15).
+
+   The changes of steps 9, 13, 14, 16 and 17 have no rule: read them even
+   when the plan is empty.
+4. **Apply, keeping a failed state.** Code that uses the removed APIs, a
+   model without a save mode or passkeys without the feature does not compile
+   against alpha.6. Run `cargo rullst upgrade --keep-on-failure`: it pins
+   every Rullst dependency to `=13.0.0-alpha.6`, runs `cargo fix` and
+   `cargo check --locked`, and, when they fail, keeps the edited files and
+   names the must-change findings. Fix what steps 5 to 8 name; without a
+   `MUST-CHANGE` finding, a plain `cargo rullst upgrade` is enough.
+5. **Replace the removed deprecated APIs.** Each was deprecated in 12.0.0
+   (`schema_diff` in 13.0.0-alpha.5) and has a replacement that reports a
+   configuration error at start-up instead of failing later:
+   - Mail (`V13-MAIL-DEPRECATED-REMOVED`): `ResendDriver::new` and
+     `AwsSesDriver::new` become `try_new`, `Message::with_open_tracking` and
+     `with_click_tracking` become `try_with_open_tracking(url, secret,
+     campaign)?` and `try_with_click_tracking(url, secret)?`, and the
+     `TrackingEngine` helpers `generate_open_token`, `generate_click_token`,
+     `inject_open_pixel` and `rewrite_links` become their `try_` forms,
+     which return a `TrackingError`.
+   - Security (`V13-SECURITY-DEPRECATED-REMOVED`): remove
+     `RateLimiter::with_distributed()` (share a budget between processes
+     with `RedisRateLimiter`, feature `redis-rate-limit`), and replace
+     `AuditChain::new(key, logger)` with `AuditChain::try_new(key, logger)?`,
+     which rejects a key shorter than 32 bytes or with fewer than eight
+     distinct byte values.
+   - Connect (`V13-CONNECT-INFALLIBLE-NEW-REMOVED`): call `try_new` with the
+     same arguments on `GithubProvider` and the other built-in providers, and
+     on a `define_provider!` provider of your own (the compiler names those),
+     and handle `ConnectError::InvalidConfiguration`. Drop the uses of
+     `CredentialMode::Invalid` and `is_invalid()`.
+   - `#[route]` (`V13-ROUTE-MARKER-REMOVED`): delete the attribute and its
+     import; register the handler with `rullst::routes!`
+     (`get("/path" => handler)`).
+   - ORM `schema_diff` (`V13-ORM-SCHEMA-DIFF-REMOVED`): there is no library
+     replacement; write migrations with `cargo rullst make:migration:auto`
+     or read tables and columns with `cargo rullst inspect schema --json`.
+   - IoT (`V13-IOT-OTA-LEGACY-REMOVED`): build the manager with
+     `OtaManager::new_with_trusted_key` or `new_with_counter_store`, verify
+     with `begin_update` or `verify_update` and commit with
+     `commit_verified_update()`; drop arms that match
+     `OtaError::LegacyApiUnsupported`.
+   - Nexus (`V13-NEXUS-INFALLIBLE-BUILD-REMOVED`): end the builder with
+     `.try_build()?` instead of `.build()` or `.into_router()`.
+   - AI (`V13-AI-DEPRECATED-REMOVED`): replace `structured_prompt::<T>(text)`
+     with `json_prompt::<T>(text)` or
+     `structured_prompt_with_schema::<T>(text, &schema)`, and
+     `report.is_safe()` with `report.passed_heuristics()`.
+   - Queue (`V13-QUEUE-PURGE-COMPLETED-REMOVED`): call
+     `Queue::purge_failed_jobs`, which does what `purge_completed_jobs` did,
+     or `purge_completed_history` to remove completed jobs. A custom
+     `QueueDriver` keeps its `purge_completed_jobs` hook.
+6. **Choose each model's save mode** (ORM explicit save mode row,
+   `V13-ORM-SAVE-MODE`). Every `#[derive(Orm)]` and `#[derive(TursoModel)]`
+   model declares what `save()` writes, or it no longer compiles. Prefer
+   `#[sqlx(skip)] pub snapshot: RowSnapshot` (`rullst::orm::RowSnapshot`),
+   which writes only the changed columns: add `snapshot:
+   RowSnapshot::default()` to struct literals and `#[serde(skip)]` to the
+   field of a model that derives Serde. Keep `#[orm(full_row_save)]` on the
+   struct only for a model whose code relies on overwriting the whole row.
+   Turso-primary models declare `#[orm(full_row_save)]` and no `RowSnapshot`
+   field. The other models the CLI generated since 13.0.0-alpha.3 already
+   have the field.
+7. **Enable passkeys where you use them** (Passkeys feature row,
+   `V13-AUTH-PASSKEYS-FEATURE`). In the `rullst` facade, `auth` no longer
+   brings `auth::passkey`: add `auth-passkeys` (`auth-sqlite` and
+   `auth-passkey-postgres` include it), or `passkeys` on a direct
+   `rullst-auth` dependency (`sqlite` and `passkey-postgres` include it).
+   Without it, code that names `auth::passkey` fails with E0432 or E0433.
+8. **Stop reading the framework version from the probes** (Health probes
+   without the framework version row). `HealthProbeResponse` and
+   `ReadinessProbeResponse` have no `version` field, and
+   `HealthProbeResponse` is `#[non_exhaustive]`, so code that reads the
+   field or builds the struct fails (`V13-HEALTH-PROBE-VERSION-FIELD`). A
+   script, dashboard or test that read `version` from `/health` or `/ready`
+   (`V13-HEALTH-FRAMEWORK-VERSION`) reads `app_version` instead (mount
+   `health_router_with_version(env!("CARGO_PKG_VERSION"))`), or the
+   framework release from `framework.version` of the authenticated
+   production monitor.
+9. **Check the cron expressions** (Core scheduler cron fields row; no rule).
+   Each of the five fields must be valid on its own, so an expression with a
+   field that starts or ends with `,`, `-` or `/`, such as `1, 2 * * *`, now
+   fails registration with `SchedulerError::InvalidCron`, whose message names
+   the field. Remove the stray space (`1,2 * * * *`) and check that the
+   schedule still means what you intended: the `cron` crate had joined such
+   a field with its neighbour.
+10. **Rely on `Server` for the CSRF check and the secure headers** (Security
+    baseline in development row). `Server` applies both in every environment,
+    and `cargo rullst dev` wraps each router generation in them. Remove
+    `csrf_middleware` and `headers_middleware` layers from your router: it
+    keeps working with them but pays for both twice
+    (`V13-ROUTER-BASELINE-LAYERS`). In development and tests a `POST`, `PUT`,
+    `PATCH` or `DELETE` without the double-submit token is now refused with
+    `403`: send the token as in production (`X-CSRF-Token` with the
+    `rullst_csrf` cookie, or a `_token` field), or list the route as a
+    machine endpoint (`Server::with_machine_endpoints`) or a signed webhook.
+    A test that calls `router()` directly wraps it in
+    `rullst::security::apply_security_baseline`, as the generated
+    `src/security_tests.rs` does. No rule locates the development requests
+    that now need the token.
+11. **List the static file paths that are not under `/static/`** (CSRF
+    static files by path row, `V13-CSRF-STATIC-PREFIXES`). A `GET` or `HEAD`
+    is a static file, which never mints a CSRF token or sets the
+    `rullst_csrf` cookie, only below `[security] csrf_static_prefixes`
+    (default `["/static/", "/.well-known/"]`) or at one of
+    `csrf_static_paths`, no longer by its extension. For files served
+    elsewhere (`nest_service("/assets", ServeDir::new("assets"))`), list the
+    prefix with the defaults it keeps,
+    `csrf_static_prefixes = ["/static/", "/.well-known/", "/assets/"]`, or
+    call `SecurityConfig::with_csrf_static_prefix`/`with_csrf_static_path`.
+    Dynamic pages such as `/report.json` now get a `CsrfToken` and need no
+    change.
+12. **Embed the masked CSRF token** (CSRF token masked per response row).
+    `CsrfToken::as_str()` no longer equals the `rullst_csrf` cookie: it
+    returns the token masked for each response (86 characters for the
+    32-character token). Forms, htmx headers and clients that read the cookie
+    keep working. Code or tests that compared the embedded value with the
+    cookie, or expected 32 characters, submit the page's value instead and
+    check that it is accepted (no rule locates these comparisons). A
+    `get_csrf_token` helper generated before alpha.6 by `cargo rullst auth`,
+    the SaaS starter or `make:oauth` reads the cookie and embeds the raw token
+    in every response; pass its value through
+    `rullst::security::mask_csrf_token`, as new projects do
+    (`V13-CSRF-COOKIE-IN-PAGE`). A multipart `_token` field may now be up to
+    342 bytes.
+13. **Serve pages as `text/html`** (Core CSP without a nonce outside HTML
+    row; no rule). The request's CSP nonce is only in the policy of a
+    response with `Content-Type` `text/html` or `application/xhtml+xml`, or
+    none; a page served with another type loses its nonce-carrying inline
+    scripts and styles. A test that expects `'nonce-` on a JSON or plain-text
+    response checks an HTML one instead.
+14. **Read the access log asynchronously** (Access log writer row; no rule).
+    A background thread writes the `[HTTP]` lines a few milliseconds after
+    their responses and drops lines when stdout cannot keep up, with a
+    `lines dropped` notice. A test that reads the line right after the
+    response, or kills the server at once, waits for the line or stops the
+    server gracefully. `RULLST_ACCESS_LOG` (`on`, `errors`, `1/N` or `off`)
+    chooses which requests are written; any other value in the environment
+    or `.env` now stops startup with `ServerError::Configuration`.
+15. **Compress pages in an existing `Caddyfile` when you are ready**
+    (Compressed pages in the generated Caddyfile row,
+    `V13-DEPLOY-CADDY-ENCODE`). Nothing breaks: the `Caddyfile` of an
+    existing deployment keeps pages uncompressed. After step 12, when pages
+    embed only masked CSRF tokens and no other secret next to text from the
+    request, add `encode zstd gzip` to the site block, as new
+    `cargo rullst deploy` files do.
+16. **Authentication scaffolds and server-side sessions** (Server-side login
+    sessions row; no rule). `cargo rullst auth` now needs exactly one strict
+    database profile (`strict-sqlite`, `strict-postgres` or `strict-mysql`)
+    and enables its session registry feature; it refuses a project with
+    `drivers-all` or several profiles before writing anything, so scripts
+    that run it there select one profile first. A project generated by
+    `cargo rullst auth` or the SaaS starter before alpha.6 keeps its
+    session-epoch cookies, and `make:mfa` and `make:oauth` keep issuing them
+    in it. To make sign-out end every copy of a cookie and list devices,
+    follow the Server-side login sessions row: it is opt-in, and cookies
+    issued before the switch are refused unless you accept both kinds for
+    their remaining lifetime.
+17. **Dependencies and feature graphs** (no rule).
+    - `cargo rullst make:cors-jwt` middleware generated earlier keeps the
+      `jsonwebtoken` 11 its project declares. To move it to 12, the version
+      `rullst-connect` and `rullst-auth` (`jwt`) now use, handle the
+      `Result` that `EncodingKey::from_secret` and
+      `DecodingKey::from_secret` now return (an empty key is refused).
+    - An application that turns on `ed25519-dalek`'s precomputed tables
+      through feature unification declares
+      `ed25519-dalek = { version = "3", default-features = false, features = ["fast"] }`;
+      a 2.x requirement builds a second copy and leaves the tables off.
+    - `JsonSchemaPolicy` (`jsonschema` 0.61.2) answers `422` to some bodies
+      that 0.60 accepted: `.` in `pattern` and `patternProperties` no longer
+      matches `\r`, U+2028 or U+2029, and `date-time`, `date` and `time`
+      values with a `+`, `,`, `-`, `.` or `/` where a digit belongs are
+      refused.
+    - With `studio` but without `capital`, `/studio/capital` shows a notice
+      instead of the revenue dashboard, `/api/revenue` answers 404 and
+      `rullst::studio::revenue_dashboard` is gone: enable `capital` to keep
+      them. An application whose own code makes rustls connections and
+      relied on `orm` installing aws-lc-rs as the process default enables
+      the facade's `tls` feature (TLS stack of SQLite-only builds row).
+18. **Update scripts, CI and other tools.** Where a workflow or script
+    installs a pinned CLI (`cargo install cargo-rullst --version
+    =13.0.0-alpha.5`), pin `=13.0.0-alpha.6`. Check the health-probe scripts
+    of step 8 and any client that posts to the development server (step 10).
+19. **Validate.** Run `cargo rullst upgrade` again. It makes no further version
+    edits and checks the result with `cargo fix` and `cargo check --locked`.
+20. **Verify** with the production feature set: `cargo build`, `cargo test`
+    and `cargo clippy --all-targets -- -D warnings`; then, on staging, sign-in
+    and sign-out, every form and htmx request (CSRF), every page with the
+    browser's developer console open to catch CSP violations, the health
+    probes, the scheduled tasks and the access log, before production.
 
 ## Why the candidate uses a new major
 
