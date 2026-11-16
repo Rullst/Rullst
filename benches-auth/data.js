@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794789357991,
+  "lastUpdate": 1794792960478,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -22967,6 +22967,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2981,
             "range": "± 107",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5d2047eb92d5551b4479723b2de7c40bf40cea4e",
+          "message": "Merge pull request #720 from Rullst/feat/v13-i18n-cldr-more-locales\n\nfeat(i18n): add CLDR 48 data for Latin American Spanish and ten currencies",
+          "timestamp": "2026-11-15T22:23:34-03:00",
+          "tree_id": "b8437e8f8435eb3948fd62905b2041bf73f69cdb",
+          "url": "https://github.com/Rullst/Rullst/commit/5d2047eb92d5551b4479723b2de7c40bf40cea4e"
+        },
+        "date": 1794792959624,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 615,
+            "range": "± 32",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 482,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1110,
+            "range": "± 51",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2950,
+            "range": "± 63",
             "unit": "ns/iter"
           }
         ]
