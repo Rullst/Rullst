@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794805884859,
+  "lastUpdate": 1794808724206,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -35451,6 +35451,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1526,
             "range": "± 47",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9e80bcbeaff6fb259069f54477c3709c8ee8d376",
+          "message": "Merge pull request #728 from Rullst/feat/v13-alpha6-non-exhaustive-audit\n\nfeat(api)!: non-exhaustive public enums and structs for the 13.0 freeze",
+          "timestamp": "2026-11-16T02:51:57-03:00",
+          "tree_id": "264f02fb2d679c0fd3284d370a809ffb2ae55b94",
+          "url": "https://github.com/Rullst/Rullst/commit/9e80bcbeaff6fb259069f54477c3709c8ee8d376"
+        },
+        "date": 1794808719562,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 697,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 902,
+            "range": "± 27",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 437,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1990,
+            "range": "± 35",
             "unit": "ns/iter"
           }
         ]
