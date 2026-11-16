@@ -6,6 +6,7 @@ use alloc::vec::Vec;
 
 /// BLE GATT characteristic data. This type does not operate a radio.
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct GattCharacteristic {
     pub uuid: String,
     pub value: Vec<u8>,
@@ -14,6 +15,7 @@ pub struct GattCharacteristic {
 
 /// BLE GATT service data. This type does not run a GATT server.
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct GattService {
     pub service_uuid: String,
     pub characteristics: Vec<GattCharacteristic>,

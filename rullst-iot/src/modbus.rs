@@ -5,6 +5,7 @@ use alloc::vec::Vec;
 
 /// Modbus Function Codes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ModbusFunction {
     ReadHoldingRegisters = 0x03,
     WriteSingleRegister = 0x06,

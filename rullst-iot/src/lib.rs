@@ -89,6 +89,7 @@ pub use ui::{IotDashboard, IotHtml};
 /// its field set and JSON shape (`device_id`, `metric`, `value`, `timestamp`)
 /// stable for 13.x.
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct SensorTelemetry {
     /// Device identifier string.
     pub device_id: String,
