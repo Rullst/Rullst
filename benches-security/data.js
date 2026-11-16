@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794795579512,
+  "lastUpdate": 1794798536773,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -23231,6 +23231,60 @@ window.BENCHMARK_DATA = {
             "name": "html_sanitizer/sanitize_text_escape",
             "value": 574,
             "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "160a54f0bcf23c13576de05bd34113f0b518e529",
+          "message": "Merge pull request #726 from Rullst/feat/site-compare-how-to-read\n\nfeat(site): explain how to read the comparison benchmarks",
+          "timestamp": "2026-11-15T23:47:02-03:00",
+          "tree_id": "d26d8891ed741470e5908fbbe1c891f361452314",
+          "url": "https://github.com/Rullst/Rullst/commit/160a54f0bcf23c13576de05bd34113f0b518e529"
+        },
+        "date": 1794798535813,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5251,
+            "range": "± 46",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 591,
+            "range": "± 6",
             "unit": "ns/iter"
           },
           {
