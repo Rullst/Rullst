@@ -39,7 +39,7 @@ fn proxy_form(settings: &StudioSettings, plan: &ProxyPlan, form_token: &str) -> 
             r#"<label class="text-xs text-slate-300 flex items-center gap-2"><input type="radio" name="mode" value="{value}"{checked} /> {label}</label>"#
         )
     };
-    let tone = if *plan == ProxyPlan::Invalid {
+    let tone = if plan.blocks() {
         "text-red-300"
     } else {
         "text-slate-300"
@@ -48,7 +48,7 @@ fn proxy_form(settings: &StudioSettings, plan: &ProxyPlan, form_token: &str) -> 
         r#"<form method="post" action="/studio/settings/proxy" class="p-4 bg-slate-900/80 border border-slate-800 rounded-xl space-y-3" autocomplete="off">
   <input type="hidden" name="form_token" value="{form_token}" />
   <h2 class="text-lg font-bold text-sky-300">Proxy</h2>
-  <p class="text-xs text-slate-400">How Studio reaches your projects and webhooks. Only https:// connections use a proxy, as a CONNECT tunnel: the proxy relays TLS and never sees a token. http:// connections (only to loopback) and connections to a loopback host are always direct. A proxy that cannot be used stops every connection instead of connecting directly.</p>
+  <p class="text-xs text-slate-400">How Studio reaches your projects and webhooks. Only https:// connections use a proxy, as a CONNECT tunnel: the proxy relays TLS and never sees a token. SOCKS proxies are not supported. http:// connections (only to loopback) and connections to a loopback host are always direct. A proxy that cannot be used stops every connection instead of connecting directly.</p>
   <div class="flex flex-wrap items-center gap-4">{direct}{environment}{explicit}</div>
   <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
     <label class="text-xs text-slate-400 font-semibold space-y-1"><span class="block">Proxy URL (http:// or https://, without user or password)</span><input name="url" maxlength="2048" value="{url}" placeholder="http://proxy.internal:3128" class="{INPUT}" /></label>
@@ -66,7 +66,7 @@ fn proxy_form(settings: &StudioSettings, plan: &ProxyPlan, form_token: &str) -> 
         environment = option(
             ProxyMode::Environment,
             "environment",
-            "Use HTTPS_PROXY and NO_PROXY of Studio's environment"
+            "Use the proxy variables of Studio's environment (HTTPS_PROXY, HTTP_PROXY, ALL_PROXY, NO_PROXY)"
         ),
         explicit = option(ProxyMode::Explicit, "explicit", "Use this proxy"),
         url = esc(proxy.url.as_deref().unwrap_or_default()),
