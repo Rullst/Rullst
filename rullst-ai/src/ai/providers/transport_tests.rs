@@ -305,3 +305,30 @@ async fn compatible_provider_response_size_boundary_is_exact() {
         );
     }
 }
+
+#[tokio::test]
+async fn anthropic_and_gemini_return_the_live_vision_answer() {
+    const PNG: &[u8] = b"\x89PNG\r\n\x1a\nfixture";
+    let body = r#"{"content":[{"type":"text","text":"a chart"}],"stop_reason":"end_turn"}"#;
+    let (endpoint, server) = serve(success(body)).await;
+    let answer = AnthropicProvider::new("fixture-api-key")
+        .with_base_url(endpoint)
+        .with_request_timeout(Duration::from_secs(3))
+        .prompt_with_image("describe", PNG)
+        .await
+        .unwrap();
+    assert_eq!(answer, "a chart");
+    assert!(server.await.unwrap().is_some());
+
+    let body =
+        r#"{"candidates":[{"content":{"parts":[{"text":"a chart"}]},"finishReason":"STOP"}]}"#;
+    let (endpoint, server) = serve(success(body)).await;
+    let answer = GeminiProvider::new("fixture-api-key")
+        .with_base_url(endpoint)
+        .with_request_timeout(Duration::from_secs(3))
+        .prompt_with_image("describe", PNG)
+        .await
+        .unwrap();
+    assert_eq!(answer, "a chart");
+    assert!(server.await.unwrap().is_some());
+}
