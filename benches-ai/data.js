@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794853438319,
+  "lastUpdate": 1794858233243,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -21189,6 +21189,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 193,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "658ecbdd266ac67d3a5128bf5805652d3fd7ffe8",
+          "message": "Merge pull request #748 from Rullst/test/v13-mutants-mail\n\ntest(mail): close 13.0 mutation campaign gaps",
+          "timestamp": "2026-11-16T16:20:23-03:00",
+          "tree_id": "9a3cacd5d65c9c06834f8d26aba78bf374a4296b",
+          "url": "https://github.com/Rullst/Rullst/commit/658ecbdd266ac67d3a5128bf5805652d3fd7ffe8"
+        },
+        "date": 1794858232057,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1527,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 283,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 315,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
