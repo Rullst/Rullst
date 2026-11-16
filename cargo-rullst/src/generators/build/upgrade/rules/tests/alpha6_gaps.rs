@@ -193,6 +193,19 @@ fn generic_arguments_stay_inside_an_operand() {
 }
 
 #[test]
+fn only_method_calls_with_parentheses_are_read_as_comparisons() {
+    // A free `contains(..)` call and a `.contains[..]` index are not the
+    // method; `.contains(..)` on the line after them is.
+    let source = "fn f(body: &str, csrf_cookie: &str, pages: Pages) -> bool {\n    let found = contains(body, csrf_cookie);\n    let page = pages.contains[csrf_cookie];\n    found && body.contains(csrf_cookie)\n}\n";
+    let found = scan_with(source, "lib.rs", &WorkspaceFacts::default());
+    assert_eq!(
+        lines_of("V13-CSRF-TOKEN-COMPARED", &found),
+        [4],
+        "{found:?}"
+    );
+}
+
+#[test]
 fn every_mention_in_an_operand_counts_once_or_more() {
     // Two identifiers of each kind in one operand, and CSRF named twice by
     // literals only: neither cancels the other.
