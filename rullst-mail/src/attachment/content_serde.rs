@@ -112,4 +112,32 @@ mod tests {
         let decoded: Message = serde_json::from_str(&encoded).unwrap();
         assert_eq!(decoded.attachments[0].content, content);
     }
+
+    #[test]
+    fn byte_values_arrays_and_wrong_types_decode_exactly() {
+        use super::ContentVisitor;
+        use serde::de::{Visitor, value::Error};
+        let bytes = ContentVisitor.visit_bytes::<Error>(&[1, 2, 3]).unwrap();
+        assert_eq!(bytes, [1, 2, 3]);
+        let buffer = ContentVisitor.visit_byte_buf::<Error>(vec![4, 5]).unwrap();
+        assert_eq!(buffer, [4, 5]);
+
+        // An array with an exact length hint is allocated once, without
+        // growing to the next power of two.
+        let legacy = json!({"filename":"note.bin","content":vec![7_u8; 3_000],
+            "mime_type":"application/octet-stream","cid":null});
+        let decoded: Attachment = serde_json::from_value(legacy).unwrap();
+        assert_eq!(decoded.content, vec![7_u8; 3_000]);
+        assert!(decoded.content.capacity() < 4_096);
+
+        let wrong = json!({"filename":"note.bin","content":7,
+            "mime_type":"application/octet-stream","cid":null});
+        let error = serde_json::from_value::<Attachment>(wrong).unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("expected base64 attachment content or an array of bytes"),
+            "{error}"
+        );
+    }
 }

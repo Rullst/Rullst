@@ -42,6 +42,26 @@ received a test or is listed under
   [PR #532](https://github.com/Rullst/Rullst/pull/532): 78 files and 2,435
   mutants, 72 missed at the end. 71 are accepted equivalents; the last one
   needs an open PostgreSQL pool.
+- **`rullst-mail`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+  [PR #748](https://github.com/Rullst/Rullst/pull/748), runs in the
+  maintainer's fork
+  [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml);
+  four files unchanged since `5e6b65c5` keep their runs in this repository):
+  targeted runs of the 53 files, the five PostgreSQL adapter files included
+  (3 have no mutants), gave 1,761 mutants: 1,323 caught, 184 unviable, 13
+  timeouts and 241 missed. 55 of the misses are PostgreSQL adapter branches
+  that the `mail-postgres` contract run
+  ([43910450330](https://github.com/venelouis/rullst-ci/actions/runs/43910450330),
+  136 mutants: 84 caught, 26 unviable, 26 missed, all caught by the targeted
+  runs) catches. New tests killed 170 of the others and two timeouts (a
+  fixture wait and a fuzz loop now have deadlines): delivery observations,
+  account action links, native SES headers, size limits and error codes,
+  failover recovery, the mock, REST, log and memory drivers, plain-text
+  conversion, action links, feedback verification, the suppression stores,
+  attachment decoding and the provider error text. Reruns of the 27 changed
+  files leave 9 of 950 mutants missed and 3 timeouts; the remaining 16 missed
+  mutants are accepted equivalents listed below and the 11 timeouts are
+  listed with the timeouts.
 - **`rullst-messaging`** (re-measured for 13.0.0-alpha.6,
   [PR #711](https://github.com/Rullst/Rullst/pull/711)): targeted
   runs of the 48 files outside `redis_streams/` (7 have no mutants) gave 1,377
@@ -227,7 +247,10 @@ covers the files `.github/mutants-pr-cli.txt` lists, and the campaign status abo
 survivors left in the others) and the Studio remote-mode campaign (targeted runs of every
 `rullst-studio/src/remote` file and of the `rullst-studio` binary with the
 package's tests), the `rullst-macros` campaign (targeted runs of every
-file with the package's unit and stand-in integration tests) gave every missed mutant in their files a test, except these.
+file with the package's unit and stand-in integration tests) and the 13.0
+`rullst-mail`, `rullst-media` and `rullst-ai` campaigns (targeted runs of every
+file with the package's tests, and the `mail-postgres` contract run for the
+mail PostgreSQL adapter) gave every missed mutant in their files a test, except these.
 Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
 entry needs the same one-line justification. The pull-request gate (`mutants-pr.yml`) skips an
@@ -356,6 +379,13 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-mail/src/security.rs`: `redact_labelled_private_keys`, `MAX_PEM_LABEL_BYTES + 1` with `*` | Reading at most 64 label bytes cuts a longer label inside its run of label bytes, so the `-----` check that follows fails as the length check would. |
 | `rullst-mail/src/security.rs`: `href_values`, `value_start + length + 1` with `-` or `*` | The scan resumes on the closing quote or the byte before it (the opening quote for an empty value), and no `href` match can contain a quote. |
 | `rullst-mail/src/inspection/sniff.rs`: `root_element`, `open < close` with `<=` | Both are positions just after one byte, a `[` and a `>`, so they are never equal. |
+| `rullst-mail/src/pipeline.rs`: `DeliveryPipeline::require_due`, `send_at > now`, and `DeliveryPipeline::prepare_with_context`, the 366-day bound `send_at > now + 366 days`, each with `>=` | They differ only when the schedule equals a `Utc::now()` reading taken inside the call to the nanosecond, which a caller cannot arrange. |
+| `rullst-mail/src/suppression/mod.rs`: `ascii_domain`, either `&&` with `\|\|` | `recipient_address` rejects `:` and `ascii_domain` refuses `/`, `?`, `#`, `%` and `\` before parsing, so `http://{domain}/` never parses with a port or a path other than `/`, and the URL parser refuses an empty host: all three tests always hold. |
+| `rullst-mail/src/drivers/failover.rs`: `FailoverDriver::is_tripped`, `elapsed() < self.cooldown` with `<=` | An `Instant` reading would have to equal the last failure plus the cooldown to the nanosecond. |
+| `rullst-mail/src/drivers/memory.rs`: `MailTrap::driver` with `Default::default()` | `MemoryDriver::default()` is `MemoryDriver::new()`, the driver connected to the global trap. |
+| `rullst-mail/src/error.rs`: `bounded_message`, `boundary > 0` with `>=` | `is_char_boundary(0)` is always true, so the loop stops at 0 either way. |
+| `rullst-mail/src/worker.rs`: `prepare_claimed_message`, `send_at > now + CLAIM_CLOCK_SKEW`, and `rullst-mail/src/drivers/resend.rs`: `ResendDriver::send_request`, `send_at > now + MAX_PROVIDER_SCHEDULE`, each with `>=` | They differ only when the schedule equals a `Utc::now()` reading taken inside the call, plus 300 s or 30 days, to the nanosecond. |
+| `rullst-mail/src/message/plain_text.rs`: `strip_html_to_plain_text`, delete the first `!` of `!normalized.is_empty() && !normalized.ends_with('\n')` | The normalized text is always empty or ends with a newline, so the condition never holds; without the `!` it adds only a leading newline, which the final `trim` removes. |
 | `rullst-ai/src/ai/egress.rs`: `EgressPolicy::strict` with `Default::default()` | `strict` already returns `Self::default()`. |
 | `rullst-ai/src/ai/egress.rs`: `is_public_ipv6`, `is_unspecified() \|\| is_loopback()` with `&&` | `::` and `::1` lie outside `2000::/3`, which the next clause rejects. |
 | `rullst-ai/src/ai/guardrails/markdown_inline.rs`: `open_tag_end`, the self-closing `then_some(index + 1)` with `-` or `*` | The tag then ends on or just before its `/`; the byte before that `/` is whitespace, a quote or a name byte, never a bracket. |
@@ -422,11 +452,21 @@ every test of the file reaches, so no single test can fail first:
   opener forever in every test with an HTML comment.
 - `rullst-mail/src/security.rs`: the redaction scans, where
   `start + relative_end` in `redact_values_after` becomes `-`, `offset +
-  relative` in `redact_aws_access_keys` or `redact_labelled_private_keys`
-  becomes `*`, or `start + prefix.len()` becomes `-` or `*`, and the
+  relative` in `redact_aws_access_keys` or `start + BEGIN.len()` in
+  `redact_labelled_private_keys` becomes `*`, or `start + prefix.len()`
+  becomes `-` or `*`, and the
   `href_values` scan, where `index += 1` in `skip_whitespace` or the
   non-match `pos += 1` becomes `*=`, or the `pos += 4` after an `href` without
   `=` becomes `-=`; each scan restarts before the same match.
+  `rullst-mail/src/action.rs`: `next_http_url` returning `Some(0)` makes
+  `redact_body_secrets` stop advancing once the remaining text is empty or
+  starts with a delimiter, in every test that sanitizes a message body or
+  builds an action link.
+  `rullst-mail/src/entities.rs`: `decode` with the `index + 1` after `&`
+  replaced by `-` or `*` restarts on the same `&` forever; the output grows
+  by one `&` per turn, so the 8 GiB limit below is reached only after the
+  timeout, and the factory, inspection and entity tests all decode a
+  reference.
 - `rullst-ai/src/ai/guardrails/tax_ids.rs`: `mask_tax_ids` without the `!`
   of its digit test or with `start += 1` as `-=` or `*=`, `token_end`
   returning `0` or `1`, and its `index += 1` steps as `-=` or `*=`;

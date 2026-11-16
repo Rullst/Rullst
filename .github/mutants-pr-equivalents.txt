@@ -223,6 +223,26 @@ rullst-connect/src/mock_idp/handlers.rs:294:43: replace > with >= in userinfo_ha
 rullst-connect/src/mock_idp/handlers.rs:463:5: replace server_error -> Response with Default::default()
 rullst-connect/src/provider/id_token.rs:121:13: replace || with && in validate_claims_with_presenters
 
+# rullst-mail (13.0 campaign, targeted runs with the package's tests): each
+# name below has a row in docs/src/mutation-testing.md "Accepted equivalent
+# mutants".
+rullst-mail/src/pipeline.rs:96:44: replace > with >= in DeliveryPipeline::require_due
+rullst-mail/src/pipeline.rs:160:21: replace > with >= in DeliveryPipeline::prepare_with_context
+rullst-mail/src/suppression/mod.rs:419:24: replace && with || in ascii_domain
+rullst-mail/src/suppression/mod.rs:419:48: replace && with || in ascii_domain
+rullst-mail/src/drivers/failover.rs:89:68: replace < with <= in FailoverDriver::is_tripped
+rullst-mail/src/message/plain_text.rs:98:16: delete ! in strip_html_to_plain_text
+rullst-mail/src/inspection/sniff.rs:283:36: replace < with <= in root_element
+rullst-mail/src/drivers/memory.rs:130:9: replace MailTrap::driver -> MemoryDriver with Default::default()
+rullst-mail/src/error.rs:213:24: replace > with >= in bounded_message
+rullst-mail/src/worker.rs:61:41: replace > with >= in prepare_claimed_message
+rullst-mail/src/facade/driver.rs:67:9: replace <impl Hasher for DigestHasher>::finish -> u64 with 1
+rullst-mail/src/facade/driver.rs:215:9: delete match arm (Some(_), Some(_)) in ses_credentials
+rullst-mail/src/drivers/resend.rs:68:45: replace > with >= in ResendDriver::send_request
+rullst-mail/src/security.rs:128:39: replace + with * in redact_labelled_private_keys
+rullst-mail/src/security.rs:214:52: replace + with - in href_values
+rullst-mail/src/security.rs:214:52: replace + with * in href_values
+
 # rullst-media (13.0 campaign, targeted runs with the package's tests): each
 # name below has a row in docs/src/mutation-testing.md "Accepted equivalent
 # mutants".

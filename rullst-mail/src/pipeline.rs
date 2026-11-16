@@ -337,6 +337,8 @@ mod tests {
             assert!(DeliveryContext::for_tenant(dots).is_err());
         }
         assert!(DeliveryPipeline::prepare_for_tenant("acme.v2", &message).is_ok());
+        assert!(DeliveryContext::for_tenant("t".repeat(128)).is_ok());
+        assert!(DeliveryContext::for_tenant("t".repeat(129)).is_err());
     }
 
     #[test]
@@ -348,6 +350,8 @@ mod tests {
             base().unsubscribe_url("https://a.example/x>, <mailto:evil@attacker.example"),
             base().unsubscribe_url("https://a.example/x\"y"),
             base().unsubscribe_url("https://a.example/x y"),
+            base().unsubscribe_url("ftp://example.com/unsubscribe"),
+            base().unsubscribe_url("not a url"),
         ] {
             assert!(matches!(
                 DeliveryPipeline::prepare(&message),
@@ -372,6 +376,8 @@ mod tests {
             "ftp://example.com/file",
             "https://",
             "https://user:secret@example.com/billing",
+            "https://user@example.com/billing",
+            "https://:secret@example.com/billing",
             "https://example.com/ok\r\nBcc: attacker@example.com",
         ] {
             assert!(validate_action_url(invalid).is_err(), "accepted {invalid}");
@@ -393,10 +399,11 @@ mod tests {
 
     #[test]
     fn rejects_oversized_subject_and_bodies_before_scanning() {
+        // Literal bounds: 2 KiB of subject and 2 MiB per body are accepted.
         let at_limit = Message::new()
             .to("bounded@example.com")
-            .subject("s".repeat(MAX_SUBJECT_BYTES))
-            .text("t".repeat(MAX_BODY_BYTES));
+            .subject("s".repeat(2_048))
+            .text("t".repeat(2_097_152));
         assert!(DeliveryPipeline::prepare(&at_limit).is_ok());
 
         let subject = Message::new()

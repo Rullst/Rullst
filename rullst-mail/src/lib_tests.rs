@@ -76,6 +76,15 @@ async fn test_log_driver() {
         .text("Testing 1 2 3")
         .html("<h1>Testing 1 2 3</h1>");
 
+    // The file outlives earlier runs and other tests append to it, so this
+    // send must add a record rather than merely find one.
+    let records = || {
+        std::fs::read_to_string(log_path)
+            .unwrap_or_default()
+            .matches("[MAIL LOGGED]")
+            .count()
+    };
+    let before = records();
     let driver = LogDriver;
     let res = driver.send(&msg).await;
     assert!(res.is_ok());
@@ -83,12 +92,12 @@ async fn test_log_driver() {
     let mut content = String::new();
     for _ in 0..10 {
         content = std::fs::read_to_string(log_path).unwrap_or_default();
-        if content.contains("[MAIL LOGGED]") {
+        if content.matches("[MAIL LOGGED]").count() > before {
             break;
         }
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
     }
-    assert!(content.contains("[MAIL LOGGED]"));
+    assert!(content.matches("[MAIL LOGGED]").count() > before);
     assert!(!content.contains("Subject: Hello Test"));
     assert!(!content.contains("Testing 1 2 3"));
 }

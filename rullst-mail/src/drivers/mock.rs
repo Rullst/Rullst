@@ -216,6 +216,47 @@ mod tests {
     }
 
     #[test]
+    fn offline_store_keeps_deliveries_whose_total_equals_the_byte_bound() {
+        let mut store = OfflineStore::default();
+        // Each delivery retains its 1-byte subject and 40 attachment bytes.
+        store.push(delivery("a", 40), 10, 82);
+        store.push(delivery("b", 40), 10, 82);
+        assert_eq!(store.deliveries.len(), 2);
+        assert_eq!(store.bytes, 82);
+    }
+
+    #[test]
+    fn credentials_hold_at_most_4096_bytes_and_hex_is_lowercase() {
+        assert!(validate_credential("key", &"k".repeat(4096)).is_ok());
+        assert!(validate_credential("key", &"k".repeat(4097)).is_err());
+        assert_eq!(to_hex(&[0x00, 0x0f, 0xa5, 0xff]), "000fa5ff");
+    }
+
+    #[test]
+    fn offline_mode_is_reported_at_most_once_per_process() {
+        const REPORT: &str = "mail.offline_mock.active";
+        let names = crate::test_support::EventNames::default();
+        let _guard = tracing::subscriber::set_default(names.clone());
+        let message = Message::new().to("user@example.com").subject("report");
+        // A parallel test can cache a callsite interest computed before this
+        // scoped subscriber existed, so recompute it and retry a few times.
+        // Other tests may report first, so at most one report is expected.
+        for _ in 0..5 {
+            tracing::callsite::rebuild_interest_cache();
+            names.take();
+            OFFLINE_MODE_REPORTED.store(false, Ordering::Relaxed);
+            for _ in 0..3 {
+                record_offline_delivery("fixture", &message).unwrap();
+            }
+            let reports = crate::test_support::EventNames::count(&names.take(), REPORT);
+            assert!(reports <= 1, "offline mode reported {reports} times");
+            if reports == 1 {
+                break;
+            }
+        }
+    }
+
+    #[test]
     fn credential_modes_are_explicit() {
         assert_eq!(credential_mode(""), DeliveryMode::OfflineMock);
         assert_eq!(credential_mode("mock_resend"), DeliveryMode::OfflineMock);
