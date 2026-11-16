@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794794187820,
+  "lastUpdate": 1794795371555,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -23063,6 +23063,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4250,
             "range": "± 82",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0902531b4dfea2615aa840572cb40ce3cb93b587",
+          "message": "Merge pull request #724 from Rullst/feat/v13-alpha6-capital-one-off-method-webhook\n\nfeat(capital): one-off payment method, instalments and per-checkout notification URL",
+          "timestamp": "2026-11-15T23:01:26-03:00",
+          "tree_id": "d8572183089533b4c11a50a9fbed35790355638d",
+          "url": "https://github.com/Rullst/Rullst/commit/0902531b4dfea2615aa840572cb40ce3cb93b587"
+        },
+        "date": 1794795370927,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1046,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 750,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1806,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4195,
+            "range": "± 143",
             "unit": "ns/iter"
           }
         ]
