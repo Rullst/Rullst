@@ -212,7 +212,7 @@ O starter SaaS (e os exemplos LMS e Blog) mostram botões visíveis para as duas
 superfícies de controle durante o desenvolvimento local:
 
 - O **Nexus** fica montado em `/nexus` e, em uma compilação de debug, aceita
-  apenas um par de loopback verificado, então o primeiro clique local não
+  apenas um cliente de loopback verificado, então o primeiro clique local não
   precisa de senha provisória.
 - O **Studio** inicia como um serviço separado, só de debug, em
   `http://127.0.0.1:5555`.

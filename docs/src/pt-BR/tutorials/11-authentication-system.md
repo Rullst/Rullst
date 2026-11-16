@@ -147,8 +147,8 @@ desenvolvimento; em um roteador criado antes da 13.0.0-alpha.6, que tem sua
 própria camada `csrf_middleware`, os grupos vêm antes dessa camada. O
 `router()` do starter SaaS mostra as mesmas rotas registradas uma a uma.
 
-O `credential_rate_limit` permite dez envios por minuto para cada par que se
-conecta. Atrás de um proxy reverso, configure `[security] trusted_proxies`
+O `credential_rate_limit` permite dez envios por minuto para cada cliente que
+se conecta. Atrás de um proxy reverso, configure `[security] trusted_proxies`
 para que os clientes não dividam o limite do proxy.
 
 Os e-mails de redefinição passam pela fachada `Mail`: defina `MAIL_DRIVER` e
