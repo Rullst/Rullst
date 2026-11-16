@@ -15,7 +15,9 @@
 use crate::error::CapitalError;
 use sha2::{Digest, Sha256};
 
+mod method;
 mod payment;
+pub use method::{PaymentMethod, PaymentMethodName};
 pub use payment::{OneOffPayment, OneOffPaymentState, PaymentNotification};
 
 const MAX_REFERENCE_LEN: usize = 200;
@@ -38,6 +40,10 @@ pub const MAX_ONE_OFF_QUANTITY: u32 = 10_000;
 /// fragments. HTTPS is required when a live key sends the request; `http://`
 /// on `localhost`, `127.0.0.1` or `[::1]` is accepted for a `mock_*` key, so a
 /// local development server works offline.
+///
+/// [`with_notification_url`](Self::with_notification_url) (since
+/// 13.0.0-alpha.6) names where the provider notifies this checkout's payment,
+/// instead of the provider's configured default.
 #[non_exhaustive]
 #[derive(Clone, PartialEq, Eq)]
 pub struct OneOffCheckoutRequest {
@@ -49,6 +55,7 @@ pub struct OneOffCheckoutRequest {
     success_url: String,
     cancel_url: String,
     customer_email: Option<String>,
+    notification_url: Option<String>,
 }
 
 impl OneOffCheckoutRequest {
@@ -106,6 +113,7 @@ impl OneOffCheckoutRequest {
             success_url,
             cancel_url,
             customer_email: None,
+            notification_url: None,
         })
     }
 
@@ -143,6 +151,26 @@ impl OneOffCheckoutRequest {
             return Err(invalid("customer email must be one address"));
         }
         self.customer_email = Some(email);
+        Ok(self)
+    }
+
+    /// Sends this checkout's payment notification to `url` instead of the
+    /// provider's default (InfinitePay's `webhook_url` of the link). Since
+    /// 13.0.0-alpha.6.
+    ///
+    /// The URL must be HTTPS, without credentials or a fragment, and at most
+    /// 2048 bytes; a query is kept, so it can carry a per-checkout token.
+    /// Other values fail with [`CapitalError::ConfigurationError`]. A provider
+    /// that cannot notify a per-checkout URL refuses the request with
+    /// [`CapitalError::UnsupportedOperation`] instead of ignoring it (Stripe
+    /// notifies the endpoints configured on the account), and an adapter that
+    /// honours it reports so in [`OneOffCheckout::notification_url`]. The URL
+    /// only routes the notification: the payment still counts only after
+    /// [`BillingProvider::confirm_one_off_payment`](crate::BillingProvider::confirm_one_off_payment).
+    pub fn with_notification_url(mut self, url: impl Into<String>) -> Result<Self, CapitalError> {
+        let url = url.into();
+        crate::providers::validate_notification_url(&url)?;
+        self.notification_url = Some(url);
         Ok(self)
     }
 
@@ -193,8 +221,16 @@ impl OneOffCheckoutRequest {
         self.customer_email.as_deref()
     }
 
+    /// The per-checkout notification URL, when set. Since 13.0.0-alpha.6.
+    pub fn notification_url(&self) -> Option<&str> {
+        self.notification_url.as_deref()
+    }
+
     /// Versioned SHA-256 digest of every field, to compare a persisted
     /// attempt with the request that confirms it.
+    ///
+    /// A request without a notification URL keeps the 13.0.0-alpha.5 digest;
+    /// the URL, when set, is hashed after the other fields.
     pub fn request_digest(&self) -> [u8; 32] {
         let mut hash = Sha256::new();
         hash.update(b"rullst.one-off-checkout.v1\0");
@@ -207,7 +243,10 @@ impl OneOffCheckoutRequest {
             self.success_url.as_str(),
             self.cancel_url.as_str(),
             self.customer_email.as_deref().unwrap_or(""),
-        ] {
+        ]
+        .into_iter()
+        .chain(self.notification_url.as_deref())
+        {
             hash.update((field.len() as u64).to_be_bytes());
             hash.update(field.as_bytes());
         }
@@ -246,6 +285,10 @@ pub struct OneOffCheckout {
     mock: bool,
     reference: String,
     request_digest: [u8; 32],
+    /// The request's notification URL, kept until the adapter reports that
+    /// it sent it.
+    requested_notification_url: Option<String>,
+    notification_url_sent: bool,
 }
 
 impl OneOffCheckout {
@@ -266,6 +309,8 @@ impl OneOffCheckout {
             mock: false,
             reference: request.reference.clone(),
             request_digest: request.request_digest(),
+            requested_notification_url: request.notification_url.clone(),
+            notification_url_sent: false,
         })
     }
 
@@ -293,7 +338,22 @@ impl OneOffCheckout {
             mock: true,
             reference: request.reference.clone(),
             request_digest: request.request_digest(),
+            requested_notification_url: request.notification_url.clone(),
+            notification_url_sent: false,
         }
+    }
+
+    /// Records that the provider was given the request's
+    /// [`notification_url`](OneOffCheckoutRequest::notification_url) for this
+    /// checkout. Since 13.0.0-alpha.6.
+    ///
+    /// A custom adapter calls it only after sending that URL to the provider;
+    /// one that cannot must refuse such a request with
+    /// [`CapitalError::UnsupportedOperation`]. The conformance kit fails an
+    /// adapter that does neither.
+    pub fn with_notification_url_sent(mut self) -> Self {
+        self.notification_url_sent = true;
+        self
     }
 
     /// The adapter that created the checkout.
@@ -319,6 +379,15 @@ impl OneOffCheckout {
     /// The request's order reference.
     pub fn reference(&self) -> &str {
         &self.reference
+    }
+
+    /// The per-checkout notification URL the provider was given, or `None`
+    /// when the request had none and the provider uses its default. Since
+    /// 13.0.0-alpha.6.
+    pub fn notification_url(&self) -> Option<&str> {
+        self.requested_notification_url
+            .as_deref()
+            .filter(|_| self.notification_url_sent)
     }
 
     /// [`OneOffCheckoutRequest::request_digest`] of the request.

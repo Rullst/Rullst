@@ -36,6 +36,8 @@ enum Defect {
     AcceptsUnderpayment,
     IgnoresCurrency,
     IgnoresReference,
+    IgnoresNotificationUrl,
+    RefusesNotificationUrlWrongly,
     AcceptsEmptyIds,
     Panics,
 }
@@ -116,8 +118,18 @@ impl BillingProvider for Probe {
             Some(Defect::MislabelsCheckout) => {
                 OneOffCheckout::from_verified_provider_response("other", request, url)
             }
-            _ => OneOffCheckout::from_verified_provider_response("probe", request, url)?
-                .with_session_id("cs_probe"),
+            Some(Defect::IgnoresNotificationUrl) => {
+                OneOffCheckout::from_verified_provider_response("probe", request, url)?
+                    .with_session_id("cs_probe")
+            }
+            Some(Defect::RefusesNotificationUrlWrongly) if request.notification_url().is_some() => {
+                Err(CapitalError::ConfigurationError("no URL".into()))
+            }
+            _ => Ok(
+                OneOffCheckout::from_verified_provider_response("probe", request, url)?
+                    .with_session_id("cs_probe")?
+                    .with_notification_url_sent(),
+            ),
         }
     }
     async fn confirm_one_off_payment(
@@ -293,6 +305,8 @@ async fn each_defect_fails_its_case() {
         (AcceptsUnderpayment, "confirmation.amount_currency_bound"),
         (IgnoresCurrency, "confirmation.amount_currency_bound"),
         (IgnoresReference, "confirmation.amount_currency_bound"),
+        (IgnoresNotificationUrl, "checkout.notification_url"),
+        (RefusesNotificationUrlWrongly, "checkout.notification_url"),
         (AcceptsEmptyIds, "errors.typed_no_panic"),
     ] {
         let ledger = ledger();
@@ -318,7 +332,7 @@ async fn a_panic_fails_its_case_and_the_run_continues() {
     .await;
     let forged = report.case("notification.forged_refused").unwrap();
     assert_eq!(forged.detail(), "panicked: probe webhook panic");
-    assert_eq!(report.cases().len(), 9);
+    assert_eq!(report.cases().len(), 10);
     assert_eq!(
         outcome(&report, "errors.typed_no_panic"),
         CaseOutcome::Failed
@@ -385,7 +399,7 @@ async fn the_report_lists_every_case() {
     .await;
     let text = report.to_string();
     assert!(
-        text.starts_with("conformance of probe: 8 passed, 1 failed, 0 skipped\n"),
+        text.starts_with("conformance of probe: 9 passed, 1 failed, 0 skipped\n"),
         "{text}"
     );
     assert!(text.contains("\n  ok mode.declared\n"), "{text}");
@@ -410,7 +424,7 @@ async fn the_report_lists_every_case() {
         .await
         .to_string();
     assert!(
-        skipped.starts_with("conformance of probe: 6 passed, 0 failed, 3 skipped\n"),
+        skipped.starts_with("conformance of probe: 7 passed, 0 failed, 3 skipped\n"),
         "{skipped}"
     );
     assert!(

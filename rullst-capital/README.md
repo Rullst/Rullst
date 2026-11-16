@@ -143,6 +143,17 @@ provider confirms the payment **and** reports the request's total and
 currency. The methods default to `UnsupportedOperation`, so existing custom
 providers keep compiling.
 
+Since 13.0.0-alpha.6 a confirmed payment also says how the buyer paid, when
+the provider reports it: `payment_method()` (`PaymentMethod::Pix`,
+`CreditCard`, or `Other` with the provider's own name) and `installments()`.
+Both are `None` for providers that do not report them (Stripe), and neither
+changes `is_paid()`. `OneOffCheckoutRequest::with_notification_url(url)` sends
+that checkout's notification to its own HTTPS URL instead of the provider's
+default, for example one carrying a per-checkout token that the handler checks
+before confirming; confirmation at the source stays the proof of payment. A
+provider that cannot notify a per-checkout URL refuses the request with
+`UnsupportedOperation` instead of ignoring it.
+
 ```rust,no_run
 use rullst_capital::{BillingProvider, OneOffCheckoutRequest, PaymentNotification, StripeProvider};
 
@@ -213,8 +224,9 @@ async fn link() -> Result<(), rullst_capital::CapitalError> {
 - `create_one_off_checkout` sends `POST https://api.checkout.infinitepay.io/links`
   with the handle, one item priced in cents (BRL only, at least R$ 1.00 per
   unit), the reference as `order_nsu`, the success URL as `redirect_url` and
-  the configured `webhook_url`; with an `inchk_` key (`X-Api-Key`) the link
-  accepts a single payment. InfinitePay has no cancel URL. Only an HTTPS
+  the request's `with_notification_url` or else the configured `webhook_url`
+  as `webhook_url` (InfinitePay fixes it per link); with an `inchk_` key
+  (`X-Api-Key`) the link accepts a single payment. InfinitePay has no cancel URL. Only an HTTPS
   `infinitepay.io` link is accepted from the response.
 - `parse_payment_notification` reads `order_nsu`, `transaction_nsu` and
   `invoice_slug` from the webhook body and ignores its amounts and status.
@@ -224,7 +236,11 @@ async fn link() -> Result<(), rullst_capital::CapitalError> {
 - `confirm_one_off_payment` sends `POST /payment_check` (`handle`, `order_nsu`,
   `transaction_nsu`, `slug`). It is paid only when InfinitePay answers
   `success` and `paid` with an `amount` equal to the request's total;
-  `paid_amount` may be higher when the buyer pays instalment fees. Anyone can
+  `paid_amount` may be higher when the buyer pays instalment fees. A paid
+  answer's `capture_method` becomes `payment_method()` (`pix` is
+  `PaymentMethod::Pix`, `credit_card` is `PaymentMethod::CreditCard`) and
+  its `installments` becomes `installments()`; a value the adapter cannot
+  read is left out. Anyone can
   create a link for a public handle, so a paid link of another amount that
   reuses the reference fails with `InvalidCharge`.
 - InfinitePay has no subscriptions, customer portal, metered usage, coupons,

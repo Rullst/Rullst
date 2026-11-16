@@ -26,7 +26,10 @@ mod stripe_webhook;
 
 pub use global::{init_provider, provider, try_init_provider};
 pub(crate) use http::{execute as execute_http, read_json as read_http_json};
-pub(crate) use http::{require_https_redirects, validate_checkout_url, validate_redirect_url};
+pub(crate) use http::{
+    require_https_redirects, validate_checkout_url, validate_notification_url,
+    validate_redirect_url,
+};
 pub(crate) use http::{send as send_http, send_json as send_http_json};
 pub use infinitepay::InfinitePayProvider;
 pub use request::ProviderRequest;

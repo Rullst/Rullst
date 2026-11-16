@@ -8,9 +8,9 @@ use std::sync::{Arc, Mutex};
 type Seen = Arc<Mutex<Vec<(String, Option<String>, Value)>>>;
 
 #[derive(Clone, Default)]
-struct Fixture {
-    seen: Seen,
-    check: Arc<Mutex<Value>>,
+pub(super) struct Fixture {
+    pub(super) seen: Seen,
+    pub(super) check: Arc<Mutex<Value>>,
     link: Arc<Mutex<Value>>,
 }
 
@@ -22,7 +22,7 @@ async fn record(fixture: &Fixture, path: &str, headers: &HeaderMap, body: Value)
     fixture.seen.lock().unwrap().push((path.into(), key, body));
 }
 
-async fn api() -> (String, Fixture) {
+pub(super) async fn api() -> (String, Fixture) {
     let fixture = Fixture::default();
     *fixture.link.lock().unwrap() =
         json!({ "url": "https://checkout.infinitepay.io/loja?lenc=abc" });
@@ -65,7 +65,7 @@ async fn api() -> (String, Fixture) {
     (format!("http://{address}"), fixture)
 }
 
-fn request() -> OneOffCheckoutRequest {
+pub(super) fn request() -> OneOffCheckoutRequest {
     OneOffCheckoutRequest::new(
         "tv0123456789abcdef",
         15_000,
@@ -79,7 +79,7 @@ fn request() -> OneOffCheckoutRequest {
     .unwrap()
 }
 
-fn notification() -> PaymentNotification {
+pub(super) fn notification() -> PaymentNotification {
     PaymentNotification::new("tv0123456789abcdef")
         .unwrap()
         .with_transaction_id("nsu-1")
@@ -88,7 +88,7 @@ fn notification() -> PaymentNotification {
         .unwrap()
 }
 
-fn live(base: &str) -> InfinitePayProvider {
+pub(super) fn live(base: &str) -> InfinitePayProvider {
     InfinitePayProvider::checkout("$loja")
         .unwrap()
         .with_webhook_url("https://app.example/webhooks/infinitepay")
@@ -115,6 +115,12 @@ async fn links_and_payment_checks_follow_the_checkout_api() {
     assert_eq!(payment.amount_minor(), 15_000);
     assert_eq!(payment.paid_amount_minor(), 15_600);
     assert_eq!(payment.transaction_id(), Some("nsu-1"));
+    assert_eq!(
+        payment.payment_method(),
+        Some(&crate::PaymentMethod::CreditCard)
+    );
+    assert_eq!(payment.installments(), Some(2));
+    assert_eq!(checkout.notification_url(), None);
 
     let seen = fixture.seen.lock().unwrap().clone();
     let (path, key, link) = &seen[0];

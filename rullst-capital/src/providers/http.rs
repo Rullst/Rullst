@@ -199,6 +199,25 @@ pub(crate) fn validate_redirect_url(value: &str) -> Result<(), CapitalError> {
     }
 }
 
+/// Validates a per-checkout notification URL: bounded, HTTPS, without
+/// credentials or a fragment. A query is allowed.
+pub(crate) fn validate_notification_url(value: &str) -> Result<(), CapitalError> {
+    let valid = parse_bounded_url(value).is_some_and(|url| {
+        // An `https` URL always has a host.
+        url.scheme() == "https"
+            && url.username().is_empty()
+            && url.password().is_none()
+            && url.fragment().is_none()
+    });
+    if valid {
+        Ok(())
+    } else {
+        Err(CapitalError::ConfigurationError(
+            "a notification URL must be a credential-free HTTPS URL of at most 2048 bytes without a fragment".into(),
+        ))
+    }
+}
+
 /// Rejects loopback `http://` redirects before a live provider request.
 pub(crate) fn require_https_redirects(urls: &[&str]) -> Result<(), CapitalError> {
     if urls

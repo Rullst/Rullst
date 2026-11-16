@@ -4,7 +4,8 @@
 use super::InfinitePayProvider;
 use crate::providers::ProviderRequest;
 use crate::{
-    CapitalError, OneOffCheckout, OneOffCheckoutRequest, OneOffPayment, PaymentNotification,
+    CapitalError, OneOffCheckout, OneOffCheckoutRequest, OneOffPayment, PaymentMethod,
+    PaymentNotification,
 };
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -32,6 +33,16 @@ pub(super) fn validate_request(request: &OneOffCheckoutRequest) -> Result<(), Ca
     Ok(())
 }
 
+/// The link's `webhook_url`: the request's own URL, else the provider's.
+pub(super) fn webhook_url<'a>(
+    provider: &'a InfinitePayProvider,
+    request: &'a OneOffCheckoutRequest,
+) -> Option<&'a str> {
+    request
+        .notification_url()
+        .or(provider.webhook_url.as_deref())
+}
+
 pub(super) fn link_body(
     provider: &InfinitePayProvider,
     handle: &str,
@@ -47,7 +58,7 @@ pub(super) fn link_body(
         "order_nsu": request.reference(),
         "redirect_url": request.success_url(),
     });
-    if let Some(url) = &provider.webhook_url {
+    if let Some(url) = webhook_url(provider, request) {
         body["webhook_url"] = json!(url);
     }
     if let Some(email) = request.customer_email() {
@@ -65,7 +76,7 @@ pub(super) async fn create_link(
     handle: &str,
     request: &OneOffCheckoutRequest,
 ) -> Result<OneOffCheckout, CapitalError> {
-    let webhook = provider.webhook_url.as_deref();
+    let webhook = webhook_url(provider, request);
     crate::providers::require_https_redirects(
         &[request.success_url()]
             .into_iter()
@@ -85,7 +96,10 @@ pub(super) async fn create_link(
     .await?;
     let url = checkout_url(&response)
         .ok_or_else(|| crate::ProviderFailure::contract_mismatch(PROVIDER, CREATE))?;
-    OneOffCheckout::from_verified_provider_response(PROVIDER, request, url)
+    Ok(
+        OneOffCheckout::from_verified_provider_response(PROVIDER, request, url)?
+            .with_notification_url_sent(),
+    )
 }
 
 /// The documentation does not name the field holding the link; accounts
@@ -115,6 +129,11 @@ pub(super) struct PaymentCheck {
     amount: u64,
     #[serde(default)]
     paid_amount: u64,
+    /// `pix` or `credit_card`; read leniently, it never decides payment.
+    #[serde(default)]
+    capture_method: Value,
+    #[serde(default)]
+    installments: Value,
 }
 
 pub(super) async fn payment_check(
@@ -157,11 +176,35 @@ pub(super) fn confirmation(
     check: &PaymentCheck,
 ) -> Result<OneOffPayment, CapitalError> {
     let payment = if check.success && check.paid {
-        OneOffPayment::paid(PROVIDER, request, check.amount, check.paid_amount, "brl")?
+        described(
+            OneOffPayment::paid(PROVIDER, request, check.amount, check.paid_amount, "brl")?,
+            check,
+        )
     } else {
         OneOffPayment::unpaid(PROVIDER, request)
     };
     payment.with_transaction_id(transaction_nsu)
+}
+
+/// Adds `capture_method` and `installments` to a paid payment. A value the
+/// adapter cannot read is left out: a confirmed payment never fails over it.
+fn described(mut payment: OneOffPayment, check: &PaymentCheck) -> OneOffPayment {
+    if let Some(method) = check
+        .capture_method
+        .as_str()
+        .and_then(|name| PaymentMethod::from_provider_name(name).ok())
+    {
+        payment = payment.with_payment_method(method);
+    }
+    match check
+        .installments
+        .as_u64()
+        .and_then(|count| u8::try_from(count).ok())
+    {
+        // Zero instalments is refused, which leaves the payment as it was.
+        Some(count) => payment.clone().with_installments(count).unwrap_or(payment),
+        None => payment,
+    }
 }
 
 /// Reads only the identifiers of an unsigned webhook body; its amounts and

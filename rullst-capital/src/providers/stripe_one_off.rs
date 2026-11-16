@@ -31,6 +31,11 @@ async fn create_at(
     api_key: &str,
     request: &OneOffCheckoutRequest,
 ) -> Result<OneOffCheckout, CapitalError> {
+    if request.notification_url().is_some() {
+        return Err(CapitalError::UnsupportedOperation(
+            "Stripe notifies the webhook endpoints configured on the account; it has no per-checkout notification URL".into(),
+        ));
+    }
     if is_mock(api_key) {
         return Ok(OneOffCheckout::mock("stripe", request));
     }

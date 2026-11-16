@@ -14,6 +14,7 @@ const RETURN_URL: &str = "https://conformance.invalid/return";
 const CANCEL_URL: &str = "https://conformance.invalid/cancel";
 const PROBE_REFERENCE: &str = "rullst-conformance-probe";
 const OTHER_REFERENCE: &str = "rullst-conformance-other";
+const NOTIFICATION_URL: &str = "https://conformance.invalid/notify/rullst-conformance?token=kit";
 /// 3 MiB, larger than the 2 MiB the webhook middleware accepts.
 const OVERSIZED_BODY: usize = 3_145_728;
 
@@ -86,6 +87,46 @@ where
                 false,
                 format!("create_one_off_checkout accepts the harness request: {error}"),
             ),
+        }
+        check
+    }
+
+    pub(super) async fn notification_url(&self) -> Check {
+        let mut check = Check::default();
+        let notified = match self
+            .harness
+            .one_off_request()
+            .map_or_else(probe_request, Ok)
+        {
+            Ok(request) => request.with_notification_url(NOTIFICATION_URL),
+            Err(error) => Err(error),
+        };
+        let notified = match notified {
+            Ok(notified) => notified,
+            Err(error) => {
+                check.expect(
+                    false,
+                    format!("the request takes a notification URL: {error}"),
+                );
+                return check;
+            }
+        };
+        match self.provider.create_one_off_checkout(&notified).await {
+            Err(CapitalError::UnsupportedOperation(_)) => {}
+            Err(error) => check.expect(
+                false,
+                format!("a per-checkout notification URL is sent or refused with UnsupportedOperation, not {error}"),
+            ),
+            Ok(checkout) => {
+                check.expect(
+                    checkout.notification_url() == Some(NOTIFICATION_URL),
+                    "a checkout for a request with a notification URL reports it sent (OneOffCheckout::with_notification_url_sent); a provider that cannot notify a per-checkout URL refuses the request with UnsupportedOperation",
+                );
+                check.expect(
+                    checkout.request_digest() == notified.request_digest(),
+                    "the checkout is bound to the request with its notification URL",
+                );
+            }
         }
         check
     }

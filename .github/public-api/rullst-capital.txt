@@ -302,11 +302,13 @@ pub type rullst_capital::MeteredBillingProvider::UsageRequest: core::marker::Sen
 impl rullst_capital::OneOffCheckout
 pub fn rullst_capital::OneOffCheckout::from_verified_provider_response(provider: &'static str, request: &rullst_capital::OneOffCheckoutRequest, url: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_capital::CapitalError>
 pub fn rullst_capital::OneOffCheckout::is_mock(&self) -> bool
+pub fn rullst_capital::OneOffCheckout::notification_url(&self) -> core::option::Option<&str>
 pub fn rullst_capital::OneOffCheckout::provider(&self) -> &'static str
 pub fn rullst_capital::OneOffCheckout::reference(&self) -> &str
 pub fn rullst_capital::OneOffCheckout::request_digest(&self) -> [u8; 32]
 pub fn rullst_capital::OneOffCheckout::session_id(&self) -> core::option::Option<&str>
 pub fn rullst_capital::OneOffCheckout::url(&self) -> &str
+pub fn rullst_capital::OneOffCheckout::with_notification_url_sent(self) -> Self
 pub fn rullst_capital::OneOffCheckout::with_session_id(self, session_id: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_capital::CapitalError>
 impl core::clone::Clone for rullst_capital::OneOffCheckout
 impl core::cmp::Eq for rullst_capital::OneOffCheckout
@@ -324,6 +326,7 @@ pub fn rullst_capital::OneOffCheckoutRequest::currency(&self) -> &str
 pub fn rullst_capital::OneOffCheckoutRequest::customer_email(&self) -> core::option::Option<&str>
 pub fn rullst_capital::OneOffCheckoutRequest::description(&self) -> &str
 pub fn rullst_capital::OneOffCheckoutRequest::new(reference: impl core::convert::Into<alloc::string::String>, unit_amount_minor: u64, currency: impl core::convert::Into<alloc::string::String>, description: impl core::convert::Into<alloc::string::String>, success_url: impl core::convert::Into<alloc::string::String>, cancel_url: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_capital::CapitalError>
+pub fn rullst_capital::OneOffCheckoutRequest::notification_url(&self) -> core::option::Option<&str>
 pub fn rullst_capital::OneOffCheckoutRequest::quantity(&self) -> u32
 pub fn rullst_capital::OneOffCheckoutRequest::reference(&self) -> &str
 pub fn rullst_capital::OneOffCheckoutRequest::request_digest(&self) -> [u8; 32]
@@ -331,6 +334,7 @@ pub fn rullst_capital::OneOffCheckoutRequest::success_url(&self) -> &str
 pub fn rullst_capital::OneOffCheckoutRequest::total_amount_minor(&self) -> u64
 pub fn rullst_capital::OneOffCheckoutRequest::unit_amount_minor(&self) -> u64
 pub fn rullst_capital::OneOffCheckoutRequest::with_customer_email(self, email: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_capital::CapitalError>
+pub fn rullst_capital::OneOffCheckoutRequest::with_notification_url(self, url: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_capital::CapitalError>
 pub fn rullst_capital::OneOffCheckoutRequest::with_quantity(self, quantity: u32) -> core::result::Result<Self, rullst_capital::CapitalError>
 impl core::clone::Clone for rullst_capital::OneOffCheckoutRequest
 impl core::cmp::Eq for rullst_capital::OneOffCheckoutRequest
@@ -345,15 +349,19 @@ impl core::panic::unwind_safe::UnwindSafe for rullst_capital::OneOffCheckoutRequ
 impl rullst_capital::OneOffPayment
 pub fn rullst_capital::OneOffPayment::amount_minor(&self) -> u64
 pub fn rullst_capital::OneOffPayment::currency(&self) -> &str
+pub fn rullst_capital::OneOffPayment::installments(&self) -> core::option::Option<u8>
 pub fn rullst_capital::OneOffPayment::is_paid(&self) -> bool
 pub fn rullst_capital::OneOffPayment::paid(provider: &'static str, request: &rullst_capital::OneOffCheckoutRequest, charged_amount_minor: u64, paid_amount_minor: u64, currency: &str) -> core::result::Result<Self, rullst_capital::CapitalError>
 pub fn rullst_capital::OneOffPayment::paid_amount_minor(&self) -> u64
+pub fn rullst_capital::OneOffPayment::payment_method(&self) -> core::option::Option<&rullst_capital::PaymentMethod>
 pub fn rullst_capital::OneOffPayment::provider(&self) -> &'static str
 pub fn rullst_capital::OneOffPayment::reference(&self) -> &str
 pub fn rullst_capital::OneOffPayment::request_digest(&self) -> [u8; 32]
 pub fn rullst_capital::OneOffPayment::state(&self) -> rullst_capital::OneOffPaymentState
 pub fn rullst_capital::OneOffPayment::transaction_id(&self) -> core::option::Option<&str>
 pub fn rullst_capital::OneOffPayment::unpaid(provider: &'static str, request: &rullst_capital::OneOffCheckoutRequest) -> Self
+pub fn rullst_capital::OneOffPayment::with_installments(self, installments: u8) -> core::result::Result<Self, rullst_capital::CapitalError>
+pub fn rullst_capital::OneOffPayment::with_payment_method(self, method: rullst_capital::PaymentMethod) -> Self
 pub fn rullst_capital::OneOffPayment::with_transaction_id(self, id: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, rullst_capital::CapitalError>
 impl core::clone::Clone for rullst_capital::OneOffPayment
 impl core::cmp::Eq for rullst_capital::OneOffPayment
@@ -391,6 +399,37 @@ impl core::marker::Sync for rullst_capital::PaidInvoice
 impl core::marker::Unpin for rullst_capital::PaidInvoice
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::PaidInvoice
 impl core::panic::unwind_safe::UnwindSafe for rullst_capital::PaidInvoice
+#[non_exhaustive] pub enum rullst_capital::PaymentMethod
+pub rullst_capital::PaymentMethod::Pix
+pub rullst_capital::PaymentMethod::CreditCard
+pub rullst_capital::PaymentMethod::Other(rullst_capital::PaymentMethodName)
+impl rullst_capital::PaymentMethod
+pub fn rullst_capital::PaymentMethod::as_str(&self) -> &str
+pub fn rullst_capital::PaymentMethod::from_provider_name(name: &str) -> core::result::Result<Self, rullst_capital::CapitalError>
+impl core::clone::Clone for rullst_capital::PaymentMethod
+impl core::cmp::Eq for rullst_capital::PaymentMethod
+impl core::cmp::PartialEq for rullst_capital::PaymentMethod
+impl core::fmt::Debug for rullst_capital::PaymentMethod
+impl core::fmt::Display for rullst_capital::PaymentMethod
+impl core::hash::Hash for rullst_capital::PaymentMethod
+impl core::marker::Send for rullst_capital::PaymentMethod
+impl core::marker::Sync for rullst_capital::PaymentMethod
+impl core::marker::Unpin for rullst_capital::PaymentMethod
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::PaymentMethod
+impl core::panic::unwind_safe::UnwindSafe for rullst_capital::PaymentMethod
+pub struct rullst_capital::PaymentMethodName(_)
+impl rullst_capital::PaymentMethodName
+pub fn rullst_capital::PaymentMethodName::as_str(&self) -> &str
+impl core::clone::Clone for rullst_capital::PaymentMethodName
+impl core::cmp::Eq for rullst_capital::PaymentMethodName
+impl core::cmp::PartialEq for rullst_capital::PaymentMethodName
+impl core::fmt::Debug for rullst_capital::PaymentMethodName
+impl core::hash::Hash for rullst_capital::PaymentMethodName
+impl core::marker::Send for rullst_capital::PaymentMethodName
+impl core::marker::Sync for rullst_capital::PaymentMethodName
+impl core::marker::Unpin for rullst_capital::PaymentMethodName
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::PaymentMethodName
+impl core::panic::unwind_safe::UnwindSafe for rullst_capital::PaymentMethodName
 #[non_exhaustive] pub struct rullst_capital::PaymentNotification
 impl rullst_capital::PaymentNotification
 pub fn rullst_capital::PaymentNotification::invoice_id(&self) -> core::option::Option<&str>
@@ -1482,6 +1521,8 @@ pub use rullst_capital::one_off::OneOffCheckout = struct rullst_capital::OneOffC
 pub use rullst_capital::one_off::OneOffCheckoutRequest = struct rullst_capital::OneOffCheckoutRequest
 pub use rullst_capital::one_off::OneOffPayment = struct rullst_capital::OneOffPayment
 pub use rullst_capital::one_off::OneOffPaymentState = enum rullst_capital::OneOffPaymentState
+pub use rullst_capital::one_off::PaymentMethod = enum rullst_capital::PaymentMethod
+pub use rullst_capital::one_off::PaymentMethodName = struct rullst_capital::PaymentMethodName
 pub use rullst_capital::one_off::PaymentNotification = struct rullst_capital::PaymentNotification
 pub mod rullst_capital::one_time_checkout
 pub use rullst_capital::one_time_checkout::StripeOneTimePaymentState = enum rullst_capital::StripeOneTimePaymentState
