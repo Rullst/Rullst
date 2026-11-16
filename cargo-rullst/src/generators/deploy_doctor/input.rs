@@ -185,7 +185,7 @@ fn env_file(contents: &str) -> Result<BTreeMap<String, String>, InputError> {
 fn has_unknown_config(value: &toml::Table) -> bool {
     let known: &[(&str, &[&str])] = &[
         ("app", &["env", "port"]),
-        ("database", &["url"]),
+        ("database", &["url", "sqlite_journal_mode"]),
         ("storage", &["root"]),
         (
             "security",
@@ -220,6 +220,15 @@ fn has_unknown_config(value: &toml::Table) -> bool {
     })
 }
 
+/// Core (with its ORM) refuses to start on a `[database]
+/// sqlite_journal_mode` other than `"wal"` or `"delete"`.
+fn journal_mode_is_valid(document: &toml::Table) -> bool {
+    document
+        .get("database")
+        .and_then(|database| database.get("sqlite_journal_mode"))
+        .is_none_or(|mode| matches!(mode.as_str(), Some("wal" | "delete")))
+}
+
 pub(super) fn load(matches: &ArgMatches) -> Result<Snapshot, InputError> {
     let explicit = matches.get_one::<String>("config");
     let content = read(
@@ -228,6 +237,9 @@ pub(super) fn load(matches: &ArgMatches) -> Result<Snapshot, InputError> {
     )?;
     let document: toml::Table =
         toml::from_str(content.as_deref().unwrap_or("")).map_err(|_| InputError::Toml)?;
+    if !journal_mode_is_valid(&document) {
+        return Err(InputError::Toml);
+    }
     let config =
         RullstConfig::from_toml(content.as_deref().unwrap_or("")).map_err(|_| InputError::Toml)?;
     let env_path = matches.get_one::<String>("env-file");
@@ -296,6 +308,28 @@ mod tests {
         let mistyped: toml::Table = toml::from_str("[security]\nhsts_preloaded = true\n")
             .unwrap_or_else(|_| panic!("valid TOML"));
         assert!(has_unknown_config(&mistyped));
+    }
+
+    #[test]
+    fn the_sqlite_journal_mode_is_a_known_setting_with_two_values() {
+        let table = |text: &str| -> toml::Table {
+            toml::from_str(text).unwrap_or_else(|_| panic!("valid TOML"))
+        };
+        for mode in ["wal", "delete"] {
+            let document = table(&format!(
+                "[database]\nurl = 'sqlite://db.sqlite'\nsqlite_journal_mode = '{mode}'\n"
+            ));
+            assert!(!has_unknown_config(&document), "{mode}");
+            assert!(journal_mode_is_valid(&document), "{mode}");
+        }
+        assert!(journal_mode_is_valid(&table(
+            "[database]\nurl = 'sqlite://db.sqlite'\n"
+        )));
+        assert!(journal_mode_is_valid(&table("[app]\nport = 3000\n")));
+        for value in ["'WAL'", "'truncate'", "''", "1"] {
+            let document = table(&format!("[database]\nsqlite_journal_mode = {value}\n"));
+            assert!(!journal_mode_is_valid(&document), "{value}");
+        }
     }
 
     #[test]

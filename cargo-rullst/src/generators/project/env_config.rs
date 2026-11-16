@@ -34,6 +34,13 @@ pub(crate) fn cargo_config(linker: Option<&str>) -> String {
     config_toml
 }
 
+/// The `[database]` lines of a new SQLite project's `Rullst.toml`: the
+/// write-ahead log, which lets reads run without locking the database file
+/// for every statement, and how to turn it off where it cannot work.
+pub(crate) const SQLITE_WAL_SETTING: &str = r#"# WAL: reads stop locking the file per query; set "delete" for a database on NFS/SMB storage.
+sqlite_journal_mode = "wal"
+"#;
+
 pub fn generate_env_and_configs(
     path: &Path,
     db_needed: bool,
@@ -63,15 +70,15 @@ pub fn generate_env_and_configs(
 
     let mut rullst_toml = String::new();
     if db_needed && db_provider != "Turso" {
-        let db_url = match db_provider {
-            "Postgres" => "postgres://user:password@localhost:5432/db",
-            "MySQL" | "MariaDB" => "mysql://user:password@localhost:3306/db",
-            _ => "sqlite://db.sqlite",
+        let (db_url, journal) = match db_provider {
+            "Postgres" => ("postgres://user:password@localhost:5432/db", ""),
+            "MySQL" | "MariaDB" => ("mysql://user:password@localhost:3306/db", ""),
+            _ => ("sqlite://db.sqlite", SQLITE_WAL_SETTING),
         };
         rullst_toml.push_str(&format!(
             r#"[database]
 url = "{db_url}"
-"#
+{journal}"#
         ));
     }
     if blueprint_selection == SAAS_BLUEPRINT_ID {

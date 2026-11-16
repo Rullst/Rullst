@@ -3,7 +3,7 @@
 use crate::artisan::studio_server::start_studio_server;
 use crate::server::ServerError;
 use crate::server::builder::read_optional_environment_variable;
-use crate::server::database_url::resolve_project_database_url;
+use crate::server::database_url::resolve_project_database;
 use rullst_orm::Seeder;
 use rullst_orm::schema::{Migration, run_artisan_with_args};
 use std::env;
@@ -154,14 +154,14 @@ pub(crate) async fn run_artisan_command(
 
     // Like `Server`, reuse a pool the application initialized explicitly.
     let pool_ready = rullst_orm::Orm::try_pool().is_ok();
-    let database_url = if pool_ready {
-        None
+    let (database_url, config) = if pool_ready {
+        (None, rullst_orm::OrmConfig::default())
     } else {
-        resolve_project_database_url(project_dir, explicit_db_url, environment).await?
+        resolve_project_database(project_dir, explicit_db_url, environment).await?
     };
 
     match database_url {
-        Some(url) => rullst_orm::Orm::init(&url)
+        Some(url) => rullst_orm::Orm::init_with_config(&url, config)
             .await
             .map_err(|error| ArtisanError::Database(error.to_string()))?,
         None if pool_ready => {}

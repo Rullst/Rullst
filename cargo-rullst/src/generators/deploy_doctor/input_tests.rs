@@ -153,6 +153,25 @@ fn explicit_inputs_select_the_environment_and_target() {
     assert!(!load_with("production").staging);
 }
 
+/// Core with its ORM refuses another journal mode at start-up, so the
+/// snapshot fails as invalid TOML would.
+#[test]
+fn an_unknown_sqlite_journal_mode_is_rejected_like_invalid_toml() {
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path().canonicalize().unwrap();
+    let config = root.join("Rullst.toml");
+    let load_config = || {
+        let matches = super::super::command()
+            .try_get_matches_from(["deploy:doctor", "--config", config.to_str().unwrap()])
+            .unwrap();
+        load(&matches).map(|snapshot| snapshot.unknown_config)
+    };
+    fs::write(&config, "[database]\nsqlite_journal_mode = 'wal'\n").unwrap();
+    assert!(!ok(load_config()));
+    fs::write(&config, "[database]\nsqlite_journal_mode = 'wall'\n").unwrap();
+    assert_eq!(file_error(load_config()), "input_toml");
+}
+
 /// Loads `--process-env` in a child test process with its own environment.
 #[test]
 fn process_environment_child_fixture() {

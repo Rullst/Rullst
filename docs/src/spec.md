@@ -2133,7 +2133,9 @@ the same server-authoritative controls.
   `check_and_run_artisan`, `db:*`, `studio`) share one resolver: a
   `Server::with_db` value when `Server::run` intercepts the command, the process
   `DATABASE_URL`, `DATABASE_URL` in `./.env` (never overriding the process
-  environment), then `[database].url` parsed as TOML. There is no implicit
+  environment), then `[database].url` parsed as TOML. Both initialize the
+  pool with the `[database] sqlite_journal_mode` of `Rullst.toml` (see ORM
+  Driver Selection). There is no implicit
   SQLite fallback: a `db:*` command without a configured database, and any
   configuration or `Orm::init` failure, exits with status 1. Parse errors
   report positions only, never file content. `Server::run` has no migration or
@@ -3617,6 +3619,23 @@ while portability and semantic review remain the model author's responsibility.
   while one of its connections is open, so its pool keeps one connection and
   never closes it for idleness or age (the Turso offline in-memory fallback
   does the same).
+* **SQLite journal mode** (since 13.0.0-alpha.6): `Orm::init` sets none, so a
+  SQLite file keeps the mode recorded in it (the rollback journal, `DELETE`,
+  for a new file). `Orm::init_with_config(url, OrmConfig::default()
+  .with_sqlite_journal_mode(SqliteJournalMode::Wal))` sets the write-ahead log
+  (or `Delete`) on the first connection and checks the mode SQLite reports;
+  SQLite records WAL in the file, so later connections and other processes use
+  it. A read-only connection, a VFS or filesystem without shared memory, or a
+  mode SQLite does not take fails initialization with `Error::DatabaseError`.
+  PostgreSQL/MySQL URLs and in-memory SQLite ignore the setting. `synchronous`
+  stays SQLite's `FULL` and the busy timeout SQLx's 5 seconds, so durability
+  is unchanged. `Server` and Artisan read it from `[database]
+  sqlite_journal_mode = "wal" | "delete"` in `Rullst.toml` (an unknown value
+  is a configuration parse error); projects generated since 13.0.0-alpha.6 set
+  `"wal"`. WAL keeps `<file>-wal` and `<file>-shm` next to the database, needs
+  every process on one host and a local filesystem (not NFS, SMB or Azure
+  Files), and makes the database file alone an incomplete backup: back up with
+  `sqlite3 <file> ".backup <copy>"` or `VACUUM INTO`.
 * A SQLite file DSN without a `mode` parameter, or with `mode=rwc`, has its
   missing database file (and directory) created before connecting, at the
   percent-decoded path SQLx opens (`John%20Doe` is `John Doe`). An explicit

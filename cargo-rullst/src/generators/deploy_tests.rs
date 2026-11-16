@@ -30,6 +30,8 @@ fn compose_pins_caddy_hardens_both_containers_and_checks_health() {
     assert!(COMPOSE_YAML.contains("\"http://app:3000/health\"]"));
     assert!(COMPOSE_YAML.contains("env_file:\n      - .env.production\n"));
     assert!(COMPOSE_YAML.contains("- app_data:/app/data\n"));
+    // WAL keeps -wal and -shm files beside the database in the volume.
+    assert!(COMPOSE_YAML.contains("back up with sqlite3 \".backup\""));
     assert!(COMPOSE_YAML.contains("image: docker.io/library/caddy:2-alpine\n"));
     assert!(COMPOSE_YAML.contains("podman compose up -d --build"));
     assert!(!COMPOSE_YAML.contains("privileged: true"));

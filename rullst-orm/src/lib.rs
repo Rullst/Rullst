@@ -176,8 +176,8 @@ pub use pool::portable_subquery;
 #[doc(hidden)]
 pub use pool::raw_fragment;
 pub use pool::{
-    Orm, PaginationResult, RagContext, RullstModel, Seeder, is_lazy_loading_prevented,
-    prevent_lazy_loading, replace_placeholders,
+    Orm, OrmConfig, PaginationResult, RagContext, RullstModel, Seeder, SqliteJournalMode,
+    is_lazy_loading_prevented, prevent_lazy_loading, replace_placeholders,
 };
 pub use post_commit::{ModelCommittedEvent, ModelOperation, after_commit};
 pub use privacy::{ComplianceModel, PrivacyReport, SecretString};

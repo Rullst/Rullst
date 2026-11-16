@@ -444,6 +444,7 @@ pub async fn rullst_orm::Orm::begin_transaction() -> core::result::Result<rullst
 pub async fn rullst_orm::Orm::init(database_url: &str) -> core::result::Result<(), rullst_orm::Error>
 pub async fn rullst_orm::Orm::init_redis(redis_url: &str) -> core::result::Result<(), rullst_orm::Error>
 pub async fn rullst_orm::Orm::init_redis_with_namespace(redis_url: &str, cache_namespace: impl core::convert::Into<alloc::string::String>) -> core::result::Result<(), rullst_orm::Error>
+pub async fn rullst_orm::Orm::init_with_config(database_url: &str, config: rullst_orm::OrmConfig) -> core::result::Result<(), rullst_orm::Error>
 pub async fn rullst_orm::Orm::init_with_options(database_url: &str, max_connections: u32, acquire_timeout_secs: u64) -> core::result::Result<(), rullst_orm::Error>
 pub async fn rullst_orm::Orm::init_with_replicas(primary_url: &str, replica_urls: alloc::vec::Vec<&str>) -> core::result::Result<(), rullst_orm::Error>
 pub async fn rullst_orm::Orm::seed(seeders: alloc::vec::Vec<alloc::boxed::Box<dyn rullst_orm::Seeder>>) -> core::result::Result<(), rullst_orm::Error>
@@ -467,6 +468,20 @@ impl core::marker::Unpin for rullst_orm::Orm
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::Orm
 impl core::panic::unwind_safe::UnwindSafe for rullst_orm::Orm
 pub use rullst_orm::Orm = proc_derive rullst_orm_macros::Orm
+#[non_exhaustive] pub struct rullst_orm::OrmConfig
+impl rullst_orm::OrmConfig
+pub const fn rullst_orm::OrmConfig::sqlite_journal_mode(&self) -> core::option::Option<rullst_orm::SqliteJournalMode>
+pub const fn rullst_orm::OrmConfig::with_sqlite_journal_mode(self, mode: rullst_orm::SqliteJournalMode) -> Self
+impl core::clone::Clone for rullst_orm::OrmConfig
+impl core::cmp::Eq for rullst_orm::OrmConfig
+impl core::cmp::PartialEq for rullst_orm::OrmConfig
+impl core::default::Default for rullst_orm::OrmConfig
+impl core::fmt::Debug for rullst_orm::OrmConfig
+impl core::marker::Send for rullst_orm::OrmConfig
+impl core::marker::Sync for rullst_orm::OrmConfig
+impl core::marker::Unpin for rullst_orm::OrmConfig
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::OrmConfig
+impl core::panic::unwind_safe::UnwindSafe for rullst_orm::OrmConfig
 pub struct rullst_orm::Outbox;
 impl rullst_orm::Outbox
 pub async fn rullst_orm::Outbox::acknowledge(id: i64, claim_key: impl core::convert::Into<alloc::string::String>) -> core::result::Result<bool, rullst_orm::Error>
@@ -806,6 +821,23 @@ impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::SecretString
 impl core::panic::unwind_safe::UnwindSafe for rullst_orm::SecretString
 pub trait rullst_orm::Seeder: core::marker::Send + core::marker::Sync
 pub fn rullst_orm::Seeder::run<'life0, 'async_trait>(&'life0 self) -> core::pin::Pin<alloc::boxed::Box<dyn core::future::future::Future<Output = core::result::Result<(), rullst_orm::Error>> + core::marker::Send + 'async_trait>> where Self: 'async_trait, 'life0: 'async_trait
+#[non_exhaustive] pub enum rullst_orm::SqliteJournalMode
+pub rullst_orm::SqliteJournalMode::Delete
+pub rullst_orm::SqliteJournalMode::Wal
+impl rullst_orm::SqliteJournalMode
+pub const fn rullst_orm::SqliteJournalMode::as_str(self) -> &'static str
+impl core::clone::Clone for rullst_orm::SqliteJournalMode
+impl core::cmp::Eq for rullst_orm::SqliteJournalMode
+impl core::cmp::PartialEq for rullst_orm::SqliteJournalMode
+impl core::fmt::Debug for rullst_orm::SqliteJournalMode
+impl core::hash::Hash for rullst_orm::SqliteJournalMode
+impl core::marker::Copy for rullst_orm::SqliteJournalMode
+impl<'de> serde_core::de::Deserialize<'de> for rullst_orm::SqliteJournalMode
+impl core::marker::Send for rullst_orm::SqliteJournalMode
+impl core::marker::Sync for rullst_orm::SqliteJournalMode
+impl core::marker::Unpin for rullst_orm::SqliteJournalMode
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::SqliteJournalMode
+impl core::panic::unwind_safe::UnwindSafe for rullst_orm::SqliteJournalMode
 pub trait rullst_orm::SubqueryBuilder
 pub fn rullst_orm::SubqueryBuilder::bindings(&self) -> &alloc::vec::Vec<rullst_orm::RullstValue>
 pub fn rullst_orm::SubqueryBuilder::ordered_bindings(&self) -> alloc::vec::Vec<rullst_orm::RullstValue>
@@ -1241,10 +1273,12 @@ pub use rullst_orm::polyglot::export_document_snapshot = function rullst_orm::ex
 pub use rullst_orm::polyglot::restore_document_snapshot = function rullst_orm::restore_document_snapshot
 pub mod rullst_orm::pool
 pub use rullst_orm::pool::Orm = struct rullst_orm::Orm
+pub use rullst_orm::pool::OrmConfig = struct rullst_orm::OrmConfig
 pub use rullst_orm::pool::PaginationResult = struct rullst_orm::PaginationResult
 pub use rullst_orm::pool::RagContext = trait rullst_orm::RagContext
 pub use rullst_orm::pool::RullstModel = trait rullst_orm::RullstModel
 pub use rullst_orm::pool::Seeder = trait rullst_orm::Seeder
+pub use rullst_orm::pool::SqliteJournalMode = enum rullst_orm::SqliteJournalMode
 pub use rullst_orm::pool::prevent_lazy_loading = function rullst_orm::prevent_lazy_loading
 pub mod rullst_orm::post_commit
 pub use rullst_orm::post_commit::ModelCommittedEvent = struct rullst_orm::ModelCommittedEvent

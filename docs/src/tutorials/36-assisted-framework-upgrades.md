@@ -578,6 +578,7 @@ totals, which every new row or rule would change.
 | CLI generator output | (b) review | `V13-TS-CLIENT-REGENERATE` | Other generator changes affect new output only |
 | CLI generator robustness | (b) review | `V13-TS-CLIENT-REGENERATE`, `V13-GITIGNORE-DATABASES` | Other generator changes affect new output only |
 | ORM database-managed columns | (b) review | `V13-ORM-SKIP-MANAGED-COLUMNS` | Reports each `#[orm(skip)]` field that the model's `FromRow` reads (no `#[sqlx(skip)]` or `#[sqlx(default)]`, no `custom_from_row` or struct-level `#[sqlx(default)]`), such as the alpha.2 starters' `is_admin`/`session_epoch` |
+| SQLite WAL journal | (c) none | — | Opt-in `Rullst.toml` key; new SQLite projects set it, existing ones keep their journal |
 | ORM dirty tracking | (c) none | — | The `RowSnapshot` field was opt-in until 13.0.0-alpha.6; a model with neither it nor `full_row_save` is reported under ORM explicit save mode |
 | ORM partial updates | (b) review | `V13-ORM-PARTIAL-UPDATE` |  |
 | ORM derive checks | (a) must-change | `V13-ORM-BELONGS-TO-KEY`, `V13-ORM-IGNORED-RELATION-KEY`, `V13-ORM-SEARCHABLE-TABLE` |  |

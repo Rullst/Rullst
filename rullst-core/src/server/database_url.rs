@@ -44,9 +44,32 @@ pub async fn resolve_project_database_url(
     explicit: Option<&str>,
     environment: impl Fn(&str) -> Result<Option<String>, ServerError>,
 ) -> Result<Option<String>, ServerError> {
+    Ok(resolve_project_database(project_dir, explicit, environment)
+        .await?
+        .0)
+}
+
+/// [`resolve_project_database_url`] and the pool settings of the project's
+/// `Rullst.toml`, which Artisan applies as `Server` does.
+#[cfg(feature = "orm")]
+pub(crate) async fn resolve_project_database(
+    project_dir: &Path,
+    explicit: Option<&str>,
+    environment: impl Fn(&str) -> Result<Option<String>, ServerError>,
+) -> Result<(Option<String>, rullst_orm::OrmConfig), ServerError> {
     let dotenv = load_dotenv_file(&project_dir.join(".env")).await?;
     let config = load_config_file(&project_dir.join("Rullst.toml")).await?;
-    resolve_database_url(explicit, environment, &dotenv, &config)
+    let url = resolve_database_url(explicit, environment, &dotenv, &config)?;
+    Ok((url, orm_config(&config.database)))
+}
+
+/// The pool settings that `[database]` in `Rullst.toml` chooses.
+#[cfg(feature = "orm")]
+pub(crate) fn orm_config(database: &crate::config::DatabaseConfig) -> rullst_orm::OrmConfig {
+    match database.sqlite_journal_mode {
+        Some(mode) => rullst_orm::OrmConfig::default().with_sqlite_journal_mode(mode),
+        None => rullst_orm::OrmConfig::default(),
+    }
 }
 
 /// Reads an optional `.env` file without changing the process environment.

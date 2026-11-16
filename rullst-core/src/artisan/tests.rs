@@ -12,7 +12,7 @@ use crate::artisan::studio_views::{
     studio_home_handler, studio_security_handler, studio_telemetry_handler, studio_traces_handler,
 };
 use crate::server::ServerError;
-use crate::server::database_url::resolve_project_database_url;
+use crate::server::database_url::{resolve_project_database, resolve_project_database_url};
 
 #[test]
 fn test_translate_artisan_args_none() {
@@ -213,6 +213,32 @@ async fn artisan_database_url_uses_server_precedence() {
             .as_deref(),
         Some("sqlite://from-toml.db")
     );
+}
+
+/// Artisan applies the `[database]` pool settings of `Rullst.toml` as
+/// `Server` does, so `db:migrate` on a new database already sets its journal.
+#[tokio::test]
+async fn artisan_reads_the_sqlite_journal_mode_of_rullst_toml() {
+    use rullst_orm::{OrmConfig, SqliteJournalMode};
+    let wal = project(
+        None,
+        Some("[database]\nurl = \"sqlite://app.db\"\nsqlite_journal_mode = \"wal\"\n"),
+    );
+    let (url, config) = resolve_project_database(wal.path(), None, environment(None))
+        .await
+        .unwrap();
+    assert_eq!(url.as_deref(), Some("sqlite://app.db"));
+    assert_eq!(
+        config,
+        OrmConfig::default().with_sqlite_journal_mode(SqliteJournalMode::Wal)
+    );
+
+    // Without the key nothing is set: existing projects keep their journal.
+    let plain = project(None, Some("[database]\nurl = \"sqlite://app.db\"\n"));
+    let (_, config) = resolve_project_database(plain.path(), None, environment(None))
+        .await
+        .unwrap();
+    assert_eq!(config, OrmConfig::default());
 }
 
 #[tokio::test]

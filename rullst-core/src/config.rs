@@ -173,13 +173,25 @@ pub struct AppConfig {
 pub struct DatabaseConfig {
     /// Database connection URL (e.g., `sqlite://rullst.db`).
     pub url: Option<String>,
+    /// Journal mode that `Server` and Artisan set on a SQLite database file
+    /// (`sqlite_journal_mode = "wal"` or `"delete"`); a PostgreSQL or MySQL
+    /// URL and an in-memory database ignore it. Without the key the database
+    /// keeps the mode recorded in its file. Projects generated since
+    /// 13.0.0-alpha.6 set `"wal"`; keep `"delete"` for a database on a
+    /// network filesystem (NFS, SMB, Azure Files). See
+    /// [`rullst_orm::SqliteJournalMode`]. Added in 13.0.0-alpha.6.
+    #[cfg(feature = "orm")]
+    #[serde(default)]
+    pub sqlite_journal_mode: Option<rullst_orm::SqliteJournalMode>,
 }
 
 impl fmt::Debug for DatabaseConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("DatabaseConfig")
-            .field("url", &self.url.as_deref().map(redacted_url))
-            .finish()
+        let mut debug = f.debug_struct("DatabaseConfig");
+        debug.field("url", &self.url.as_deref().map(redacted_url));
+        #[cfg(feature = "orm")]
+        debug.field("sqlite_journal_mode", &self.sqlite_journal_mode);
+        debug.finish()
     }
 }
 

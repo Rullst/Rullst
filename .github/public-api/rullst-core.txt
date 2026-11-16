@@ -132,6 +132,7 @@ impl core::marker::Sync for rullst_core::Container
 impl core::marker::Unpin for rullst_core::Container
 #[non_exhaustive] pub struct rullst_core::DatabaseConfig
 pub rullst_core::DatabaseConfig::url: core::option::Option<alloc::string::String>
+pub rullst_core::DatabaseConfig::sqlite_journal_mode: core::option::Option<rullst_orm::pool::config::SqliteJournalMode>
 impl core::clone::Clone for rullst_core::DatabaseConfig
 impl core::default::Default for rullst_core::DatabaseConfig
 impl core::fmt::Debug for rullst_core::DatabaseConfig

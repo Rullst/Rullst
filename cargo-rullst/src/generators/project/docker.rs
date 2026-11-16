@@ -121,7 +121,9 @@ pub(crate) fn write_docker_files(
         ""
     };
     let sqlite_environment = if matches!(db_provider, Some("Sqlite")) {
-        "ENV DATABASE_URL=sqlite:///app/data/rullst.db?mode=rwc\n"
+        "# The data volume holds rullst.db and, in WAL mode (Rullst.toml), its -wal and\n\
+         # -shm files: back it up with sqlite3 \".backup\", never by copying rullst.db.\n\
+         ENV DATABASE_URL=sqlite:///app/data/rullst.db?mode=rwc\n"
     } else {
         ""
     };
@@ -262,6 +264,7 @@ mod tests {
         assert!(dockerfile.contains("ENV HOST=0.0.0.0"));
         assert!(dockerfile.contains("USER 10001:10001"));
         assert!(dockerfile.contains("sqlite:///app/data/rullst.db?mode=rwc"));
+        assert!(dockerfile.contains("back it up with sqlite3 \".backup\", never by copying"));
         assert!(dockerfile.contains("Rullst.toml /app/Rullst.toml"));
         assert!(dockerfile.contains("db:migrate"));
         assert!(!dockerfile.contains("APP_KEY="));

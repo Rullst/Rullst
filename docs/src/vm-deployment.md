@@ -289,9 +289,14 @@ Docker. Podman has `--log-opt max-size=...` for the same purpose.
 
 A backup that has never been restored is only a hope. Do both steps once.
 
-**SQLite.** Use SQLite's own backup command so the copy is consistent while
-the app is running (the runtime image has no shell, so run it from a helper
-container that mounts the same volume, or from the host path of the volume):
+**SQLite.** Projects generated since 13.0.0-alpha.6 run SQLite in WAL mode
+(`sqlite_journal_mode = "wal"` in `Rullst.toml`), so the volume holds
+`rullst.db-wal` and `rullst.db-shm` next to `rullst.db` while the app runs,
+and recent transactions can be only in `rullst.db-wal`. Copying `rullst.db`
+alone is therefore not a backup. Use SQLite's own backup command, which reads
+through the WAL and gives a consistent copy while the app is running (the
+runtime image has no shell, so run it from a helper container that mounts the
+same volume, or from the host path of the volume):
 
 ```bash
 docker run --rm -v <volume-name>:/data -v "$PWD":/backup docker.io/library/alpine:3 \
@@ -301,7 +306,35 @@ docker run --rm -v <volume-name>:/data -v "$PWD":/backup docker.io/library/alpin
 The volume is named after the directory that holds `compose.yaml`: for
 `~/app` it is `app_app_data` (`docker volume ls` lists them; with Podman use
 `podman run` and `podman volume ls`). `rullst.db` is the file the generated
-`Dockerfile` names in `DATABASE_URL`; use yours if you changed it.
+`Dockerfile` names in `DATABASE_URL`; use yours if you changed it. `sqlite3
+/data/rullst.db "VACUUM INTO '/backup/rullst.db'"` is an alternative that also
+compacts the copy. A volume snapshot is a backup only if it captures the three
+files at the same instant.
+
+To **restore** a backup you made, stop the app, restore into the database
+with the same helper, and start the app again:
+
+```bash
+docker compose stop app
+docker run --rm -v <volume-name>:/data -v "$PWD":/backup docker.io/library/alpine:3 \
+  sh -c 'apk add --no-cache sqlite >/dev/null && sqlite3 /data/rullst.db ".restore /backup/rullst-2026-01-31.db"'
+docker compose start app
+```
+
+`.restore` replaces the content through SQLite, so a leftover `-wal` file
+cannot be applied to the restored database (which could happen if you copied
+a backup over `rullst.db` and kept the old `-wal`). The helper runs as root,
+and SQLite gives files it creates to the database's owner (UID 10001). Restore
+only backups you made yourself (see the
+[SQLite advisory exception](security-advisory-exceptions.md)).
+
+**Network storage.** WAL needs every process that opens the database on one
+host and the volume on that host's disk, because they share an index in
+memory. Keep the database on a local volume as `compose.yaml` does. If you
+move it to a network filesystem (NFS, SMB/CIFS, Azure Files and similar
+mounts), set `sqlite_journal_mode = "delete"` under `[database]` in
+`Rullst.toml` first: the rollback journal works there (as well as SQLite does
+on such filesystems), and the app switches the database back when it starts.
 
 **PostgreSQL or MySQL.** Use `pg_dump` or `mysqldump` (or your managed
 database's snapshots) on a schedule.
@@ -379,7 +412,10 @@ with rootless Podman (`podman compose` with podman-compose):
   the same after a restart (`docker compose restart`; Podman recreates the
   containers with `down` and `up -d`), with the SQLite file still in its
   volume;
-- the SQLite backup command of section 8, and no panic in the logs.
+- that the database is in WAL mode with its `-wal` file in the volume, owned
+  by UID 10001, the SQLite backup command of section 8 while the app runs,
+  the restore of section 8 with the app stopped (the account still signs in
+  afterwards), and no panic in the logs.
 
 It does not cover a real domain, DNS or Let's Encrypt, a provider account or
 firewall, an Arm machine, a reboot, path 4B, or PostgreSQL and MySQL.

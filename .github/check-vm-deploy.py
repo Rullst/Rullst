@@ -9,7 +9,8 @@ Caddy (its local CA), the HTTP redirect, the unpublished app port, the
 hardening, compressed pages whose CSRF token is masked per response,
 pre-compressed static files, Server-Sent Events streamed through the
 Caddyfile's `encode` (Blank), a migrated SQLite database (SaaS: an account) in
-its volume across `compose restart`, and the logs. The generated deployment files are never
+its volume across `compose restart`, in WAL mode, backed up while the app runs
+and restored while it is stopped (section 8), and the logs. The generated deployment files are never
 modified: the unpublished release crates enter the build context as packaged
 archives through `[patch.crates-io]`, as in .github/test-packaged-distribution.sh,
 and the Blank project gets one route the starters lack, an event stream.
@@ -42,6 +43,8 @@ STARTERS = ("blank", "saas")
 CADDY_ADDRESS = "172.31.250.10"
 # Already pulled by compose.yaml; used read-only to list the data volume.
 CADDY_IMAGE = "docker.io/library/caddy:2-alpine"
+# The helper image of the guide's SQLite backup and restore (section 8).
+ALPINE_IMAGE = "docker.io/library/alpine:3"
 NET_BIND_SERVICE = 1 << 10
 GENERATED = ("Dockerfile", ".dockerignore", "compose.yaml", "Caddyfile")
 CLI_PACKAGES = ("cargo-rullst",)
@@ -372,19 +375,68 @@ def check_database(engine: Engine, project: Path, app: dict, binary: str, comman
     return volume
 
 
-def check_backup(engine: Engine, volume: str, work: Path, account: bool) -> None:
-    """The guide's SQLite backup command (section 8), then the copy is opened."""
+def sqlite_helper(engine: Engine, volume: str, backup: Path, commands: str) -> list[str]:
+    """Runs `commands` in the guide's helper container (section 8): Alpine with
+    the sqlite3 shell, the data volume at /data and `backup` at /backup. Its
+    output is followed by `ls -ln /data`."""
+    script = f"apk add --no-cache sqlite >/dev/null && {commands} && ls -ln /data"
+    return engine.output("run", "--rm", "-v", f"{volume}:/data", "-v", f"{backup}:/backup",
+                         ALPINE_IMAGE, "sh", "-c", script, timeout=300).splitlines()
+
+
+def owned_by_the_app(listing: list[str]) -> dict[str, str]:
+    """The owner of each `rullst.db*` file in an `ls -ln` listing, which must be
+    the app's user although the helper runs as root."""
+    owners = {fields[-1]: fields[2] for fields in (line.split() for line in listing)
+              if len(fields) > 2 and fields[0].startswith("-") and fields[-1].startswith("rullst.db")}
+    log(f"database files and owners: {owners}")
+    expect(owners.get("rullst.db") == "10001" and set(owners.values()) == {"10001"},
+           "rullst.db and its -wal/-shm files are owned by 10001")
+    return owners
+
+
+def check_backup(engine: Engine, volume: str, work: Path, account: bool) -> Path:
+    """The live database is in WAL mode (the generated Rullst.toml), with its
+    -wal file in the volume; the guide's backup command (section 8) copies it
+    while the app runs, including what is still only in the -wal file (SaaS:
+    the session row of the sign-in just made), and the copy is opened."""
     backup = work / f"{engine.project}-backup"
     backup.mkdir()
-    script = ('apk add --no-cache sqlite >/dev/null && sqlite3 /data/rullst.db '
-              '".backup /backup/rullst-$(date +%F).db"')
-    engine("run", "--rm", "-v", f"{volume}:/data", "-v", f"{backup}:/backup",
-           "docker.io/library/alpine:3", "sh", "-c", script, timeout=300)
+    output = sqlite_helper(engine, volume, backup, 'sqlite3 /data/rullst.db "PRAGMA journal_mode" '
+                           '&& sqlite3 /data/rullst.db ".backup /backup/rullst-$(date +%F).db"')
+    expect(output[:1] == ["wal"], f"the app's database is in WAL mode ({output[:1]})")
+    expect("rullst.db-wal" in owned_by_the_app(output[1:]), "the -wal file is next to rullst.db")
     copies = list(backup.glob("rullst-*.db"))
     expect(len(copies) == 1, "the backup command wrote one database copy")
-    with sqlite3.connect(f"file:{copies[0]}?mode=ro", uri=True) as database:
+    # immutable: the copy may record WAL mode; it is read without a -wal file.
+    with sqlite3.connect(f"file:{copies[0]}?mode=ro&immutable=1", uri=True) as database:
         users = database.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        sessions = (database.execute("SELECT COUNT(*) FROM rullst_auth_sessions").fetchone()[0]
+                    if account else 0)
     expect(users == (1 if account else 0), f"the backup holds the users table ({users} rows)")
+    expect(sessions == (2 if account else 0),
+           f"the backup holds both sign-ins' sessions, the latest from the -wal file ({sessions})")
+    return copies[0]
+
+
+def check_restore(engine: Engine, vm: Path, volume: str, copy: Path) -> None:
+    """The guide's restore (section 8): the app stopped, `.restore` from the
+    copy with the helper, the app started again."""
+    if engine.name == "docker":
+        engine.compose(vm, "stop", "app", timeout=300)
+    else:
+        # podman-compose's service commands are unreliable on rootless runners
+        # (see `restart`); stop the container itself.
+        for container in engine.containers("app"):
+            engine("stop", container, timeout=300)
+    output = sqlite_helper(engine, volume, copy.parent,
+                           f'sqlite3 /data/rullst.db ".restore /backup/{copy.name}"')
+    owned_by_the_app(output)
+    if engine.name == "docker":
+        engine.compose(vm, "start", "app", timeout=300)
+    else:
+        for container in engine.containers("app"):
+            engine("start", container, timeout=300)
 
 
 def check_logs(engine: Engine) -> None:
@@ -451,7 +503,12 @@ def deploy(engine: Engine, starter: str, vm: Path, work: Path) -> None:
         check_https(ca)
         volume = check_database(engine, vm, engine.inspect(app_id), binary, "db:status")
         check_application(starter, ca, password, registered=True)
-        check_backup(engine, volume, work, account=starter == "saas")
+        copy = check_backup(engine, volume, work, account=starter == "saas")
+    with step(f"{starter}: restore the backup with the app stopped"):
+        check_restore(engine, vm, volume, copy)
+        wait_until_healthy(engine, first_start=False)
+        check_https(ca)
+        check_application(starter, ca, password, registered=True)
         check_logs(engine)
 
 

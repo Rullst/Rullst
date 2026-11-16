@@ -262,3 +262,37 @@ fn only_sqlite_projects_get_the_local_database_file() {
         );
     }
 }
+
+/// New SQLite projects choose the write-ahead log in `Rullst.toml`, with the
+/// reason and the way back on the line above; server databases get no key.
+#[test]
+fn sqlite_projects_choose_wal_in_rullst_toml() {
+    for (provider, journal) in [("Sqlite", Some("wal")), ("Postgres", None), ("MySQL", None)] {
+        let root = tempfile::tempdir().expect("temporary project");
+        generate_env_and_configs(
+            root.path(),
+            true,
+            provider,
+            &[],
+            BLANK_BLUEPRINT_ID,
+            "0123456789abcdef0123456789abcdef",
+        )
+        .expect("environment scaffold");
+        let text = fs::read_to_string(root.path().join("Rullst.toml")).expect("Rullst.toml");
+        let config: toml::Table = toml::from_str(&text).expect("valid TOML");
+        assert_eq!(
+            config["database"]
+                .get("sqlite_journal_mode")
+                .and_then(toml::Value::as_str),
+            journal,
+            "{provider}"
+        );
+        assert_eq!(
+            text.contains(SQLITE_WAL_SETTING),
+            journal.is_some(),
+            "{provider}"
+        );
+    }
+    assert!(SQLITE_WAL_SETTING.starts_with("# WAL: "));
+    assert!(SQLITE_WAL_SETTING.contains("set \"delete\" for a database on NFS/SMB storage"));
+}
