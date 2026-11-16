@@ -101,7 +101,12 @@ profile) and write a `*_create_rullst_auth_sessions_table` migration, which
 creates the table on `db:migrate` and drops it on `db:rollback`.
 `src/middlewares/auth_middleware.rs` connects to it over `Orm::pool()` on
 first use, registers every sign-in (`start_session`) and inserts the
-signed-in account's `AuthenticatedSession` next to its id. Sign-out
+signed-in account's `AuthenticatedSession` next to its id and, since
+13.0.0-alpha.6, the `User` it loaded (`Extension<User>`), so a handler such
+as the dashboard renders it without a second query. Each request behind the
+middleware runs two primary-key queries (the session row and the account),
+plus the hourly last-seen update; nothing is cached, so a revoked session
+fails on its next request. Sign-out
 deletes the session, `/sessions` lists the account's devices with a "Sign out"
 button each and "Sign out of all other devices", a password change deletes the
 account's sessions and gives the asking browser a new one, a password reset

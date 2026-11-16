@@ -124,10 +124,28 @@ pub(crate) fn log_request(
     (log_health_probes, recording): (bool, Recording),
 ) {
     if should_log(path, status, log_health_probes) && recording.records(status) {
-        let elapsed_ms = elapsed.as_secs_f64() * 1000.0;
+        let elapsed = Milliseconds::of(elapsed);
         super::access_log_writer::write_line(format!(
-            "[HTTP] {method} {shown_path} -> {status} ({elapsed_ms:.2} ms)"
+            "[HTTP] {method} {shown_path} -> {status} ({elapsed} ms)"
         ));
+    }
+}
+
+/// A duration in milliseconds with two decimals, rounded half up, as an
+/// access-log line shows it (`1500.25`). Formatted from integers: a float
+/// with a precision costs several times as much, on every request.
+pub(super) struct Milliseconds(u64);
+
+impl Milliseconds {
+    pub(super) fn of(elapsed: std::time::Duration) -> Self {
+        let micros = u64::try_from(elapsed.as_micros()).unwrap_or(u64::MAX);
+        Self(micros.saturating_add(5) / 10)
+    }
+}
+
+impl std::fmt::Display for Milliseconds {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "{}.{:02}", self.0 / 100, self.0 % 100)
     }
 }
 

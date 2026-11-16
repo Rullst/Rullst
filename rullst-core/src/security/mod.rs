@@ -10,6 +10,7 @@ mod baseline;
 mod csrf;
 mod csrf_mask;
 mod csrf_multipart;
+mod csrf_random;
 mod headers;
 mod machine;
 mod media_type;
@@ -25,6 +26,9 @@ mod tests;
 
 #[cfg(test)]
 mod headers_tests;
+
+#[cfg(test)]
+mod csp_nonce_tests;
 
 #[cfg(test)]
 mod machine_client_tests;

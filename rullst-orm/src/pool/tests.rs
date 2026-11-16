@@ -122,6 +122,31 @@ fn in_memory_sqlite_pools_keep_their_database_connection() {
     );
 }
 
+#[test]
+fn only_sqlite_pools_skip_the_ping_before_acquire() {
+    for dsn in [
+        "sqlite:data/app.db",
+        "sqlite://db.sqlite?mode=rwc",
+        "SQLite::memory:",
+    ] {
+        let options = Orm::options_for(Orm::pool_options(), dsn);
+        assert!(!options.get_test_before_acquire(), "{dsn}");
+    }
+    for dsn in [
+        "postgres://db/app",
+        "postgresql://db/app",
+        "mysql://db/app",
+        "mariadb://db/app",
+    ] {
+        let options = Orm::options_for(Orm::pool_options(), dsn);
+        assert!(options.get_test_before_acquire(), "{dsn}");
+    }
+    // The in-memory database is still retained.
+    let memory = Orm::options_for(Orm::pool_options(), "sqlite::memory:");
+    assert_eq!(memory.get_min_connections(), 1);
+    assert_eq!(memory.get_idle_timeout(), None);
+}
+
 /// With the idle reaper active, an in-memory database would be dropped with
 /// its last connection; the retained pool keeps its schema and rows.
 #[cfg(not(any(

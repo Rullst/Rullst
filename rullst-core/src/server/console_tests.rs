@@ -107,6 +107,29 @@ fn access_log_recording_follows_rullst_access_log() {
     }
 }
 
+#[test]
+fn an_access_log_duration_has_two_decimals_rounded_half_up() {
+    let shown =
+        |micros: u64| Milliseconds::of(std::time::Duration::from_micros(micros)).to_string();
+    assert_eq!(shown(1_500_250), "1500.25");
+    assert_eq!(shown(1_000_050), "1000.05");
+    assert_eq!(shown(1_234_567), "1234.57");
+    assert_eq!(shown(999_995), "1000.00");
+    assert_eq!(
+        (shown(4), shown(5), shown(0)),
+        ("0.00".into(), "0.01".into(), "0.00".into())
+    );
+    // Nanoseconds below a microsecond do not count.
+    assert_eq!(
+        Milliseconds::of(std::time::Duration::from_nanos(14_999)).to_string(),
+        "0.01"
+    );
+    assert_eq!(
+        Milliseconds::of(std::time::Duration::MAX).to_string(),
+        "18446744073709551.61"
+    );
+}
+
 #[cfg(unix)]
 #[path = "console_unix_tests.rs"]
 mod unix;

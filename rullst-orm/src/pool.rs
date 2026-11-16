@@ -101,6 +101,29 @@ impl Orm {
             .after_release(savepoint::release_outside_transaction)
     }
 
+    /// `options` adjusted for the database `database_url` names: see
+    /// [`Self::retain_memory_database`] and [`Self::skip_sqlite_ping`].
+    fn options_for(options: RullstPoolOptions, database_url: &str) -> RullstPoolOptions {
+        Self::skip_sqlite_ping(
+            Self::retain_memory_database(options, database_url),
+            database_url,
+        )
+    }
+
+    /// A SQLite connection is a file the process opened itself, not a socket
+    /// that a server or a network can close, so its pool does not ping the
+    /// connection's worker thread before handing it out (SQLx's
+    /// `test_before_acquire`). That round trip cost about as much as the
+    /// query. A connection that failed still fails its next query, and SQLx
+    /// closes it then. PostgreSQL and MySQL pools keep the check.
+    fn skip_sqlite_ping(options: RullstPoolOptions, database_url: &str) -> RullstPoolOptions {
+        if dsn::driver_for_url(database_url) == "sqlite" {
+            options.test_before_acquire(false)
+        } else {
+            options
+        }
+    }
+
     /// An in-memory SQLite database exists only while one of its connections
     /// is open, so its pool keeps one connection and never reaps it for being
     /// idle or old. Other DSNs keep `options` unchanged.
@@ -151,7 +174,7 @@ impl Orm {
             .acquire_timeout(std::time::Duration::from_secs(10))
             .idle_timeout(Some(std::time::Duration::from_secs(300)))
             .max_lifetime(Some(std::time::Duration::from_secs(1800)));
-        let pool = Self::retain_memory_database(options, database_url)
+        let pool = Self::options_for(options, database_url)
             .connect(database_url)
             .await
             .map_err(|error| dsn::connect_error(database_url, error))?;
@@ -193,7 +216,7 @@ impl Orm {
             .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs))
             .idle_timeout(Some(std::time::Duration::from_secs(300)))
             .max_lifetime(Some(std::time::Duration::from_secs(1800)));
-        let pool = Self::retain_memory_database(options, database_url)
+        let pool = Self::options_for(options, database_url)
             .connect(database_url)
             .await
             .map_err(|error| dsn::connect_error(database_url, error))?;
@@ -254,7 +277,7 @@ impl Orm {
             .acquire_timeout(std::time::Duration::from_secs(10))
             .idle_timeout(Some(std::time::Duration::from_secs(300)))
             .max_lifetime(Some(std::time::Duration::from_secs(1800)));
-        let pool = Self::retain_memory_database(options, primary_url)
+        let pool = Self::options_for(options, primary_url)
             .connect(primary_url)
             .await
             .map_err(|error| dsn::connect_error(primary_url, error))?;
@@ -265,7 +288,7 @@ impl Orm {
         let replica_futures: Vec<_> = replica_urls
             .into_iter()
             .map(|replica_url| async move {
-                Self::retain_memory_database(Self::pool_options(), replica_url)
+                Self::options_for(Self::pool_options(), replica_url)
                     .connect(replica_url)
                     .await
                     .map_err(|error| dsn::connect_error(replica_url, error))

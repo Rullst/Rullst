@@ -28,7 +28,7 @@ pub struct CsrfToken(String);
 
 impl CsrfToken {
     /// Masks the cookie's `token` for one response, or `None` when the
-    /// operating system's random source fails.
+    /// operating system's random source fails to seed the mask generator.
     fn for_response(token: &str) -> Option<Self> {
         mask_csrf_token(token).map(Self)
     }
@@ -44,8 +44,8 @@ impl CsrfToken {
     }
 }
 
-/// The `500` answer when the operating system's random source cannot mask
-/// the token.
+/// The `500` answer when the operating system's random source cannot mint
+/// or mask the token.
 const MASK_UNAVAILABLE: &str = "CSRF token unavailable";
 
 /// Private request marker preventing nested framework/application composition
@@ -175,45 +175,60 @@ async fn handle_csrf_get(mut req: Request, next: impl super::Run) -> Response {
     if security.is_csrf_static_path(req.uri().path()) {
         return next.run(req).await;
     }
-    let same_site = security.csrf_same_site.clone();
+    let same_site = security.csrf_same_site.as_str();
 
-    let token = generate_csrf_token();
+    // The cookie's secret comes from the operating system's random source.
+    let Some(token) = super::csrf_random::mint_cookie_token() else {
+        return (StatusCode::INTERNAL_SERVER_ERROR, MASK_UNAVAILABLE).into_response();
+    };
     let Some(csrf) = CsrfToken::for_response(&token) else {
         return (StatusCode::INTERNAL_SERVER_ERROR, MASK_UNAVAILABLE).into_response();
     };
+    // `Secure` in staging and production, and over HTTPS everywhere.
+    let secure_cookie = req
+        .extensions()
+        .get::<crate::config::Environment>()
+        .copied()
+        .map(crate::config::Environment::requires_secure_defaults)
+        .unwrap_or_else(|| {
+            crate::config::Environment::detect(None)
+                .map(crate::config::Environment::requires_secure_defaults)
+                .unwrap_or(true)
+        })
+        || super::secure_cookies::request_is_https(req.uri(), req.extensions());
+    // Written before the handler runs, while the configuration is borrowed
+    // from the request.
+    let cookie = csrf_cookie(&token, same_site, secure_cookie);
     req.extensions_mut().insert(csrf);
-    {
-        // `Secure` in staging and production, and over HTTPS everywhere.
-        let secure_cookie = req
-            .extensions()
-            .get::<crate::config::Environment>()
-            .copied()
-            .map(crate::config::Environment::requires_secure_defaults)
-            .unwrap_or_else(|| {
-                crate::config::Environment::detect(None)
-                    .map(crate::config::Environment::requires_secure_defaults)
-                    .unwrap_or(true)
-            })
-            || super::secure_cookies::request_is_https(req.uri(), req.extensions());
 
-        let mut response = next.run(req).await;
-        // A response that shared caches may store would hand this visitor's
-        // token to others, so it never sets the cookie.
-        if crate::cache_control::allows_shared_caching(response.headers()) {
-            return response;
-        }
-
-        let secure_attr = if secure_cookie { "; Secure" } else { "" };
-        if let Ok(cookie_val) = header::HeaderValue::from_str(&format!(
-            "rullst_csrf={}; Path=/; SameSite={}{}",
-            token, same_site, secure_attr
-        )) {
-            response
-                .headers_mut()
-                .append(header::SET_COOKIE, cookie_val);
-        }
-        response
+    let mut response = next.run(req).await;
+    // A response that shared caches may store would hand this visitor's
+    // token to others, so it never sets the cookie.
+    if crate::cache_control::allows_shared_caching(response.headers()) {
+        return response;
     }
+    if let Ok(cookie) = header::HeaderValue::from_maybe_shared(axum::body::Bytes::from(cookie)) {
+        response.headers_mut().append(header::SET_COOKIE, cookie);
+    }
+    response
+}
+
+/// Room for a `Set-Cookie` value of [`csrf_cookie`] with a minted token.
+const CSRF_COOKIE_CAPACITY: usize = 80;
+
+/// The `Set-Cookie` value of a minted token:
+/// `rullst_csrf=<token>; Path=/; SameSite=<same_site>`, then `; Secure` when
+/// `secure`.
+fn csrf_cookie(token: &str, same_site: &str, secure: bool) -> String {
+    let mut cookie = String::with_capacity(CSRF_COOKIE_CAPACITY);
+    cookie.push_str("rullst_csrf=");
+    cookie.push_str(token);
+    cookie.push_str("; Path=/; SameSite=");
+    cookie.push_str(same_site);
+    if secure {
+        cookie.push_str("; Secure");
+    }
+    cookie
 }
 
 /// Returns the single valid `rullst_csrf` cookie across every `Cookie` header.

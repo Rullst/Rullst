@@ -154,7 +154,12 @@ or `application/xhtml+xml`, or that has none (a browser may sniff it); any
 other response (JSON, plain text, images, files) gets the same policy without
 a nonce, computed once: the configured `csp` when it has no `{NONCE}`,
 otherwise the default directives with `script-src 'self'` and
-`style-src 'self'`, which no inline script or style can satisfy. The Core baseline is a fallback: it fills in a
+`style-src 'self'`, which no inline script or style can satisfy. The nonce's
+value (128 bits from `rand`'s thread-local ChaCha12 generator, seeded from the
+operating system) is drawn on first use, when a handler or renderer reads it
+or the header layer renders a document's policy, so a JSON or file response
+whose handler never reads it costs no random draw; every request still gets
+its own value, shared by the page and its header. The Core baseline is a fallback: it fills in a
 security header only when the handler or an inner layer has not set it, so an
 **explicit value set by the application wins over the baseline**.
 `SecureHeadersLayer` marks its responses with
@@ -360,9 +365,9 @@ the same in every response.
 
 Since 13.0.0-alpha.6 the CSRF token is never the same twice in a page.
 `CsrfToken::as_str()` returns `mask || (token XOR mask)` in URL-safe base64,
-with a fresh random mask from the operating system for every request, so two
-responses embed different values (86 characters for the generated
-32-character token) that both unmask to the `rullst_csrf` cookie. The
+with a fresh random mask for every request, so two responses embed
+different values (86 characters for the generated 32-character token) that
+both unmask to the `rullst_csrf` cookie. The
 middleware unmasks a `_token` field or `X-CSRF-Token` header and compares it
 with the cookie in constant time; it still accepts the cookie value itself,
 for clients that read the cookie and send it in the header, and nothing
@@ -370,6 +375,24 @@ else. The cookie is unchanged. Code that reads the cookie to render a form
 (the `get_csrf_token` helper that `make:auth` generated before alpha.6)
 should pass the value through `rullst::security::mask_csrf_token`;
 `cargo rullst upgrade` reports it (`V13-CSRF-COOKIE-IN-PAGE`).
+
+The two random values have different jobs, so they come from different
+sources. The cookie token is the secret: the middleware mints each one from
+a generator seeded for that token alone from the operating system's random
+source. The mask is not a secret worth protecting on its own; it is sent in
+the page next to the masked token, so anyone who reads the page has both.
+Its only job is to make the bytes of every response different, so that a
+compressed length never reveals the token, and for that it must be
+unpredictable to an attacker who cannot read the page and must never repeat.
+A CSPRNG gives both: since 13.0.0-alpha.6 (after the first alpha.6 masking
+change, which called the operating system for every response) each thread
+draws masks from its own ChaCha12 generator, seeded from the operating
+system and reseeded after every 64 KiB of masks (about 2,000 responses),
+which saves a system call per response. An attacker who could predict that
+generator's output would already be reading the server's memory, which
+holds the cookie tokens themselves. If the operating system's source fails
+to mint a token or to seed or reseed a generator, the request answers
+`500 CSRF token unavailable`; a page never embeds the token unmasked.
 
 That is why the `Caddyfile` that `cargo rullst deploy` writes compresses
 pages (`encode zstd gzip`) since 13.0.0-alpha.6. Masking covers the CSRF

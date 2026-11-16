@@ -134,6 +134,14 @@ mod tests {
         assert!(controller.contains(
             "pub async fn logout_everywhere(Extension(user_id): Extension<i32>) -> Response {\n    match User::revoke_sessions(user_id).await {"
         ));
+        // The dashboard renders the account the middleware loaded.
+        assert!(
+            controller.contains("pub async fn dashboard(\n    Extension(user): Extension<User>,\n")
+        );
+        assert!(controller.contains(
+            "    auth::dashboard_page(&user.name, csrf_token, get_csp_nonce(&csp_nonce)).into_response()\n}"
+        ));
+        assert_eq!(controller.matches("User::find(").count(), 0);
         // Sign-out deletes the session, so a copied cookie stops working;
         // only a storage failure keeps the cookie.
         assert!(controller.contains(
@@ -169,6 +177,11 @@ mod tests {
                 "Ok(Some(user)) if user.accepts_session(&session.claims()) => Ok(Some((user, session))),"
             ));
             assert!(middleware.contains("            req.extensions_mut().insert(session);\n"));
+            // The account loaded for the session check, so a handler needs
+            // no second query.
+            assert!(middleware.contains(
+                "            req.extensions_mut().insert(user);\n            next.run(req).await"
+            ));
             assert!(!middleware.contains("decrypt_session"));
             assert!(!middleware.contains(".unwrap("));
             assert!(!middleware.contains(".expect("));

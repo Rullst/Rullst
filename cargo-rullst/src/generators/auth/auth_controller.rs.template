@@ -408,25 +408,18 @@ pub async fn logout_everywhere(Extension(user_id): Extension<i32>) -> Response {
     }
 }
 
+/// `GET /dashboard`, behind `auth_middleware`, which already loaded the
+/// signed-in account for this request (no second user query).
 pub async fn dashboard(
-    rullst::server::Extension(user_id): rullst::server::Extension<i32>,
+    Extension(user): Extension<User>,
     csrf: Option<Extension<rullst::security::CsrfToken>>,
     csp_nonce: Option<Extension<rullst::security::CspNonce>>,
 ) -> Response {
-    match User::find(user_id).await {
-        Ok(Some(user)) => {
-            let csrf_token = csrf
-                .as_ref()
-                .map(|Extension(token)| token.as_str())
-                .unwrap_or_default();
-            auth::dashboard_page(&user.name, csrf_token, get_csp_nonce(&csp_nonce)).into_response()
-        }
-        Ok(None) => Redirect::to("/login").into_response(),
-        Err(error) => {
-            eprintln!("Dashboard user query failed: {error}");
-            StatusCode::SERVICE_UNAVAILABLE.into_response()
-        }
-    }
+    let csrf_token = csrf
+        .as_ref()
+        .map(|Extension(token)| token.as_str())
+        .unwrap_or_default();
+    auth::dashboard_page(&user.name, csrf_token, get_csp_nonce(&csp_nonce)).into_response()
 }
 
 #[cfg(test)]

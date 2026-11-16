@@ -2,9 +2,10 @@
 //!
 //! `STACK=generated` (the default) serves the router as a generated
 //! application does: `Server::new(router()).run(port)`, so
-//! `RULLST_ENV=production` adds the production baseline and the access log;
-//! since 13.0.0-alpha.6 the generated router adds no CSRF or header layer of
-//! its own. `STACK=minimal` serves the
+//! `RULLST_ENV=production` adds the production baseline and the access log,
+//! and the check starts it in a directory with a `static/` folder, which
+//! `Server` mounts as in a generated project; since 13.0.0-alpha.6 the
+//! generated router adds no CSRF or header layer of its own. `STACK=minimal` serves the
 //! same routes without any layer through `axum::serve`, as Rullst/Benchmarks'
 //! `rullst-minimal` does. The check compares the two on one machine.
 
