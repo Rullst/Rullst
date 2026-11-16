@@ -12,7 +12,7 @@ inglês.
 Com o Rust instalado ([rustup.rs](https://rustup.rs/)):
 
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.5 --locked
+cargo install cargo-rullst --version =13.0.0-alpha.6 --locked
 cargo rullst new my_app    # choose the Blank, API or SaaS starter
 cd my_app
 cargo rullst dev           # rebuilds and restarts every time you save

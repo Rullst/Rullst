@@ -10,7 +10,7 @@ security boundaries. Cargo never installs a prerelease unless you name it, so
 with an exact version:
 
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.5 --locked
+cargo install cargo-rullst --version =13.0.0-alpha.6 --locked
 ```
 
 `cargo-rullst` is a Core package. Three commands carry their own **Maturity**
@@ -1838,7 +1838,7 @@ authentication, authorization, and TLS boundary.
 
 `cargo rullst studio --remote [--port PORT]` needs no project: it starts the
 installed standalone `rullst-studio` binary
-(`cargo install rullst-studio --version =13.0.0-alpha.5 --no-default-features --features remote --locked`;
+(`cargo install rullst-studio --version =13.0.0-alpha.6 --no-default-features --features remote --locked`;
 Cargo installs a prerelease only when its version is named),
 which serves Studio's remote-projects mode on `127.0.0.1:5556` (or `PORT`)
 and reads the [production monitoring endpoint](production-monitoring.md#watch-your-projects-from-studio)

@@ -15,8 +15,8 @@ It does not tell you whether a feature exists. For that, see the
 | **Experimental** | Applications that opt in and accept change | May change between 13.x releases and is not validated in every scenario. |
 
 > **Prerelease note.** Until stable `13.0.0` is published, every v13 package is
-> a prerelease and may change in any prerelease. `13.0.0-alpha.6` is planned
-> as the 13.0 feature freeze: `13.0.0-rc.1` then carries only fixes and
+> a prerelease and may change in any prerelease. `13.0.0-alpha.6` is the
+> 13.0 feature freeze: `13.0.0-rc.1` then carries only fixes and
 > documentation. The
 > promises below begin with `13.0.0`. [`SECURITY.md`](../../SECURITY.md) lists
 > which published versions receive security fixes.

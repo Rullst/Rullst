@@ -9,6 +9,1143 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+## [13.0.0-alpha.6] - 2026-11-17
+
+Sixth v13 prerelease, for evaluation, and the 13.0 feature and public API
+freeze: 13.0.0-rc.1 will carry only fixes and documentation. It carries every
+pending fix and improvement, so that 13.0.0 starts from current dependencies
+and without deprecated APIs:
+
+- **Public API freeze:** every publicly reachable enum, and every struct whose
+  fields are all public, is `#[non_exhaustive]` (39 enums and 103 structs,
+  and the remaining `rullst-media` types) or documented as exhaustive on
+  purpose, with constructors for the structs, so a 13.x release can add a
+  variant or a field. Every API still deprecated (in 12.0.0, and
+  `rullst_orm::schema_diff` from 13.0.0-alpha.5) is removed, and every
+  `#[derive(Orm)]` model declares what `save()` writes.
+- **Security in every environment:** `Server` applies the CSRF check and the
+  secure headers in development and test too; the CSRF token in pages is
+  masked per response, so the generated `Caddyfile` now compresses pages;
+  `/health` and `/ready` no longer report the framework version; the CSRF
+  middleware recognises static files by path; only HTML documents carry the
+  CSP nonce; and `/docs` (Scalar) works under the baseline with a policy of
+  its own. Server-side login sessions (`session_registry`) let sign-out end
+  every copy of a cookie, with a "Your devices" page in the SaaS starter and
+  `cargo rullst auth`.
+- **Faster and smaller:** the security baseline runs as one middleware and the
+  access log is written by a background thread (`RULLST_ACCESS_LOG` chooses
+  what it logs). In CI the generated Blank starter's `GET /json` reaches about
+  half the throughput of the same routes without layers, against about a
+  quarter with alpha.5. SQLite-only applications compile no TLS stack (the
+  Blank and API starters went from 316 to 257 `Cargo.lock` packages, with
+  release binaries about 27 % smaller), Studio and Nexus no longer depend on
+  `rullst-security`, Core drops `cron` and `ring`, passkeys are an opt-in
+  feature, SQLite pools no longer ping each connection and new SQLite
+  starters use the WAL journal.
+- **Current toolchain and dependencies:** Rust 1.100.0 (the MSRV stays 1.96.0,
+  which CI now really checks: see the MSRV erratum under Fixed),
+  ed25519-dalek 3, jsonwebtoken 12, jsonschema 0.61.2, and aws-lc-rs 1.19
+  with the aarch64 ES256 fix.
+- **Production monitor:** `rullst.monitor.v2` adds sampled request traces and
+  the security radar; the standalone Studio shows them, turns alerts into
+  desktop notifications, adds p99 and security-event rules and reaches
+  projects through a proxy.
+- **From the applications upgraded to alpha.5:** a one-off payment reports how
+  it was paid and can carry its own notification URL; Bunny's just-in-time
+  status 8 is `Processing::Playable`; `cargo rullst footprint` weighs a
+  published `https://` page and reports the start-up time and the compiled
+  dependency count; `cargo rullst upgrade` reports every location of a rule
+  and leaves test code out of the deployment rules; Turso follows a
+  same-origin `base_url`.
+- **Documentation and locales:** the first-hour pages in Brazilian
+  Portuguese, CLDR data for seven Latin American Spanish locales and the
+  symbols of ten more currencies, an application-owned Postmark mail driver
+  example, an alpha.5 to alpha.6 checklist in the migration guide, and a
+  website with one landing page and a comparison with Loco and Topcoat.
+
+The release still has twenty packages. Pin `=13.0.0-alpha.6`. Upgrade steps
+are in the
+[v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md#upgrading-an-alpha5-application-to-alpha6).
+
+**Breaking:** code that uses a removed API, a model without a save mode,
+passkeys without the `passkeys` feature (`auth-passkeys` in `rullst`), the
+probes' `version` field, or a `match` without a wildcard arm or a struct
+literal of a type that became `#[non_exhaustive]` no longer compiles. At run
+time, development and test refuse a state-changing request without the CSRF
+token with `403`; a file served outside `/static/`, `/.well-known/` and the
+listed paths sets the CSRF cookie; a response that is not an HTML document
+gets a policy without a nonce; code that compared the token embedded in a
+page with the cookie must submit it instead; a cron field that starts or ends
+with `,`, `-` or `/` fails with `SchedulerError::InvalidCron`; access-log
+lines reach stdout a few milliseconds after their response and are dropped,
+with a count, when stdout cannot keep up; and a video in Bunny's status 8 is
+`Playable`. `cargo rullst upgrade` has 20 rules for alpha.6, 11 of them
+must-change; while it reports a must-change finding, run it with
+`--keep-on-failure`, which applies the versions and keeps the failed state
+for you to fix.
+
+### Known limitations
+
+- The v12 line reached end of life on 16 October 2026; 12.3.0 is its last
+  release. crates.io has yanked the `zip` releases that 12.x's Studio needs, so
+  a new 12.x project no longer resolves its dependencies, and the documented
+  v5 to 12.x upgrade path may not resolve either; use this release.
+- Applications generated by earlier prereleases are not changed automatically.
+  Follow the
+  [alpha.5 to alpha.6 checklist](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md#upgrading-an-alpha5-application-to-alpha6)
+  (an older application follows the earlier checklists first).
+  `cargo rullst upgrade` reports the uses of removed and changed APIs, the
+  manifests, scripts and project files its rules can locate. No rule reports
+  cron expressions that are now refused, pages served with a `Content-Type`
+  other than `text/html` that lose their nonce-carrying inline scripts and
+  styles, readers of the access log that expect its lines at once,
+  development and test requests that now need the CSRF token, tests that
+  compare the embedded CSRF token with the cookie, the dependency changes
+  (`jsonwebtoken` 12 in `make:cors-jwt` middleware, `ed25519-dalek` 3 with its
+  `fast` feature, bodies that `jsonschema` 0.61 refuses), the `new` of a
+  `define_provider!` provider (the compiler names it) or the opt-in SQLite WAL
+  journal. A project generated by `cargo rullst auth` or the SaaS starter
+  before alpha.6 keeps its session-epoch cookies until it adopts the session
+  registry by hand. `V13-NON-EXHAUSTIVE-MATCH` and
+  `V13-NON-EXHAUSTIVE-LITERAL` look for a type by its own name, in a file
+  that names its crate, so the compiler, not the plan, reports a type renamed
+  on import or reached through the application's own re-export, a `match` on
+  variants imported into scope (the rule takes a bare variant name for a
+  catch-all binding), a literal with no named field
+  (`Type { ..Default::default() }`), a struct pattern without `..`, and
+  matches and literals inside macros other than `vec!`.
+- Turso/libSQL support is deliberately bounded: it is a primary database only
+  in the Blank and API starters, through `TursoOrm` and the `TursoModel` API
+  that `#[derive(Orm)]` generates for it, and does not work with `Schema`,
+  `artisan!`, `Server::with_db`, Nexus, Studio's database pages or
+  `make:billing`. Full ORM parity is not planned (see the ROADMAP's decided
+  non-goals). Turso models write every column on `save()`. The client now
+  follows a same-origin `base_url` from a multi-instance server (such as
+  Turso Cloud); a `base_url` at another origin is refused with
+  `PolyglotError::CrossOriginEndpoint` and the insert is not committed.
+- `RUSTSEC-2026-0459` (bundled SQLite 3.53 in `libsqlite3-sys` 0.37.0, through
+  `sqlx-sqlite` 0.9.0 and every Rullst SQLite feature; the fix is
+  `libsqlite3-sys` 0.39, which no `sqlx-sqlite` release accepts yet) and
+  `RUSTSEC-2026-0440` (`astral-tokio-tar`, unmaintained, reached only through
+  the integration tests' `testcontainers` 0.27.3 dev-dependency; 0.28 still
+  depends on it) keep their time-limited exceptions until 2027-01-28 in
+  `docs/src/security-advisory-exceptions.md`. Do not open SQLite files that a
+  less trusted party can write. The CI workflow that `cargo rullst new` writes
+  ignores `RUSTSEC-2026-0459` in its `cargo audit` step until the same date.
+- Labs never executes learner code: the application owns the runner and its
+  isolation ([runner contract](https://github.com/Rullst/Rullst/blob/main/docs/src/labs-runner-contract.md)).
+  A Docker container per job is not enough isolation for hostile code; the
+  contract lists the minimum (a separate host or VM, no network, resource
+  limits, syscall and filesystem restrictions).
+- Supervision ships no media model: camera-presence and audio-activity
+  adapters are the application's, and the browser sends statistics, not
+  frames or audio. A parental `CoursePolicy` is one absolute UTC window of at
+  most 30 days; recurring allowed hours are application code.
+- The InfinitePay adapter covers one-off payment links and source-confirmed
+  notifications, validated with one real Pix payment in the alpha.5
+  acceptance run; the payment method, instalments and per-checkout
+  notification URL added in this release are tested against local fixtures
+  only. Subscriptions, the portal, usage, coupons and trials return
+  `UnsupportedOperation`, and the merchant must enable external checkout
+  ("Checkout externo") in the InfinitePay app first.
+- Generated deployments now compress pages because the CSRF token is masked
+  per response. Masking covers that token only: an application should not put
+  other secrets in a compressed page next to text taken from the request. A
+  `Caddyfile` generated earlier keeps pages uncompressed until `encode zstd
+  gzip` is added (`V13-DEPLOY-CADDY-ENCODE` reports it).
+- `Generated starters in browsers`, the CI job that drives the generated
+  starters and the `ui add` components in Chromium, Firefox and WebKit, is
+  still not a required check or a required release job; it runs nightly, on
+  manual runs and on the pull requests that change what it covers.
+- `cargo rullst auth` on a Blank or API starter needs exactly one strict
+  database profile (a project with `drivers-all` is refused) and adds
+  migrations that extend the starter's `users` table and create the
+  `rullst_auth_sessions` table. Tests run it on SQLite with existing rows; on
+  PostgreSQL 15, MySQL 8.4 and MariaDB 11.4 CI runs it against a server on a
+  fresh Blank starter that holds two rows and checks with SQL the added
+  columns with their types and defaults, the unique `users_email_unique`
+  index, the placeholder emails and the new tables, then a sign-up over HTTP
+  that registers a session and `db:rollback`; the API starter is only
+  generated, and other server versions and a real deployment's data are not
+  tested. Back up the database and try it on a copy first.
+- `cargo rullst footprint`'s carbon figure is an SCI estimate from the
+  `--cpu-watts`, `--grid-intensity` and `--network-kwh-per-gb` figures you
+  give, not a measurement; an image size is measured only through a local
+  Docker or Podman socket; and the page weight fetches same-origin resources
+  only, listing third-party origins without fetching them, without cookies
+  or a sign-in. A published `https://` site gets the page weight only, and an
+  application found with `--url` has no start-up time.
+- `cargo rullst deploy`: CI builds the generated Dockerfile and starts the
+  generated `compose.yaml` and `Caddyfile` for the Blank and SaaS starters with
+  Docker and rootless Podman on a GitHub Ubuntu runner, checking HTTPS through
+  Caddy with its local certificate authority, compressed pages with the masked
+  CSRF token, Server-Sent Events through the compression, the container
+  hardening, migrations, the SQLite volume in WAL mode across a restart and
+  the backup and restore commands; real domains, DNS and Let's Encrypt,
+  provider accounts and firewalls, Arm machines, reboots and PostgreSQL/MySQL
+  deployments are not tested, and on Ubuntu 26.04 `podman compose restart`
+  can leave Caddy stopped (use `podman compose down` and `up -d`). The
+  provider guides and the Advanced deployment page were written from the
+  providers' and tools' documentation, not followed end to end on real
+  accounts.
+- A generated starter's first development build was last measured with the
+  alpha.4 source: about 2 to 2.5 minutes on the measuring machine, most of it
+  framework dependencies, with the `aws-lc-sys` build script (about 52 s) as
+  the longest unit. Since this release the Blank and API starters with SQLite
+  compile no TLS stack, so no `aws-lc-sys` (a cold release build of the
+  SQLite Blank starter with two jobs went from 3:46 to 2:50); the SaaS
+  starter and starters with PostgreSQL, MySQL or Turso still build it, now
+  `aws-lc-sys` 0.47, which was not timed. Later builds reuse it, and the
+  generated Dockerfile's dependency layer (the cargo-chef approach) caches it
+  in images.
+- Native date/time `Schema` columns need a strict driver feature
+  (`strict-postgres`, `strict-mysql`, `strict-sqlite`). On the SQLx `Any` pool
+  `timestamps()` keeps `TEXT` columns.
+- `save()` writes only the changed columns for a model with a `RowSnapshot`
+  field. A model with `#[orm(full_row_save)]`, and every Turso model, writes
+  every column, so two requests that change different columns of one row can
+  still lose one of the changes.
+- New SQLite projects use the WAL journal (`sqlite_journal_mode = "wal"`);
+  existing projects keep their journal mode until they opt in, and no
+  `cargo rullst upgrade` rule reports it. In WAL mode the database file alone
+  is no longer a backup (use `sqlite3 ".backup"`), and WAL must not be used on
+  a network filesystem (NFS, SMB, Azure Files: set `"delete"` there);
+  `cargo rullst doctor` warns about a WAL database on such a mount.
+- Startup migrations stay opt-in (`RULLST_AUTO_MIGRATE=true`).
+- i18n formatting has CLDR data for the documented 27 locales; a language
+  without data uses English (`en`) data. Plural rules cover 18 languages, and
+  a plural message in another language fails the build. Currencies other than
+  the 15 with a constant (BRL, USD, EUR, GBP, JPY, ARS, MXN, CLP, COP, PEN,
+  UYU, CAD, AUD, CHF and CNY) are written with their ISO code. A new locale
+  file needs the documented `build.rs` line.
+- Multipart: the CSRF `_token` field must come before the file fields, within
+  the first 64 KiB (or send the `X-CSRF-Token` header). Uploaded files are not
+  scanned for malware or stripped of metadata, and the WAF inspects the text
+  fields only, not file contents or names.
+- Production monitor: the figures are per process and reset on restart; the
+  starters do not enable it. The standalone Studio's desktop notifications
+  appear only while a Studio page is open in a browser (a background tab is
+  enough, which the browser may then check about once a minute), and a page
+  opened later does not show earlier ones. A proxy that needs a password can
+  only come from `HTTPS_PROXY`; `HTTP_PROXY` is not used and SOCKS is not
+  supported. Tokens are protected against a leaked configuration file, not
+  against malware running as the developer.
+- Once the standalone Studio's settings (notifications or a proxy) differ
+  from their defaults, or a p99 or security-events alert rule is set, a
+  Studio older than 13.0.0-alpha.6 refuses its project list (`projects.json`)
+  as malformed. Update every Studio that reads the same file first.
+- `/docs` (Scalar) loads one pinned Scalar release, 1.67.0, with its integrity
+  hash, and its policy allows the style elements that release inserts by
+  their hashes, so a later Scalar version needs a Rullst release with new
+  hashes. The page uses system fonts and has no "Ask AI" agent: both are
+  turned off.
+- CI tests the OAuth providers against offline mocks only. Google and GitHub
+  sign-in are used with real accounts in production applications; Microsoft,
+  Apple and the other providers are not validated with real accounts.
+  Microsoft sign-in needs the optional claims `email` and `xms_edov` to link
+  or create accounts. `make:oauth` needs the account files of
+  `cargo rullst auth` or the SaaS starter, or the functions of the documented
+  authentication contract (`src/auth_contract.rs`).
+- PWA: the generated icons are placeholders. The Google Play (Bubblewrap) and
+  Microsoft Store (PWABuilder) flows are documented, not validated with real
+  store submissions; no App Store package is generated.
+- The packages promoted to Extension keep their documented scope. IoT ran on
+  a micro:bit V2 with the alpha.5 code, and its `std` build in a gateway fed
+  by Arduino Uno boards; with this release's `ed25519-dalek` 3 the micro:bit
+  firmware is about 3.3 KB larger and the board was not re-measured. MQTT and
+  CoAP transports, TLS/DTLS and brokers, other boards, a persistent
+  rollback-counter store, flashing, bootloader handoff and power loss are not
+  validated. Privacy has no live age provider or verified guardianship.
+  Media's Bunny Stream adapter is used with a real library by a production
+  application, but transcoding and CDN edge cases are not covered by Rullst's
+  own tests, which run offline; Bunny's just-in-time status 7 stays
+  `Processing` (only status 8 is `Playable`), and a `Playable` video plays
+  only in Bunny's own player. Its S3/R2 adapter stays experimental and is
+  tested offline only.
+- CI runs the commands of the first-hour pages only (the README quickstart,
+  getting started, tutorials 01, 02, 03, 05 and 11 and the REST API
+  quickstart), without PostgreSQL or MySQL servers or external accounts.
+  Other pages' commands are not run, and their Rust blocks marked
+  `rust,ignore` are not compiled. Only these pages are translated into
+  Brazilian Portuguese; CI checks that their code blocks equal the English
+  ones byte for byte, but only prints a notice when the English prose changed
+  after the commit a translation names, so a translation can lag behind (the
+  English page prevails).
+- cargo-semver-checks has no 13.x baseline until 13.0.0 is published; until
+  then the public API listings in `.github/public-api/` are the only check of
+  API changes between prereleases.
+- Release fuzz evidence: a change to a book page that the facade's doctests
+  include still reruns the facade's 12 fuzz targets, because the build-graph
+  rule counts included files as inputs.
+- Mutation testing: for 13.0, the campaign status in
+  `docs/src/mutation-testing.md` lists `rullst-orm`, `rullst-orm-macros`,
+  `rullst-core`, `rullst-nexus`, Studio's remote mode and `cargo-rullst`, and,
+  in this release, `rullst-macros`, `rullst-messaging` and `rullst-connect`.
+  `rullst-ai`, `rullst-auth`, `rullst-security`, `rullst-mail`, `rullst-iot`,
+  `rullst-privacy`, `rullst-labs`, `rullst-media` and `rullst-supervision` have
+  no 13.0 campaign there; the v12 baseline measured the crates v12 had, and
+  the pull-request gate mutates the lines each change touches. 30
+  `cargo-rullst` mutants remain from its first campaign, all size or count
+  bounds that only very large projects reach, in six files outside the
+  pull-request mutation gate (`generators/build/upgrade/backup.rs`,
+  `upgrade/rules.rs`, `update/project.rs`, `project/snapshot.rs`,
+  `project/transaction.rs` and `project/verify.rs`). The CLI's frontend
+  toolkit (`add tailwind`, `add alpine`, `add browser-tests`, `ui add`),
+  `footprint`'s page weight, budgets, production figures, macOS and Windows
+  process files and compiled dependency count, and the upgrade rule files of
+  this release are not in the gate either. Timeouts that turn a scan into an
+  endless loop are documented in `docs/src/mutation-testing.md`.
+  `rullst-orm` keeps one unresolved mutant (the MySQL
+  `FOR UPDATE SKIP LOCKED` claim in `outbox.rs`) and 17 timeouts, and 29
+  `rullst-capital` mutants are reachable only through a live Stripe response.
+- The Windows SQLite start-up retry of the Labs, Media, Supervision and
+  Privacy stores and of `rullst-messaging`'s `WebhookOutbox::open` is
+  exercised on hosted Windows runners with a file held under SQLite's
+  exclusive lock; the disk stall that first made them fail is not
+  reproduced, and on Linux a lock held past the 5-second wait can end a
+  store's `open` with SQLite's busy result instead of a retry.
+  `SqliteBroker::connect` has no outer deadline and no retry.
+- Rullst has a sole maintainer, with a successor arrangement in `GOVERNANCE.md`.
+
+### Added
+
+- `RULLST_ACCESS_LOG`, in the process environment or `.env`, chooses which
+  requests `Server` writes to the access log: `on` (the default), `errors`
+  (responses with a status of 400 or above), `1/N` (those and one in `N` of
+  the others, `N` from 1 to 1000000) or `off`, which leaves the access log out
+  of the stack. The health-probe and path rules still apply, and any other
+  value stops startup with `ServerError::Configuration`.
+- Capital: a confirmed `OneOffPayment` now says how the buyer paid, when the
+  provider reports it: `payment_method()` returns a `#[non_exhaustive]`
+  `PaymentMethod` (`Pix`, `CreditCard`, or `Other` with the provider's own
+  name, 1 to 64 ASCII letters, digits, `_` or `-`), and `installments()` the
+  number of instalments. InfinitePay maps `capture_method` and `installments`
+  from `POST /payment_check`, leaving out a value it cannot read; Stripe's
+  session reports neither, so both are `None`. Neither changes `is_paid()`.
+  Custom adapters add them with `with_payment_method` and
+  `with_installments`.
+- Capital: `OneOffCheckoutRequest::with_notification_url(url)` sends one
+  checkout's payment notification to its own URL instead of the provider's
+  default, for example a URL with a per-checkout token, since InfinitePay's
+  webhook is unsigned. The URL must be HTTPS, without credentials or a
+  fragment, and at most 2048 bytes. InfinitePay sends it as the link's
+  `webhook_url`; Stripe, whose webhooks go to the endpoints configured on the
+  account, refuses the request with `UnsupportedOperation`, also with a
+  `mock_*` key. A request without a URL keeps its 13.0.0-alpha.5
+  `request_digest()`. An adapter that sends the URL marks the checkout with
+  `OneOffCheckout::with_notification_url_sent`, and the billing conformance
+  kit's new `checkout.notification_url` case fails an adapter that neither
+  sends nor refuses it. Reported by the vene.win application.
+- The book has a Brazilian Portuguese version of the first-hour path
+  ([Primeira hora com o Rullst](https://rullst.github.io/Rullst/book/pt-BR/index.html)):
+  the README quickstart, Getting Started, tutorials 01, 02, 03, 05 and 11 and
+  the REST API quickstart, under `docs/src/pt-BR/`, each linked from its
+  English page. Each translation names the English commit it was translated
+  from, and its code blocks are the English page's, unchanged, which
+  `documentation.yml` checks (`.github/check-translations.py`), so the
+  English doctests and first-hour checks cover them. The pages declare
+  `lang="pt-BR"`, so screen readers read them in Portuguese
+  (`.github/set-book-language.py` sets it after `mdbook build` and
+  `documentation.yml` checks it). The rest of the book stays in English.
+- `cargo rullst footprint` reports the compiled dependency count beside the
+  `Cargo.lock` count, in the terminal ("Compiled deps") and in JSON
+  (`measured.compiled_dependency_count`, an additive key of
+  `rullst.footprint.v1`): the third-party packages of `Cargo.lock` that
+  `cargo tree --locked --offline --edges normal,build` lists for the project's
+  package, the host platform and the default features, which is what Cargo
+  compiles. The lockfile count also holds other platforms' dependencies,
+  dev-dependencies and optional dependencies no feature enables. Run outside
+  a project directory, or before the project was built, it reads
+  `NOT MEASURED` with the reason. `[footprint.budgets]` accepts a
+  `compiled_dependency_count` limit, and the starter footprint budgets of CI
+  record it.
+- `cargo rullst footprint --page-weight` accepts the `https://` origin of a
+  published site (`--url https://app.example --page-weight`), to weigh what a
+  visitor downloads with the server's or CDN's compression: the same
+  `Accept-Encoding: zstd, br, gzip` requests, bodies counted as sent, first
+  and repeat visits. Only the page is weighed: an `https://` URL needs
+  `--page-weight`, refuses `--bench` and `--image`, and reports the binary
+  size, idle memory, dependency counts and CPU time as not measured, with
+  target mode `remote_url` and its own report notes. Credentials, a path, a
+  query or a fragment in the URL are still refused, a redirect to another
+  host is listed as a third party and not followed, and a site that cannot
+  be reached exits with status 1. Every page weighing now bounds one response
+  at 32 MiB, a visit at 256 MiB, redirects at five in a row and both visits
+  at 180 seconds, reporting what a bound leaves out as `unfetched`. Requested
+  by the plataforma, vene.win and capoeira applications.
+- `cargo rullst footprint` reports the start-up time of the release binary it
+  starts, in the terminal ("Startup time") and in JSON (`startup`, an
+  additive section of `rullst.footprint.v1`): it starts the binary up to five
+  times, each a new process on a new loopback port stopped before the next,
+  times each start from the spawn to the first HTTP answer to `GET --path`
+  (any status, probed every 5 ms), and gives the median, the fastest and the
+  slowest start, every start's time and how many starts it timed (`runs`).
+  It stops starting once the timed starts add up to 20 seconds, so a slow app
+  is started fewer times, and measures the last start. A scale-to-zero host,
+  such as Azure Container Apps, adds this time to the first request after an
+  idle period. An app found with `--url` and a published `https://` site
+  have no start-up time and read `NOT MEASURED` with the reason.
+  `[footprint.budgets]` accepts a `startup_ms` limit on the median; the
+  starter footprint job of CI reports the figure without limiting it. The
+  figure is not the `startup_s` of the Rullst/Benchmarks suite, which times
+  containers at a 0.25 s probe interval.
+- `rullst::i18n` formats numbers, money and dates for seven more locales
+  with CLDR 48.0 data: `es-419` (Latin American Spanish), `es-AR`, `es-CL`,
+  `es-CO`, `es-MX`, `es-PE` and `es-UY`, which until now wrote like Spain's
+  `es` (`1234,56 ARS`). `es-AR` now writes `$ 1.234,56` for pesos and
+  `es-MX` writes `$1,234.56`. `Currency` has ten more constants with each
+  locale's symbol: `ARS`, `MXN`, `CLP`, `COP`, `PEN`, `UYU`, `CAD`, `AUD`,
+  `CHF` and `CNY` (ISO 4217 minor digits; `CLP` has none), so `en` writes
+  `CA$1,234.56` and `es-PE` writes `S/ 1,234.56` instead of the ISO code.
+  The new `Locale::currency_name(currency)` returns CLDR's display name of
+  any currency with a constant (`Some("Peso argentino")` in `pt-BR`), and
+  `None` for other codes. ([#636](https://github.com/Rullst/Rullst/issues/636))
+- `examples/mail-postmark-driver` shows how an application writes its own
+  mail transport for a provider Rullst does not ship, with Postmark: a
+  `MailDriver` that maps Reply-To, attachments, inline images and
+  `List-Unsubscribe` to Postmark's fields, captures mail offline for an
+  empty or `mock_*` token, and keeps only the HTTP status of a failure. Its
+  `PostmarkWebhook` checks the webhook's Basic credentials in constant time
+  and records Postmark's suppressions (hard bounces, spam complaints,
+  unsubscriptions) for `SuppressionGuard`. The offline tests run the
+  `rullst-mail` conformance kit. The mail guides link it and say that
+  SendGrid, Mailjet and the other removed providers follow the same shape.
+  ([#638](https://github.com/Rullst/Rullst/issues/638))
+- The [v13 migration guide](https://rullst.github.io/Rullst/book/migration-v13.html#upgrading-an-alpha5-application-to-alpha6)
+  has an alpha.5 to alpha.6 checklist: every breaking change since
+  13.0.0-alpha.5, what to do about it and the `cargo rullst upgrade` rule that
+  locates it, or that no rule does. The plan, the Markdown report and the
+  JSON `migration_guide` of an alpha.5 (or later 13.0 prerelease) project now
+  link it instead of the alpha.4 to alpha.5 checklist.
+- The production monitor serves a second document next to `rullst.monitor.v1`:
+  `GET /_rullst/monitor/v2` (`rullst.monitor.v2`, `MONITOR_V2_PATH`) has every
+  version 1 field plus `traces` and `security`, with the same credentials,
+  limits and headers. `traces` lists up to 50 sampled request summaries
+  (method, route pattern, status, duration, ORM operations, possible N+1; at
+  most one ordinary request per 100 ms and one `5xx` or slow request per
+  10 ms) and per-kind totals of the `SpanCollector`, never span names.
+  `security` reports the `SecurityStore` counters, the active honeypot ban
+  count, the events recorded since start and the type and time of the kept
+  events, never their details or client addresses. Version 1 is unchanged.
+- The standalone Studio reads `rullst.monitor.v2` and has two new project
+  pages: **Traces** (`/studio/traces`, the sampled requests and span totals)
+  and **Security** (`/studio/security`, the security radar). For an
+  application before 13.0.0-alpha.6 it falls back to `rullst.monitor.v1` when
+  version 2 answers `404`, remembers that for ten minutes, and the two pages
+  say that the application serves version 1 only.
+- Server-side login sessions for `rullst_session` cookies:
+  `rullst::auth::session_registry` (features `session-registry-sqlite`,
+  `session-registry-postgres` and `session-registry-mysql` of `rullst-auth`;
+  `auth-session-registry-sqlite`, `-postgres` and `-mysql` of `rullst`).
+  `SessionRegistry` keeps one row per sign-in in the table
+  `rullst_auth_sessions` of the application's own SQLx pool, which a
+  migration creates with `create_table` (the application then uses
+  `connect`, which creates nothing) or `open` creates on first use, and
+  issues `v3.` cookies that carry a random 256-bit session secret
+  besides the account, its session epoch and the expiry; the row stores only
+  a SHA-256 digest of the secret, so a copy of the database yields no cookie.
+  Every request checks the row by primary key, without a cache. Sign-out
+  (`sign_out`, `revoke`) ends every copy of the cookie, which a stateless
+  cookie could not; `list_sessions` shows an account's sessions (sign-in
+  time, hour of last use, browser and platform family, no IP address or raw
+  `User-Agent`), and `revoke_session`, `revoke_other_sessions` and
+  `revoke_all_sessions` sign out one, the others or all of them
+  (`revoke_all_sessions_on` inside the caller's transaction). An account
+  keeps at most 50 sessions, the least recently used one making room, and
+  `purge_expired` deletes expired rows in batches of up to 1,000.
+  `decrypt_session_claims` refuses `v3.` cookies, so a route that skips the
+  registry fails closed; the session epoch keeps working. A request is
+  checked when it starts, so one already running when its session is revoked
+  completes. `revalidation(&current)` is the check that ends a Server-Sent
+  Events stream or WebSocket of the session: at once when a registry of the
+  same process revokes it, and within one revalidation interval when another
+  process does. Applications that do not enable a registry feature are
+  unchanged.
+- Long-lived responses can be revalidated while they stay open:
+  `RealtimeSse::channel_revalidated` and `subscribe_revalidated`, and
+  `WebSocket::with_revalidation`, take a `rullst::realtime::Revalidate`
+  check (or `revalidate_with` of an async closure) that runs every
+  revalidation interval (15 seconds by default,
+  `RealtimeSseConfig::with_revalidation_interval`, 1 second to 5 minutes)
+  and when the check signals a change, with a 5-second deadline; the stream
+  or socket ends when it fails. `WebSocket` gained a type parameter for its
+  check, which defaults to `NoRevalidation`, so `WebSocket::new` and existing
+  uses are unchanged.
+- `cargo rullst auth` and the SaaS starter use the registry: a
+  `*_create_rullst_auth_sessions_table` migration owns its table (rolling it
+  back drops it), registration and
+  sign-in register a session, `/logout` deletes it, the new "Your devices"
+  page (`/sessions`, `src/controllers/sessions_controller.rs`) lists the
+  account's sessions and signs out one of them or every other one, a password
+  change deletes the account's sessions and gives the asking browser a new
+  one, and a password reset and "Sign out everywhere" delete them all.
+  `make:mfa` and `make:oauth` register their sign-ins the same way in such a
+  starter, and `make:oauth`'s `LinkAndResetPassword` policy deletes the
+  account's sessions in the transaction that removes its password; in a
+  starter generated before 13.0.0-alpha.6 they keep issuing session-epoch
+  cookies. `auth_middleware::revalidation(&session)` is the check for a
+  Server-Sent Events stream or WebSocket of the session.
+- `https://rullst.win/compare/` (and `/pt-br/comparar/`) compares Rullst, Loco
+  and Topcoat topic by topic: rendering, database, authentication and security
+  defaults, background jobs, mail, billing, admin and observability, CLI,
+  deployment, stability and support window, and maturity. Each Loco and
+  Topcoat fact names the version it was checked against (`loco-rs 1.3.1`,
+  `topcoat 0.12.1`, 14 November 2026). Its benchmark rows are rendered at site
+  build time from the Rullst/Benchmarks results, and say that the first
+  measurement is in progress until those results exist. A "How to read these
+  numbers" block ("Como ler estes números") above the results says what
+  1.00× Axum means, which direction is better for each figure (responses per
+  second higher, latency and memory lower), why the ratio is compared rather
+  than the absolute number (each framework ran on its own hosted machine) and
+  what the two Rullst rows are. A `Rullst (minimal)` card ("Rullst
+  (mínimo)") follows the Rullst one: the framework without the generated
+  application's security layers, beside the application as
+  `cargo rullst new` generates it; it is left out when the results have no
+  minimal row.
+- `rullst-orm` can set the journal mode of the application's SQLite database:
+  `Orm::init_with_config(url, OrmConfig::default().with_sqlite_journal_mode(SqliteJournalMode::Wal))`
+  (or `SqliteJournalMode::Delete`), and an application that `Server` starts
+  sets `sqlite_journal_mode = "wal"` or `"delete"` under `[database]` in
+  `Rullst.toml`, which `Server` and the Artisan commands (`db:migrate`, …)
+  apply. The first connection sets the mode and checks the mode SQLite
+  reports; a read-only database or a filesystem without shared memory fails
+  initialization with `Error::DatabaseError`. PostgreSQL/MySQL URLs and
+  in-memory SQLite ignore it. Without the setting nothing changes: `Orm::init`
+  and existing applications keep the mode recorded in the database file, and
+  `synchronous` stays `FULL` in both modes. `cargo rullst doctor` now names
+  the WAL journal of a SQLite file (counting its `-wal` file in the size) and
+  warns when a WAL database is on an NFS, SMB, 9P, AFS or Ceph mount;
+  `deploy:doctor` accepts the new key and rejects other values.
+- The standalone Studio can show alerts as desktop notifications. On the new
+  **Settings** page (`/studio/settings`), enable them and allow them once in
+  the browser; every Studio page then reads new notifications every 15
+  seconds and shows them with the browser's Notifications API. A project is
+  notified at most once per quiet period (10 minutes by default, 1 to
+  1,440); alerts in between are counted in its next notification or in a
+  summary when the period ends. The setting is kept in the project list.
+- Two alert rules in the standalone Studio: **p99 latency** and **Security
+  events** (this many security events recorded between two polls, from a
+  `rullst.monitor.v2` document). The history keeps p99 latency and the
+  security events total; an older history database gains the two columns
+  when it opens.
+- The standalone Studio can reach monitored projects and webhooks through a
+  proxy. The **Proxy** section of its Settings page selects direct
+  connections (the default, as before), the `HTTPS_PROXY` and `NO_PROXY`
+  variables of its environment, or an explicit `http://` or `https://` proxy
+  URL with a `NO_PROXY`-style exception list. Only `https://` connections use
+  the proxy, as a `CONNECT` tunnel, so it never sees a token; loopback hosts
+  and plain `http://` (loopback only) stay direct, and a proxy that cannot be
+  used blocks every connection instead of connecting directly.
+
+### Changed
+
+- **Breaking:** `Server`'s access log no longer writes each `[HTTP]` line to
+  stdout from the request. Every request wrote and flushed its line while
+  holding the stdout lock, so a slow reader (a pipe, a container log driver)
+  held up the requests that finished meanwhile and the Tokio workers queued on
+  the lock. A background thread now writes the queued lines in batches, a few
+  milliseconds after their responses. The queue holds 8192 lines and 2 MiB;
+  when stdout cannot keep up and it is full, further lines are dropped instead
+  of slowing the server, and the next batch writes `[HTTP] access log: N lines
+  dropped because stdout did not keep up`. A graceful shutdown waits up to one
+  second for the queued lines; a killed process loses them.
+- `rullst-iot` (signed OTA verification), `rullst-connect` (the mock identity
+  provider of its `axum` feature) and `cargo-rullst` (`iot:keygen`,
+  `iot:sign`) use `ed25519-dalek` 3 instead of 2. Keys, signatures and the
+  bytes `iot:sign` writes are unchanged, and the `no_std` build still works
+  on `thumbv7em-none-eabihf`, `thumbv6m-none-eabi` and
+  `riscv32imac-unknown-none-elf`. An application that turns on the
+  precomputed tables through feature unification now declares
+  `ed25519-dalek = { version = "3", default-features = false, features = ["fast"] }`:
+  a 2.x requirement builds a second copy and leaves the tables off. The
+  micro:bit V2 fixture's firmware is about 3.3 KB larger; the board was not
+  re-measured.
+- `rullst-connect` and `rullst-auth` (`jwt`) use `jsonwebtoken` 12, still
+  with the `aws_lc_rs` backend only. ID tokens are verified as before, except
+  that jsonwebtoken now refuses a token whose `crit` header names an
+  extension it does not implement, and a `sub`, `iss` or `aud` claim of the
+  wrong JSON type when that claim is checked, instead of skipping the check.
+  `cargo rullst make:cors-jwt` adds `jsonwebtoken` 12, and its middleware
+  handles `EncodingKey::from_secret` and `DecodingKey::from_secret`, which
+  now return a `Result` (an empty key is refused). Middleware generated
+  earlier keeps the `jsonwebtoken` 11 its project declares; moving it to 12
+  takes the same two changes.
+- `rullst-security` pins `jsonschema` `=0.61.2` (was `=0.60.2`), so
+  `JsonSchemaPolicy` takes its validation fixes: `.` in `pattern` and
+  `patternProperties` no longer matches `\r`, U+2028 or U+2029, and
+  `date-time`, `date` and `time` values with `+`, `,`, `-`, `.` or `/` where
+  a digit belongs, some of which 0.60 accepted, are refused. A body that
+  passed only because of them now gets `422`. The pin stays exact, with its
+  reason in the workspace `Cargo.toml`: the policy decides which bodies a
+  route accepts, and jsonschema's 0.x patch releases change that decision.
+- `cargo rullst auth` now needs exactly one strict database profile
+  (`strict-sqlite`, `strict-postgres` or `strict-mysql`, as
+  `cargo rullst new --database ...` selects) and enables its session registry
+  feature (`auth-session-registry-sqlite`, `-postgres` or `-mysql`). A project
+  that selects `drivers-all` or several profiles is refused before anything
+  is written. In the SaaS starter and new `cargo rullst auth` scaffolds,
+  `auth_middleware` inserts the signed-in account's `AuthenticatedSession`
+  beside its id, `POST /password/change` reads it instead of decoding the
+  cookie again, and a storage failure during sign-out answers 503 and keeps
+  the cookie instead of clearing it.
+- Changelog entries are now one file per change under `changelog.d/` instead
+  of lines under `## [Unreleased]` in `CHANGELOG.md`, so parallel pull
+  requests no longer conflict there. Release preparation merges them with
+  `.github/assemble-changelog.py --release <version> --date <date>`, a release
+  is not admitted while unmerged fragments remain, and a pull-request check
+  refuses new lines under `## [Unreleased]`. See `changelog.d/README.md`.
+- A page or API request costs less in a generated application. The three
+  middlewares of the `static/` mount (pre-compressed siblings, the cache
+  policy and content-hashed names) wrap only `/static` instead of every
+  route; the CSP nonce of a request is drawn only when a handler reads it or
+  the response is an HTML document; the CSRF mask of each response comes
+  from a ChaCha12 generator per thread, seeded and reseeded from the
+  operating system, instead of a system call per response, while the cookie
+  token is minted from the operating system's random source (before, from
+  `rand`'s thread generator); the CSRF cookie and the access-log line are
+  built without float or `format!` work. A random-source failure still
+  answers `500` without any token, and every security layer stays on. On an
+  AMD EPYC 7763 runner the Blank starter's `GET /json` went from 0.44 to
+  0.53 times the throughput of its routes without any layer (53,700 to
+  63,200 requests per second, 37.6 to 31.3 µs of server CPU per request), as
+  the `Generated stack throughput` job of `bench.yml` measures, now with a
+  `static/` folder as in a generated project.
+- **Breaking:** `Scheduler::task`, `task_in_tz`, `deferrable_task` and
+  `deferrable_task_in_tz` evaluate cron expressions with Core's own
+  five-field evaluator instead of the `cron` crate, which leaves the
+  dependency graph (9 fewer packages in the Blank and API starters, compiled
+  and in `Cargo.lock`). The syntax, the day-of-month or day-of-week rule,
+  time zones and occurrences from 1970 through 2100 are unchanged, checked
+  against the `cron` crate by property tests. Each field must now be valid
+  on its own: the `cron` crate joined a field that starts or ends with `,`,
+  `-` or `/` with its neighbour, so `1, 2 * * *` ran at minutes 1 and 2 of
+  every hour from January to July only. Such an expression now fails with
+  `SchedulerError::InvalidCron`, whose messages now name the field.
+- With `storage-multipart`, Core encrypts the multipart recovery records
+  (`MultipartCheckpoint`) with the RustCrypto `aes-gcm` crate instead of
+  `ring`, so `rullst-core` no longer depends on `ring` with any feature. The
+  `mp1.` format, its associated data and `MultipartKey` are unchanged:
+  checkpoints written by earlier releases still open with the same key, as
+  tests with records written by the `ring` code and with NIST and Wycheproof
+  AES-256-GCM vectors check. The key schedule is now cleared when the last
+  clone of a `MultipartKey` is dropped.
+- **Breaking:** the Core security baseline (`headers_middleware`, and
+  `Server` in staging and production) puts the request's CSP nonce only into
+  the policy of a response that can be an HTML document: `Content-Type`
+  `text/html` or `application/xhtml+xml`, or none. Every other response
+  (JSON, plain text, images, files) gets the policy without a nonce, computed
+  once instead of rendered per response: the configured `csp` when it has no
+  `{NONCE}`, otherwise the default directives with `script-src 'self'` and
+  `style-src 'self'`. That policy is stricter, since no inline script or style
+  can match it. `Extension<CspNonce>` is unchanged; a page served with another
+  `Content-Type` loses its nonce-carrying inline scripts and styles.
+  Nexus now answers an edit form that cannot be loaded with an HTML fragment
+  (`text/html`) instead of plain text, like the form itself, so it keeps the
+  nonce policy.
+- **Breaking:** the CSRF middleware decides which `GET` and `HEAD` requests
+  are static files, which never mint a token or set the `rullst_csrf`
+  cookie, by path instead of by extension. A static file is a path below the
+  new `[security]` `csrf_static_prefixes` (default `/static/` and
+  `/.well-known/`) or one of `csrf_static_paths` (default `/favicon.ico`,
+  `/robots.txt`, `/sitemap.xml`, `/manifest.webmanifest` and `/sw.js`, the
+  files generated projects serve). Until now any path ending in `.json`,
+  `.xml`, `.txt`, `.js`, `.css`, an image or `.wasm` extension counted, so a
+  dynamic page such as `/report.json` had no `CsrfToken` on a first visit;
+  it now gets one. Files served at other paths (an application's own
+  `nest_service("/assets", ServeDir::new(..))`) now set the cookie for a
+  visitor who has none: list their prefix in `Rullst.toml`, or call the new
+  `SecurityConfig::with_csrf_static_prefix` and `with_csrf_static_path`
+  builders; `SecurityConfig::is_csrf_static_path` reports the decision, and
+  `validate` rejects a prefix that does not start and end with `/`.
+  Verification of state-changing requests is unchanged.
+  `cargo rullst upgrade` reports such file services
+  (`V13-CSRF-STATIC-PREFIXES`), and `deploy:doctor` no longer reports the two
+  settings as unknown.
+- The `Caddyfile` that `cargo rullst deploy` writes compresses pages and
+  other application responses (`encode zstd gzip`) now that the CSRF token
+  in pages is masked per response. Until now pages were sent uncompressed
+  because of BREACH. Static files keep their pre-compressed `.br`/`.zst`
+  siblings, which Caddy passes through unchanged. An existing `Caddyfile`
+  is not changed; `cargo rullst upgrade` reports one without `encode`
+  (`V13-DEPLOY-CADDY-ENCODE`).
+- The CI workflow that `cargo rullst new` writes says, above its Rust setup
+  step, that every Cargo and compiler warning fails the job (the
+  `setup-rust-toolchain` default `CARGO_BUILD_WARNINGS=deny`, which it
+  keeps), and that since Cargo 1.100 this includes a dependency that no
+  target uses (`cargo::unused_dependencies`). It names the fix: remove the
+  dependency, or allow the lint in `[lints.cargo]` when the dependency is
+  intentional.
+  [Testing your application](https://rullst.github.io/Rullst/book/testing-your-app.html)
+  and Getting Started say the same.
+- **Breaking:** `/health` and `/ready` no longer report the framework version.
+  Every `rullst::health` router answered `"version":"13.0.0-alpha.5"` to any
+  visitor, which tells a scanner which known vulnerabilities to try.
+  `health_router()` and `health_router_with_lifecycle` now answer `status`,
+  `uptime_seconds` and `timestamp` (with the lifecycle counts on `/ready`),
+  and `health_router_with_version(app_version)` and
+  `health_router_with_lifecycle_and_version` add only the application's
+  `app_version`. The framework version stays on the authenticated production
+  monitor (`framework.version` of `GET /_rullst/monitor/v1`).
+  `HealthProbeResponse` and `ReadinessProbeResponse` lose their `version`
+  field, and `HealthProbeResponse` is `#[non_exhaustive]`. The CLI's
+  generated deploy, Kubernetes and container checks read only the status
+  code and are unchanged. `cargo rullst upgrade` reports code and scripts
+  that read `version` from a probe (`V13-HEALTH-FRAMEWORK-VERSION`) and uses
+  of the removed field (`V13-HEALTH-PROBE-VERSION-FIELD`).
+- **Breaking:** `rullst-media`'s remaining public enums and all-public
+  structs are decided for the 13.0 freeze. `PlaybackKind`, `ProviderMode`
+  and `sqlite::Lifecycle` are `#[non_exhaustive]`, so a `match` on them
+  outside the crate needs a wildcard arm, and so are `ProviderBinding`,
+  `RemoteVideo`, `WebhookHeaders` and `sqlite::Asset`, which code outside the
+  crate no longer builds with a literal. New constructors:
+  `ProviderBinding::new(library, mode, environment)` and
+  `RemoteVideo::new(id, library, title, description, processing,
+  length_seconds, mp4_720p)` for an application-owned `VideoProvider`, and
+  `WebhookHeaders::new(version, algorithm, signature)` for the route that
+  passes Bunny's signature headers to `verify_notification`. `Asset` comes
+  from the store and is only read. `Action` and `Scope` stay exhaustive on
+  purpose: the host's authorizer must map every action, and the scope is the
+  authorization boundary. `cargo rullst upgrade` reports these matches and
+  literals (`V13-NON-EXHAUSTIVE-MATCH`, `V13-NON-EXHAUSTIVE-LITERAL`), and the
+  public API check no longer exempts any `rullst-media` type.
+- **Breaking:** `rullst-media`'s `Processing` is `#[non_exhaustive]` and has a
+  new `Playable` state. Bunny's API status 8 (`JitPlaylistsCreated`, from
+  just-in-time encoding with Premium Encoding) now maps to `Playable` instead
+  of `Processing`: the playlists exist, so Bunny's player streams the video
+  while the remaining encoding goes on. Status 7 (`JitSegmenting`) stays
+  `Processing`, since the first segments do not exist yet, and `Ready` still
+  means status 4 (`Finished`). `MediaService` publishes a `Playable` video and
+  grants it only `PlaybackKind::Embed`, because Bunny supports just-in-time
+  playback only in its own player; `Hls` and `Mp4_720p` return
+  `MediaError::Unsupported` until the video is `Ready`. A published video
+  whose next read is neither `Playable` nor `Ready` is withdrawn, as before.
+  Webhook status codes are a separate numbering and still only trigger a
+  refresh. New `Processing::is_playable()` and `Processing::allows(kind)` tell
+  an application whether a video can be watched now and with which kind. A
+  `match` on `Processing` outside `rullst-media` needs a wildcard arm;
+  `cargo rullst upgrade` reports each one (`V13-MEDIA-PROCESSING-MATCH`).
+  Reported by the plataforma application.
+- The [compatibility policy](https://rullst.github.io/Rullst/book/compatibility-policy.html#minimum-supported-rust-version)
+  makes MSRV changes in 13.x predictable: a minor release raises the MSRV only
+  when a dependency, a security fix or a concrete need requires it, and only
+  to a Rust release published at least six months before that minor release.
+  Patch releases still do not raise it, and a raise still needs a changelog
+  entry, updated manifests and documentation and a green MSRV job. The policy,
+  Tutorial 01 and the REST API quickstart now name the latest stable Rust as
+  the recommended toolchain; Rust 1.96.0 stays the minimum.
+- A new informational workflow, `msrv-tests.yml`, runs every night and on
+  demand the unit and integration tests of Core, the ORM on SQLite, Security,
+  Auth, the two macro crates and the `rullst` facade, and the facade's
+  doctests, on Rust 1.96.0. The required MSRV job only compiles the workspace.
+- **Breaking:** for the 13.0 public API freeze, every publicly reachable enum,
+  and every struct whose fields are all public, is now either
+  `#[non_exhaustive]` or documented as exhaustive on purpose, so a 13.x
+  release can add a variant or a field without breaking applications. 39
+  enums (the errors, statuses, kinds, modes and backends that can grow, such
+  as `StorageError`, `SecurityError`, `SubscriptionStatus`, `ModelOperation`,
+  `ColumnDefault`, `AgeError`, `JwtPolicyMode` and IoT's `NodeStatus`) and 103
+  structs (among them `FieldMeta`, `RegistryEntry`, Mail's `Message`,
+  `ConnectUser`, `ExchangeParams`, `AuthCallback`, `HttpResponse`, `Passkey`,
+  `WebhookEvent`, `QueuedJob`, `TraceSpan`, `ToolParam`, `PaginationResult`
+  and `TimingGuardConfig`) are `#[non_exhaustive]`. A `match` on one of these
+  enums outside its crate needs a wildcard arm, and a struct literal of one
+  of these structs, `..Default::default()` included, no longer compiles
+  outside its crate: use the constructors, several of them new
+  (`FieldMeta::new(..).hidden().readonly()`,
+  `ExchangeParams::new(code).with_code_verifier(..)`, `ConnectUser::new`,
+  `HttpRequest::new`, `HttpResponse::new`, `TokenExchangeForm::new`,
+  `Passkey::new`, `WebhookEvent::new(..).with_ends_at(..)`,
+  `WebhookEventRecord::new`, `RevenueMetrics::new`, `QueuedJob::new`,
+  `QueuedJobDetail::new(..).with_error(..)`, `TraceSpan::new`,
+  `ToolParam::new`, AI's `Message::new`, `RagRetrievalError::new`,
+  `RagAuditError::new`, `PaginationResult::new`, `PrivacyReport::new`,
+  `RegistryEntry::new`, `NexusState::new` and `TimingGuardConfig::new`), or
+  start `AuthCallback` and `ClaimedOutboxEvent` from `default()` and
+  `ProviderCapabilities` from `PORTABLE` or `NONE`. Reading and assigning
+  public fields keeps working. `#[derive(Orm)]`, `#[derive(PersonalData)]`
+  and `#[derive(Nexus)]` generate constructor calls, and the SaaS starter's
+  Nexus models and the `make:oauth apple` controller no longer write
+  literals; projects generated before alpha.6 have such literals to rewrite.
+  The authorization and decision enums, closed sets and versioned wire
+  formats stay exhaustive on purpose, so a new variant there breaks callers
+  until they handle it: Labs' `Action`, `Teardown`, `LeaseStatus` and
+  protocol v1 structs, Privacy's `AgeDecision`, `AgeOutcome`, `Assurance` and
+  `AgeDeclaration` and the `AgeMethod` and `RiskLevel` inputs of the
+  Verus-proven `AgePolicy::permits`, Auth's `CeremonyKind`, Core's `AttributePresence`,
+  `CompletionStatus` and `AbortStatus`, IoT's `MqttQos` and `PinState`,
+  Studio's `DistributedTraceStatus`, `TraceBatchV1` and
+  `DistributedTraceSpanV1`, and the newtypes `ValidatedJson`,
+  `ValidatedForm`, `Inject`, `RawHtml` and the ORM's `Json`.
+  `cargo rullst upgrade` reports each `match` without a wildcard arm
+  (`V13-NON-EXHAUSTIVE-MATCH`) and each literal
+  (`V13-NON-EXHAUSTIVE-LITERAL`), and the public API snapshot check now
+  fails on a new public enum or all-public struct that is neither
+  `#[non_exhaustive]` nor documented as exhaustive on purpose.
+- **Breaking:** every `#[derive(Orm)]` and `#[derive(TursoModel)]` model now
+  declares what `save()` writes to a stored row, and a model that does not
+  choose no longer compiles. Until now a model without a
+  `#[sqlx(skip)] snapshot: RowSnapshot` field silently got full-row updates,
+  so two requests that changed different fields of one row lost one of the
+  changes (a student's XP award vanished when a profile edit loaded before it
+  was saved). Declare the field to write only the changed columns
+  (recommended, and what the CLI generates), or `#[orm(full_row_save)]` on the
+  struct to keep writing every column; the compile error shows both lines, and
+  a model with both fails too. Turso-primary models always write every
+  column: they declare `#[orm(full_row_save)]`, and a `RowSnapshot` field on
+  them, which they ignored, no longer compiles. `cargo rullst upgrade` reports
+  each model without a valid choice at its struct name (`V13-ORM-SAVE-MODE`).
+- The Turso models that `cargo rullst make:model`, `make:chat-session` and the
+  Turso Blank starter write declare `#[orm(full_row_save)]`, and
+  `generate:models` names the dirty-tracking field `row_snapshot` for a table
+  with a `snapshot` column instead of generating a full-row model. The ORM
+  examples and the blog example declare a `RowSnapshot` field.
+- **Breaking:** passkeys are an opt-in feature. `rullst-auth`'s
+  `auth::passkey` module (`PasskeyAuth`, `PasskeyConfig`, `Passkey`, the
+  shared ceremony manager and `SqlitePasskeyStore`) compiles only with the new
+  `passkeys` feature, which `sqlite` and `passkey-postgres` include; in the
+  `rullst` facade, `auth` no longer brings passkeys and the new
+  `auth-passkeys` feature does (`auth-sqlite` and `auth-passkey-postgres`
+  include it). Nexus and the generated starters use no passkeys and do not
+  enable it. Code that names `rullst::auth::passkey` without one of these
+  features fails to compile (E0432/E0433); `cargo rullst upgrade` locates it
+  (`V13-AUTH-PASSKEYS-FEATURE`). See the
+  [migration guide](https://rullst.github.io/Rullst/book/migration-v13.html).
+- Passkey public keys and assertion signatures are checked with aws-lc-rs
+  instead of `p256` (the point check at registration and in the passkey
+  stores) and `ring` (the signature check), and aws-lc-rs is compiled into
+  `rullst-auth` only with `passkeys`. The SaaS starter, like any application
+  with `auth` or `nexus` but without passkeys, resolves 18 fewer packages in
+  its `Cargo.lock` (349 to 331) and compiles 17 fewer crates. Every decision
+  is the same: differential tests run both implementations on valid, high-S
+  and low-S signatures, wrong messages and keys, malformed DER, points off the
+  curve or with a coordinate of `p` or more, the point at infinity and other
+  encodings, and both give the expected result on the 484 Wycheproof ECDSA
+  P-256 SHA-256 vectors. High-S signatures are still accepted, as WebAuthn
+  allows.
+- The staging and production stack of `Server` serves 1.4 to 1.8 times as
+  many requests. In the Rullst/Benchmarks comparison a generated application
+  answered `GET /json` at 0.21 times the requests per second of Axum on the
+  same machine; on GitHub runners the same application went from 0.25 to
+  0.44 times the throughput of its routes without any layer on an AMD EPYC
+  7763 runner (29 300 to 51 500 requests per second, p99 6.5 ms to 3.7 ms)
+  and from 0.38 to 0.53 on a faster one (89 000 to 123 000), as the new
+  `Generated stack throughput` job of `bench.yml` measures and now requires. The security
+  baseline (secure headers, secure framework cookies, WAF, CSRF) runs as one
+  middleware instead of seven layers, in the same order and with the same
+  responses (two around a CORS layer); the header values derived from
+  `[security]` are computed once instead of for every response, the WAF no
+  longer allocates to compare an ASCII path or `User-Agent` without case, the
+  access log and `Vary: HX-Request` share one layer, the access log is
+  written by a background thread, and only HTML responses render a CSP with
+  the request's nonce. Every layer stays on by default.
+- The repository toolchain and the stable-pinned workflows move from Rust
+  1.99.1 to 1.100.0. Projects generated by `cargo rullst new --docker` (and the
+  Tailwind stage of `cargo rullst add tailwind`) build their Docker image from
+  `rust:1.100.0-slim-bookworm`. The Rust 1.96 MSRV is unchanged. Verus keeps
+  its own 1.98.1 toolchain, and Kani, Miri, the sanitizers and fuzzing keep
+  their pinned nightlies.
+- The `auth_middleware` that `cargo rullst make:auth` and the SaaS starter
+  generate inserts the account it loaded for the session check as
+  `Extension<User>`, and the generated dashboard renders it instead of
+  querying the account a second time. A signed-in request now runs the
+  session lookup and one account query; the session row is still read on
+  every request, so a revoked session fails on its next one. With this and
+  SQLite pools that no longer ping a connection before each query, the SaaS
+  starter's signed-in `GET /dashboard` serves about 1.5 times as many
+  requests (5,700 to 8,500 per second on an AMD EPYC 7763 runner, 350 to
+  234 µs of server CPU per request). The `Generated stack throughput` job of
+  `bench.yml` now measures that page and requires its ratio to the minimal
+  stack in `.github/stack-throughput/budget.toml`.
+- Studio and Nexus no longer depend on `rullst-security`. `SecurityStore` and
+  `LiveSecurityEvent`, with `BannedIpRecord`, `TelemetrySnapshot`,
+  `normalize_ip` and `SECURITY_EVENT_SCHEMA_VERSION`, are now defined in
+  `rullst_core::security`, and `rullst-security` re-exports them at the same
+  paths, so applications change nothing: the `rullst-security` layers and the
+  Studio and Nexus security pages still share one `SecurityStore::global()`.
+  Each generated starter's `Cargo.lock` lists 49 fewer packages (SaaS 398 to
+  349, Blank and API 374 to 325), and a `rullst-studio` dependency with its
+  default features builds 48 fewer (`jsonschema`, `ammonia` and the rest of
+  `rullst-security`'s graph). The facade's `rullst::security` module also
+  names these types without the `security` feature.
+- **Breaking:** `Server` applies the CSRF check and the secure headers in every
+  environment, development and test included, and the hot-reload server of
+  `cargo rullst dev` wraps each router generation in the same baseline. Until
+  13.0.0-alpha.5 only staging and production had them, so development
+  accepted a `POST`, `PUT`, `PATCH` or `DELETE` without the double-submit
+  token in an application whose router did not add `csrf_middleware` itself
+  (the API starter, a custom router); it now refuses it with `403`, as
+  production does. Outside staging and production `Strict-Transport-Security`
+  is sent only over HTTPS, the CSRF cookie carries `Secure` over HTTPS as
+  before, and the WAF still only reports. `apply_security_baseline` behaves
+  the same way for `Environment::Development` and `Environment::Test`.
+- Projects created by `cargo rullst new` no longer add `csrf_middleware` and
+  `headers_middleware` to their router, which `Server` now applies in every
+  environment; a request paid for both twice, and the generated stack now
+  serves about 20 % more requests per second (51 500 to 62 000 on the
+  `Generated stack throughput` runner, 0.43 to 0.52 of the same routes
+  without layers). `cargo rullst upgrade` reports
+  these layers in an existing router (`V13-ROUTER-BASELINE-LAYERS`), and
+  `make:privacy` and `make:age-gate` work with a router without a CSRF layer.
+  The generated contract tests that call `router()` directly wrap it in
+  `apply_security_baseline`.
+- The website has one landing page, at `https://rullst.win/` in English and
+  `https://rullst.win/pt-br/` in Brazilian Portuguese, with a flag language
+  switcher. `https://rullst.win/Rullst/` now redirects there; the book and the
+  benchmark dashboards stay under `/Rullst/`. The page adds an Integrations
+  section with the three evidence levels of README.md's table (checked against
+  it by `validate-site.py`), a Performance note that dates the cross-framework
+  comparison to June 2026, the Rullst Academy section, the SaaS demo and a
+  wake-up note on each Azure-hosted demo. The full privacy notice is published
+  from this repository at `/privacy.html` and `/pt-br/privacy.html`.
+- A SQLite pool created by `Orm::init`, `Orm::init_with_options` or
+  `Orm::init_with_replicas` no longer pings each connection before handing
+  it out (SQLx's `test_before_acquire`). The connection is a file the
+  process opened itself, and the round trip to its worker thread cost about
+  as much as a primary-key query. A connection that failed still fails its
+  next query, and SQLx then closes it. PostgreSQL and MySQL pools keep the
+  check.
+- SQLite-only applications compile no TLS stack. The Blank and API starters
+  with SQLite went from 316 to 257 packages in `Cargo.lock` and from 234 to
+  212 compiled third-party packages, with no rustls, aws-lc-rs, aws-lc-sys or
+  webpki roots, and their release binaries are about 27 % smaller (10.5 MB
+  to 7.7 MB in CI); the Blank starter without a database also dropped to 257.
+  `rullst-orm` enables SQLx's `tls-rustls-aws-lc-rs` only with its PostgreSQL
+  and MySQL drivers (`strict-postgres`, `strict-mysql`, `drivers-all`,
+  `pgvector`), Core's `orm` and `strict-sqlite` no longer build rustls, and
+  newly generated SQLite projects declare `sqlx` without
+  `tls-rustls-aws-lc-rs`. A project generated earlier keeps its TLS stack
+  until it removes that feature from a SQLite-only `sqlx` dependency.
+- `Server` start-up still installs aws-lc-rs as the rustls process default
+  wherever TLS is used, through Core's new `tls` feature: Core's
+  `strict-postgres`, `strict-mysql`, `drivers-all`, `storage-s3` and
+  `telemetry`, the `rullst-ai`, `rullst-capital` and `rullst-mail` crates,
+  the OAuth and PostgreSQL features of `rullst-auth` and the facade's other
+  HTTPS, Redis and PostgreSQL features enable it, and CI checks every facade
+  feature. The facade's new `tls` feature enables it for an application whose
+  own code makes rustls connections and relied on `orm` installing that
+  default. `rullst-connect`'s `postgres` and `mysql` features and
+  `rullst-auth`'s `session-registry-postgres` and `session-registry-mysql`
+  now enable SQLx's TLS themselves.
+- Studio's revenue dashboard (`/studio/capital`, `/api/revenue`,
+  `rullst_studio::revenue_dashboard`) and its `rullst-capital` dependency are
+  behind Studio's new `capital` feature, on by default in `rullst-studio` and
+  enabled by the facade's `capital` together with `studio` (the SaaS starter
+  has both). Without it `/studio/capital` says how to enable it and
+  `/api/revenue` answers 404.
+- Projects that `cargo rullst new` generates with SQLite (Blank, SaaS and API
+  starters) set `sqlite_journal_mode = "wal"` in `Rullst.toml`, with a comment
+  on why and how to turn it off: in WAL mode readers stop locking the database
+  file for every statement and stop waiting for the writer (the SaaS starter's
+  signed-in dashboard used 2–7 % less server CPU per request on CI runners).
+  SQLite then keeps
+  `rullst.db-wal` and `rullst.db-shm` next to the database, so the database
+  file alone is no longer a backup, and WAL must not be used on a network
+  filesystem (NFS, SMB, Azure Files: set `"delete"` there). The `Dockerfile`
+  and `compose.yaml` that `cargo rullst deploy` writes say so beside the data
+  volume, and the VM guide's backup section adds the restore command
+  (`sqlite3 ".restore"` with the app stopped). Existing projects are not
+  changed; see the "SQLite WAL journal" row of the migration guide to opt in.
+
+### Removed
+
+- **Breaking:** `rullst-ai`'s `AiClient::structured_prompt` and
+  `GuardrailReport::is_safe`, deprecated in 12.0.0, were removed.
+  `structured_prompt` took no schema and always returned
+  `AiError::UnsupportedCapability`: call `json_prompt` for parseable JSON or
+  `structured_prompt_with_schema` for output the provider checks against a
+  JSON Schema. Replace `is_safe()` with `passed_heuristics()`, which returns
+  the same value under a name that does not promise safety. `cargo rullst
+  upgrade` reports both (`V13-AI-DEPRECATED-REMOVED`, a review finding, because
+  `is_safe` is a common method name).
+- **Breaking:** the infallible `new` constructors of the `rullst-connect`
+  providers, deprecated in 12.0.0, were removed: `AppleProvider`,
+  `Auth0Provider`, `CognitoProvider`, `DiscordProvider`, `FacebookProvider`,
+  `GithubProvider`, `GoogleProvider`, `LinkedinProvider`, `MicrosoftProvider`
+  and `XProvider`, and the `new` that `define_provider!` generated for a
+  provider of the application's own. On invalid configuration they returned
+  a disabled provider whose redirect was `about:blank` and whose requests
+  failed. Call `try_new` with the same arguments and handle its
+  `ConnectError::InvalidConfiguration`. `CredentialMode::Invalid` and
+  `CredentialMode::is_invalid`, which only such a provider reported, were
+  removed with them; `CredentialMode` is `#[non_exhaustive]`, so a `match`
+  with a wildcard arm keeps compiling. `cargo rullst upgrade` reports the
+  built-in providers' `new` and `CredentialMode::Invalid`
+  (`V13-CONNECT-INFALLIBLE-NEW-REMOVED`); the compiler names the others.
+- **Breaking:** `rullst_core::Queue::purge_completed_jobs` (`rullst::queue::Queue`),
+  deprecated in 12.0.0, was removed. Despite its name it removed failed jobs:
+  call `Queue::purge_failed_jobs`, which does the same, or
+  `purge_completed_history` to remove completed jobs where the driver keeps
+  them. The `QueueDriver::purge_completed_jobs` hook that custom drivers
+  implement is unchanged. `cargo rullst upgrade` reports
+  `.purge_completed_jobs()` calls in files that name `Queue`
+  (`V13-QUEUE-PURGE-COMPLETED-REMOVED`, a review finding, because a
+  `QueueDriver` still has that method).
+- **Breaking:** `rullst-iot`'s `OtaManager::new`, `OtaManager::verify_signature`
+  and `OtaManager::commit_update`, deprecated in 12.0.0, were removed with
+  `OtaError::LegacyApiUnsupported`, the error all three always returned. Build
+  the manager with `OtaManager::new_with_trusted_key` (or
+  `new_with_counter_store`), verify with `begin_update` or `verify_update` and
+  commit with `commit_verified_update`. `cargo rullst upgrade` reports each use
+  (`V13-IOT-OTA-LEGACY-REMOVED`). The micro:bit V2 hardware suite drops its
+  `ota_legacy_api_fails_closed` check.
+- **Breaking:** the Mail APIs deprecated in 12.0.0 were removed:
+  `ResendDriver::new` and `AwsSesDriver::new` (use `try_new`, which returns a
+  `MailError` for invalid configuration instead of failing later in `send`),
+  `Message::with_open_tracking` and `Message::with_click_tracking` (use
+  `try_with_open_tracking` and `try_with_click_tracking`), and
+  `TrackingEngine::generate_open_token`, `generate_click_token`,
+  `inject_open_pixel` and `rewrite_links` (use their `try_` forms, which
+  return a `TrackingError` instead of an empty token or the unchanged HTML).
+  `cargo rullst upgrade` reports each use (`V13-MAIL-DEPRECATED-REMOVED`).
+- **Breaking:** `Nexus::build` and `Nexus::into_router`, deprecated in 12.0.0,
+  were removed. Both returned a router that answered every request with 503
+  when the access policy was missing or invalid. Call `Nexus::try_build()`,
+  which returns that error as a `NexusBuildError` at start-up. `cargo rullst
+  upgrade` reports `.build()` and `.into_router()` calls in files that name
+  `Nexus` (`V13-NEXUS-INFALLIBLE-BUILD-REMOVED`, a review finding, because
+  another builder in the file can have a `build` method).
+- **Breaking:** `rullst_orm::schema_diff` (`extract_tables_from_ast`,
+  `ParsedTable` and `ParsedField`), deprecated in 13.0.0-alpha.5, was removed
+  with the `syn` and `walkdir` dependencies it alone used, so applications
+  with the ORM no longer build them for it. Nothing in Rullst called it, and
+  it has no library replacement: write a migration from the models with
+  `cargo rullst make:migration:auto`, or read their tables and columns with
+  `cargo rullst inspect schema --json`. `cargo rullst upgrade` reports each
+  use (`V13-ORM-SCHEMA-DIFF-REMOVED`).
+- **Breaking:** the `#[route]` marker attribute of `rullst-macros`
+  (`rullst::route`, `rullst_core::route`), deprecated in 12.0.0, was removed.
+  It never registered a route: it returned the function unchanged and refused
+  arguments. Delete the attribute and register the handler with
+  `rullst::routes!` (`get("/path" => handler)`); there is no other
+  replacement. `cargo rullst upgrade` reports the attribute and its imports
+  (`V13-ROUTE-MARKER-REMOVED`).
+- **Breaking:** `rullst-security`'s `RateLimiter::with_distributed` and
+  `AuditChain::new`, deprecated in 12.0.0, were removed. `with_distributed`
+  selected a distributed backend that does not exist, so every request was
+  refused; `try_with_distributed` still reports that as
+  `RateLimitError::DistributedBackendUnsupported` at start-up, and the
+  `redis-rate-limit` feature's `RedisRateLimiter` shares a budget between
+  processes. Replace `AuditChain::new(key, logger)` with
+  `AuditChain::try_new(key, logger)?`, which rejects a weak key (shorter than
+  32 bytes or with fewer than eight distinct byte values) at start-up instead
+  of building a chain that refuses every event. `cargo rullst upgrade`
+  reports both (`V13-SECURITY-DEPRECATED-REMOVED`).
+
+### Fixed
+
+- `rullst-auth`: Cargo 1.100 writes test and bench binaries to
+  `target/<profile>/build/<package>/<hash>/out/<name>-<hash>` instead of
+  `target/<profile>/deps`. The development `APP_KEY` resolution now treats
+  both locations as a test harness, so `cargo test` on Cargo 1.100 again keeps
+  a generated key in memory instead of writing it to the per-user state
+  directory.
+- On aarch64 (Linux arm64 servers such as Graviton and Ampere, and Apple
+  silicon), aws-lc-rs 1.18 with aws-lc-sys 0.44 rejected some valid ECDSA
+  P-256 signatures: every signature whose s is 2^k or n − 2^k with k from 64
+  to 255, because AWS-LC's aarch64 modular inverse mishandled a zero low limb
+  (aws/aws-lc#3715). Passkey assertions, ES256 JWTs and TLS ECDSA signatures
+  verify through it. It only rejected valid signatures, never accepted an
+  invalid one, and an honest signer's s falls in that set with a probability
+  of about 2^-247. `rullst-auth` (with `passkeys`) now requires aws-lc-rs
+  1.19.0, which uses aws-lc-sys 0.47.0 (AWS-LC 5.12.0) with the fix; an
+  application that gets aws-lc-rs only through rustls or jsonwebtoken picks
+  it up with `cargo update -p aws-lc-rs`.
+- **MSRV erratum:** Rust 1.96.0, the minimum supported Rust version that
+  13.0.0-alpha.1 through 13.0.0-alpha.5 declare (`rust-version = "1.96.0"`),
+  was not verified for any of them. The required `Check MSRV (Rust 1.96.0)`
+  CI job installed 1.96.0 with `rustup default`, but `rust-toolchain.toml`
+  overrides the default, so the job compiled the workspace with the
+  repository's pinned toolchain instead (Rust 1.99.0 for alpha.1, 1.99.1 for
+  alpha.5), as it had since the file was added with Rust 1.97.1 on
+  25 July 2026. Since PR #709 the job forces 1.96.0 with `RUSTUP_TOOLCHAIN`
+  and fails unless `rustc` reports that version, and the new daily
+  `msrv-tests.yml` workflow runs the central crates' tests on Rust 1.96.0.
+  The first check with Rust 1.96.0 ran on the 13.0.0-alpha.6 source and
+  passed; the published alphas were not rechecked.
+- `/docs` from `rullst::scalar::scalar_docs_router` (and the controller that
+  `cargo rullst make:scalar` generates) was blank behind the security
+  baseline, whose strict default Content Security Policy blocked the page's
+  scripts; since 13.0.0-alpha.6 that applies in development too. The page now
+  answers with a policy of its own, which the baseline keeps: the request's
+  nonce on its inline style and scripts (and in a `csp-nonce` meta element,
+  from which Scalar takes the nonce for the styles it inserts), the one pinned
+  file `@scalar/api-reference@1.67.0/dist/browser/standalone.js`, loaded with
+  Subresource Integrity, and the hashes of the style elements Scalar inserts
+  without the nonce. It has no `'unsafe-eval'`, and `'unsafe-inline'` only in
+  `style-src-attr`, for the computed `style` attributes Scalar sets. Scalar's
+  remote fonts and its "Ask AI" agent, which calls `api.scalar.com`, are
+  turned off. In Chromium the page renders with no policy violation and no
+  console error.
+  `render_scalar_html` returns the page without a nonce, loading the same
+  pinned file with its integrity.
+- **Turso/libSQL:** saving a model whose text primary key a database
+  `DEFAULT` fills now works on a multi-instance server (such as Turso Cloud)
+  that answers the insert's interactive Hrana stream with a `base_url`: the
+  commit or rollback goes to that URL when it has the configured endpoint's
+  scheme, host and port. A `base_url` at another origin is refused with the
+  new `PolyglotError::CrossOriginEndpoint` before anything, the auth token
+  included, is sent there; the insert is not committed. Before, the client
+  ignored `base_url` and such an insert failed without writing a row.
+- `cargo rullst upgrade` no longer reports `V13-CREDENTIAL-RATE-LIMIT` at a
+  call of the application's own `hash_password` (through `crate`, `self`,
+  `super`, or a module or function the file imports from them or declares,
+  such as `auth::hash_password` after `use crate::auth;`) when the package
+  defines that function with its hashing under `run_password_work` or a
+  semaphore permit, even in another module. Other calls (`rullst::auth`,
+  `rullst_auth`, names imported from Rullst or another crate, glob imports,
+  methods) are still reported, now at every unbounded call of a function
+  rather than the first. The finding's message
+  says that `// rullst-upgrade: reviewed V13-CREDENTIAL-RATE-LIMIT: <reason>`
+  on the line above a call resolves a limit the rule does not follow.
+  Reported by the plataforma application.
+- **`cargo rullst upgrade`:** a rule that matches several lines of one file
+  is reported at each of them. A review rule in Rust sources, a script or
+  workflow rule and the project-file rules (`.env`, `Dockerfile`,
+  `.cargo/config.toml`, `.gitignore`, Kubernetes YAML) reported only the
+  first, so an application's `src/ai.rs` showed one of its three
+  `V13-AI-HTTP-STATUS` uses. The plan and the Markdown report list a rule's
+  lines in one file on one entry in line order (`src/ai.rs:12, 40, 77`);
+  `--json` has one finding per location, sorted by file, line and code, and
+  the counts count locations. A `rullst-upgrade: reviewed` marker still
+  leaves out only its own location.
+- `cargo rullst upgrade` no longer reports the review rules about how the
+  deployed application behaves in test code: an inline `#[cfg(test)]`
+  module, a `#[test]` or `#[tokio::test]` function or another
+  `#[cfg(test)]` item of a production file, and files below `tests/` or
+  named `tests.rs`, `*_tests.rs` or `*_test.rs`. The rules are
+  `V13-CSRF-COOKIE-IN-PAGE`, `V13-CSRF-STATIC-PREFIXES`,
+  `V13-ROUTER-BASELINE-LAYERS`, `V13-CREDENTIAL-RATE-LIMIT`,
+  `V13-LMS-RECORD-PROGRESS`, `V13-ERP-DASHBOARD-ACCESS`,
+  `V13-ERP-STORE-ORDER`, `V13-PAGE-CSP-NONCE`, `V13-PAGE-BOUNDS` and
+  `V13-PORTFOLIO-PROFILE`; before, a controller's test module that read the
+  CSRF cookie, for example, was reported as a page embedding it.
+  Must-change rules and the review rules whose change a test also observes
+  still report test code.
+
+### Security
+
+- **Breaking:** the CSRF token that pages embed is masked per response, a
+  defence against BREACH. `CsrfToken::as_str()` now returns
+  `mask || (token XOR mask)` in URL-safe base64, with a fresh random mask
+  for every request from a ChaCha12 generator per thread, seeded and
+  reseeded from the operating system (86 characters for the 32-character
+  token the middleware mints, which comes from the operating system's
+  random source), instead of the `rullst_csrf`
+  cookie value, which used to be the same in every response and could be
+  recovered from a compressed page that also reflected attacker-controlled
+  input. The middleware unmasks the `_token` field or `X-CSRF-Token` header
+  and compares it with the cookie in constant time; it still accepts the
+  cookie value itself, for clients that read the cookie, and nothing else.
+  The cookie is unchanged. Code or tests that compared the embedded value
+  with the cookie must submit it instead. The new
+  `rullst::security::mask_csrf_token` masks a value read from the cookie;
+  the `get_csrf_token` helpers that `make:auth`, the SaaS starter and
+  `make:oauth` generate use it, and `cargo rullst upgrade` reports the older
+  helper that embeds the raw cookie value (`V13-CSRF-COOKIE-IN-PAGE`). A
+  multipart `_token` field may be up to 342 bytes (was 128). Masking covers
+  the CSRF token only: an application should not show other secrets in a
+  compressed page next to text from the request.
+
 ## [13.0.0-alpha.5] - 2026-11-14
 
 Fifth v13 prerelease, for evaluation, and the 13.0 feature and public API
