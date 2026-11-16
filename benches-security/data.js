@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794789519488,
+  "lastUpdate": 1794793129644,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -23086,6 +23086,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 8,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5d2047eb92d5551b4479723b2de7c40bf40cea4e",
+          "message": "Merge pull request #720 from Rullst/feat/v13-i18n-cldr-more-locales\n\nfeat(i18n): add CLDR 48 data for Latin American Spanish and ten currencies",
+          "timestamp": "2026-11-15T22:23:34-03:00",
+          "tree_id": "b8437e8f8435eb3948fd62905b2041bf73f69cdb",
+          "url": "https://github.com/Rullst/Rullst/commit/5d2047eb92d5551b4479723b2de7c40bf40cea4e"
+        },
+        "date": 1794793128809,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 2744,
+            "range": "± 47",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 270,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 9,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 7,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 7,
             "range": "± 0",
             "unit": "ns/iter"
           }
