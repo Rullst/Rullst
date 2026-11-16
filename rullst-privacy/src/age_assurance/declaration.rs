@@ -8,6 +8,10 @@ use serde::{Deserialize, Serialize};
 
 /// An explicit answer to the exact threshold in the retained server challenge.
 /// Do not infer an affirmative answer from a missing checkbox or request field.
+///
+/// Exhaustive on purpose: an answer to the threshold question meets it, is
+/// below it or declines; any other answer must make every caller decide again
+/// what it permits.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AgeDeclaration {

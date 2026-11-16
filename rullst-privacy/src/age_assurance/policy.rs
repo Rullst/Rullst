@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 /// Engineering presets, not jurisdiction-specific legal classifications.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum RiskLevel {
     /// A clearly labeled declaration may suffice for the application's purpose.
     Low,
@@ -16,6 +17,7 @@ pub enum RiskLevel {
 /// Distinct methods must never be silently promoted to a stronger assurance.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum AgeMethod {
     SelfDeclaration,
     FacialEstimation,
