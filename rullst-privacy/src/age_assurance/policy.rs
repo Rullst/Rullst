@@ -2,9 +2,12 @@ use super::{AgeError, valid_token};
 use serde::{Deserialize, Serialize};
 
 /// Engineering presets, not jurisdiction-specific legal classifications.
+///
+/// Exhaustive on purpose: with [`AgeMethod`] it is the input domain of
+/// `AgePolicy::permits` that the Verus pilot proves, so a new level must
+/// break callers and the proof until both handle it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-#[non_exhaustive]
 pub enum RiskLevel {
     /// A clearly labeled declaration may suffice for the application's purpose.
     Low,
@@ -15,9 +18,12 @@ pub enum RiskLevel {
 }
 
 /// Distinct methods must never be silently promoted to a stronger assurance.
+///
+/// Exhaustive on purpose: with [`RiskLevel`] it is the input domain of
+/// `AgePolicy::permits` that the Verus pilot proves, so a new method must
+/// break callers and the proof until both handle it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-#[non_exhaustive]
 pub enum AgeMethod {
     SelfDeclaration,
     FacialEstimation,

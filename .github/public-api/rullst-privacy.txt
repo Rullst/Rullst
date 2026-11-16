@@ -92,7 +92,7 @@ impl core::marker::Sync for rullst_privacy::age_assurance::AgeError
 impl core::marker::Unpin for rullst_privacy::age_assurance::AgeError
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_privacy::age_assurance::AgeError
 impl core::panic::unwind_safe::UnwindSafe for rullst_privacy::age_assurance::AgeError
-#[non_exhaustive] pub enum rullst_privacy::age_assurance::AgeMethod
+pub enum rullst_privacy::age_assurance::AgeMethod
 pub rullst_privacy::age_assurance::AgeMethod::SelfDeclaration
 pub rullst_privacy::age_assurance::AgeMethod::FacialEstimation
 pub rullst_privacy::age_assurance::AgeMethod::VerifiedAttribute
@@ -244,7 +244,7 @@ pub trait rullst_privacy::age_assurance::ReplayStore: core::marker::Send + core:
 pub fn rullst_privacy::age_assurance::ReplayStore::claim(&self, nonce: [u8; 32], expires_at: i64, now: i64) -> impl core::future::future::Future<Output = core::result::Result<bool, rullst_privacy::age_assurance::AgeError>> + core::marker::Send
 pub fn rullst_privacy::age_assurance::ReplayStore::durability(&self) -> rullst_privacy::age_assurance::ReplayDurability
 impl<T: rullst_privacy::age_assurance::ReplayStore> rullst_privacy::age_assurance::ReplayStore for alloc::sync::Arc<T>
-#[non_exhaustive] pub enum rullst_privacy::age_assurance::RiskLevel
+pub enum rullst_privacy::age_assurance::RiskLevel
 pub rullst_privacy::age_assurance::RiskLevel::Low
 pub rullst_privacy::age_assurance::RiskLevel::Elevated
 pub rullst_privacy::age_assurance::RiskLevel::Restricted

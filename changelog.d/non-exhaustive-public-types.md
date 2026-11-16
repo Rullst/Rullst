@@ -3,7 +3,7 @@
 - **Breaking:** for the 13.0 public API freeze, every publicly reachable enum,
   and every struct whose fields are all public, is now either
   `#[non_exhaustive]` or documented as exhaustive on purpose, so a 13.x
-  release can add a variant or a field without breaking applications. 41
+  release can add a variant or a field without breaking applications. 39
   enums (the errors, statuses, kinds, modes and backends that can grow, such
   as `StorageError`, `SecurityError`, `SubscriptionStatus`, `ModelOperation`,
   `ColumnDefault`, `AgeError`, `JwtPolicyMode` and IoT's `NodeStatus`) and 103
@@ -33,7 +33,8 @@
   formats stay exhaustive on purpose, so a new variant there breaks callers
   until they handle it: Labs' `Action`, `Teardown`, `LeaseStatus` and
   protocol v1 structs, Privacy's `AgeDecision`, `AgeOutcome`, `Assurance` and
-  `AgeDeclaration`, Auth's `CeremonyKind`, Core's `AttributePresence`,
+  `AgeDeclaration` and the `AgeMethod` and `RiskLevel` inputs of the
+  Verus-proven `AgePolicy::permits`, Auth's `CeremonyKind`, Core's `AttributePresence`,
   `CompletionStatus` and `AbortStatus`, IoT's `MqttQos` and `PinState`,
   Studio's `DistributedTraceStatus`, `TraceBatchV1` and
   `DistributedTraceSpanV1`, and the newtypes `ValidatedJson`,
