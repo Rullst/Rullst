@@ -14,7 +14,6 @@ use super::catalog::{
     HEALTH_PROBE_VERSION_FIELD, ROUTER_BASELINE_LAYERS,
 };
 use proc_macro2::TokenStream;
-use std::path::{Component, Path};
 
 /// The probe payload types whose `version` field 13.0.0-alpha.6 removed.
 const PROBE_TYPES: &[&str] = &["HealthProbeResponse", "ReadinessProbeResponse"];
@@ -89,31 +88,13 @@ pub(super) fn layer_rule(name: &str, args: &TokenStream) -> Option<&'static Rule
     None
 }
 
-/// Whether `path`, relative to its package root, is test code: below a
-/// `tests` directory or a `tests.rs`/`*_tests.rs`/`*_test.rs` file.
-fn is_test_path(path: &Path) -> bool {
-    let name = path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or_default();
-    path.components()
-        .any(|part| part == Component::Normal("tests".as_ref()))
-        || name == "tests.rs"
-        || name.ends_with("_tests.rs")
-        || name.ends_with("_test.rs")
-}
-
-/// The rule for a method call with `args` in the file at `path`:
-/// `.strip_prefix("rullst_csrf=")`, which reads the raw CSRF cookie value
-/// (the `get_csrf_token` helper generated before 13.0.0-alpha.6), outside
-/// test code and in a file that does not call `mask_csrf_token`.
-pub(super) fn cookie_rule(
-    name: &str,
-    args: &TokenStream,
-    text: &str,
-    path: &Path,
-) -> Option<&'static Rule> {
-    if name != "strip_prefix" || text.contains("mask_csrf_token") || is_test_path(path) {
+/// The rule for a method call with `args`: `.strip_prefix("rullst_csrf=")`,
+/// which reads the raw CSRF cookie value (the `get_csrf_token` helper
+/// generated before 13.0.0-alpha.6), in a file that does not call
+/// `mask_csrf_token`. It is a rule about production behaviour, so test code
+/// is skipped ([`super::test_code`]).
+pub(super) fn cookie_rule(name: &str, args: &TokenStream, text: &str) -> Option<&'static Rule> {
+    if name != "strip_prefix" || text.contains("mask_csrf_token") {
         return None;
     }
     let prefix = super::tokens::string_value(args.clone().into_iter().next().as_ref())?;
