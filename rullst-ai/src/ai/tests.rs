@@ -380,3 +380,19 @@ fn structured_schema_reports_its_description() {
     let described = schema.with_description("The final answer");
     assert_eq!(described.description(), Some("The final answer"));
 }
+
+#[tokio::test]
+async fn client_file_vision_refuses_a_provider_without_vision() {
+    let client = AiClient::new(MockProvider { succeeds: true });
+    let policy = LocalImagePolicy::new([std::env::temp_dir()]).expect("policy");
+    let missing = std::env::temp_dir().join("rullst-ai-missing-vision-input.png");
+    assert!(matches!(
+        client
+            .prompt_with_image_file("describe", &missing, &policy)
+            .await,
+        Err(AiError::UnsupportedCapability {
+            provider: "custom",
+            capability: "vision input",
+        })
+    ));
+}

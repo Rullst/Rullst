@@ -310,6 +310,7 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-ai/src/ai/evaluation/types.rs`: `AiEvaluationReport::schema_version` with `1` | Its fields are private to the evaluation module, whose only constructor, `build_report`, sets `schema_version: 1`; the report has no `Deserialize`. |
 | `rullst-ai/src/ai/durable_audit.rs`: `decode_file`, the record number `events.len() + 1` of the end-offset `checked_add` error with `-` or `*` | `cursor + relative_end` indexes the bytes already read, so the addition never overflows and the error is never built. |
 | `rullst-ai/src/ai/memory.rs`: `InMemoryChatMemory::append_exchange`, `excess > 0` with `>=` | `drain(..0)` removes nothing, so draining a zero excess leaves the history unchanged. |
+| `rullst-ai/src/ai/vector.rs`: `cosine_similarity`, `norm_left == 0.0 \|\| norm_right == 0.0` with `&&` | With one zero norm the divisor is zero, so the quotient is infinite or NaN and the finiteness check that follows also returns `0.0`. |
 
 Timed-out mutants are not counted as caught, and cargo-mutants reports them
 separately. The campaign rewrote the scanning loops of the WAF detector, the

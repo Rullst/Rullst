@@ -145,7 +145,8 @@ async fn native_provider_rejects_oversized_streamed_json() {
 async fn native_provider_response_size_boundary_is_exact() {
     let prefix = r#"{"choices":[{"message":{"content":""#;
     let suffix = r#""}}]}"#;
-    let payload = "a".repeat(super::support::MAX_RESPONSE_BYTES - prefix.len() - suffix.len());
+    // 2 MiB, the native providers' response ceiling.
+    let payload = "a".repeat(2_097_152 - prefix.len() - suffix.len());
     let body = format!("{prefix}{payload}{suffix}");
     let (endpoint, server) = serve(success(&body)).await;
     let answer = OpenAiProvider::new("fixture-api-key")

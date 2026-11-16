@@ -299,6 +299,15 @@ async fn gemini_stream_failures_are_errors_not_partial_answers() {
             "data: {\"error\":{\"status\":\"RESOURCE_EXHAUSTED\",\"message\":\"secret detail\"}}\n\n",
             "RESOURCE_EXHAUSTED",
         ),
+        // A status or reason that is not a short identifier is reported as unknown.
+        (
+            "data: {\"error\":{\"status\":\"bad status!\",\"message\":\"secret detail\"}}\n\n",
+            "Gemini stream error: unknown",
+        ),
+        (
+            "data: {\"promptFeedback\":{\"blockReason\":\"\"}}\n\n",
+            "blockReason unknown",
+        ),
     ] {
         let (url, _request) = serve_once(body, SSE);
         let error = stream_text(GeminiProvider::new("g-test").with_base_url(url))

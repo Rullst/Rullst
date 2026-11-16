@@ -317,3 +317,30 @@ async fn in_memory_capacity_admits_known_conversations_and_delete_reports_presen
     assert_eq!(memory.delete_conversation(&tenant, &first).await, Ok(true));
     assert_eq!(memory.delete_conversation(&tenant, &first).await, Ok(false));
 }
+
+#[tokio::test]
+async fn messages_up_to_64_kib_are_kept_with_the_current_time() {
+    assert!(ChatMemoryEntry::try_new(1, "user", "m".repeat(65_536), 0).is_ok());
+    assert_eq!(
+        ChatMemoryEntry::try_new(1, "user", "m".repeat(65_537), 0),
+        Err(ChatMemoryError::InvalidContent)
+    );
+
+    let memory = InMemoryChatMemory::new(ChatMemoryConfig::default());
+    let tenant = TenantContext::try_new("tenant-a").expect("tenant");
+    let conversation = ConversationId::try_new("timed").expect("conversation");
+    memory
+        .ensure_conversation(&tenant, &conversation)
+        .await
+        .expect("conversation");
+    memory
+        .append_exchange(&tenant, &conversation, 0, "hello", "answer")
+        .await
+        .expect("exchange");
+    let history = memory
+        .history(&tenant, &conversation)
+        .await
+        .expect("history");
+    // Stored after November 2023, so the clock was read rather than a constant.
+    assert!(history.entries()[0].created_at_epoch() > 1_700_000_000);
+}

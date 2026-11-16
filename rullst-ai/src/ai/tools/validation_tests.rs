@@ -220,3 +220,39 @@ fn execution_accepts_payloads_of_exactly_the_policy_limits() {
         .expect("payloads at the limits are accepted");
     assert_eq!(output, payload);
 }
+
+#[test]
+fn policy_limits_approvals_and_context_authorization_are_enforced() {
+    use crate::ai::tools::{
+        HumanApproval, InMemoryToolAuditTrail, ToolExecutionContext, ToolExecutionPolicy,
+        ToolRegistry,
+    };
+
+    let policy = ToolExecutionPolicy::new(["schema-tool"]).expect("policy");
+    for (input, output) in [(0, 1), (1, 0)] {
+        assert!(matches!(
+            policy.clone().with_payload_limits(input, output),
+            Err(ToolExecutionError::InvalidPolicy(_))
+        ));
+    }
+    let payload = serde_json::json!({});
+    assert!(
+        HumanApproval::for_payload("schema-tool", &payload, "reviewer", "r".repeat(2_048)).is_ok()
+    );
+    assert!(
+        HumanApproval::for_payload("schema-tool", &payload, "reviewer", "r".repeat(2_049)).is_err()
+    );
+
+    // The policy allows the tool, but this principal was authorized for another.
+    let mut registry = ToolRegistry::new();
+    registry
+        .register(SchemaTool::new(Vec::new()))
+        .expect("valid tool");
+    let mut context = ToolExecutionContext::new("user-7", ["other-tool"], 2).expect("context");
+    assert_eq!(context.principal(), "user-7");
+    let audit = InMemoryToolAuditTrail::new(8).expect("audit");
+    assert!(matches!(
+        registry.execute("schema-tool", payload, &mut context, &policy, &audit),
+        Err(ToolExecutionError::Unauthorized { .. })
+    ));
+}
