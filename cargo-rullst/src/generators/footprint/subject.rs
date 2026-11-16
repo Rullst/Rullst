@@ -1,5 +1,6 @@
 //! The app being measured: an app already running on `--url`, found by its
-//! port, or the project's release binary started on a free loopback port.
+//! port, a published site's `https://` URL (page weight only), or the
+//! project's release binary started on a free loopback port.
 use super::failure::Failure;
 use super::report::Target;
 use super::{process, target};
@@ -57,6 +58,30 @@ pub(super) fn started_environment(environment: &str) -> &'static str {
         "RULLST_ENV=staging HOST=127.0.0.1"
     } else {
         "RULLST_ENV=production HOST=127.0.0.1"
+    }
+}
+
+/// Why a published site has no process, binary or dependency figures.
+pub(super) const REMOTE: &str =
+    "not measured for a published https:// site: footprint weighs only its page";
+
+/// A published site at `base`: nothing runs locally, so nothing is looked
+/// up; the page weight reports whether the site answered.
+pub(super) fn remote(base: &reqwest::Url, path: &str) -> Subject {
+    Subject {
+        base: Some(base.clone()),
+        target: Target {
+            mode: "remote_url",
+            url: Some(target::request_url(base, path).to_string()),
+            pid: None,
+            process_lookup: REMOTE.to_string(),
+            executable: None,
+            environment: None,
+        },
+        executable: None,
+        executable_method: REMOTE,
+        owned: None,
+        failure: None,
     }
 }
 

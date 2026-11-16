@@ -90,12 +90,13 @@ fn target_rows(report: &Report) -> Vec<Row> {
     let mode = match (target.mode, &target.executable) {
         ("release_build", Some(name)) => format!("release build `{name}` started by footprint"),
         ("release_build", None) => "release build started by footprint".to_string(),
+        ("remote_url", _) => "published site (--url https://), page weight only".to_string(),
         _ => "existing app (--url)".to_string(),
     };
-    let absent = if report.failure.is_some() {
-        "NOT RUNNING"
-    } else {
-        "NOT FOUND"
+    let absent = match (target.mode, &report.failure) {
+        ("remote_url", _) => "NOT LOOKED UP",
+        (_, Some(_)) => "NOT RUNNING",
+        (_, None) => "NOT FOUND",
     };
     let process = match target.pid {
         Some(pid) => row(
