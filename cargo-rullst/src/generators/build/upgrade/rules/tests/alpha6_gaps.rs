@@ -114,8 +114,8 @@ async fn the_page_embeds_the_csrf_token() {
     assert!(set_cookie.contains(&cookie));
     assert_eq!(cookie.len(), 32);
     assert_eq!(page_token.len(), 86);
-    let header = response.headers()["set-cookie"].to_str().unwrap();
-    assert_eq!(header.strip_prefix("rullst_csrf=").unwrap(), page_token);
+    let header = response.headers()["set-cookie"].to_str()?;
+    assert_eq!(header.strip_prefix("rullst_csrf=")?, page_token);
     debug_assert_eq!(cookie, page_token);
     assert_eq!(response.status(), 200);
 }
