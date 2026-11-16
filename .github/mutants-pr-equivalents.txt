@@ -239,3 +239,6 @@ rullst-mail/src/worker.rs:61:41: replace > with >= in prepare_claimed_message
 rullst-mail/src/facade/driver.rs:67:9: replace <impl Hasher for DigestHasher>::finish -> u64 with 1
 rullst-mail/src/facade/driver.rs:215:9: delete match arm (Some(_), Some(_)) in ses_credentials
 rullst-mail/src/drivers/resend.rs:68:45: replace > with >= in ResendDriver::send_request
+rullst-mail/src/security.rs:128:39: replace + with * in redact_labelled_private_keys
+rullst-mail/src/security.rs:214:52: replace + with - in href_values
+rullst-mail/src/security.rs:214:52: replace + with * in href_values

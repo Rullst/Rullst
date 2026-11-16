@@ -350,8 +350,9 @@ every test of the file reaches, so no single test can fail first:
   opener forever in every test with an HTML comment.
 - `rullst-mail/src/security.rs`: the redaction scans, where
   `start + relative_end` in `redact_values_after` becomes `-`, `offset +
-  relative` in `redact_aws_access_keys` or `redact_labelled_private_keys`
-  becomes `*`, or `start + prefix.len()` becomes `-` or `*`, and the
+  relative` in `redact_aws_access_keys` or `start + BEGIN.len()` in
+  `redact_labelled_private_keys` becomes `*`, or `start + prefix.len()`
+  becomes `-` or `*`, and the
   `href_values` scan, where `index += 1` in `skip_whitespace` or the
   non-match `pos += 1` becomes `*=`, or the `pos += 4` after an `href` without
   `=` becomes `-=`; each scan restarts before the same match.
