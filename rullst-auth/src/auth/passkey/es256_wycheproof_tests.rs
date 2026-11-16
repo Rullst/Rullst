@@ -92,3 +92,92 @@ fn es256_probe_lists_every_disagreement() {
     }
     println!("PROBE {mismatches} disagreement(s)");
 }
+
+// TEMPORARY PROBE (fix/v13-alpha6-macos-nightly): dropped before merge.
+// Valid signatures with a chosen s: with R = k0·G and r = x(R) mod n, the key
+// Q = r⁻¹·(s·R − z·G) makes (r, s) verify for any s.
+#[test]
+fn es256_probe_structured_and_random_s() {
+    use p256::elliptic_curve::PrimeField;
+    use p256::elliptic_curve::ops::Reduce;
+    use p256::elliptic_curve::point::AffineCoordinates;
+    use p256::elliptic_curve::sec1::ToSec1Point;
+    use p256::{FieldBytes, ProjectivePoint, Scalar};
+
+    fn integer(bytes: &[u8]) -> Vec<u8> {
+        let mut value: Vec<u8> = bytes.iter().copied().skip_while(|b| *b == 0).collect();
+        if value.is_empty() {
+            value.push(0);
+        }
+        if value[0] & 0x80 != 0 {
+            value.insert(0, 0);
+        }
+        let mut out = vec![0x02, value.len() as u8];
+        out.extend(value);
+        out
+    }
+    fn hashed(data: &[u8]) -> Scalar {
+        let digest: [u8; 32] = sha2::Sha256::digest(data).into();
+        <Scalar as Reduce<FieldBytes>>::reduce(&FieldBytes::from(digest))
+    }
+    let message = b"hello, world";
+    let z = hashed(message);
+    // (aws-lc, ring) disagreements, by family.
+    let check = |k0: Scalar, s: Scalar, label: &str, failures: &mut Vec<String>| {
+        let point = (ProjectivePoint::GENERATOR * k0).to_affine();
+        let r = <Scalar as Reduce<FieldBytes>>::reduce(&point.x());
+        let q = (ProjectivePoint::from(point) * s - ProjectivePoint::GENERATOR * z)
+            * r.invert().unwrap();
+        let public_key = q.to_affine().to_sec1_point(false).as_bytes().to_vec();
+        let mut body = integer(&r.to_repr());
+        body.extend(integer(&s.to_repr()));
+        let mut signature = vec![0x30, body.len() as u8];
+        signature.extend(body);
+        let aws_lc = super::es256::verify(&public_key, message, &signature);
+        let ring =
+            super::es256_differential_tests::previous_verify(&public_key, message, &signature);
+        if !(aws_lc && ring) {
+            failures.push(format!(
+                "{label}: aws-lc {aws_lc} ring {ring} s {}",
+                s.to_repr()
+                    .iter()
+                    .map(|b| format!("{b:02x}"))
+                    .collect::<String>()
+            ));
+        }
+    };
+    let k0 = Scalar::from(0x1234_5678_9abc_def1_u64);
+    let mut failures = Vec::new();
+    let mut power = Scalar::ONE;
+    for k in 0..256 {
+        check(k0, power, &format!("2^{k}"), &mut failures);
+        check(k0, -power, &format!("n-2^{k}"), &mut failures);
+        check(k0, power + Scalar::ONE, &format!("2^{k}+1"), &mut failures);
+        check(
+            k0,
+            -power - Scalar::ONE,
+            &format!("n-2^{k}-1"),
+            &mut failures,
+        );
+        check(k0, power - Scalar::ONE, &format!("2^{k}-1"), &mut failures);
+        power = power + power;
+    }
+    let structured = failures.len();
+    for index in 0_u32..3000 {
+        let k = hashed(&[b"k".as_slice(), &index.to_be_bytes()].concat());
+        let s = hashed(&[b"s".as_slice(), &index.to_be_bytes()].concat());
+        check(k, s, &format!("random {index}"), &mut failures);
+    }
+    println!(
+        "PROBE2 target {} {}",
+        std::env::consts::OS,
+        std::env::consts::ARCH
+    );
+    for failure in &failures {
+        println!("PROBE2 {failure}");
+    }
+    println!(
+        "PROBE2 {structured} structured of 1280 and {} random of 3000 not verified by both",
+        failures.len() - structured
+    );
+}
