@@ -57,6 +57,10 @@ pub(crate) fn mount_static_assets_at(app: axum::Router, root: &Path) -> axum::Ro
 /// Zstandard siblings through [`zstd_static_from`], the cache policy of the
 /// original request path around both, and outermost the content-hashed names
 /// of `manifest` (see [`hashed::hashed_static_middleware`]).
+///
+/// Those three layers wrap only the `/static` mount: each passes through any
+/// other path, and as layers of the whole router they cost every page and
+/// API request three middleware calls.
 fn mount_static_assets_with(
     app: axum::Router,
     root: &Path,
@@ -64,23 +68,25 @@ fn mount_static_assets_with(
 ) -> axum::Router {
     let root: PathBuf = root.to_path_buf();
     let directory = root.join("static");
-    app.nest_service(
-        "/static",
-        tower_http::services::ServeDir::new(directory).precompressed_br(),
-    )
-    .layer(axum::middleware::from_fn(
-        move |req: axum::extract::Request, next: axum::middleware::Next| {
-            let root = root.clone();
-            async move { zstd_static_from(&root, req, next).await }
-        },
-    ))
-    .layer(axum::middleware::from_fn(static_cache_middleware))
-    .layer(axum::middleware::from_fn(
-        move |req: axum::extract::Request, next: axum::middleware::Next| {
-            let manifest = Arc::clone(&manifest);
-            async move { hashed::hashed_static_middleware(manifest, req, next).await }
-        },
-    ))
+    let assets = axum::Router::new()
+        .nest_service(
+            "/static",
+            tower_http::services::ServeDir::new(directory).precompressed_br(),
+        )
+        .layer(axum::middleware::from_fn(
+            move |req: axum::extract::Request, next: axum::middleware::Next| {
+                let root = root.clone();
+                async move { zstd_static_from(&root, req, next).await }
+            },
+        ))
+        .layer(axum::middleware::from_fn(static_cache_middleware))
+        .layer(axum::middleware::from_fn(
+            move |req: axum::extract::Request, next: axum::middleware::Next| {
+                let manifest = Arc::clone(&manifest);
+                async move { hashed::hashed_static_middleware(manifest, req, next).await }
+            },
+        ));
+    app.merge(assets)
 }
 
 /// Sets the policy of [`static_cache_policy`] on successful and `304`
