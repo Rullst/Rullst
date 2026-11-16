@@ -404,7 +404,8 @@ to alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
     Traces and Security pages, turns alerts into debounced desktop
     notifications through the browser's Notifications API, adds p99 and
     security-event rules, and reaches projects and webhooks through an
-    `HTTPS_PROXY`/`NO_PROXY` or explicit proxy chosen on its Settings page.
+    `HTTPS_PROXY`/`NO_PROXY` or explicit proxy chosen on its Settings page
+    ([#713](https://github.com/Rullst/Rullst/pull/713)).
   - **Compressed pages:** the CSRF token is masked per response (BREACH
     defence), then the generated Caddyfile compresses dynamic HTML. Since
     13.0.0-alpha.5 generated deployments serve static files pre-compressed
@@ -413,12 +414,36 @@ to alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
     random mask per request, verified in constant time (the raw cookie value
     is still accepted), and the generated `Caddyfile` has
     `encode zstd gzip`; `cargo rullst upgrade` reports raw cookie embeds and
-    a `Caddyfile` without `encode`.
+    a `Caddyfile` without `encode` ([#712](https://github.com/Rullst/Rullst/pull/712)).
+  - **Generated-stack throughput and the security baseline:** done in the
+    13.0.0-alpha.6 source. The production stack that `Server` adds runs as
+    one layer and writes the access log in the background ([#714](https://github.com/Rullst/Rullst/pull/714)): the
+    application `cargo rullst new` generates went from 0.26 to about 0.45 of
+    the throughput of the same routes without layers, measured by the new
+    `Generated stack throughput` job of `bench.yml`. `Server` applies the
+    CSRF check and the secure headers in every environment, development
+    included, so generated routers no longer add them a second time
+    ([#716](https://github.com/Rullst/Rullst/pull/716), about 0.52), and `/docs` (Scalar) answers with its own nonce
+    Content Security Policy, which the baseline keeps ([#717](https://github.com/Rullst/Rullst/pull/717)). A second
+    performance round on the security layers is in progress.
+  - **Public API audit:** in progress. Public enums and structs that can grow
+    in 13.x become `#[non_exhaustive]` before the freeze, so adding a variant
+    or a field later is not a breaking change; a `cargo rullst upgrade` rule
+    locates the code it breaks.
   - **Locales, mail and documentation:** more i18n locales and currency
     formats as CLDR data ([#636](https://github.com/Rullst/Rullst/issues/636)),
     application-owned mail transport examples for more providers
     ([#638](https://github.com/Rullst/Rullst/issues/638)) and a Portuguese
     first-hour guide ([#639](https://github.com/Rullst/Rullst/issues/639)).
+    Done in the 13.0.0-alpha.6 source: CLDR 48 number, date and currency
+    data for `es-419`, `es-AR`, `es-CL`, `es-CO`, `es-MX`, `es-PE` and `es-UY`,
+    which used Spain's before, and the local symbols of ten more currencies
+    ([#720](https://github.com/Rullst/Rullst/pull/720)); an application-owned Postmark `MailDriver` example, the
+    pattern for the providers v13 removed ([#722](https://github.com/Rullst/Rullst/pull/722)); the Brazilian
+    Portuguese first hour, from the README quickstart to tutorial 11, whose
+    code blocks CI checks against the English pages ([#723](https://github.com/Rullst/Rullst/pull/723)); and the
+    alpha.5-to-alpha.6 checklist of the migration guide, each item naming the
+    `cargo rullst upgrade` rule that locates it ([#719](https://github.com/Rullst/Rullst/pull/719)).
   - **Fixes:** every `#[derive(Orm)]` model declares what `save()` writes
     (the changed columns, with a `RowSnapshot` field, or every column, with
     `#[orm(full_row_save)]`), so a full-row save that loses a concurrent change
@@ -430,11 +455,23 @@ to alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
     race; CI's required checks always report on a pull request that is ready
     for review; a pull-request check runs the release audit evidence
     commands; and the release preflight gives a clear message for a tag whose
-    release published nothing.
+    release published nothing. Also done, from the reports of the
+    applications upgraded to alpha.5: a one-off payment reports its payment
+    method and instalments, and one checkout can carry its own HTTPS
+    notification URL (InfinitePay's per-link webhook; Stripe refuses it)
+    ([#724](https://github.com/Rullst/Rullst/pull/724)); Bunny's just-in-time status 8 is `Processing::Playable`,
+    which plays in Bunny's player before the other renditions finish
+    ([#725](https://github.com/Rullst/Rullst/pull/725)); and `cargo rullst footprint --page-weight` weighs a published
+    `https://` site's page as visitors download it, while
+    `V13-CREDENTIAL-RATE-LIMIT` accepts a call of the application's own
+    bounded hasher in another module ([#727](https://github.com/Rullst/Rullst/pull/727)).
   - **Process:** changelog fragments
     ([#668](https://github.com/Rullst/Rullst/pull/668)), a merge queue, and
     `Generated starters in browsers` as a required check if its nightly
-    history is stable.
+    history is stable. Done in the 13.0.0-alpha.6 source: two live CI checks,
+    Server-Sent Events through the compression of the generated `Caddyfile`
+    and Scalar `/docs` in Chromium under the production policy
+    ([#721](https://github.com/Rullst/Rullst/pull/721)).
 - **Reports from the platforms upgraded to 13.0.0-alpha.6.** They choose the
   fixes of rc.1, as the reports on alpha.1 to alpha.5 chose those of the next
   prerelease.

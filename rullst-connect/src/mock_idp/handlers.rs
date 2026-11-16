@@ -62,9 +62,35 @@ struct MockIdpState {
     config: MockIdpConfig,
     signer: MockSigner,
     protocol: tokio::sync::Mutex<ProtocolState>,
+    clock: Clock,
+}
+
+/// Where the mock IdP reads the time: the system clock or, in this crate's
+/// tests, a clock the test sets, so code and token lifetimes can be tested
+/// without waiting them out.
+enum Clock {
+    System,
+    #[cfg(test)]
+    Manual(Arc<std::sync::atomic::AtomicU64>),
+}
+
+impl Clock {
+    /// Seconds since the Unix epoch.
+    fn now(&self) -> Result<u64, crate::ConnectError> {
+        match self {
+            Self::System => now_epoch(),
+            #[cfg(test)]
+            Self::Manual(seconds) => Ok(seconds.load(std::sync::atomic::Ordering::SeqCst)),
+        }
+    }
 }
 
 pub(super) fn router(config: MockIdpConfig) -> Router {
+    router_with_clock(config, Clock::System)
+}
+
+/// [`router`] reading the time from `clock`.
+fn router_with_clock(config: MockIdpConfig, clock: Clock) -> Router {
     let state = Arc::new(MockIdpState {
         config,
         signer: MockSigner::new(),
@@ -73,6 +99,7 @@ pub(super) fn router(config: MockIdpConfig) -> Router {
             grants: BTreeMap::new(),
             access_tokens: BTreeMap::new(),
         }),
+        clock,
     });
     Router::new()
         .route("/auth", get(authorize_handler))
@@ -90,7 +117,7 @@ async fn authorize_handler(
     if let Err(reason) = validate_authorization_request(&state.config, &request) {
         return oauth_error(StatusCode::BAD_REQUEST, "invalid_request", reason);
     }
-    let now = match now_epoch() {
+    let now = match state.clock.now() {
         Ok(now) => now,
         Err(error) => return server_error(error),
     };
@@ -147,7 +174,7 @@ async fn token_handler(
     if let Err(reason) = validate_token_request(&state.config, &request) {
         return oauth_error(StatusCode::BAD_REQUEST, "invalid_request", reason);
     }
-    let now = match now_epoch() {
+    let now = match state.clock.now() {
         Ok(now) => now,
         Err(error) => return server_error(error),
     };
@@ -254,7 +281,7 @@ async fn userinfo_handler(State(state): State<Arc<MockIdpState>>, headers: Heade
     else {
         return bearer_error();
     };
-    let now = match now_epoch() {
+    let now = match state.clock.now() {
         Ok(now) => now,
         Err(error) => return server_error(error),
     };

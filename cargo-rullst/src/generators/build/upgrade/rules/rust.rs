@@ -3,7 +3,7 @@
 //! Attributes are read here explicitly; [`super::tokens`] skips them.
 
 use super::catalog::*;
-use super::{Collector, Rule, WorkspaceFacts, markup, tokens};
+use super::{Collector, Rule, WorkspaceFacts, markup, test_code, tokens};
 use quote::ToTokens;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
@@ -42,7 +42,8 @@ pub(super) struct FileSummary {
     pub mounts_health: bool,
 }
 
-/// Parses and scans one Rust file.
+/// Parses and scans one Rust file; the rules about production behaviour
+/// skip its [`test_code`].
 pub(super) fn scan_source(
     context: &FileContext<'_>,
     out: &mut Collector,
@@ -59,6 +60,8 @@ pub(super) fn scan_source(
     {
         visitor.out.add(&ERP_DASHBOARD_ACCESS, line);
     }
+    let test = test_code::TestLines::of(&file, context.path);
+    visitor.out.drop_test_code(&test);
     Ok(FileSummary {
         server_start: facts.server_start,
         mounts_health: facts.mounts_health,

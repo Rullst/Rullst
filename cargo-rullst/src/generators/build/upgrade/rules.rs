@@ -9,7 +9,8 @@
 //! inspects Cargo manifests and generated project files. Each finding names a
 //! stable rule code, a kind, a location and the first-column title of its
 //! row in `docs/src/migration-v13.md`. A [`reviewed`] marker on or above a
-//! REVIEW finding's line leaves that location out of the plan.
+//! REVIEW finding's line leaves that location out of the plan, and the rules
+//! about production behaviour skip [`test_code`].
 
 mod alpha5_runtime;
 mod alpha5_slimming;
@@ -25,6 +26,7 @@ mod markup;
 mod removed_adapters;
 mod reviewed;
 mod rust;
+mod test_code;
 mod tokens;
 
 use super::manifest::ManifestUpgradePlan;
@@ -208,6 +210,16 @@ impl Collector {
             std::mem::take(&mut self.calls),
             std::mem::take(&mut self.bounded),
         )
+    }
+
+    /// Removes the findings of the rules about production behaviour on the
+    /// lines `test` covers.
+    fn drop_test_code(&mut self, test: &test_code::TestLines) {
+        self.lines
+            .retain(|(_, line), rule| !(test_code::production_only(rule) && test.covers(*line)));
+        if test_code::production_only(&catalog::CREDENTIAL_RATE_LIMIT) {
+            self.calls.retain(|line, _| !test.covers(*line));
+        }
     }
 
     /// Removes the review locations a marker in `text` covers and returns

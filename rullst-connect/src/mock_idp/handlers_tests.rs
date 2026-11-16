@@ -216,3 +216,59 @@ async fn a_pkce_verifier_must_have_43_to_128_allowed_characters() {
         StatusCode::OK
     );
 }
+
+/// The mock IdP of `earlier_codes_…` on a clock the test sets, from a fixed
+/// instant (14 January 2027).
+fn manual_clock() -> (Router, Arc<std::sync::atomic::AtomicU64>) {
+    let seconds = Arc::new(std::sync::atomic::AtomicU64::new(1_800_000_000));
+    let app = router_with_clock(
+        MockIdpConfig::default(),
+        Clock::Manual(Arc::clone(&seconds)),
+    );
+    (app, seconds)
+}
+
+fn advance(clock: &std::sync::atomic::AtomicU64, seconds: u64) {
+    clock.fetch_add(seconds, std::sync::atomic::Ordering::SeqCst);
+}
+
+#[tokio::test]
+async fn an_authorization_code_expires_five_minutes_after_it_was_issued() {
+    let (app, clock) = manual_clock();
+    // In its last second the code is still exchanged.
+    let code = authorize(&app, None).await;
+    advance(&clock, 299);
+    let (status, body) = exchange(&app, &code, None).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    // From the 300th second, the same client and redirect URI are refused.
+    let code = authorize(&app, None).await;
+    advance(&clock, 300);
+    let (status, body) = exchange(&app, &code, None).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+    assert_eq!(body["error"], "invalid_grant");
+    assert_eq!(
+        body["error_description"],
+        "the authorization code binding is invalid or expired"
+    );
+    // An expired code is consumed too: it cannot be retried.
+    let (status, body) = exchange(&app, &code, None).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(
+        body["error_description"],
+        "the authorization code is invalid, expired, or already consumed"
+    );
+}
+
+#[tokio::test]
+async fn an_access_token_answers_userinfo_for_one_hour() {
+    let (app, clock) = manual_clock();
+    let code = authorize(&app, None).await;
+    let (status, tokens) = exchange(&app, &code, None).await;
+    assert_eq!(status, StatusCode::OK, "{tokens}");
+    assert_eq!(tokens["expires_in"], 3_600);
+    let access_token = tokens["access_token"].as_str().expect("access token");
+    advance(&clock, 3_599);
+    assert_eq!(userinfo(&app, access_token).await, StatusCode::OK);
+    advance(&clock, 1);
+    assert_eq!(userinfo(&app, access_token).await, StatusCode::UNAUTHORIZED);
+}
