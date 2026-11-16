@@ -371,3 +371,12 @@ async fn a_cancelling_stream_sink_reports_cancellation_and_other_failures_stay_o
         Err(AiError::StreamSink)
     ));
 }
+
+#[test]
+fn structured_schema_reports_its_description() {
+    let schema = StructuredOutputSchema::new("answer", serde_json::json!({ "type": "object" }))
+        .expect("schema");
+    assert_eq!(schema.description(), None);
+    let described = schema.with_description("The final answer");
+    assert_eq!(described.description(), Some("The final answer"));
+}

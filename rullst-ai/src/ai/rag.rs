@@ -89,4 +89,20 @@ mod tests {
             assert!(retriever.retrieve(&tenant, &[1.0], limit).await.is_err());
         }
     }
+
+    #[test]
+    fn rag_config_accepts_and_reports_each_ceiling() {
+        let config = RagConfig::try_new(32, 32_768, 131_072).expect("ceilings are inclusive");
+        assert_eq!(
+            (
+                config.max_documents(),
+                config.max_document_chars(),
+                config.max_context_chars()
+            ),
+            (32, 32_768, 131_072)
+        );
+        assert!(RagConfig::try_new(33, 1, 1).is_err());
+        assert!(RagConfig::try_new(1, 32_769, 1).is_err());
+        assert!(RagConfig::try_new(1, 1, 131_073).is_err());
+    }
 }
