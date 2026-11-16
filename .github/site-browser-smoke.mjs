@@ -4,16 +4,22 @@
 // --screenshots /absolute/output/directory, and --organization-site DIRECTORY
 // to serve the pages from assemble-organization-site.py output instead.
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { once } from "node:events";
 import { createServer } from "node:http";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const profile = await mkdtemp(join(tmpdir(), "rullst-site-chromium-"));
+// The comparison pages with benchmark rows, assembled from the test fixture
+// (its numbers are not measurements) and served under /_rendered/.
+const rendered = await mkdtemp(join(tmpdir(), "rullst-site-rendered-"));
+await copyFile(join(root, ".github/fixtures/site-benchmarks.json"), join(rendered, "benchmarks.json"));
+execFileSync("python3", [join(root, ".github/assemble-organization-site.py"), "--out", join(rendered, "site"), "--benchmarks"],
+  { cwd: rendered, stdio: ["ignore", "ignore", "inherit"] });
 const outputIndex = process.argv.indexOf("--screenshots");
 const output = outputIndex < 0 ? null : process.argv[outputIndex + 1];
 const organizationIndex = process.argv.indexOf("--organization-site");
@@ -53,6 +59,7 @@ const server = createServer(async (request, response) => {
       if (organization) base = organization;
       relative = rootSite[path][organization ? 0 : 1];
     }
+    else if (path === "/_rendered/compare/" || path === "/_rendered/pt-br/comparar/") { base = join(rendered, "site"); relative = path.slice(11) + "index.html"; }
     else if (path === "/Rullst/Rullst.png") relative = "docs/Rullst.png";
     else if (path.startsWith("/Rullst/book/")) { base = join(root, "docs/book"); relative = path.slice(13) || "index.html"; }
     else if (path.startsWith("/Rullst/images/")) { base = join(root, "images"); relative = path.slice(15); }
@@ -303,6 +310,19 @@ try {
       assert.deepEqual(page, { overflow: false, topics: 11, columns: true, benchmarks: 1, current: route, flags: true }, `Comparison page ${route} at ${width}px`);
     }
   }
+  for (const [route, minimal] of [["/_rendered/compare/", "Rullst (minimal)"], ["/_rendered/pt-br/comparar/", "Rullst (mínimo)"]]) {
+    for (const [width, height] of [[1440, 1100], [390, 844], [320, 740]]) {
+      await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false });
+      await navigate(true, route);
+      const page = await evaluate(`(() => ({
+        overflow: document.documentElement.scrollWidth > innerWidth,
+        howto: document.querySelectorAll('.benchmark-howto li').length,
+        rows: [...document.querySelectorAll('.benchmark-rows > li > h3')].map(title => title.firstChild.textContent.trim()),
+        variants: document.querySelectorAll('.benchmark-rows .benchmark-variant').length,
+      }))()`);
+      assert.deepEqual(page, { overflow: false, howto: 4, rows: ["Rullst", minimal, "Loco", "Topcoat"], variants: 2 }, `Rendered comparison ${route} at ${width}px`);
+    }
+  }
   await navigate(true, "/privacy.html");
   assert(await evaluate("document.title === 'Website privacy notice — Rullst' && document.querySelectorAll('main section h2').length === 9"), "Standalone privacy page must render the full notice");
   assert.equal(await evaluate("document.querySelector('link[rel=canonical]').href"), "https://rullst.win/privacy.html");
@@ -311,7 +331,7 @@ try {
   assert.deepEqual([...oldAssetReads.values()], [1, 1], "Current pages must not request the old unversioned assets again");
   assert([...requests].every(url => url.startsWith(origin + "/")), `External resource requests: ${[...requests].filter(url => !url.startsWith(origin + "/"))}`);
   assert.deepEqual(failures, [], "Browser errors, CSP failures or broken resources");
-  console.log(`PASS (${organization ? "assembled root site" : "sources"}): stale-cache upgrade, engine card styling, desktop/390px/320px, keyboard/mobile menu, animated intro/replay/stop, Academy greeting/stop, integrations, canonical URLs, English and Brazilian Portuguese pages with flag language switcher, comparison pages, clipboard success/denial, privacy summary and full notice, reduced motion, no-JS navigation, no storage or external landing requests.`);
+  console.log(`PASS (${organization ? "assembled root site" : "sources"}): stale-cache upgrade, engine card styling, desktop/390px/320px, keyboard/mobile menu, animated intro/replay/stop, Academy greeting/stop, integrations, canonical URLs, English and Brazilian Portuguese pages with flag language switcher, comparison pages with fixture benchmark rows, clipboard success/denial, privacy summary and full notice, reduced motion, no-JS navigation, no storage or external landing requests.`);
   await call("Browser.close");
 } finally {
   socket?.close();
@@ -324,4 +344,5 @@ try {
   await new Promise(resolve => server.close(resolve));
   // This unique mkdtemp directory belongs exclusively to this test process.
   await rm(profile, { recursive: true, force: true, maxRetries: 3 });
+  await rm(rendered, { recursive: true, force: true, maxRetries: 3 });
 }

@@ -14,7 +14,8 @@ is valid at the site root.
 --benchmarks reads benchmarks.json from the working directory: a downloaded
 copy (at most 1 MiB) of the Rullst/Benchmarks latest-results JSON, schema
 "rullst.benchmarks.latest.v1" (see docs/src/website-maintenance.md). Its
-Rullst, Loco and Topcoat rows are rendered into the comparison pages; without
+Rullst, Rullst (minimal), Loco and Topcoat rows are rendered into the
+comparison pages; without
 the file, or when it is invalid, the pages keep their "first measurement in
 progress" text and the script prints a warning instead of failing.
 
@@ -70,7 +71,11 @@ COMPARE_PAGES = {"compare/index.html": "en", "pt-br/comparar/index.html": "pt-BR
 BENCHMARK_START = "<!-- benchmark-results:start -->"
 BENCHMARK_END = "<!-- benchmark-results:end -->"
 BENCHMARK_SCHEMA = "rullst.benchmarks.latest.v1"
-COMPARED = ("Rullst", "Loco", "Topcoat")
+# The rows shown, in order. "Rullst" is the default variant, the application
+# `cargo rullst new` generates; "Rullst (minimal)" is the framework without that
+# application's middleware, an extra row shown only when the data has it.
+ROWS = ("Rullst", "Rullst (minimal)", "Loco", "Topcoat")
+OPTIONAL_ROWS = ("Rullst (minimal)",)
 # Result key -> English label, Portuguese label, unit, decimals.
 METRICS = {
     "json_rps": ("JSON responses per second", "Respostas JSON por segundo", "", 0),
@@ -87,17 +92,25 @@ MONTHS = {
 TEXT = {
     "en": {
         "measured": "Measured on {date} with the Rullst/Benchmarks suite. The rows update automatically after each new Rullst release; this page is rebuilt daily.",
-        "ratio": "Each value is first given relative to Axum measured on the same machine in the same round (requests per second: above 1× is faster than Axum; latency and memory: below 1× is lower). The measurements ran on different GitHub-hosted machines, so the absolute number in parentheses, the median across them, is less comparable between frameworks than the ratio.",
         "run": "Measurement run",
         "missing": "Not in this measurement run.",
         "version": "version",
+        "names": {"Rullst (minimal)": "Rullst (minimal)"},
+        "variants": {
+            "Rullst": "As <code>cargo rullst new</code> generates it, with its security layers on.",
+            "Rullst (minimal)": "The framework without the generated app's security layers.",
+        },
     },
     "pt-BR": {
         "measured": "Medido em {date} com a suíte Rullst/Benchmarks. As linhas se atualizam automaticamente a cada nova versão do Rullst; esta página é reconstruída diariamente.",
-        "ratio": "Cada valor vem primeiro em relação ao Axum medido na mesma máquina e na mesma rodada (requisições por segundo: acima de 1× é mais rápido que o Axum; latência e memória: abaixo de 1× é menor). As medições rodaram em máquinas diferentes do GitHub, então o número absoluto entre parênteses, a mediana entre elas, é menos comparável entre frameworks do que a razão.",
         "run": "Execução da medição",
         "missing": "Fora desta rodada de medição.",
         "version": "versão",
+        "names": {"Rullst (minimal)": "Rullst (mínimo)"},
+        "variants": {
+            "Rullst": "Como o <code>cargo rullst new</code> gera, com as camadas de segurança ligadas.",
+            "Rullst (minimal)": "O framework sem as camadas de segurança do app gerado.",
+        },
     },
 }
 # The data's note, by page language; a page without its own note shows the English one.
@@ -140,9 +153,9 @@ def checked_metric(name: str, key: str, raw: object) -> float:
 
 
 def benchmark_row(result: dict) -> tuple[str, dict] | None:
-    """The compared framework a result belongs to and its checked values, or None."""
+    """The shown row a result belongs to and its checked values, or None."""
     name = str(result["framework"])
-    match = next((known for known in COMPARED if known.lower() == name.lower()), None)
+    match = next((known for known in ROWS if known.lower() == name.lower()), None)
     if match is None:
         return None
     version = str(result["version"])
@@ -236,21 +249,23 @@ def render_benchmarks(results: dict, lang: str) -> str:
     if note:
         attribute = "" if note_lang == lang else ' lang="en"'
         lines.append(f'<p class="benchmark-note"{attribute}>{render_note(note)}</p>')
-    if any(row.get("ratios") for row in results["rows"].values()):
-        lines.append(f'<p class="benchmark-meta">{TEXT[lang]["ratio"]}</p>')
     lines.append('<ul class="benchmark-rows">')
-    for name in COMPARED:
+    for name in ROWS:
         row = results["rows"].get(name)
         if row is None:
-            lines.append(f'<li><h3>{name}</h3><p>{TEXT[lang]["missing"]}</p></li>')
+            if name not in OPTIONAL_ROWS:
+                lines.append(f'<li><h3>{name}</h3><p>{TEXT[lang]["missing"]}</p></li>')
             continue
         metrics = "".join(
             f'<div><dt>{escape(METRICS[key][0 if lang == "en" else 1])}</dt>'
             f'<dd>{metric_value(key, value, row.get("ratios", {}).get(key), lang)}</dd></div>'
             for key, value in row["metrics"].items()
         )
+        title = TEXT[lang]["names"].get(name, name)
+        variant = TEXT[lang]["variants"].get(name)
+        variant = f'<p class="benchmark-variant">{variant}</p>' if variant else ""
         lines.append(
-            f'<li><h3>{name} <span>{TEXT[lang]["version"]} {escape(row["version"])}</span></h3><dl>{metrics}</dl></li>'
+            f'<li><h3>{title} <span>{TEXT[lang]["version"]} {escape(row["version"])}</span></h3>{variant}<dl>{metrics}</dl></li>'
         )
     lines.append("</ul>")
     return "\n".join(lines)
