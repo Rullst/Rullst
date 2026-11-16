@@ -94,11 +94,11 @@ fn openapi_arguments_typed_only_by_the_former_parameter_must_change() {
     let source = r#"
 fn studio(text: &str, document: Document) {
     let a = Studio::new().with_openapi(Default::default());
-    let b = Studio::new().with_openapi(serde_json::from_str(text).unwrap());
+    let b = Studio::new().with_openapi(serde_json::from_str(text)?);
     let c = rullst::studio::api_playground::router(document.into());
     let d = Studio::new().with_openapi(serde_json::from_value(value)?);
     let e = Studio::new().with_openapi(ApiDoc::openapi());
-    let f = Studio::new().with_openapi(serde_json::from_str::<serde_json::Value>(text).unwrap());
+    let f = Studio::new().with_openapi(serde_json::from_str::<serde_json::Value>(text)?);
     let g = api_playground::router(utoipa::openapi::OpenApi::default());
     let h = Studio::new().with_openapi(document);
     let i = other::router(Default::default());
