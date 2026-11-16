@@ -224,8 +224,25 @@ async fn anthropic_stream_delivers_text_usage_and_ignores_unknown_events() {
 }
 
 #[tokio::test]
+async fn anthropic_stream_sends_text_that_opens_a_content_block() {
+    let (url, _request) = serve_once(
+        concat!(
+            "data: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"Hi\"}}\n\n",
+            "data: {\"type\":\"content_block_delta\",\"delta\":{\"type\":\"text_delta\",\"text\":\" there\"}}\n\n",
+            "data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"}}\n\n",
+            "data: {\"type\":\"message_stop\"}\n\n"
+        ),
+        SSE,
+    );
+    let (text, _) = stream_text(AnthropicProvider::new("sk-test").with_base_url(url))
+        .await
+        .expect("stream");
+    assert_eq!(text, "Hi there");
+}
+
+#[tokio::test]
 async fn anthropic_stream_failures_are_errors_not_partial_answers() {
-    let cases: [(&'static str, &str); 3] = [
+    let cases: [(&'static str, &str); 4] = [
         (
             concat!(
                 "data: {\"type\":\"content_block_delta\",\"delta\":{\"type\":\"text_delta\",\"text\":\"part\"}}\n\n",
@@ -237,6 +254,11 @@ async fn anthropic_stream_failures_are_errors_not_partial_answers() {
         (
             "event: error\ndata: {\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"secret detail\"}}\n\n",
             "overloaded_error",
+        ),
+        // An error type that is not a short identifier is reported as unknown.
+        (
+            "event: error\ndata: {\"type\":\"error\",\"error\":{\"type\":\"bad type!\",\"message\":\"secret detail\"}}\n\n",
+            "Anthropic stream error: unknown",
         ),
         (
             "data: {\"type\":\"content_block_delta\",\"delta\":{\"type\":\"text_delta\",\"text\":\"part\"}}\n\n",
