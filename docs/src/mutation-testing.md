@@ -37,6 +37,26 @@ received a test or is listed under
   plural-variant map was removed. The final runs gave 432 mutants: 314 caught,
   117 unviable, 1 timeout (listed below) and no survivor; a mutant whose
   expansion no longer compiles in an integration test counts as unviable.
+- **`rullst-ai`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+  [PR #749](https://github.com/Rullst/Rullst/pull/749), runs in the
+  maintainer's fork
+  [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)):
+  targeted runs of the 52 files (3 have no mutants, among them the MySQL
+  statement file) gave 2,173 mutants: 1,652 caught, 205 unviable, 35
+  timeouts and 281 missed. New tests killed 265 of the misses and 5 timeouts
+  (tests without deadlines now have one): provider capabilities and trait
+  defaults, the fallback chain, image and response size bounds, streaming,
+  SSE and provider stream parsing, audit delivery and durable audit frames,
+  tool approval and validation, RAG, conversation memory, the mock provider,
+  presets and evaluation bounds. Reruns of the 33 changed files leave 4 of
+  1,318 mutants missed and 3 timeouts. The 16 missed mutants left are 13
+  accepted equivalents listed below and the three peer-address, status and
+  content-type checks of `EgressFetcher::fetch_bytes`, left to live
+  integration testing; the 30 timeouts are listed with the timeouts.
+- **`rullst-iot`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+  [PR #749](https://github.com/Rullst/Rullst/pull/749), same fork): targeted
+  runs of the 19 files (1 has no mutants) gave 371 mutants: 321 caught, 41
+  unviable, no timeout and 9 missed, all accepted equivalents listed below.
 - **`rullst-core`**: the files the first pass left
   ([PR #465](https://github.com/Rullst/Rullst/pull/465)) were finished in
   [PR #532](https://github.com/Rullst/Rullst/pull/532): 78 files and 2,435
