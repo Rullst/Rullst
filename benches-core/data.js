@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794816962098,
+  "lastUpdate": 1794823588357,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Core Primitives Benchmark": [
@@ -37126,6 +37126,78 @@ window.BENCHMARK_DATA = {
           {
             "name": "generate_csrf_token_32_chars",
             "value": 115,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fc8c05016f38058919dd60f6af0ff04c77ff71c3",
+          "message": "Merge pull request #735 from Rullst/perf/v13-alpha6-sqlite-wal\n\nperf(orm): opt-in WAL journal for SQLite pools and WAL in generated starters",
+          "timestamp": "2026-11-16T06:52:19-03:00",
+          "tree_id": "8a8139bbe1c72e92d855057863dd5304b8fd5cd7",
+          "url": "https://github.com/Rullst/Rullst/commit/fc8c05016f38058919dd60f6af0ff04c77ff71c3"
+        },
+        "date": 1794823587238,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_escape/clean_input_no_escape",
+            "value": 21,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/malicious_input_full_escape",
+            "value": 168,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/realistic_partial_escape",
+            "value": 49,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/email_field",
+            "value": 178,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/credit_card_field",
+            "value": 143,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/phone_field",
+            "value": 127,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/safe_field_no_pii",
+            "value": 150,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "generate_csrf_token_32_chars",
+            "value": 112,
             "range": "± 0",
             "unit": "ns/iter"
           }
