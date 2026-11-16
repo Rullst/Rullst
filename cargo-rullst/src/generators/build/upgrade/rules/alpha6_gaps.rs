@@ -9,9 +9,7 @@
 //! [`super::Collector`].
 
 use super::Rule;
-use super::catalog::{
-    AUTH_SESSION_REGISTRY, CSRF_TOKEN_COMPARED, JSONWEBTOKEN_12, SCHEDULER_CRON_FIELDS,
-};
+use super::catalog::{AUTH_SESSION_REGISTRY, JSONWEBTOKEN_12, SCHEDULER_CRON_FIELDS};
 use super::rust::FileContext;
 use super::tokens::string_value;
 use proc_macro2::{Delimiter, Spacing, TokenStream, TokenTree};
@@ -161,26 +159,23 @@ fn equality(tokens: &[TokenTree], index: usize) -> bool {
         && punct(tokens.get(index + 1), '=')
 }
 
-/// Whether the token at `index` ends an operand: a separator, an assignment,
-/// a `=>`, a logical operator, a block or a keyword that starts a clause.
+/// Whether the token at `index` ends an operand: a separator, an
+/// assignment, a `=>`, a logical operator, a block or a keyword that starts a
+/// clause. The operator being read is never walked over, and the second `=`
+/// of another comparison cannot appear in an operand (Rust does not chain
+/// comparisons).
 fn boundary(tokens: &[TokenTree], index: usize) -> bool {
     match &tokens[index] {
         TokenTree::Punct(punct) => match punct.as_char() {
             ',' | ';' => true,
-            '&' | '|' => punct.spacing() == Spacing::Joint || {
-                let previous = index.checked_sub(1).map(|before| &tokens[before]);
-                matches!(previous, Some(TokenTree::Punct(p)) if p.as_char() == punct.as_char() && p.spacing() == Spacing::Joint)
-            },
-            '=' => {
-                punct.spacing() == Spacing::Alone
-                    && !index
-                        .checked_sub(1)
-                        .is_some_and(|before| matches!(&tokens[before], TokenTree::Punct(p) if p.spacing() == Spacing::Joint))
-            }
+            // `&&` and `||` start with a joint `&` or `|`; `&value` does not.
+            '&' | '|' => punct.spacing() == Spacing::Joint,
+            // An assignment; the first `=` of `==` or `=>` is joint.
+            '=' => punct.spacing() == Spacing::Alone,
             // The `>` of `=>`.
             '>' => index
                 .checked_sub(1)
-                .is_some_and(|before| matches!(&tokens[before], TokenTree::Punct(p) if p.as_char() == '=' && p.spacing() == Spacing::Joint)),
+                .is_some_and(|before| punct_at(tokens, before, '=')),
             _ => false,
         },
         TokenTree::Group(group) => group.delimiter() == Delimiter::Brace,
@@ -192,44 +187,50 @@ fn boundary(tokens: &[TokenTree], index: usize) -> bool {
     }
 }
 
+fn punct_at(tokens: &[TokenTree], index: usize, expected: char) -> bool {
+    punct(tokens.get(index), expected)
+}
+
 /// The tokens of the operands on either side of the operator at
 /// `start..end`.
 fn operands(tokens: &[TokenTree], start: usize, end: usize) -> (Mentions, Mentions) {
-    let mut first = start;
-    while first > 0 && !boundary(tokens, first - 1) {
-        first -= 1;
-    }
-    let mut last = end;
-    while last < tokens.len() && !boundary(tokens, last) {
-        last += 1;
-    }
+    let first = (0..start)
+        .rev()
+        .find(|index| boundary(tokens, *index))
+        .map_or(0, |index| index + 1);
+    let last = (end..tokens.len())
+        .find(|index| boundary(tokens, *index))
+        .unwrap_or(tokens.len());
     (
         Mentions::of(&tokens[first..start]),
         Mentions::of(&tokens[end..last]),
     )
 }
 
+/// Whether a token continues a method's receiver chain backwards: a name, a
+/// call's or index's group, `.`, `?` or a path's `::`.
+fn chain_link(tree: &TokenTree) -> bool {
+    match tree {
+        TokenTree::Ident(ident) => !matches!(
+            ident.to_string().as_str(),
+            "if" | "let" | "return" | "while" | "match" | "in"
+        ),
+        TokenTree::Group(group) => group.delimiter() != Delimiter::Brace,
+        TokenTree::Punct(link) => matches!(link.as_char(), '.' | '?' | ':'),
+        TokenTree::Literal(_) => true,
+    }
+}
+
 /// The receiver chain of a method called at `dot` (the `.` before its name),
 /// and whether `!` negates it.
 fn receiver(tokens: &[TokenTree], dot: usize) -> (Mentions, bool) {
-    let mut first = dot;
-    while first > 0 {
-        let link = match &tokens[first - 1] {
-            TokenTree::Ident(ident) => !matches!(
-                ident.to_string().as_str(),
-                "if" | "let" | "return" | "while" | "match" | "in"
-            ),
-            TokenTree::Group(group) => group.delimiter() != Delimiter::Brace,
-            TokenTree::Punct(link) => matches!(link.as_char(), '.' | '?' | ':'),
-            TokenTree::Literal(_) => true,
-        };
-        if !link {
-            break;
-        }
-        first -= 1;
-    }
-    let negated = first > 0
-        && matches!(&tokens[first - 1], TokenTree::Punct(p) if p.as_char() == '!' && p.spacing() == Spacing::Alone);
+    let first = (0..dot)
+        .rev()
+        .find(|index| !chain_link(&tokens[*index]))
+        .map_or(0, |index| index + 1);
+    let negated = first.checked_sub(1).is_some_and(|before| {
+        matches!(&tokens[before], TokenTree::Punct(p) if p.as_char() == '!' && p.spacing() == Spacing::Alone)
+    });
     (Mentions::of(&tokens[first..dot]), negated)
 }
 
@@ -297,7 +298,7 @@ pub(super) fn csrf_comparisons(
             _ => false,
         };
         if compared {
-            found.push(line(&tokens[index + 1]));
+            found.push(method.span().start().line);
         }
     }
     found

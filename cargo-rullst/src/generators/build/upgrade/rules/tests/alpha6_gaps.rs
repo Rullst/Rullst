@@ -151,6 +151,67 @@ fn check(form: &Form, csrf_cookie: &str) -> bool {
     );
 }
 
+/// Each operand ends at a separator, an assignment, a `=>`, `&&`/`||`, a
+/// block or a clause keyword; references and call groups stay inside it.
+const BOUNDARIES: &str = r#"
+const COOKIE: &str = "rullst_csrf";
+fn boundaries(page_token: &str, header_token: &str, session_cookie: Option<&str>, kind: Source) {
+    assert!(session_cookie.is_some() && page_token == header_token);
+    let csrf_cookie_matches = page_token == header_token;
+    let picked = match kind { Source::Cookie => page_token == header_token, _ => false };
+    { let cookie = 1; } page_token == header_token;
+    assert!(token_in(&body) == csrf_cookie(&response));
+    assert!(&page_token == &cookie);
+    assert!(page_token != cookie);
+    let unrelated = form.kind.eq(&other_kind);
+    let other = match kind { Source::Cookie => page_token, _ => header_token };
+    assert!(headers.set_cookie().contains(&cookie));
+}
+"#;
+
+#[test]
+fn comparison_operands_end_at_their_boundaries() {
+    let found = scan_with(BOUNDARIES, "lib.rs", &WorkspaceFacts::default());
+    assert_eq!(
+        lines_of("V13-CSRF-TOKEN-COMPARED", &found),
+        [8, 9],
+        "{found:?}"
+    );
+}
+
+#[test]
+fn every_mention_in_an_operand_counts_once_or_more() {
+    // Two identifiers of each kind in one operand, and CSRF named twice by
+    // literals only: neither cancels the other.
+    let source = r#"
+fn twice(csrf_form: Form, cookie_jar: Jar, cookie: &str, form: Form) {
+    assert_eq!(csrf_form.csrf_token, cookie_jar.cookie_value());
+    assert_eq!(cookie, form.token("csrf", "x-csrf"));
+}
+"#;
+    let found = scan_with(source, "lib.rs", &WorkspaceFacts::default());
+    assert_eq!(
+        lines_of("V13-CSRF-TOKEN-COMPARED", &found),
+        [3, 4],
+        "{found:?}"
+    );
+    let names = "fn f(header: &str, other: &str, page_token: &str) {\n    assert_eq!(header.split(\"rullst_csrf=\").nth(1).or(other.strip_prefix(\"rullst_csrf=\")), Some(page_token));\n}\n";
+    let found = scan_with(names, "lib.rs", &WorkspaceFacts::default());
+    assert_eq!(
+        lines_of("V13-CSRF-TOKEN-COMPARED", &found),
+        [2],
+        "{found:?}"
+    );
+    // `CsrfToken` alone names CSRF for the file.
+    let extension = "fn f(Extension(page): Extension<CsrfToken>, html: &str, cookie: &str) {\n    assert!(html.contains(&cookie));\n}\n";
+    let found = scan_with(extension, "lib.rs", &WorkspaceFacts::default());
+    assert_eq!(
+        lines_of("V13-CSRF-TOKEN-COMPARED", &found),
+        [2],
+        "{found:?}"
+    );
+}
+
 #[test]
 fn token_and_cookie_comparisons_without_csrf_are_not_reviewed() {
     let source = r#"
@@ -407,6 +468,31 @@ fn generated_session_epoch_files_are_reviewed_until_the_registry_is_enabled() {
         "{PACKAGE}[dependencies]\nrullst = {{ version = \"=13.0.0-alpha.5\", features = [\"auth\", \"auth-sqlite\"] }}\n"
     );
     assert!(!facts(&[("Cargo.toml", auth_only.as_str())]).session_registry);
+}
+
+#[test]
+fn facts_and_findings_hold_when_several_declarations_set_them() {
+    let both = format!(
+        "{PACKAGE}[dependencies]\nrullst = {{ version = \"=13.0.0-alpha.6\", default-features = false, features = [\"auth-session-registry-sqlite\"] }}\nrullst-auth = {{ version = \"=13.0.0-alpha.6\", features = [\"session-registry-sqlite\"] }}\njsonwebtoken = \"11\"\n\n[workspace.dependencies]\njsonwebtoken = \"11\"\n"
+    );
+    let declared = facts(&[("Cargo.toml", both.as_str())]);
+    assert!(declared.session_registry);
+    assert!(declared.jsonwebtoken_below_12);
+    let referenced = format!(
+        "{PACKAGE}[dependencies]\nrullst = {{ version = \"=13.0.0-alpha.6\", default-features = false, optional = true, features = [\"auth-session-registry-sqlite\", \"iot\"] }}\ned25519-dalek = \"2\"\n\n[features]\nsessions = [\"rullst/auth-session-registry-sqlite\"]\ndevices = [\"rullst/iot\"]\n"
+    );
+    assert!(facts(&[("Cargo.toml", referenced.as_str())]).session_registry);
+    assert_eq!(
+        manifest_codes(&[("Cargo.toml", referenced.as_str())]),
+        [("Cargo.toml".to_string(), "V13-ED25519-DALEK-3", 6)]
+    );
+    let two = format!(
+        "{PACKAGE}[dependencies]\nrullst-iot = \"=13.0.0-alpha.5\"\nrullst = {{ version = \"=13.0.0-alpha.5\", default-features = false, features = [\"iot\"] }}\ned25519-dalek = \"2\"\n"
+    );
+    assert_eq!(
+        manifest_codes(&[("Cargo.toml", two.as_str())]),
+        [("Cargo.toml".to_string(), "V13-ED25519-DALEK-3", 7)]
+    );
 }
 
 #[test]
