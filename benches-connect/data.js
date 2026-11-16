@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794798388505,
+  "lastUpdate": 1794806616196,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -14345,6 +14345,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 533,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9b5c8f2d43e2d28c6a40e43a13281ecbdb5d70ea",
+          "message": "Merge pull request #729 from Rullst/fix/v13-alpha6-pre-rc-small-fixes\n\nfix: small pre-rc fixes (upgrade rules in test code, mock IdP clock, pt-BR lang, docs)",
+          "timestamp": "2026-11-16T02:06:33-03:00",
+          "tree_id": "004527695e35ec2e85b93b0fe498ed6e4a63b057",
+          "url": "https://github.com/Rullst/Rullst/commit/9b5c8f2d43e2d28c6a40e43a13281ecbdb5d70ea"
+        },
+        "date": 1794806615277,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 381,
+            "range": "± 11",
             "unit": "ns/iter"
           }
         ]
