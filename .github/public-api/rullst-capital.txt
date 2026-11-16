@@ -627,12 +627,14 @@ impl core::marker::Sync for rullst_capital::RevenueDashboardManager
 impl core::marker::Unpin for rullst_capital::RevenueDashboardManager
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::RevenueDashboardManager
 impl core::panic::unwind_safe::UnwindSafe for rullst_capital::RevenueDashboardManager
-pub struct rullst_capital::RevenueMetrics
+#[non_exhaustive] pub struct rullst_capital::RevenueMetrics
 pub rullst_capital::RevenueMetrics::mrr_cents: u64
 pub rullst_capital::RevenueMetrics::arr_cents: u64
 pub rullst_capital::RevenueMetrics::net_revenue_cents: u64
 pub rullst_capital::RevenueMetrics::active_subscriptions: u32
 pub rullst_capital::RevenueMetrics::churn_rate_percent: f64
+impl rullst_capital::RevenueMetrics
+pub fn rullst_capital::RevenueMetrics::new(mrr_cents: u64, arr_cents: u64, net_revenue_cents: u64, active_subscriptions: u32, churn_rate_percent: f64) -> Self
 impl core::clone::Clone for rullst_capital::RevenueMetrics
 impl core::cmp::PartialEq for rullst_capital::RevenueMetrics
 impl core::default::Default for rullst_capital::RevenueMetrics
@@ -1113,7 +1115,7 @@ impl<'provider, Provider> core::marker::Sync for rullst_capital::SubscriptionHan
 impl<'provider, Provider> core::marker::Unpin for rullst_capital::SubscriptionHandle<'provider, Provider> where Provider: ?core::marker::Sized
 impl<'provider, Provider> core::panic::unwind_safe::RefUnwindSafe for rullst_capital::SubscriptionHandle<'provider, Provider> where Provider: core::panic::unwind_safe::RefUnwindSafe + ?core::marker::Sized
 impl<'provider, Provider> core::panic::unwind_safe::UnwindSafe for rullst_capital::SubscriptionHandle<'provider, Provider> where Provider: core::panic::unwind_safe::RefUnwindSafe + ?core::marker::Sized
-pub enum rullst_capital::SubscriptionStatus
+#[non_exhaustive] pub enum rullst_capital::SubscriptionStatus
 pub rullst_capital::SubscriptionStatus::Active
 pub rullst_capital::SubscriptionStatus::Canceled
 pub rullst_capital::SubscriptionStatus::PastDue
@@ -1197,13 +1199,16 @@ impl core::marker::Sync for rullst_capital::UsageStatus
 impl core::marker::Unpin for rullst_capital::UsageStatus
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::UsageStatus
 impl core::panic::unwind_safe::UnwindSafe for rullst_capital::UsageStatus
-pub struct rullst_capital::WebhookEvent
+#[non_exhaustive] pub struct rullst_capital::WebhookEvent
 pub rullst_capital::WebhookEvent::subscription_id: alloc::string::String
 pub rullst_capital::WebhookEvent::customer_id: alloc::string::String
 pub rullst_capital::WebhookEvent::customer_email: alloc::string::String
 pub rullst_capital::WebhookEvent::plan_id: alloc::string::String
 pub rullst_capital::WebhookEvent::status: rullst_capital::SubscriptionStatus
 pub rullst_capital::WebhookEvent::ends_at: core::option::Option<i64>
+impl rullst_capital::WebhookEvent
+pub fn rullst_capital::WebhookEvent::new(subscription_id: impl core::convert::Into<alloc::string::String>, customer_id: impl core::convert::Into<alloc::string::String>, customer_email: impl core::convert::Into<alloc::string::String>, plan_id: impl core::convert::Into<alloc::string::String>, status: rullst_capital::SubscriptionStatus) -> Self
+pub fn rullst_capital::WebhookEvent::with_ends_at(self, ends_at: i64) -> Self
 impl core::clone::Clone for rullst_capital::WebhookEvent
 impl core::fmt::Debug for rullst_capital::WebhookEvent
 impl serde_core::ser::Serialize for rullst_capital::WebhookEvent
@@ -1213,13 +1218,15 @@ impl core::marker::Sync for rullst_capital::WebhookEvent
 impl core::marker::Unpin for rullst_capital::WebhookEvent
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_capital::WebhookEvent
 impl core::panic::unwind_safe::UnwindSafe for rullst_capital::WebhookEvent
-pub struct rullst_capital::WebhookEventRecord
+#[non_exhaustive] pub struct rullst_capital::WebhookEventRecord
 pub rullst_capital::WebhookEventRecord::id: alloc::string::String
 pub rullst_capital::WebhookEventRecord::provider: alloc::string::String
 pub rullst_capital::WebhookEventRecord::event_type: alloc::string::String
 pub rullst_capital::WebhookEventRecord::status: alloc::string::String
 pub rullst_capital::WebhookEventRecord::timestamp: u64
 pub rullst_capital::WebhookEventRecord::payload_snippet: alloc::string::String
+impl rullst_capital::WebhookEventRecord
+pub fn rullst_capital::WebhookEventRecord::new(id: impl core::convert::Into<alloc::string::String>, provider: impl core::convert::Into<alloc::string::String>, event_type: impl core::convert::Into<alloc::string::String>, status: impl core::convert::Into<alloc::string::String>, timestamp: u64, payload_snippet: impl core::convert::Into<alloc::string::String>) -> Self
 impl core::clone::Clone for rullst_capital::WebhookEventRecord
 impl core::fmt::Debug for rullst_capital::WebhookEventRecord
 impl serde_core::ser::Serialize for rullst_capital::WebhookEventRecord

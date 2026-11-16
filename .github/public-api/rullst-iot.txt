@@ -13,7 +13,7 @@ impl core::marker::Sync for rullst_iot::AnomalyDetector
 impl core::marker::Unpin for rullst_iot::AnomalyDetector
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::AnomalyDetector
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::AnomalyDetector
-pub enum rullst_iot::AnomalyState
+#[non_exhaustive] pub enum rullst_iot::AnomalyState
 pub rullst_iot::AnomalyState::Normal
 pub rullst_iot::AnomalyState::Warning
 pub rullst_iot::AnomalyState::CriticalAnomaly
@@ -66,7 +66,7 @@ impl core::marker::Sync for rullst_iot::CoapCodecError
 impl core::marker::Unpin for rullst_iot::CoapCodecError
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::CoapCodecError
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::CoapCodecError
-pub enum rullst_iot::CoapMessageType
+#[non_exhaustive] pub enum rullst_iot::CoapMessageType
 pub rullst_iot::CoapMessageType::Confirmable
 pub rullst_iot::CoapMessageType::NonConfirmable
 impl core::clone::Clone for rullst_iot::CoapMessageType
@@ -79,7 +79,7 @@ impl core::marker::Sync for rullst_iot::CoapMessageType
 impl core::marker::Unpin for rullst_iot::CoapMessageType
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::CoapMessageType
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::CoapMessageType
-pub enum rullst_iot::CoapMethod
+#[non_exhaustive] pub enum rullst_iot::CoapMethod
 pub rullst_iot::CoapMethod::Get
 pub rullst_iot::CoapMethod::Post
 pub rullst_iot::CoapMethod::Put
@@ -110,7 +110,7 @@ impl core::marker::Sync for rullst_iot::CoapRequest
 impl core::marker::Unpin for rullst_iot::CoapRequest
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::CoapRequest
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::CoapRequest
-pub struct rullst_iot::DigitalTwin
+#[non_exhaustive] pub struct rullst_iot::DigitalTwin
 pub rullst_iot::DigitalTwin::device_id: alloc::string::String
 pub rullst_iot::DigitalTwin::readings: alloc::vec::Vec<rullst_iot::SensorTelemetry>
 pub rullst_iot::DigitalTwin::is_online: bool
@@ -129,7 +129,7 @@ impl core::marker::Sync for rullst_iot::DigitalTwin
 impl core::marker::Unpin for rullst_iot::DigitalTwin
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::DigitalTwin
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::DigitalTwin
-pub struct rullst_iot::GattCharacteristic
+#[non_exhaustive] pub struct rullst_iot::GattCharacteristic
 pub rullst_iot::GattCharacteristic::uuid: alloc::string::String
 pub rullst_iot::GattCharacteristic::value: alloc::vec::Vec<u8>
 pub rullst_iot::GattCharacteristic::notify: bool
@@ -140,7 +140,7 @@ impl core::marker::Sync for rullst_iot::GattCharacteristic
 impl core::marker::Unpin for rullst_iot::GattCharacteristic
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::GattCharacteristic
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::GattCharacteristic
-pub struct rullst_iot::GattService
+#[non_exhaustive] pub struct rullst_iot::GattService
 pub rullst_iot::GattService::service_uuid: alloc::string::String
 pub rullst_iot::GattService::characteristics: alloc::vec::Vec<rullst_iot::GattCharacteristic>
 impl rullst_iot::GattService
@@ -166,7 +166,7 @@ impl core::marker::Sync for rullst_iot::GpioPin
 impl core::marker::Unpin for rullst_iot::GpioPin
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::GpioPin
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::GpioPin
-pub enum rullst_iot::HarvesterState
+#[non_exhaustive] pub enum rullst_iot::HarvesterState
 pub rullst_iot::HarvesterState::Charging
 pub rullst_iot::HarvesterState::Full
 pub rullst_iot::HarvesterState::Low
@@ -237,7 +237,7 @@ impl core::panic::unwind_safe::UnwindSafe for rullst_iot::IotHtml
 pub const rullst_iot::MAX_COAP_DATAGRAM_BYTES: usize
 pub const rullst_iot::MAX_I2C_READ_BYTES: usize
 pub const rullst_iot::MAX_MQTT_PACKET_BYTES: usize
-pub struct rullst_iot::MeshNode
+#[non_exhaustive] pub struct rullst_iot::MeshNode
 pub rullst_iot::MeshNode::node_id: alloc::string::String
 pub rullst_iot::MeshNode::status: rullst_iot::NodeStatus
 pub rullst_iot::MeshNode::rssi_dbm: i16
@@ -250,7 +250,7 @@ impl core::marker::Sync for rullst_iot::MeshNode
 impl core::marker::Unpin for rullst_iot::MeshNode
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::MeshNode
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::MeshNode
-pub struct rullst_iot::MeshTopology
+#[non_exhaustive] pub struct rullst_iot::MeshTopology
 pub rullst_iot::MeshTopology::nodes: alloc::vec::Vec<rullst_iot::MeshNode>
 impl rullst_iot::MeshTopology
 pub fn rullst_iot::MeshTopology::best_relay(&self) -> core::option::Option<&rullst_iot::MeshNode>
@@ -271,7 +271,7 @@ impl core::marker::Sync for rullst_iot::ModbusFrame
 impl core::marker::Unpin for rullst_iot::ModbusFrame
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::ModbusFrame
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::ModbusFrame
-pub enum rullst_iot::ModbusFunction
+#[non_exhaustive] pub enum rullst_iot::ModbusFunction
 pub rullst_iot::ModbusFunction::ReadHoldingRegisters = 0x03
 pub rullst_iot::ModbusFunction::WriteSingleRegister = 0x06
 impl core::clone::Clone for rullst_iot::ModbusFunction
@@ -338,7 +338,7 @@ impl core::marker::Sync for rullst_iot::MqttQos
 impl core::marker::Unpin for rullst_iot::MqttQos
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::MqttQos
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::MqttQos
-pub enum rullst_iot::NodeStatus
+#[non_exhaustive] pub enum rullst_iot::NodeStatus
 pub rullst_iot::NodeStatus::Online
 pub rullst_iot::NodeStatus::Degraded
 pub rullst_iot::NodeStatus::Offline
@@ -470,7 +470,7 @@ impl core::marker::Sync for rullst_iot::OtaStatus
 impl core::marker::Unpin for rullst_iot::OtaStatus
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::OtaStatus
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::OtaStatus
-pub enum rullst_iot::PinMode
+#[non_exhaustive] pub enum rullst_iot::PinMode
 pub rullst_iot::PinMode::Input
 pub rullst_iot::PinMode::Output
 pub rullst_iot::PinMode::Analog
@@ -497,7 +497,7 @@ impl core::marker::Sync for rullst_iot::PinState
 impl core::marker::Unpin for rullst_iot::PinState
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::PinState
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::PinState
-pub struct rullst_iot::PowerGovernor
+#[non_exhaustive] pub struct rullst_iot::PowerGovernor
 pub rullst_iot::PowerGovernor::mode: rullst_iot::PowerMode
 pub rullst_iot::PowerGovernor::battery_mv: u32
 pub rullst_iot::PowerGovernor::solar_mv: u32
@@ -510,7 +510,7 @@ impl core::marker::Sync for rullst_iot::PowerGovernor
 impl core::marker::Unpin for rullst_iot::PowerGovernor
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::PowerGovernor
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::PowerGovernor
-pub enum rullst_iot::PowerMode
+#[non_exhaustive] pub enum rullst_iot::PowerMode
 pub rullst_iot::PowerMode::FullActive
 pub rullst_iot::PowerMode::LowPower
 pub rullst_iot::PowerMode::DeepSleep
@@ -549,7 +549,7 @@ impl core::panic::unwind_safe::UnwindSafe for rullst_iot::RollbackCounterError
 pub trait rullst_iot::RollbackCounterStore
 pub fn rullst_iot::RollbackCounterStore::compare_and_set(&mut self, expected: u64, proposed: u64) -> core::result::Result<(), rullst_iot::RollbackCounterError>
 pub fn rullst_iot::RollbackCounterStore::load(&mut self) -> core::result::Result<u64, rullst_iot::RollbackCounterError>
-pub struct rullst_iot::SensorTelemetry
+#[non_exhaustive] pub struct rullst_iot::SensorTelemetry
 pub rullst_iot::SensorTelemetry::device_id: alloc::string::String
 pub rullst_iot::SensorTelemetry::metric: alloc::string::String
 pub rullst_iot::SensorTelemetry::value: f64

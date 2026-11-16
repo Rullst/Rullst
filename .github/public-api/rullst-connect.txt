@@ -66,7 +66,7 @@ impl core::marker::Sync for rullst_connect::ConnectError
 impl core::marker::Unpin for rullst_connect::ConnectError
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_connect::ConnectError
 impl core::panic::unwind_safe::UnwindSafe for rullst_connect::ConnectError
-pub struct rullst_connect::ConnectUser
+#[non_exhaustive] pub struct rullst_connect::ConnectUser
 pub rullst_connect::ConnectUser::id: alloc::string::String
 pub rullst_connect::ConnectUser::name: alloc::string::String
 pub rullst_connect::ConnectUser::email: core::option::Option<alloc::string::String>
@@ -77,6 +77,7 @@ pub rullst_connect::ConnectUser::access_token: secrecy::SecretString
 pub rullst_connect::ConnectUser::refresh_token: core::option::Option<secrecy::SecretString>
 pub rullst_connect::ConnectUser::expires_in: core::option::Option<u64>
 impl rullst_connect::ConnectUser
+pub fn rullst_connect::ConnectUser::new(id: impl core::convert::Into<alloc::string::String>, name: impl core::convert::Into<alloc::string::String>, access_token: impl core::convert::Into<secrecy::SecretString>) -> Self
 pub fn rullst_connect::ConnectUser::universal_profile(&self) -> rullst_connect::UniversalProfile
 impl core::clone::Clone for rullst_connect::ConnectUser
 impl core::convert::From<&rullst_connect::ConnectUser> for rullst_connect::UniversalProfile
@@ -273,7 +274,7 @@ impl core::marker::Sync for rullst_connect::TokenStoreSnapshot
 impl core::marker::Unpin for rullst_connect::TokenStoreSnapshot
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_connect::TokenStoreSnapshot
 impl core::panic::unwind_safe::UnwindSafe for rullst_connect::TokenStoreSnapshot
-pub struct rullst_connect::UniversalProfile
+#[non_exhaustive] pub struct rullst_connect::UniversalProfile
 pub rullst_connect::UniversalProfile::id: alloc::string::String
 pub rullst_connect::UniversalProfile::name: alloc::string::String
 pub rullst_connect::UniversalProfile::email: core::option::Option<alloc::string::String>
@@ -478,7 +479,7 @@ pub fn rullst_connect::client::HttpClientExt::delete(&self, url: impl core::conv
 pub fn rullst_connect::client::HttpClientExt::get(&self, url: impl core::convert::Into<alloc::string::String>) -> rullst_connect::client::RequestBuilder<'_>
 pub fn rullst_connect::client::HttpClientExt::post(&self, url: impl core::convert::Into<alloc::string::String>) -> rullst_connect::client::RequestBuilder<'_>
 impl rullst_connect::client::HttpClientExt for dyn rullst_connect::client::HttpClient + '_
-pub struct rullst_connect::client::HttpRequest
+#[non_exhaustive] pub struct rullst_connect::client::HttpRequest
 pub rullst_connect::client::HttpRequest::method: alloc::borrow::Cow<'static, str>
 pub rullst_connect::client::HttpRequest::url: alloc::string::String
 pub rullst_connect::client::HttpRequest::headers: http::header::map::HeaderMap
@@ -486,6 +487,8 @@ pub rullst_connect::client::HttpRequest::form: core::option::Option<alloc::strin
 pub rullst_connect::client::HttpRequest::json: core::option::Option<serde_json::value::Value>
 pub rullst_connect::client::HttpRequest::basic_auth: core::option::Option<(alloc::string::String, core::option::Option<alloc::string::String>)>
 pub rullst_connect::client::HttpRequest::bearer_auth: core::option::Option<alloc::string::String>
+impl rullst_connect::client::HttpRequest
+pub fn rullst_connect::client::HttpRequest::new(method: impl core::convert::Into<alloc::borrow::Cow<'static, str>>, url: impl core::convert::Into<alloc::string::String>) -> Self
 impl core::clone::Clone for rullst_connect::client::HttpRequest
 impl core::fmt::Debug for rullst_connect::client::HttpRequest
 impl core::marker::Send for rullst_connect::client::HttpRequest
@@ -493,9 +496,11 @@ impl core::marker::Sync for rullst_connect::client::HttpRequest
 impl core::marker::Unpin for rullst_connect::client::HttpRequest
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_connect::client::HttpRequest
 impl core::panic::unwind_safe::UnwindSafe for rullst_connect::client::HttpRequest
-pub struct rullst_connect::client::HttpResponse
+#[non_exhaustive] pub struct rullst_connect::client::HttpResponse
 pub rullst_connect::client::HttpResponse::status: u16
 pub rullst_connect::client::HttpResponse::body: serde_json::value::Value
+impl rullst_connect::client::HttpResponse
+pub fn rullst_connect::client::HttpResponse::new(status: u16, body: serde_json::value::Value) -> Self
 impl core::clone::Clone for rullst_connect::client::HttpResponse
 impl core::fmt::Debug for rullst_connect::client::HttpResponse
 impl core::marker::Send for rullst_connect::client::HttpResponse
@@ -557,7 +562,7 @@ pub mod rullst_connect::error
 pub use rullst_connect::error::ConnectError = enum rullst_connect::ConnectError
 pub use rullst_connect::error::IssuedTokens = struct rullst_connect::IssuedTokens
 pub mod rullst_connect::extractors
-pub struct rullst_connect::extractors::AuthCallback
+#[non_exhaustive] pub struct rullst_connect::extractors::AuthCallback
 pub rullst_connect::extractors::AuthCallback::code: core::option::Option<alloc::string::String>
 pub rullst_connect::extractors::AuthCallback::state: core::option::Option<alloc::string::String>
 pub rullst_connect::extractors::AuthCallback::error: core::option::Option<alloc::string::String>
@@ -567,6 +572,7 @@ pub fn rullst_connect::extractors::AuthCallback::verify_state(&self, session_sta
 impl actix_web::extract::FromRequest for rullst_connect::extractors::AuthCallback { type Error = actix_web::error::error::Error; type Future = core::future::ready::Ready<core::result::Result<rullst_connect::extractors::AuthCallback, <rullst_connect::extractors::AuthCallback as actix_web::extract::FromRequest>::Error>> }
 impl core::clone::Clone for rullst_connect::extractors::AuthCallback
 impl core::cmp::PartialEq for rullst_connect::extractors::AuthCallback
+impl core::default::Default for rullst_connect::extractors::AuthCallback
 impl core::fmt::Debug for rullst_connect::extractors::AuthCallback
 impl<'de> serde_core::de::Deserialize<'de> for rullst_connect::extractors::AuthCallback
 impl<S> axum_core::extract::FromRequestParts<S> for rullst_connect::extractors::AuthCallback where S: core::marker::Send + core::marker::Sync { type Rejection = axum::extract::rejection::QueryRejection }
@@ -616,7 +622,7 @@ impl core::panic::unwind_safe::UnwindSafe for rullst_connect::extractors::OAuthA
 pub async fn rullst_connect::extractors::begin_oauth_session<P>(session: &tower_sessions_core::session::Session, provider: &P) -> core::result::Result<rullst_connect::extractors::OAuthAuthorization, rullst_connect::ConnectError> where P: rullst_connect::Provider + ?core::marker::Sized
 pub async fn rullst_connect::extractors::begin_oidc_session<P>(session: &tower_sessions_core::session::Session, provider: &P) -> core::result::Result<rullst_connect::extractors::OAuthAuthorization, rullst_connect::ConnectError> where P: rullst_connect::Provider + ?core::marker::Sized
 pub mod rullst_connect::mock_idp
-pub struct rullst_connect::mock_idp::AuthQuery
+#[non_exhaustive] pub struct rullst_connect::mock_idp::AuthQuery
 pub rullst_connect::mock_idp::AuthQuery::client_id: alloc::string::String
 pub rullst_connect::mock_idp::AuthQuery::redirect_uri: alloc::string::String
 pub rullst_connect::mock_idp::AuthQuery::response_type: alloc::string::String
@@ -660,7 +666,7 @@ impl core::marker::Sync for rullst_connect::mock_idp::MockIdpUser
 impl core::marker::Unpin for rullst_connect::mock_idp::MockIdpUser
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_connect::mock_idp::MockIdpUser
 impl core::panic::unwind_safe::UnwindSafe for rullst_connect::mock_idp::MockIdpUser
-pub struct rullst_connect::mock_idp::TokenForm
+#[non_exhaustive] pub struct rullst_connect::mock_idp::TokenForm
 pub rullst_connect::mock_idp::TokenForm::client_id: alloc::string::String
 pub rullst_connect::mock_idp::TokenForm::client_secret: alloc::string::String
 pub rullst_connect::mock_idp::TokenForm::code: alloc::string::String
@@ -754,10 +760,14 @@ pub use rullst_connect::prelude::oidc::token = module rullst_connect::providers:
 pub use rullst_connect::prelude::x = module rullst_connect::providers::x
 pub use rullst_connect::prelude::x::XProvider = struct rullst_connect::providers::XProvider
 pub mod rullst_connect::provider
-pub struct rullst_connect::provider::ExchangeParams<'a>
+#[non_exhaustive] pub struct rullst_connect::provider::ExchangeParams<'a>
 pub rullst_connect::provider::ExchangeParams::auth_code: &'a str
 pub rullst_connect::provider::ExchangeParams::code_verifier: core::option::Option<&'a str>
 pub rullst_connect::provider::ExchangeParams::expected_nonce: core::option::Option<&'a str>
+impl<'a> rullst_connect::provider::ExchangeParams<'a>
+pub fn rullst_connect::provider::ExchangeParams::new(auth_code: &'a str) -> Self
+pub fn rullst_connect::provider::ExchangeParams::with_code_verifier(self, code_verifier: &'a str) -> Self
+pub fn rullst_connect::provider::ExchangeParams::with_expected_nonce(self, expected_nonce: &'a str) -> Self
 impl core::fmt::Debug for rullst_connect::provider::ExchangeParams<'_>
 impl<'a> core::clone::Clone for rullst_connect::provider::ExchangeParams<'a>
 impl<'a> core::default::Default for rullst_connect::provider::ExchangeParams<'a>
@@ -806,7 +816,7 @@ impl core::marker::Sync for rullst_connect::provider::JwksCachePolicy
 impl core::marker::Unpin for rullst_connect::provider::JwksCachePolicy
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_connect::provider::JwksCachePolicy
 impl core::panic::unwind_safe::UnwindSafe for rullst_connect::provider::JwksCachePolicy
-pub struct rullst_connect::provider::Oauth2TokenResponse
+#[non_exhaustive] pub struct rullst_connect::provider::Oauth2TokenResponse
 pub rullst_connect::provider::Oauth2TokenResponse::access_token: alloc::string::String
 pub rullst_connect::provider::Oauth2TokenResponse::refresh_token: core::option::Option<alloc::string::String>
 pub rullst_connect::provider::Oauth2TokenResponse::expires_in: core::option::Option<u64>
@@ -834,13 +844,15 @@ impl core::marker::Sync for rullst_connect::provider::RevocationTokenKind
 impl core::marker::Unpin for rullst_connect::provider::RevocationTokenKind
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_connect::provider::RevocationTokenKind
 impl core::panic::unwind_safe::UnwindSafe for rullst_connect::provider::RevocationTokenKind
-pub struct rullst_connect::provider::TokenExchangeForm<'a>
+#[non_exhaustive] pub struct rullst_connect::provider::TokenExchangeForm<'a>
 pub rullst_connect::provider::TokenExchangeForm::client_id: &'a str
 pub rullst_connect::provider::TokenExchangeForm::client_secret: core::option::Option<&'a str>
 pub rullst_connect::provider::TokenExchangeForm::code: &'a str
 pub rullst_connect::provider::TokenExchangeForm::grant_type: core::option::Option<&'a str>
 pub rullst_connect::provider::TokenExchangeForm::redirect_uri: &'a str
 pub rullst_connect::provider::TokenExchangeForm::code_verifier: core::option::Option<&'a str>
+impl<'a> rullst_connect::provider::TokenExchangeForm<'a>
+pub fn rullst_connect::provider::TokenExchangeForm::new(client_id: &'a str, code: &'a str, redirect_uri: &'a str) -> Self
 impl<'a> serde_core::ser::Serialize for rullst_connect::provider::TokenExchangeForm<'a>
 impl<'a> core::marker::Send for rullst_connect::provider::TokenExchangeForm<'a>
 impl<'a> core::marker::Sync for rullst_connect::provider::TokenExchangeForm<'a>
@@ -1138,7 +1150,7 @@ pub use rullst_connect::refresh::TokenStoreMetadata = struct rullst_connect::Tok
 pub use rullst_connect::refresh::TokenStoreSnapshot = struct rullst_connect::TokenStoreSnapshot
 pub mod rullst_connect::user
 pub use rullst_connect::user::ConnectUser = struct rullst_connect::ConnectUser
-pub struct rullst_connect::user::DeviceAuthorizationResponse
+#[non_exhaustive] pub struct rullst_connect::user::DeviceAuthorizationResponse
 pub rullst_connect::user::DeviceAuthorizationResponse::device_code: alloc::string::String
 pub rullst_connect::user::DeviceAuthorizationResponse::user_code: alloc::string::String
 pub rullst_connect::user::DeviceAuthorizationResponse::verification_uri: alloc::string::String
