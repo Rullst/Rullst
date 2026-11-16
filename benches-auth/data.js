@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794860289391,
+  "lastUpdate": 1794864889739,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -23877,6 +23877,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1901,
             "range": "± 69",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a709c8802ae675ea78805aa0b9ee81f1cc2345cf",
+          "message": "Merge pull request #750 from Rullst/refactor/v13-alpha6-redundant-conditions\n\nrefactor: remove redundant conditions behind 13.0 equivalent mutants",
+          "timestamp": "2026-11-16T18:18:20-03:00",
+          "tree_id": "fe3415b713d88767445508d056cfdd2f5541497a",
+          "url": "https://github.com/Rullst/Rullst/commit/a709c8802ae675ea78805aa0b9ee81f1cc2345cf"
+        },
+        "date": 1794864888581,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 871,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 670,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1543,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3560,
+            "range": "± 66",
             "unit": "ns/iter"
           }
         ]
