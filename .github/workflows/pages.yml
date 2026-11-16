@@ -40,6 +40,10 @@ jobs:
       - name: Build mdBook (Main Docs)
         run: mdbook build docs
 
+      - name: Declare the language of the translated pages
+        # mdBook writes lang="en" on every page; the pt-BR pages declare pt-BR.
+        run: python3 .github/set-book-language.py
+
       - name: Validate static site templates
         run: |
           python3 .github/validate-site.py
