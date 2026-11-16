@@ -51,7 +51,7 @@ was not measured.
 
 Measured on 16 November 2026 on a GitHub-hosted runner, with `main` at
 `fc8c05016` (the 13.0.0-alpha.6 development source), by a temporary workflow
-of [#739](https://github.com/Rullst/Rullst/pull/739) (run
+of [#742](https://github.com/Rullst/Rullst/pull/742) (run
 [43865924499](https://github.com/Rullst/Rullst/actions/runs/43865924499)).
 
 - **Applications:** `cargo rullst new <name> --default --skip-initial-migration`
