@@ -14,18 +14,8 @@ impl AiTool for SampleDbTool {
     }
     fn parameters(&self) -> Vec<ToolParam> {
         vec![
-            ToolParam {
-                name: "sql".to_string(),
-                param_type: "string".to_string(),
-                description: "The SQL statement to execute".to_string(),
-                required: true,
-            },
-            ToolParam {
-                name: "limit".to_string(),
-                param_type: "integer".to_string(),
-                description: "Max rows to return".to_string(),
-                required: false,
-            },
+            ToolParam::new("sql", "string", "The SQL statement to execute", true),
+            ToolParam::new("limit", "integer", "Max rows to return", false),
         ]
     }
     fn risk(&self) -> ToolRisk {
@@ -56,19 +46,11 @@ fn bench_message_context_tokens(c: &mut Criterion) {
     let mut group = c.benchmark_group("ai_message_context");
 
     let messages = vec![
-        Message {
-            role: "system".to_string(),
-            content: "You are Rullst AI Assistant. Help the user optimize Rust code.".to_string(),
-        },
-        Message {
-            role: "user".to_string(),
-            content: "How do I implement static dispatch in Rullst?".to_string(),
-        },
-        Message {
-            role: "assistant".to_string(),
-            content: "Use generics or impl Trait instead of dyn Trait for zero cost abstractions."
-                .to_string(),
-        },
+        Message::system("You are Rullst AI Assistant. Help the user optimize Rust code."),
+        Message::user("How do I implement static dispatch in Rullst?"),
+        Message::assistant(
+            "Use generics or impl Trait instead of dyn Trait for zero cost abstractions.",
+        ),
     ];
 
     group.bench_function("message_json_serialization", |b| {

@@ -23,11 +23,32 @@ use validation::{audited_tool_name, serialized_size, validate_payload, validate_
 
 /// Representation of a parameter in an AI tool's bounded JSON schema.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct ToolParam {
     pub name: String,
     pub param_type: String,
     pub description: String,
     pub required: bool,
+}
+
+impl ToolParam {
+    /// A parameter of an [`AiTool`]: its name, JSON type (`string`, `number`,
+    /// `integer`, `boolean`, `object`, `array` or `null`), description and
+    /// whether a call must provide it. The struct is `#[non_exhaustive]` since
+    /// 13.0.0-alpha.6, so tools outside this crate build it here.
+    pub fn new(
+        name: impl Into<String>,
+        param_type: impl Into<String>,
+        description: impl Into<String>,
+        required: bool,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            param_type: param_type.into(),
+            description: description.into(),
+            required,
+        }
+    }
 }
 
 /// Operational impact assigned by the tool implementation.

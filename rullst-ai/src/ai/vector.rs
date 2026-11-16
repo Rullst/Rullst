@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 /// Represents a document stored inside a vector memory index.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[non_exhaustive]
 pub struct VectorDocument {
     /// Unique identifier of the document.
     pub id: String,

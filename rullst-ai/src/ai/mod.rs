@@ -67,6 +67,7 @@ pub use vision::{LocalImagePolicy, MAX_VISION_IMAGE_BYTES, VisionInputError};
 
 /// A message in a chat completion prompt context.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Message {
     /// The message role: `system`, `user`, or `assistant`.
     pub role: String,
@@ -76,6 +77,7 @@ pub struct Message {
 
 /// Level of JSON response support exposed by a provider transport.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum JsonCapability {
     /// The provider transport has no JSON-specific request path.
     Unsupported,
@@ -87,11 +89,17 @@ pub enum JsonCapability {
 
 /// Machine-readable capability contract for an [`AiProvider`].
 ///
+/// The struct is `#[non_exhaustive]` since 13.0.0-alpha.6: a custom provider
+/// starts from [`ProviderCapabilities::PORTABLE`] or
+/// [`ProviderCapabilities::NONE`] and sets the fields it supports
+/// (`let mut capabilities = ProviderCapabilities::NONE; capabilities.text = true;`).
+///
 /// A `true` value means that the Rullst transport implements the capability. It
 /// does not guarantee that every model configured behind that provider accepts
 /// it. Model-specific rejection is returned as [`AiError::UnsupportedCapability`]
 /// or a provider API error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct ProviderCapabilities {
     /// Single-prompt text generation.
     pub text: bool,
@@ -176,6 +184,17 @@ impl ProviderCapabilities {
 }
 
 impl Message {
+    /// Creates a message with another role. Prefer [`Message::system`],
+    /// [`Message::user`] and [`Message::assistant`]; the struct is
+    /// `#[non_exhaustive]` since 13.0.0-alpha.6, so code outside this crate
+    /// builds it with these constructors.
+    pub fn new(role: impl Into<String>, content: impl Into<String>) -> Self {
+        Self {
+            role: role.into(),
+            content: content.into(),
+        }
+    }
+
     /// Creates a system instruction message.
     pub fn system(content: impl Into<String>) -> Self {
         Self {
