@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794792421619,
+  "lastUpdate": 1794793507119,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -35181,6 +35181,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 967,
             "range": "± 20",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a7c98c026d75688b4e4fe75b7ce0c893db003003",
+          "message": "Merge pull request #721 from Rullst/ci/v13-alpha6-sse-scalar-checks\n\nci: SSE through the generated Caddy and Scalar /docs in Chromium",
+          "timestamp": "2026-11-15T22:40:20-03:00",
+          "tree_id": "a4e3c03cc10586ba31c8682f50ad326a45c0ca17",
+          "url": "https://github.com/Rullst/Rullst/commit/a7c98c026d75688b4e4fe75b7ce0c893db003003"
+        },
+        "date": 1794793502729,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 684,
+            "range": "± 32",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 941,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 418,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1966,
+            "range": "± 32",
             "unit": "ns/iter"
           }
         ]
