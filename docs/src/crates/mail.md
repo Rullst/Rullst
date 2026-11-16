@@ -32,7 +32,11 @@ name and is delivered by the driver the upgraded worker is configured with.
 
 Any other provider is an application-owned `MailDriver`:
 [Writing your own mail transport](../mail-custom-transport.md) walks through a
-complete offline example (`cargo run -p rullst-mail --example custom_transport`).
+complete offline example (`cargo run -p rullst-mail --example custom_transport`),
+and [`examples/mail-postmark-driver`](https://github.com/Rullst/Rullst/tree/main/examples/mail-postmark-driver)
+is a Postmark transport to copy, with its suppression webhook, checked offline
+by the conformance kit. SendGrid, Mailjet and the other providers v13 removed
+follow the [same shape](../mail-custom-transport.md#a-real-provider-postmark).
 
 SendPulse shipped in 12.1.0. Set `MAIL_DRIVER=sendpulse` with
 `SENDPULSE_API_KEY`; real delivery requires an explicit verified sender. The

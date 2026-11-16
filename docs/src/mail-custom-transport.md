@@ -10,7 +10,8 @@ Azure Communication Services transports; see the
 row "Mail providers removed".
 
 This guide walks through a complete transport for a fictitious HTTP email API,
-**AcmeMail**. The code below is included from
+**AcmeMail**, then points to a real one for Postmark
+([below](#a-real-provider-postmark)). The code below is included from
 [`rullst-mail/examples/custom_transport.rs`](https://github.com/Rullst/Rullst/blob/main/rullst-mail/examples/custom_transport.rs),
 which CI compiles and which runs offline from a clone of the Rullst repository:
 
@@ -107,3 +108,40 @@ Add the provider's documented request and response examples as fixtures, and
 validate the live transport against a sandbox account and a verified sender
 before enabling it in production. Tests with mocks establish local contracts,
 not provider interoperability.
+
+## A real provider: Postmark
+
+[`examples/mail-postmark-driver`](https://github.com/Rullst/Rullst/tree/main/examples/mail-postmark-driver)
+applies the same pattern to a real API, Postmark's `POST /email`, as a small
+`publish = false` crate to copy into an application:
+
+- `PostmarkDriver` authenticates with the `X-Postmark-Server-Token` header and
+  maps `from`, `reply_to` (`ReplyTo`), the text and HTML bodies, attachments
+  (an inline image as `ContentID: "cid:<id>"`) and the `List-Unsubscribe`
+  headers to Postmark's fields. It refuses a future `send_at` (Postmark cannot
+  schedule) and a request over Postmark's 10 MB limit. An empty or `mock_*`
+  token captures the message offline after the same checks.
+- Failures keep only the HTTP status: 429 is `RateLimited` with its
+  `Retry-After`, 5xx is transient, and 401 or 422 are permanent (Postmark's
+  error 406, inside a 422, is a recipient on its suppression list).
+- Suppression works as for the built-in drivers: a `SuppressionGuard` blocks
+  a suppressed recipient before Postmark sees it, and `PostmarkWebhook` turns
+  Postmark's `SubscriptionChange` webhook (hard bounces, spam complaints,
+  manual suppressions and unsubscriptions) into `SuppressionEvent`s for the
+  store. Postmark does not sign webhooks, so it first checks the HTTP Basic
+  credentials of the webhook URL in constant time.
+- Its tests run offline: the `rullst-mail` conformance kit (feature
+  `conformance`, `check_mail_driver`) against the offline mode, and the live
+  path against a loopback HTTP fixture.
+
+```text
+cargo test -p rullst-mail-postmark-example
+```
+
+SendGrid, Mailjet, Mailtrap, Azure Communication Services and the other
+providers v13 removed follow the same shape: run `DeliveryPipeline::prepare`,
+map the message to the provider's request, capture offline for empty or
+`mock_*` credentials, classify HTTP failures with
+`MailError::from_provider_response`, record the provider's bounces and
+complaints as `SuppressionEvent`s, and pass `check_mail_driver` in the
+application's tests.
