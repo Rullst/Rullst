@@ -282,6 +282,8 @@ pub rullst_messaging::MessagingError::LeaseExpired
 pub rullst_messaging::MessagingError::ClockOutOfRange
 pub rullst_messaging::MessagingError::StorageUnavailable { .. }
 pub rullst_messaging::MessagingError::StorageUnavailable::operation: &'static str
+pub rullst_messaging::MessagingError::StorageTimeout { .. }
+pub rullst_messaging::MessagingError::StorageTimeout::operation: &'static str
 pub rullst_messaging::MessagingError::CorruptStorage { .. }
 pub rullst_messaging::MessagingError::CorruptStorage::context: &'static str
 pub rullst_messaging::MessagingError::ConfigurationConflict
