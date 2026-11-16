@@ -123,11 +123,14 @@ fn skips_shared_orm_options_and_relation_fields() {
         .to_string();
     assert!(output.contains("fn nexus_table () -> & 'static str { \"projects\" }"));
     for column in ["id", "tenant_id", "owner_id", "title", "removed_at"] {
-        assert!(output.contains(&format!("name : \"{column}\"")), "{column}");
+        assert!(
+            output.contains(&format!("FieldMeta :: new (\"{column}\"")),
+            "{column}"
+        );
     }
     for relation in ["tags", "owner"] {
         assert!(
-            !output.contains(&format!("name : \"{relation}\"")),
+            !output.contains(&format!("FieldMeta :: new (\"{relation}\"")),
             "{relation}"
         );
     }
@@ -151,11 +154,11 @@ fn generates_readonly_hidden_tenant_scope_from_orm_metadata() {
     assert!(output.contains("fn nexus_tenant_column"));
     assert!(output.contains("Some (\"organization_id\")"));
     let tenant_field = output
-        .split("name : \"organization_id\"")
+        .split("FieldMeta :: new (\"organization_id\"")
         .nth(1)
         .expect("tenant field metadata emitted");
-    assert!(tenant_field.contains("hidden : true"));
-    assert!(tenant_field.contains("readonly : true"));
+    assert!(tenant_field.contains("hidden = true"));
+    assert!(tenant_field.contains("readonly = true"));
 }
 
 #[test]
@@ -174,16 +177,18 @@ fn db_default_columns_are_read_only_in_nexus() {
         .to_string();
     let published = field_meta(&output, "published_at").expect("published_at metadata");
     assert!(published.contains("FieldKind :: DateTime"), "{published}");
-    assert!(published.ends_with("readonly : true"), "{published}");
+    assert!(published.ends_with("readonly = true"), "{published}");
     let title = field_meta(&output, "title").expect("title metadata");
-    assert!(title.ends_with("readonly : false"), "{title}");
+    assert!(title.ends_with("readonly = false"), "{title}");
 }
 
 /// The generated `FieldMeta` of `name` up to its `readonly` flag, or `None`
 /// when it is not emitted. (A kind such as `Integer { .. }` has its own braces.)
 fn field_meta(output: &str, name: &str) -> Option<String> {
-    let rest = output.split(&format!("name : \"{name}\"")).nth(1)?;
-    let flag = rest.find("readonly : ")? + "readonly : ".len();
+    let rest = output
+        .split(&format!("FieldMeta :: new (\"{name}\""))
+        .nth(1)?;
+    let flag = rest.find("readonly = ")? + "readonly = ".len();
     let end = flag
         + if rest[flag..].starts_with("true") {
             4
@@ -232,8 +237,8 @@ fn honours_orm_skip_and_confidentiality_markers() {
     for sealed in ["reset_token", "tax_id", "cpf", "backup_cpf"] {
         let meta = field_meta(&output, sealed).expect("protected field metadata");
         assert!(meta.contains("FieldKind :: Password"), "{sealed}: {meta}");
-        assert!(meta.contains("hidden : true"), "{sealed}: {meta}");
-        assert!(meta.contains("readonly : true"), "{sealed}: {meta}");
+        assert!(meta.contains("hidden = true"), "{sealed}: {meta}");
+        assert!(meta.contains("readonly = true"), "{sealed}: {meta}");
     }
     for write_only in ["api_token", "password"] {
         let meta = field_meta(&output, write_only).expect("password field metadata");
@@ -241,13 +246,13 @@ fn honours_orm_skip_and_confidentiality_markers() {
             meta.contains("FieldKind :: Password"),
             "{write_only}: {meta}"
         );
-        assert!(meta.contains("hidden : false"), "{write_only}: {meta}");
-        assert!(meta.contains("readonly : false"), "{write_only}: {meta}");
+        assert!(meta.contains("hidden = false"), "{write_only}: {meta}");
+        assert!(meta.contains("readonly = false"), "{write_only}: {meta}");
     }
     let relaxed = field_meta(&output, "recovery_hint").expect("masked override");
     assert!(relaxed.contains("FieldKind :: Text"), "{relaxed}");
     let settings = field_meta(&output, "settings").expect("json column is kept");
-    assert!(settings.contains("hidden : false"), "{settings}");
+    assert!(settings.contains("hidden = false"), "{settings}");
 }
 
 #[test]
@@ -301,10 +306,10 @@ fn an_annotated_primary_key_outranks_a_later_id_field() {
     assert!(output.contains("fn nexus_pk () -> & 'static str { \"number\" }"));
     // An application-assigned key is entered on create.
     let number = field_meta(&output, "number").expect("key metadata");
-    assert!(number.contains("hidden : false") && number.contains("readonly : false"));
+    assert!(number.contains("hidden = false") && number.contains("readonly = false"));
     let id = field_meta(&output, "id").expect("id metadata");
-    assert!(id.contains("hidden : false"), "{id}");
-    assert!(id.contains("readonly : false"), "{id}");
+    assert!(id.contains("hidden = false"), "{id}");
+    assert!(id.contains("readonly = false"), "{id}");
 
     assert!(!output.contains("nexus_pk_columns"), "{output}");
 
@@ -333,7 +338,7 @@ fn only_integer_keys_are_treated_as_database_generated() {
         .expect("valid Nexus derive")
         .to_string();
     let id = field_meta(&output, "id").expect("id metadata");
-    assert!(id.contains("hidden : true") && id.contains("readonly : true"));
+    assert!(id.contains("hidden = true") && id.contains("readonly = true"));
 
     let assigned: DeriveInput = parse_quote! {
         #[nexus(primary_key = "sku")]
@@ -343,7 +348,7 @@ fn only_integer_keys_are_treated_as_database_generated() {
         .expect("valid Nexus derive")
         .to_string();
     let sku = field_meta(&output, "sku").expect("sku metadata");
-    assert!(sku.contains("hidden : false") && sku.contains("readonly : false"));
+    assert!(sku.contains("hidden = false") && sku.contains("readonly = false"));
 }
 
 #[test]
@@ -462,7 +467,7 @@ fn nexus_flags_labels_and_generic_types_are_read_exactly() {
     let first = field_meta(&output, "first_name").expect("first_name");
     assert!(first.contains("label : \"First name\""), "{first}");
     let hidden = field_meta(&output, "internal_note").expect("internal_note");
-    assert!(hidden.contains("hidden : true"), "{hidden}");
+    assert!(hidden.contains("hidden = true"), "{hidden}");
     let ratio = field_meta(&output, "ratio").expect("ratio");
     assert!(ratio.contains("FieldKind :: Text"), "{ratio}");
     let score = field_meta(&output, "score").expect("score");

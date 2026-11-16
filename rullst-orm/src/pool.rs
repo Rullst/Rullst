@@ -451,12 +451,34 @@ pub trait RullstModel {
 
 /// Represents a paginated result set
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct PaginationResult<T> {
     pub data: Vec<T>,
     pub total: i64,
     pub per_page: usize,
     pub current_page: usize,
     pub last_page: usize,
+}
+
+impl<T> PaginationResult<T> {
+    /// One page of `data` out of `total` rows. The struct is
+    /// `#[non_exhaustive]` since 13.0.0-alpha.6, so code outside this crate,
+    /// such as the queries `#[derive(Orm)]` generates, builds it here.
+    pub fn new(
+        data: Vec<T>,
+        total: i64,
+        per_page: usize,
+        current_page: usize,
+        last_page: usize,
+    ) -> Self {
+        Self {
+            data,
+            total,
+            per_page,
+            current_page,
+            last_page,
+        }
+    }
 }
 
 #[cfg(test)]

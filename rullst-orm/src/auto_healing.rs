@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 /// Corrective Migration proposed by the Auto-Healing Database Engine (Milestone 21)
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct SuggestedMigration {
     pub name: String,
     pub sql_statement: String,

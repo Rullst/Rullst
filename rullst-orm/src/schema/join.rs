@@ -1,5 +1,6 @@
 use super::validation::{ALLOWED_OPERATORS, validate_identifier, validate_table_name};
 
+#[non_exhaustive]
 pub struct JoinClause {
     pub table: String,
     pub conditions: Vec<String>,

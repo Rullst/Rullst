@@ -3,8 +3,10 @@ use syn::{DeriveInput, parse_quote};
 
 /// The generated `FieldMeta` literal of `name`, up to its `readonly` flag.
 fn field_meta(output: &str, name: &str) -> Option<String> {
-    let rest = output.split(&format!("name : \"{name}\"")).nth(1)?;
-    let end = rest.find("readonly : ")? + "readonly : ".len() + 5;
+    let rest = output
+        .split(&format!("FieldMeta :: new (\"{name}\""))
+        .nth(1)?;
+    let end = rest.find("readonly = ")? + "readonly = ".len() + 5;
     rest.get(..end).map(str::to_string)
 }
 
@@ -30,7 +32,7 @@ fn several_key_columns_declare_a_composite_key() {
     for column in ["user_id", "team_id"] {
         let meta = field_meta(&output, column).expect("key metadata");
         assert!(
-            meta.contains("hidden : false") && meta.contains("readonly : false"),
+            meta.contains("hidden = false") && meta.contains("readonly = false"),
             "{meta}"
         );
     }
