@@ -59,3 +59,36 @@ fn wycheproof_ecdsa_p256_sha256_der_vectors_give_their_expected_results() {
     assert_eq!(results, [310, 174]);
     assert_eq!(results[0] + results[1], vectors["numberOfTests"]);
 }
+
+// TEMPORARY PROBE (fix/v13-alpha6-macos-nightly): dropped before merge.
+#[test]
+fn es256_probe_lists_every_disagreement() {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/wycheproof/ecdsa_secp256r1_sha256_test.json");
+    let vectors: serde_json::Value = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+    println!(
+        "PROBE target {} {}",
+        std::env::consts::OS,
+        std::env::consts::ARCH
+    );
+    let mut mismatches = 0;
+    for group in vectors["testGroups"].as_array().unwrap() {
+        let public_key = unhex(group["publicKey"]["uncompressed"].as_str().unwrap());
+        for test in group["tests"].as_array().unwrap() {
+            let expected = test["result"] == "valid";
+            let message = unhex(test["msg"].as_str().unwrap());
+            let signature = unhex(test["sig"].as_str().unwrap());
+            let aws_lc = super::es256::verify(&public_key, &message, &signature);
+            let ring =
+                super::es256_differential_tests::previous_verify(&public_key, &message, &signature);
+            if aws_lc != expected || ring != expected {
+                mismatches += 1;
+                println!(
+                    "PROBE tcId {} result {} aws-lc {aws_lc} ring {ring} comment {} flags {}",
+                    test["tcId"], test["result"], test["comment"], test["flags"]
+                );
+            }
+        }
+    }
+    println!("PROBE {mismatches} disagreement(s)");
+}
