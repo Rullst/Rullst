@@ -57,6 +57,17 @@ received a test or is listed under
   `redis_streams/` (excluded from the gate) was measured with targeted runs
   and the `messaging-redis` contract run: 202 mutants, of which only the
   accepted `Remote::decode` arm survives both.
+- **`rullst-media`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+  [PR #747](https://github.com/Rullst/Rullst/pull/747), runs in the
+  maintainer's fork
+  [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)):
+  targeted runs of the 32 files (5 have no mutants) gave 1,194 mutants: 877
+  caught, 127 unviable, no timeout and 190 missed. New tests killed 173: the
+  Bunny response, grant, webhook and meta-tag bounds, the S3 configuration
+  and protocol checks, the stored-record validation and the SQLite workflow,
+  playback and retention guards. The other 17 are accepted equivalents listed
+  below. Reruns of the 17 changed files leave 16 of 814 mutants, all accepted
+  equivalents (the seventeenth is the existing `s3/signing.rs` one).
 - **`rullst-connect`** (13.0.0-alpha.6,
   [PR #718](https://github.com/Rullst/Rullst/pull/718)): targeted runs of the 61
   files outside the PostgreSQL and MySQL login-challenge stores (11 have no
