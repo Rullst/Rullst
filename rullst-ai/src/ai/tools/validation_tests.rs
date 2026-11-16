@@ -163,3 +163,23 @@ fn payload_contract_rejects_non_objects_unknown_missing_and_mistyped_fields() {
     .expect("optional field may be absent");
     assert!(serialized_size(&serde_json::json!({"ok": true}), "schema-tool").unwrap() > 0);
 }
+
+#[test]
+fn tool_schema_accepts_each_exact_ceiling() {
+    // A 64-byte name, a 4,096-byte description, 64 parameters and a
+    // 2,048-byte parameter description are the largest accepted.
+    let mut tool = SchemaTool::new(
+        (0..64)
+            .map(|index| parameter(&format!("p{index}"), "string", false))
+            .collect(),
+    );
+    tool.name = "n".repeat(64);
+    tool.description = "d".repeat(4_096);
+    tool.parameters[0].description = "p".repeat(2_048);
+    validate_tool(&tool).expect("every ceiling is inclusive");
+
+    assert!(validate_identifier("tool name", &"n".repeat(64)).is_ok());
+    assert!(validate_identifier("tool name", &"n".repeat(65)).is_err());
+    assert!(validate_non_empty_bounded("label", "abc", 3).is_ok());
+    assert!(validate_non_empty_bounded("label", "abcd", 3).is_err());
+}

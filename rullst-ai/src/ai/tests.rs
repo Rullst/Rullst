@@ -314,3 +314,60 @@ async fn fallback_passes_optional_requests_to_the_next_provider() {
         })
     ));
 }
+
+#[async_trait]
+impl StreamingAiProvider for Declared {
+    async fn stream_chat<S>(
+        &self,
+        _messages: &[Message],
+        _limits: StreamLimits,
+        _cancellation: &AiCancellation,
+        sink: &mut S,
+    ) -> Result<(), AiError>
+    where
+        S: AiStreamSink,
+    {
+        sink.send("hello")
+    }
+}
+
+#[test]
+fn stream_limits_accept_each_exact_ceiling_and_report_it() {
+    assert_eq!(streaming::MAX_STREAM_CHUNK_BYTES, 65_536);
+    assert_eq!(streaming::MAX_STREAM_OUTPUT_BYTES, 2_097_152);
+    let ceilings = StreamLimits::try_new(4_096, 65_536, 2_097_152).expect("ceilings are inclusive");
+    assert_eq!(
+        (
+            ceilings.max_chunks(),
+            ceilings.max_chunk_bytes(),
+            ceilings.max_output_bytes()
+        ),
+        (4_096, 65_536, 2_097_152)
+    );
+    assert!(StreamLimits::try_new(1, 65_537, 2_097_152).is_err());
+    assert!(StreamLimits::try_new(1, 1, 2_097_153).is_err());
+    assert!(matches!(
+        StreamLimits::try_new(1, 1, 0),
+        Err(AiError::ConfigError(message))
+            if message == "stream output bytes must be between 1 and 2097152"
+    ));
+}
+
+#[tokio::test]
+async fn a_cancelling_stream_sink_reports_cancellation_and_other_failures_stay_opaque() {
+    let client = StreamingAiClient::new(Declared(EVERYTHING));
+    let active = AiCancellation::new();
+    let mut cancelling = |_: &str| -> Result<(), AiError> { Err(AiError::Cancelled) };
+    assert!(matches!(
+        client
+            .stream_prompt("hello", &active, &mut cancelling)
+            .await,
+        Err(AiError::Cancelled)
+    ));
+    let mut failing =
+        |_: &str| -> Result<(), AiError> { Err(AiError::ApiError("sink".to_string())) };
+    assert!(matches!(
+        client.stream_prompt("hello", &active, &mut failing).await,
+        Err(AiError::StreamSink)
+    ));
+}
