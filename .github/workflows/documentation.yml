@@ -54,6 +54,11 @@ jobs:
       - name: Build the documentation book
         run: mdbook build docs
 
+      - name: Declare and check the language of the translated pages
+        run: |
+          python3 .github/test-set-book-language.py
+          python3 .github/set-book-language.py
+
       - name: Check the generated llms.txt and llms-full.txt
         env:
           RULLST_LLMS_REQUIRE_BOOK: "1"
