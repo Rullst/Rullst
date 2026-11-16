@@ -48,19 +48,6 @@ UNSTABLE_TRAITS = {"Freeze", "UnsafeUnpin", "StructuralPartialEq"}
 SKIPPED_KINDS = {"impl", "primitive", "struct_field", "variant"}
 # The phrase that documents a public enum or struct kept exhaustive on purpose.
 EXHAUSTIVE_NOTE = "exhaustive on purpose"
-# Types whose decision is still open in their crate's own pull request. Remove
-# an entry once the type is decided: an entry that is no longer undecided fails.
-UNDECIDED_ALLOWED = {
-    "enum rullst_media::Action",
-    "enum rullst_media::PlaybackKind",
-    "enum rullst_media::ProviderMode",
-    "enum rullst_media::sqlite::Lifecycle",
-    "struct rullst_media::ProviderBinding",
-    "struct rullst_media::RemoteVideo",
-    "struct rullst_media::Scope",
-    "struct rullst_media::WebhookHeaders",
-    "struct rullst_media::sqlite::Asset",
-}
 
 
 def one(value):
@@ -562,11 +549,7 @@ def main() -> int:
     stale, undecided = [], []
     for package in packages(meta, args.packages):
         text, exhaustive = listing(package, target_directory, not args.no_build)
-        undecided += [entry for entry in exhaustive if entry not in UNDECIDED_ALLOWED]
-        crate = package["name"].replace("-", "_")
-        undecided += [f"{entry} (listed in UNDECIDED_ALLOWED but already decided)"
-                      for entry in sorted(UNDECIDED_ALLOWED)
-                      if entry.split(" ", 1)[1].split("::", 1)[0] == crate and entry not in exhaustive]
+        undecided += exhaustive
         snapshot = SNAPSHOTS / f"{package['name']}.txt"
         if args.check:
             committed = snapshot.read_text() if snapshot.exists() else ""
