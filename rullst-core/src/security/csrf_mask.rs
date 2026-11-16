@@ -5,12 +5,12 @@
 //! response, so a compressed page that also reflects attacker-controlled
 //! input would leak it byte by byte through its compressed length (BREACH).
 //! Every value embedded in a response body is therefore
-//! `mask || (token XOR mask)`, with a fresh mask from the operating system's
-//! random source, in URL-safe base64 without padding: it differs in every
-//! response and unmasks to the cookie value.
+//! `mask || (token XOR mask)`, with a fresh mask from this thread's CSPRNG
+//! (seeded and reseeded from the operating system, see `csrf_random`), in
+//! URL-safe base64 without padding: it differs in every response and
+//! unmasks to the cookie value.
 
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
-use rand::{TryRng, rngs::SysRng};
 use subtle::{Choice, ConstantTimeEq};
 
 /// Longest `rullst_csrf` cookie value the middleware accepts.
@@ -32,8 +32,9 @@ pub(crate) fn valid_cookie_token(token: &[u8]) -> bool {
 /// Masks a `rullst_csrf` cookie value for one response.
 ///
 /// Returns `mask || (token XOR mask)` in URL-safe base64 without padding,
-/// with a fresh mask of the token's length from the operating system's
-/// random source, so two calls never return the same text. The CSRF
+/// with a fresh mask of the token's length from a CSPRNG (a ChaCha12
+/// generator per thread, seeded and reseeded from the operating system's
+/// random source), so two calls never return the same text. The CSRF
 /// middleware accepts the result, like the cookie value itself, in the
 /// `X-CSRF-Token` header or the `_token` form field of a request carrying
 /// that cookie. [`CsrfToken::as_str`](super::CsrfToken::as_str) is already
@@ -41,7 +42,7 @@ pub(crate) fn valid_cookie_token(token: &[u8]) -> bool {
 ///
 /// Returns `None` when `token` is not a valid cookie value (1 to 128 ASCII
 /// letters, digits, `-` or `_`) or the operating system's random source
-/// fails.
+/// fails to seed that generator.
 ///
 /// ```
 /// let cookie = rullst_core::security::generate_csrf_token();
@@ -58,7 +59,7 @@ pub fn mask_csrf_token(token: &str) -> Option<String> {
     }
     let mut masked = vec![0_u8; token.len() * 2];
     let (mask, cipher) = masked.split_at_mut(token.len());
-    SysRng.try_fill_bytes(mask).ok()?;
+    super::csrf_random::fill_mask(mask)?;
     for ((out, pad), byte) in cipher.iter_mut().zip(mask.iter()).zip(token) {
         *out = pad ^ byte;
     }

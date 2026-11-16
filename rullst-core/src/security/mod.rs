@@ -10,6 +10,7 @@ mod baseline;
 mod csrf;
 mod csrf_mask;
 mod csrf_multipart;
+mod csrf_random;
 mod headers;
 mod machine;
 mod media_type;

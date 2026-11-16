@@ -28,7 +28,7 @@ pub struct CsrfToken(String);
 
 impl CsrfToken {
     /// Masks the cookie's `token` for one response, or `None` when the
-    /// operating system's random source fails.
+    /// operating system's random source fails to seed the mask generator.
     fn for_response(token: &str) -> Option<Self> {
         mask_csrf_token(token).map(Self)
     }
@@ -44,8 +44,8 @@ impl CsrfToken {
     }
 }
 
-/// The `500` answer when the operating system's random source cannot mask
-/// the token.
+/// The `500` answer when the operating system's random source cannot mint
+/// or mask the token.
 const MASK_UNAVAILABLE: &str = "CSRF token unavailable";
 
 /// Private request marker preventing nested framework/application composition
@@ -177,7 +177,10 @@ async fn handle_csrf_get(mut req: Request, next: impl super::Run) -> Response {
     }
     let same_site = security.csrf_same_site.clone();
 
-    let token = generate_csrf_token();
+    // The cookie's secret comes from the operating system's random source.
+    let Some(token) = super::csrf_random::mint_cookie_token() else {
+        return (StatusCode::INTERNAL_SERVER_ERROR, MASK_UNAVAILABLE).into_response();
+    };
     let Some(csrf) = CsrfToken::for_response(&token) else {
         return (StatusCode::INTERNAL_SERVER_ERROR, MASK_UNAVAILABLE).into_response();
     };
