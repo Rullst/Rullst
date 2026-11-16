@@ -19,6 +19,7 @@ pub enum ToolAuditOutcome {
 
 /// Secret-free audit event for one dispatch decision or outcome.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct ToolAuditEvent {
     pub principal: String,
     pub tool: String,
@@ -37,6 +38,7 @@ pub trait ToolAuditSink: Send + Sync {
 
 /// Sequence-numbered event returned by the in-memory and durable tool trails.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct RecordedToolAuditEvent {
     pub sequence: u64,
     pub event: ToolAuditEvent,

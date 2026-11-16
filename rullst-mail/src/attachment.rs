@@ -27,6 +27,7 @@ mod content_serde;
 /// Human-readable serde formats such as the JSON mail queue encode `content`
 /// as a standard base64 string and still accept the legacy integer array.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct Attachment {
     /// Name of the attached file (e.g. `"invoice.pdf"`).
     pub filename: String,

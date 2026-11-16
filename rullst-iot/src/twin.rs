@@ -54,6 +54,7 @@ impl fmt::Display for TwinSyncError {
 
 /// A local snapshot representing the reported state of an IoT device.
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct DigitalTwin {
     pub device_id: String,
     pub readings: Vec<SensorTelemetry>,

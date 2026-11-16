@@ -145,6 +145,7 @@ pub(crate) fn http_client() -> Result<&'static reqwest::Client, crate::error::Ca
 /// The semantic status of a SaaS Subscription.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum SubscriptionStatus {
     /// The subscription is active and in good standing.
     Active,
@@ -190,6 +191,7 @@ impl SubscriptionStatus {
 
 /// Unified model representing a webhook event for subscription/payment changes.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct WebhookEvent {
     /// Unique identifier of the subscription or charge in the provider system.
     pub subscription_id: String,
@@ -203,6 +205,35 @@ pub struct WebhookEvent {
     pub status: SubscriptionStatus,
     /// Expiration / end date timestamp (if applicable).
     pub ends_at: Option<i64>,
+}
+
+impl WebhookEvent {
+    /// The event a [`BillingProvider`] returns from `handle_webhook`, without
+    /// an end date; add one with [`WebhookEvent::with_ends_at`]. The struct is
+    /// `#[non_exhaustive]` since 13.0.0-alpha.6, so providers outside this
+    /// crate build it here.
+    pub fn new(
+        subscription_id: impl Into<String>,
+        customer_id: impl Into<String>,
+        customer_email: impl Into<String>,
+        plan_id: impl Into<String>,
+        status: SubscriptionStatus,
+    ) -> Self {
+        Self {
+            subscription_id: subscription_id.into(),
+            customer_id: customer_id.into(),
+            customer_email: customer_email.into(),
+            plan_id: plan_id.into(),
+            status,
+            ends_at: None,
+        }
+    }
+
+    /// The same event with the Unix time at which the subscription ends.
+    pub fn with_ends_at(mut self, ends_at: i64) -> Self {
+        self.ends_at = Some(ends_at);
+        self
+    }
 }
 
 use crate::error::CapitalError;

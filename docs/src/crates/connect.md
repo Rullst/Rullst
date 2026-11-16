@@ -633,11 +633,7 @@ async fn exchange_with_pkce<P: Provider>(
 
     // After atomically consuming and validating that state in the callback:
     provider
-        .get_user(ExchangeParams {
-            auth_code: authorization_code,
-            code_verifier: Some(&code_verifier),
-            ..Default::default()
-        })
+        .get_user(ExchangeParams::new(authorization_code).with_code_verifier(&code_verifier))
         .await
 }
 ```

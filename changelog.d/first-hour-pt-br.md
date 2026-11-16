@@ -7,5 +7,7 @@
   English page. Each translation names the English commit it was translated
   from, and its code blocks are the English page's, unchanged, which
   `documentation.yml` checks (`.github/check-translations.py`), so the
-  English doctests and first-hour checks cover them. The rest of the book
-  stays in English.
+  English doctests and first-hour checks cover them. The pages declare
+  `lang="pt-BR"`, so screen readers read them in Portuguese
+  (`.github/set-book-language.py` sets it after `mdbook build` and
+  `documentation.yml` checks it). The rest of the book stays in English.

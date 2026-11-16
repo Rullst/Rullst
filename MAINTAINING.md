@@ -176,7 +176,10 @@ and fails on any surviving mutant.
   `python3 .github/public-api.py <package>…` on Linux x86_64, the docs.rs
   target, and commit `.github/public-api/<package>.txt`. Without arguments it
   rewrites every listing; `--check` is what CI runs, and `--no-build` reuses the
-  rustdoc JSON of the previous run. Hide helpers that only generated code calls
+  rustdoc JSON of the previous run. Both fail when a listed enum, or a struct
+  whose fields are all public, is neither `#[non_exhaustive]` nor documented
+  with a line "Exhaustive on purpose: <why>"
+  ([compatibility policy](docs/src/compatibility-policy.md#semantic-versioning-contract)). Hide helpers that only generated code calls
   with `#[doc(hidden)]`; they are then not listed. To move the pin, change
   `TOOLCHAIN` in `.github/public-api.py` and the job's toolchain together (and
   `FORMAT_VERSION` when rustdoc's JSON format changed; the script refuses

@@ -14,7 +14,7 @@ impl core::marker::Sync for rullst_security::AuditChain
 impl core::marker::Unpin for rullst_security::AuditChain
 pub trait rullst_security::AuditLogger: core::marker::Send + core::marker::Sync
 pub fn rullst_security::AuditLogger::log(&self, record: &rullst_security::AuditRecord) -> core::result::Result<(), rullst_security::SecurityError>
-pub struct rullst_security::AuditRecord
+#[non_exhaustive] pub struct rullst_security::AuditRecord
 pub rullst_security::AuditRecord::sequence_id: u64
 pub rullst_security::AuditRecord::timestamp: u64
 pub rullst_security::AuditRecord::actor: alloc::string::String
@@ -44,7 +44,7 @@ impl core::marker::Sync for rullst_security::AuthenticatedSiemSpool
 impl core::marker::Unpin for rullst_security::AuthenticatedSiemSpool
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_security::AuthenticatedSiemSpool
 impl core::panic::unwind_safe::UnwindSafe for rullst_security::AuthenticatedSiemSpool
-pub enum rullst_security::AuthenticatedSiemSpoolError
+#[non_exhaustive] pub enum rullst_security::AuthenticatedSiemSpoolError
 pub rullst_security::AuthenticatedSiemSpoolError::InvalidCapacity
 pub rullst_security::AuthenticatedSiemSpoolError::InvalidPath
 pub rullst_security::AuthenticatedSiemSpoolError::UnsafeFileType
@@ -315,7 +315,7 @@ pub const rullst_security::MAX_SRI_ASSET_BYTES: u64
 pub const rullst_security::MIN_AUDIT_KEY_BYTES: usize
 pub const rullst_security::MIN_FINGERPRINT_KEY_BYTES: usize
 pub const rullst_security::MIN_TOTP_SECRET_BYTES: usize
-pub struct rullst_security::PromptSafetyReport
+#[non_exhaustive] pub struct rullst_security::PromptSafetyReport
 pub rullst_security::PromptSafetyReport::is_safe: bool
 pub rullst_security::PromptSafetyReport::threat_category: core::option::Option<rullst_security::PromptThreatCategory>
 pub rullst_security::PromptSafetyReport::matched_pattern: core::option::Option<alloc::string::String>
@@ -329,7 +329,7 @@ impl core::marker::Sync for rullst_security::PromptSafetyReport
 impl core::marker::Unpin for rullst_security::PromptSafetyReport
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_security::PromptSafetyReport
 impl core::panic::unwind_safe::UnwindSafe for rullst_security::PromptSafetyReport
-pub enum rullst_security::PromptThreatCategory
+#[non_exhaustive] pub enum rullst_security::PromptThreatCategory
 pub rullst_security::PromptThreatCategory::DirectJailbreak
 pub rullst_security::PromptThreatCategory::SystemPromptLeakage
 pub rullst_security::PromptThreatCategory::DelimiterHijacking
@@ -423,7 +423,7 @@ impl<S> core::marker::Sync for rullst_security::RaspSecurityService<S> where S: 
 impl<S> core::marker::Unpin for rullst_security::RaspSecurityService<S> where S: core::marker::Unpin
 impl<S> core::panic::unwind_safe::RefUnwindSafe for rullst_security::RaspSecurityService<S> where S: core::panic::unwind_safe::RefUnwindSafe
 impl<S> core::panic::unwind_safe::UnwindSafe for rullst_security::RaspSecurityService<S> where S: core::panic::unwind_safe::UnwindSafe
-pub enum rullst_security::RateLimitBackend
+#[non_exhaustive] pub enum rullst_security::RateLimitBackend
 pub rullst_security::RateLimitBackend::Memory
 pub rullst_security::RateLimitBackend::Distributed
 impl core::clone::Clone for rullst_security::RateLimitBackend
@@ -437,7 +437,7 @@ impl core::marker::Sync for rullst_security::RateLimitBackend
 impl core::marker::Unpin for rullst_security::RateLimitBackend
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_security::RateLimitBackend
 impl core::panic::unwind_safe::UnwindSafe for rullst_security::RateLimitBackend
-pub struct rullst_security::RateLimitDecision
+#[non_exhaustive] pub struct rullst_security::RateLimitDecision
 pub rullst_security::RateLimitDecision::allowed: bool
 pub rullst_security::RateLimitDecision::remaining: u64
 pub rullst_security::RateLimitDecision::retry_after: core::time::Duration
@@ -524,7 +524,7 @@ impl core::marker::Sync for rullst_security::RecoveryCodeVerifier
 impl core::marker::Unpin for rullst_security::RecoveryCodeVerifier
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_security::RecoveryCodeVerifier
 impl core::panic::unwind_safe::UnwindSafe for rullst_security::RecoveryCodeVerifier
-pub enum rullst_security::RedisRateLimitMode
+#[non_exhaustive] pub enum rullst_security::RedisRateLimitMode
 pub rullst_security::RedisRateLimitMode::Distributed
 pub rullst_security::RedisRateLimitMode::OfflineMock
 impl core::clone::Clone for rullst_security::RedisRateLimitMode
@@ -612,7 +612,7 @@ impl<S> core::marker::Sync for rullst_security::SecureHeadersService<S> where S:
 impl<S> core::marker::Unpin for rullst_security::SecureHeadersService<S> where S: core::marker::Unpin
 impl<S> core::panic::unwind_safe::RefUnwindSafe for rullst_security::SecureHeadersService<S> where S: core::panic::unwind_safe::RefUnwindSafe
 impl<S> core::panic::unwind_safe::UnwindSafe for rullst_security::SecureHeadersService<S> where S: core::panic::unwind_safe::UnwindSafe
-pub enum rullst_security::SecurityError
+#[non_exhaustive] pub enum rullst_security::SecurityError
 pub rullst_security::SecurityError::Unauthorized(alloc::string::String)
 pub rullst_security::SecurityError::Forbidden(alloc::string::String)
 pub rullst_security::SecurityError::VaultError(alloc::string::String)
@@ -744,7 +744,7 @@ impl core::marker::Sync for rullst_security::SentinelPolicy
 impl core::marker::Unpin for rullst_security::SentinelPolicy
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_security::SentinelPolicy
 impl core::panic::unwind_safe::UnwindSafe for rullst_security::SentinelPolicy
-pub struct rullst_security::SiemAlertPayload
+#[non_exhaustive] pub struct rullst_security::SiemAlertPayload
 pub rullst_security::SiemAlertPayload::version: alloc::string::String
 pub rullst_security::SiemAlertPayload::event_type: alloc::string::String
 pub rullst_security::SiemAlertPayload::severity: alloc::string::String
@@ -779,7 +779,7 @@ impl core::marker::Sync for rullst_security::SiemKeyRing
 impl core::marker::Unpin for rullst_security::SiemKeyRing
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_security::SiemKeyRing
 impl core::panic::unwind_safe::UnwindSafe for rullst_security::SiemKeyRing
-pub enum rullst_security::SiemSpoolError
+#[non_exhaustive] pub enum rullst_security::SiemSpoolError
 pub rullst_security::SiemSpoolError::InvalidCapacity
 pub rullst_security::SiemSpoolError::InvalidPath
 pub rullst_security::SiemSpoolError::UnsafeFileType
@@ -838,7 +838,7 @@ impl core::marker::Sync for rullst_security::SiemSpoolSnapshot
 impl core::marker::Unpin for rullst_security::SiemSpoolSnapshot
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_security::SiemSpoolSnapshot
 impl core::panic::unwind_safe::UnwindSafe for rullst_security::SiemSpoolSnapshot
-pub enum rullst_security::SriError
+#[non_exhaustive] pub enum rullst_security::SriError
 pub rullst_security::SriError::Inspect { .. }
 pub rullst_security::SriError::Inspect::path: std::path::PathBuf
 pub rullst_security::SriError::Inspect::source: core::io::error::Error
@@ -907,10 +907,12 @@ impl !core::panic::unwind_safe::UnwindSafe for rullst_security::ThreatSentinel
 impl core::marker::Send for rullst_security::ThreatSentinel
 impl core::marker::Sync for rullst_security::ThreatSentinel
 impl core::marker::Unpin for rullst_security::ThreatSentinel
-pub struct rullst_security::TimingGuardConfig
+#[non_exhaustive] pub struct rullst_security::TimingGuardConfig
 pub rullst_security::TimingGuardConfig::min_duration: core::time::Duration
 pub rullst_security::TimingGuardConfig::max_jitter: core::time::Duration
 pub rullst_security::TimingGuardConfig::enable_synthetic_cpu_cycles: bool
+impl rullst_security::TimingGuardConfig
+pub fn rullst_security::TimingGuardConfig::new(min_duration: core::time::Duration, max_jitter: core::time::Duration, enable_synthetic_cpu_cycles: bool) -> Self
 impl core::clone::Clone for rullst_security::TimingGuardConfig
 impl core::default::Default for rullst_security::TimingGuardConfig
 impl core::fmt::Debug for rullst_security::TimingGuardConfig

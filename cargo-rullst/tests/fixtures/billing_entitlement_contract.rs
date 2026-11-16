@@ -33,12 +33,12 @@ impl Gateway for Provider {
         if self.0.paused.swap(false, Ordering::SeqCst) {
             self.0.entered.notify_one(); self.0.resume.notified().await;
         }
-        Ok(gateway::Subscription { event: rullst::capital::WebhookEvent {
-            subscription_id: request.subscription_id().into(), customer_id: request.customer_id().into(),
-            customer_email: String::new(), plan_id: plan,
-            status: rullst::capital::SubscriptionStatus::Active,
-            ends_at: if ends == -1 { None } else if ends == 0 { Some(now().unwrap() + 3600) } else { Some(ends) },
-        }, status })
+        let mut event = rullst::capital::WebhookEvent::new(
+            request.subscription_id(), request.customer_id(), String::new(), plan,
+            rullst::capital::SubscriptionStatus::Active,
+        );
+        event.ends_at = if ends == -1 { None } else if ends == 0 { Some(now().unwrap() + 3600) } else { Some(ends) };
+        Ok(gateway::Subscription { event, status })
     }
 }
 fn config() -> BillingConfig {

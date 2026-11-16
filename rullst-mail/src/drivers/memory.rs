@@ -132,6 +132,7 @@ impl MailTrap {
 }
 
 /// Fluent assertion builder for deep inspection of email messages.
+#[non_exhaustive]
 pub struct MailAssertion {
     pub message: Message,
 }

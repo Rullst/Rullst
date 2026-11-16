@@ -139,12 +139,16 @@ impl fmt::Debug for PasskeyBinding {
     }
 }
 
+/// Exhaustive on purpose: WebAuthn has exactly two ceremonies, registration
+/// (`create`) and authentication (`get`), and a custom store that persists the
+/// kind must handle every one.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CeremonyKind {
     Registration,
     Authentication,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum CeremonyDurability {
     ProcessLocal,
     SharedDurable,

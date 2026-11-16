@@ -45,19 +45,9 @@ fn test_span_collector_lifecycle() {
     assert!(collector.snapshot().is_empty());
 
     // Record spans
-    collector.record(TraceSpan {
-        name: "db_query".to_string(),
-        kind: "sql".to_string(),
-        duration_us: 1250,
-        timestamp: 1700000000,
-    });
+    collector.record(TraceSpan::new("db_query", "sql", 1250, 1700000000));
 
-    collector.record(TraceSpan {
-        name: "http_request".to_string(),
-        kind: "http".to_string(),
-        duration_us: 4500,
-        timestamp: 1700000001,
-    });
+    collector.record(TraceSpan::new("http_request", "http", 4500, 1700000001));
 
     let spans = collector.snapshot();
     assert_eq!(spans.len(), 2);

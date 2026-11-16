@@ -3,6 +3,7 @@ use std::{collections::BTreeMap, future::Future, sync::Mutex};
 
 /// The host must substantiate a shared store's durability and atomicity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ReplayDurability {
     ProcessLocal,
     SharedDurable,

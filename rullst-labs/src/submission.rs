@@ -1,6 +1,8 @@
 use crate::{LabError, Reference, RustSource};
 use serde::{Deserialize, Serialize};
 
+/// Exhaustive on purpose: an exercise is identified by its id and revision, and
+/// the pair is part of the job binding.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ExerciseRef {

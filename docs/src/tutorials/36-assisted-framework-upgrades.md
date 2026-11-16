@@ -257,6 +257,21 @@ location out and still reports the rule's other locations. The
 [rule classification](#v12--v13-rule-classification) lists which migration
 rows have rules.
 
+The review rules about how the deployed application behaves skip test code
+(since 13.0.0-alpha.6): files below a `tests` directory or named `tests.rs`,
+`*_tests.rs` or `*_test.rs`, and, in any file, an item marked `#[cfg(test)]`,
+`#[test]` or another `…::test` attribute (`#[tokio::test]`), with everything
+inside it, such as the inline `mod tests { … }` of a controller. Those rules
+are `V13-CSRF-COOKIE-IN-PAGE`, `V13-CSRF-STATIC-PREFIXES`,
+`V13-ROUTER-BASELINE-LAYERS`, `V13-CREDENTIAL-RATE-LIMIT`,
+`V13-LMS-RECORD-PROGRESS`, `V13-ERP-DASHBOARD-ACCESS`, `V13-ERP-STORE-ORDER`,
+`V13-PAGE-CSP-NONCE`, `V13-PAGE-BOUNDS` and `V13-PORTFOLIO-PROFILE`. Before,
+`V13-CSRF-COOKIE-IN-PAGE` skipped only test files, `V13-CREDENTIAL-RATE-LIMIT`
+and `V13-LMS-RECORD-PROGRESS` only test functions and modules, and the other
+seven reported test code too. Must-change rules and
+the review rules whose change a test also observes (a removed probe field,
+new header values, the ORM sandbox attribute) still report test code.
+
 Must-change findings stop `cargo rullst upgrade` before it changes anything:
 the code they name does not compile with the target, so changing the versions
 and running the Cargo gates (minutes on a cold cache) could only fail and
@@ -305,6 +320,8 @@ release:
 | 13.0.0-alpha.6 | `V13-ORM-SAVE-MODE` (the explicit ORM save mode) |
 | 13.0.0-alpha.6 | `V13-AUTH-PASSKEYS-FEATURE` (passkeys behind a feature) |
 | 13.0.0-alpha.6 | `V13-MEDIA-PROCESSING-MATCH` (Media's `Playable` state) |
+| 13.0.0-alpha.6 | `V13-NON-EXHAUSTIVE-MATCH` (the non-exhaustive public enums) |
+| 13.0.0-alpha.6 | `V13-NON-EXHAUSTIVE-LITERAL` (the non-exhaustive public structs) |
 
 A rule is dated by the first release tag whose catalog contains its code
 (`git show v13.0.0-alpha.2:cargo-rullst/src/generators/build/upgrade/rules/catalog.rs`,
@@ -709,7 +726,7 @@ totals, which every new row or rule would change.
 | Secure cookies over HTTPS | (c) none | — | Runtime behaviour; not detectable in source |
 | CSRF cookie on cacheable responses | (c) none | — | `Cache-Control` values set by handlers are not located |
 | CSRF static files by path | (b) review | `V13-CSRF-STATIC-PREFIXES` | `.nest_service("/path", ..)` and `.route_service("/path", ..)` with a literal path that Core's default `csrf_static_prefixes` and `csrf_static_paths` do not cover, in a file that names `ServeDir` or `ServeFile`, at every location; dynamic pages that now get a token need no change and are not located; introduced in 13.0.0-alpha.6 |
-| CSRF token masked per response | (b) review | `V13-CSRF-COOKIE-IN-PAGE` | `.strip_prefix("rullst_csrf=")`, the raw cookie read of the `get_csrf_token` helper generated before 13.0.0-alpha.6, outside test code (a `tests` directory, `tests.rs`, `*_tests.rs`, `*_test.rs`) in a file that does not call `mask_csrf_token`, at every location; code that compares `CsrfToken::as_str()` with the cookie is not located; introduced in 13.0.0-alpha.6 |
+| CSRF token masked per response | (b) review | `V13-CSRF-COOKIE-IN-PAGE` | `.strip_prefix("rullst_csrf=")`, the raw cookie read of the `get_csrf_token` helper generated before 13.0.0-alpha.6, outside test code (a `tests` directory, `tests.rs`, `*_tests.rs`, `*_test.rs`, and `#[cfg(test)]` modules and test functions of other files) in a file that does not call `mask_csrf_token`, at every location; code that compares `CsrfToken::as_str()` with the cookie is not located; introduced in 13.0.0-alpha.6 |
 | Compressed pages in the generated Caddyfile | (b) review | `V13-DEPLOY-CADDY-ENCODE` | A root `Caddyfile` with `reverse_proxy app:3000` and no `encode` line, reported at the proxy line; introduced in 13.0.0-alpha.6 |
 | Connect mock credentials | (c) none | — | Credentials come from configuration and are not located |
 | Connect mock authorization URL | (c) none | — | Mock mode only |
@@ -782,6 +799,7 @@ totals, which every new row or rule would change.
 | ORM explicit save mode | (a) must-change | `V13-ORM-SAVE-MODE` | Each `#[derive(Orm)]` or `#[derive(TursoModel)]` struct with neither or both of a `RowSnapshot` field and `#[orm(full_row_save)]`, and each Turso-primary one with a `RowSnapshot` field or without `full_row_save`, at its name; introduced in 13.0.0-alpha.6 |
 | Passkeys feature | (a) must-change | `V13-AUTH-PASSKEYS-FEATURE` | `rullst::auth::passkey` and `rullst_auth::passkey` paths (also through `auth::auth`, and `auth::passkey` in a file that names `rullst::auth` or `rullst_auth`) in `use` items, groups and code, at every location, when no workspace manifest enables `auth-passkeys`, `auth-sqlite` or `auth-passkey-postgres` on `rullst`, or `passkeys`, `sqlite` or `passkey-postgres` on `rullst-auth`, in a dependency or a `[features]` entry; introduced in 13.0.0-alpha.6 |
 | Media processing states | (a) must-change | `V13-MEDIA-PROCESSING-MATCH` | A `match` whose arm patterns name `AwaitingUpload` and that has no catch-all arm, in a file that names `rullst_media`; comparisons and `matches!` keep compiling; introduced in 13.0.0-alpha.6 |
+| Non-exhaustive enums and structs | (a) must-change | `V13-NON-EXHAUSTIVE-MATCH`, `V13-NON-EXHAUSTIVE-LITERAL` | A `match` without a catch-all arm whose arm patterns name one of the enums that became `#[non_exhaustive]` and one of its variants; a struct literal (also inside `vec![...]`) of one of the structs that did, whose fields are all fields of that struct; and a call of the tuple structs `RagRetrievalError` and `RagAuditError`; each in a file that names the type's crate (`rullst_<crate>` or `<crate>::`, any `rullst` path for Core), so an application's own type of the same name is left alone; introduced in 13.0.0-alpha.6 |
 
 ## Planned simpler update experience
 

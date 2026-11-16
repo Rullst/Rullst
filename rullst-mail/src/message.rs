@@ -26,6 +26,7 @@ pub fn escape_html(value: &str) -> String {
 
 /// An email message structure to be sent via a mail driver.
 #[derive(Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[non_exhaustive]
 pub struct Message {
     /// The recipient email address.
     pub to: String,

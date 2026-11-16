@@ -109,16 +109,15 @@ async fn committed_claim_replays_exactly_after_publish_before_ack_crash() {
             .is_none()
     );
 
-    let fabricated = rullst_orm::ClaimedOutboxEvent {
-        id: 7,
-        stream: "other-tenant".to_string(),
-        event_key: "event:7".to_string(),
-        event_kind: "event.ready".to_string(),
-        payload_json: "not-json".to_string(),
-        attempts: 1,
-        claim_key: "claim-key".to_string(),
-        claim_expires_at_epoch: now + 60,
-    };
+    let mut fabricated = rullst_orm::ClaimedOutboxEvent::default();
+    fabricated.id = 7;
+    fabricated.stream = "other-tenant".to_string();
+    fabricated.event_key = "event:7".to_string();
+    fabricated.event_kind = "event.ready".to_string();
+    fabricated.payload_json = "not-json".to_string();
+    fabricated.attempts = 1;
+    fabricated.claim_key = "claim-key".to_string();
+    fabricated.claim_expires_at_epoch = now + 60;
     assert!(matches!(
         relay.publish_claim(&fabricated).await,
         Err(OrmOutboxRelayError::InvalidClaim { .. })
@@ -140,16 +139,15 @@ async fn valid_claim_json_is_normalized_without_requiring_field_order() {
         .await
         .expect("subscribe");
     let relay = OrmOutboxRelay::try_new("tenant-a", "events", broker).expect("relay");
-    let claim = rullst_orm::ClaimedOutboxEvent {
-        id: 9,
-        stream: "tenant-a".to_string(),
-        event_key: "event:9".to_string(),
-        event_kind: "event.ready".to_string(),
-        payload_json: r#"{"z_status":"issued","invoice_id":42}"#.to_string(),
-        attempts: 1,
-        claim_key: "claim-key".to_string(),
-        claim_expires_at_epoch: unix_now() + 60,
-    };
+    let mut claim = rullst_orm::ClaimedOutboxEvent::default();
+    claim.id = 9;
+    claim.stream = "tenant-a".to_string();
+    claim.event_key = "event:9".to_string();
+    claim.event_kind = "event.ready".to_string();
+    claim.payload_json = r#"{"z_status":"issued","invoice_id":42}"#.to_string();
+    claim.attempts = 1;
+    claim.claim_key = "claim-key".to_string();
+    claim.claim_expires_at_epoch = unix_now() + 60;
     relay.publish_claim(&claim).await.expect("publish claim");
     let delivery = relay
         .broker()
@@ -173,16 +171,16 @@ async fn valid_claim_json_is_normalized_without_requiring_field_order() {
 }
 
 fn claim(stream: &str, id: i64, payload_json: &str) -> rullst_orm::ClaimedOutboxEvent {
-    rullst_orm::ClaimedOutboxEvent {
-        id,
-        stream: stream.to_string(),
-        event_key: "order-42".to_string(),
-        event_kind: "order.created".to_string(),
-        payload_json: payload_json.to_string(),
-        attempts: 1,
-        claim_key: "claim-key".to_string(),
-        claim_expires_at_epoch: unix_now() + 60,
-    }
+    let mut claim = rullst_orm::ClaimedOutboxEvent::default();
+    claim.id = id;
+    claim.stream = stream.to_string();
+    claim.event_key = "order-42".to_string();
+    claim.event_kind = "order.created".to_string();
+    claim.payload_json = payload_json.to_string();
+    claim.attempts = 1;
+    claim.claim_key = "claim-key".to_string();
+    claim.claim_expires_at_epoch = unix_now() + 60;
+    claim
 }
 
 #[tokio::test]

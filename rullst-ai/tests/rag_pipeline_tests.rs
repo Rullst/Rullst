@@ -65,7 +65,7 @@ impl RagRetriever for FailingRetriever {
         _query_embedding: &[f32],
         _limit: usize,
     ) -> Result<Vec<RagDocument>, RagRetrievalError> {
-        Err(RagRetrievalError("vector store unavailable".to_string()))
+        Err(RagRetrievalError::new("vector store unavailable"))
     }
 }
 
@@ -73,7 +73,7 @@ struct FailingAudit;
 
 impl RagAuditSink for FailingAudit {
     fn record(&self, _event: RagAuditEvent) -> Result<(), RagAuditError> {
-        Err(RagAuditError("durable sink unavailable".to_string()))
+        Err(RagAuditError::new("durable sink unavailable"))
     }
 }
 

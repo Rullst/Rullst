@@ -23,27 +23,11 @@ impl NexusModel for TestUser {
 
     fn nexus_fields() -> Vec<FieldMeta> {
         vec![
-            FieldMeta {
-                name: "id",
-                label: "ID",
-                kind: FieldKind::Number,
-                hidden: true,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "name",
-                label: "Name",
-                kind: FieldKind::Text,
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "email",
-                label: "Email",
-                kind: FieldKind::Email,
-                hidden: false,
-                readonly: false,
-            },
+            FieldMeta::new("id", "ID", FieldKind::Number)
+                .hidden()
+                .readonly(),
+            FieldMeta::new("name", "Name", FieldKind::Text),
+            FieldMeta::new("email", "Email", FieldKind::Email),
         ]
     }
 }
@@ -61,65 +45,23 @@ impl NexusModel for TestPost {
 
     fn nexus_fields() -> Vec<FieldMeta> {
         vec![
-            FieldMeta {
-                name: "id",
-                label: "ID",
-                kind: FieldKind::Number,
-                hidden: true,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "title",
-                label: "Title",
-                kind: FieldKind::Text,
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "user_id",
-                label: "Author",
-                kind: FieldKind::ForeignKey {
+            FieldMeta::new("id", "ID", FieldKind::Number)
+                .hidden()
+                .readonly(),
+            FieldMeta::new("title", "Title", FieldKind::Text),
+            FieldMeta::new(
+                "user_id",
+                "Author",
+                FieldKind::ForeignKey {
                     table: "nexus_users",
                     label_col: "name",
                 },
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "content",
-                label: "Content",
-                kind: FieldKind::Textarea,
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "is_published",
-                label: "Published",
-                kind: FieldKind::Boolean,
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "created_at",
-                label: "Created",
-                kind: FieldKind::DateTime,
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "avatar",
-                label: "Avatar",
-                kind: FieldKind::Url,
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "metadata",
-                label: "Metadata",
-                kind: FieldKind::Json,
-                hidden: false,
-                readonly: false,
-            },
+            ),
+            FieldMeta::new("content", "Content", FieldKind::Textarea),
+            FieldMeta::new("is_published", "Published", FieldKind::Boolean),
+            FieldMeta::new("created_at", "Created", FieldKind::DateTime),
+            FieldMeta::new("avatar", "Avatar", FieldKind::Url),
+            FieldMeta::new("metadata", "Metadata", FieldKind::Json),
         ]
     }
 }

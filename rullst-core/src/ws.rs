@@ -4,6 +4,7 @@ use std::time::Duration;
 
 /// Error type for Rullst WebSocket operations.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum WsError {
     /// Returned when sending a message to the client fails (e.g. the connection was dropped).
     SendError(String),

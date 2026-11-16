@@ -49,36 +49,16 @@ impl rullst_nexus::NexusModel for Post {
     }
     fn nexus_fields() -> Vec<rullst_nexus::FieldMeta> {
         vec![
-            rullst_nexus::FieldMeta {
-                name: "id",
-                label: "ID",
-                kind: rullst_nexus::FieldKind::Number,
-                hidden: true,
-                readonly: true,
-            },
-            rullst_nexus::FieldMeta {
-                name: "tenant_id",
-                label: "Tenant ID",
-                kind: rullst_nexus::FieldKind::Text,
-                // Nexus stamps and filters this column from the request's
-                // TenantContext, as `#[derive(Nexus)]` does for `tenant`.
-                hidden: true,
-                readonly: true,
-            },
-            rullst_nexus::FieldMeta {
-                name: "title",
-                label: "Title",
-                kind: rullst_nexus::FieldKind::Text,
-                hidden: false,
-                readonly: false,
-            },
-            rullst_nexus::FieldMeta {
-                name: "body",
-                label: "Content",
-                kind: rullst_nexus::FieldKind::Textarea,
-                hidden: false,
-                readonly: false,
-            },
+            rullst_nexus::FieldMeta::new("id", "ID", rullst_nexus::FieldKind::Number)
+                .hidden()
+                .readonly(),
+            // Nexus stamps and filters this column from the request's
+            // TenantContext, as `#[derive(Nexus)]` does for `tenant`.
+            rullst_nexus::FieldMeta::new("tenant_id", "Tenant ID", rullst_nexus::FieldKind::Text)
+                .hidden()
+                .readonly(),
+            rullst_nexus::FieldMeta::new("title", "Title", rullst_nexus::FieldKind::Text),
+            rullst_nexus::FieldMeta::new("body", "Content", rullst_nexus::FieldKind::Textarea),
         ]
     }
 }

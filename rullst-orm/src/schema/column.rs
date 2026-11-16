@@ -3,6 +3,7 @@
 /// Accepting a raw `&str` would allow DDL injection through the DEFAULT
 /// position. This enum restricts callers to known-safe literals.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub enum ColumnDefault {
     /// `CURRENT_TIMESTAMP` — standard SQL timestamp literal.
     CurrentTimestamp,
@@ -54,6 +55,7 @@ pub(super) fn validate_text_literal(value: &str, context: &str) -> Result<(), cr
     Ok(())
 }
 
+#[non_exhaustive]
 pub struct Column {
     pub name: String,
     pub col_type: String,

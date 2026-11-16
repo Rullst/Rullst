@@ -17,6 +17,7 @@ const MAX_ERROR_LEN: usize = 512;
 
 /// Result of an idempotent outbox enqueue operation.
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub struct EnqueuedOutboxEvent {
     /// Stable database identifier of the new or pre-existing event.
     pub id: i64,
@@ -25,7 +26,13 @@ pub struct EnqueuedOutboxEvent {
 }
 
 /// Event exclusively claimed by one worker until its lease expires.
-#[derive(Clone)]
+///
+/// [`Outbox::claim_next`] returns real claims. The struct is
+/// `#[non_exhaustive]` since 13.0.0-alpha.6: a relay's tests that need a
+/// fabricated claim start from `ClaimedOutboxEvent::default()`, an invalid
+/// claim with an empty key, and set its fields.
+#[derive(Clone, Default)]
+#[non_exhaustive]
 pub struct ClaimedOutboxEvent {
     /// Stable database identifier.
     pub id: i64,

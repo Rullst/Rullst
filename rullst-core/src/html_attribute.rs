@@ -6,8 +6,8 @@ use super::HtmlEscape;
 
 /// Whether and how `html!` writes a conditional attribute (`name?={value}`).
 ///
-/// The set is closed: a conditional attribute is left out, written bare or
-/// written with a value. Added in v13.
+/// Exhaustive on purpose: the set is closed, since a conditional attribute is
+/// left out, written bare or written with a value. Added in v13.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AttributePresence<'a> {
     /// The attribute is left out.

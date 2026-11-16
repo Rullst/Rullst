@@ -35,12 +35,12 @@ impl AiTool for AccountStatus {
     fn name(&self) -> &str { "account_status" }
     fn description(&self) -> &str { "Read an account status" }
     fn parameters(&self) -> Vec<ToolParam> {
-        vec![ToolParam {
-            name: "account_id".into(),
-            param_type: "string".into(),
-            description: "Authorized account identifier".into(),
-            required: true,
-        }]
+        vec![ToolParam::new(
+            "account_id",
+            "string",
+            "Authorized account identifier",
+            true,
+        )]
     }
     fn risk(&self) -> ToolRisk { ToolRisk::ReadOnly }
     fn execute(

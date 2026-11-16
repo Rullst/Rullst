@@ -159,12 +159,11 @@ pub async fn callback(
         return refused(&page, PROVIDER, StatusCode::NOT_FOUND, OFF);
     };
     let name = form.user.as_deref().and_then(AppleProvider::name_from_user_field);
-    let callback = AuthCallback {
-        code: form.code,
-        state: form.state,
-        error: form.error,
-        error_description: form.error_description,
-    };
+    let mut callback = AuthCallback::default();
+    callback.code = form.code;
+    callback.state = form.state;
+    callback.error = form.error;
+    callback.error_description = form.error_description;
     super::complete(PROVIDER, provider, &headers, &callback, &page, name).await
 }
 

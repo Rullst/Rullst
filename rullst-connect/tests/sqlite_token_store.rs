@@ -36,17 +36,11 @@ impl Provider for RefreshProvider {
 }
 
 fn user(access_token: &str, refresh_token: &str) -> ConnectUser {
-    ConnectUser {
-        id: "provider-user".to_string(),
-        name: "Stored user".to_string(),
-        email: None,
-        email_verified: None,
-        avatar_url: None,
-        raw_data: json!({}),
-        access_token: SecretString::from(access_token.to_string()),
-        refresh_token: Some(SecretString::from(refresh_token.to_string())),
-        expires_in: Some(10),
-    }
+    let mut user = ConnectUser::new("provider-user", "Stored user", access_token);
+    user.raw_data = json!({});
+    user.refresh_token = Some(SecretString::from(refresh_token.to_string()));
+    user.expires_in = Some(10);
+    user
 }
 
 fn temporary_database() -> PathBuf {

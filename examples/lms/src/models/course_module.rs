@@ -30,60 +30,28 @@ impl NexusModel for CourseModule {
     }
     fn nexus_fields() -> Vec<FieldMeta> {
         vec![
-            FieldMeta {
-                name: "id",
-                label: "ID",
-                kind: FieldKind::Number,
-                hidden: true,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "course_id",
-                label: "Course",
-                kind: FieldKind::ForeignKey {
+            FieldMeta::new("id", "ID", FieldKind::Number)
+                .hidden()
+                .readonly(),
+            FieldMeta::new(
+                "course_id",
+                "Course",
+                FieldKind::ForeignKey {
                     table: "courses",
                     label_col: "title",
                 },
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "title",
-                label: "Title",
-                kind: FieldKind::Text,
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "position",
-                label: "Position",
-                kind: FieldKind::Number,
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "status",
-                label: "Status",
-                kind: FieldKind::Enum {
+            ),
+            FieldMeta::new("title", "Title", FieldKind::Text),
+            FieldMeta::new("position", "Position", FieldKind::Number),
+            FieldMeta::new(
+                "status",
+                "Status",
+                FieldKind::Enum {
                     options: vec!["draft", "published", "archived"],
                 },
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "created_at",
-                label: "Created At",
-                kind: FieldKind::DateTimeUtc,
-                hidden: false,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "updated_at",
-                label: "Updated At",
-                kind: FieldKind::DateTimeUtc,
-                hidden: false,
-                readonly: true,
-            },
+            ),
+            FieldMeta::new("created_at", "Created At", FieldKind::DateTimeUtc).readonly(),
+            FieldMeta::new("updated_at", "Updated At", FieldKind::DateTimeUtc).readonly(),
         ]
     }
 }

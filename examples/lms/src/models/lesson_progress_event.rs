@@ -34,92 +34,43 @@ impl NexusModel for LessonProgressEvent {
     }
     fn nexus_fields() -> Vec<FieldMeta> {
         vec![
-            FieldMeta {
-                name: "id",
-                label: "ID",
-                kind: FieldKind::Number,
-                hidden: true,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "event_key",
-                label: "Event Key",
-                kind: FieldKind::Text,
-                hidden: false,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "actor_user_id",
-                label: "Actor",
-                kind: FieldKind::ForeignKey {
+            FieldMeta::new("id", "ID", FieldKind::Number)
+                .hidden()
+                .readonly(),
+            FieldMeta::new("event_key", "Event Key", FieldKind::Text).readonly(),
+            FieldMeta::new(
+                "actor_user_id",
+                "Actor",
+                FieldKind::ForeignKey {
                     table: "users",
                     label_col: "email",
                 },
-                hidden: false,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "subject_user_id",
-                label: "Learner",
-                kind: FieldKind::ForeignKey {
+            )
+            .readonly(),
+            FieldMeta::new(
+                "subject_user_id",
+                "Learner",
+                FieldKind::ForeignKey {
                     table: "users",
                     label_col: "email",
                 },
-                hidden: false,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "lesson_id",
-                label: "Lesson",
-                kind: FieldKind::ForeignKey {
+            )
+            .readonly(),
+            FieldMeta::new(
+                "lesson_id",
+                "Lesson",
+                FieldKind::ForeignKey {
                     table: "lessons",
                     label_col: "title",
                 },
-                hidden: false,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "previous_percent",
-                label: "Previous %",
-                kind: FieldKind::Number,
-                hidden: false,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "current_percent",
-                label: "Current %",
-                kind: FieldKind::Number,
-                hidden: false,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "event_kind",
-                label: "Kind",
-                kind: FieldKind::Text,
-                hidden: false,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "reason",
-                label: "Reason",
-                kind: FieldKind::Textarea,
-                hidden: false,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "created_at",
-                label: "Created At",
-                kind: FieldKind::DateTimeUtc,
-                hidden: false,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "updated_at",
-                label: "Updated At",
-                kind: FieldKind::DateTimeUtc,
-                hidden: false,
-                readonly: true,
-            },
+            )
+            .readonly(),
+            FieldMeta::new("previous_percent", "Previous %", FieldKind::Number).readonly(),
+            FieldMeta::new("current_percent", "Current %", FieldKind::Number).readonly(),
+            FieldMeta::new("event_kind", "Kind", FieldKind::Text).readonly(),
+            FieldMeta::new("reason", "Reason", FieldKind::Textarea).readonly(),
+            FieldMeta::new("created_at", "Created At", FieldKind::DateTimeUtc).readonly(),
+            FieldMeta::new("updated_at", "Updated At", FieldKind::DateTimeUtc).readonly(),
         ]
     }
 }

@@ -6,6 +6,7 @@ use std::path::Path;
 
 /// Represents a single frame in the panic stack trace.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct StackFrame {
     /// The source file path containing the frame.
     pub file: String,

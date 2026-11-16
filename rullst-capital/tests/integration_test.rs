@@ -98,13 +98,13 @@ fn test_revenue_metrics_and_dashboard() {
     let initial = mgr.get_metrics();
     assert_eq!(initial.mrr_cents, 0);
 
-    let updated = RevenueMetrics {
-        mrr_cents: 1_250_000,  // $12,500 MRR
-        arr_cents: 15_000_000, // $150,000 ARR
-        net_revenue_cents: 120_000_000,
-        active_subscriptions: 142,
-        churn_rate_percent: 1.8,
-    };
+    let updated = RevenueMetrics::new(
+        1_250_000,  // $12,500 MRR
+        15_000_000, // $150,000 ARR
+        120_000_000,
+        142,
+        1.8,
+    );
     mgr.update_metrics(updated.clone());
 
     let curr = mgr.get_metrics();
@@ -112,14 +112,14 @@ fn test_revenue_metrics_and_dashboard() {
     assert_eq!(curr.active_subscriptions, 142);
     assert_eq!(curr.churn_rate_percent, 1.8);
 
-    let record = WebhookEventRecord {
-        id: "evt_1001".to_string(),
-        provider: "stripe".to_string(),
-        event_type: "invoice.payment_succeeded".to_string(),
-        status: "processed".to_string(),
-        timestamp: 1724170000,
-        payload_snippet: "{\"amount\": 9900}".to_string(),
-    };
+    let record = WebhookEventRecord::new(
+        "evt_1001",
+        "stripe",
+        "invoice.payment_succeeded",
+        "processed",
+        1724170000,
+        "{\"amount\": 9900}",
+    );
     mgr.record_event(record);
 
     let events = mgr.get_recent_events(10);

@@ -1,5 +1,6 @@
 /// Strongly-typed error domain for Rullst Security, RASP, Vault, Audit & RBAC subsystems.
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum SecurityError {
     /// Action is unauthorized (missing or invalid credentials/identity).
     #[error("Unauthorized: {0}")]

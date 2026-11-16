@@ -624,7 +624,7 @@ impl core::marker::Unpin for rullst_messaging::WireEnvelopeCodec
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_messaging::WireEnvelopeCodec
 impl core::panic::unwind_safe::UnwindSafe for rullst_messaging::WireEnvelopeCodec
 pub mod rullst_messaging::schedules
-pub enum rullst_messaging::schedules::MissedRunPolicy
+#[non_exhaustive] pub enum rullst_messaging::schedules::MissedRunPolicy
 pub rullst_messaging::schedules::MissedRunPolicy::CatchUp
 pub rullst_messaging::schedules::MissedRunPolicy::Coalesce
 impl core::clone::Clone for rullst_messaging::schedules::MissedRunPolicy
@@ -667,7 +667,7 @@ impl core::marker::Sync for rullst_messaging::schedules::OccurrenceMetadata
 impl core::marker::Unpin for rullst_messaging::schedules::OccurrenceMetadata
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_messaging::schedules::OccurrenceMetadata
 impl core::panic::unwind_safe::UnwindSafe for rullst_messaging::schedules::OccurrenceMetadata
-pub enum rullst_messaging::schedules::OccurrenceState
+#[non_exhaustive] pub enum rullst_messaging::schedules::OccurrenceState
 pub rullst_messaging::schedules::OccurrenceState::Pending
 pub rullst_messaging::schedules::OccurrenceState::Leased
 pub rullst_messaging::schedules::OccurrenceState::Published

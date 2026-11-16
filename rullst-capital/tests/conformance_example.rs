@@ -134,14 +134,13 @@ impl<A: ExamplePayApi> BillingProvider for ExamplePay<A> {
         let body: Value = serde_json::from_slice(payload)
             .map_err(|_| CapitalError::PayloadParseError("ExamplePay event".into()))?;
         let field = |name: &str| body[name].as_str().unwrap_or_default().to_owned();
-        Ok(WebhookEvent {
-            subscription_id: field("subscription_id"),
-            customer_id: field("customer_id"),
-            customer_email: field("customer_email"),
-            plan_id: field("plan_id"),
-            status: SubscriptionStatus::parse_status(&field("status")),
-            ends_at: None,
-        })
+        Ok(WebhookEvent::new(
+            field("subscription_id"),
+            field("customer_id"),
+            field("customer_email"),
+            field("plan_id"),
+            SubscriptionStatus::parse_status(&field("status")),
+        ))
     }
 
     async fn create_customer_portal(&self, _: &str, _: &str) -> Result<String, CapitalError> {

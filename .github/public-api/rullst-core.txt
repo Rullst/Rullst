@@ -153,7 +153,7 @@ impl core::marker::Send for rullst_core::DbFeatureDriver
 impl core::marker::Sync for rullst_core::DbFeatureDriver
 impl core::marker::Unpin for rullst_core::DbFeatureDriver
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::DbFeatureDriver
-pub enum rullst_core::DiError
+#[non_exhaustive] pub enum rullst_core::DiError
 pub rullst_core::DiError::NotRegistered(&'static str)
 pub rullst_core::DiError::DowncastFailed(&'static str)
 pub rullst_core::DiError::InjectionFailed(alloc::string::String)
@@ -301,7 +301,7 @@ impl core::marker::Send for rullst_core::MemoryFeatureDriver
 impl core::marker::Sync for rullst_core::MemoryFeatureDriver
 impl core::marker::Unpin for rullst_core::MemoryFeatureDriver
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::MemoryFeatureDriver
-pub struct rullst_core::ObjectMetadata
+#[non_exhaustive] pub struct rullst_core::ObjectMetadata
 pub rullst_core::ObjectMetadata::size_bytes: u64
 pub rullst_core::ObjectMetadata::etag: core::option::Option<alloc::string::String>
 impl core::clone::Clone for rullst_core::ObjectMetadata
@@ -403,7 +403,7 @@ impl !core::panic::unwind_safe::UnwindSafe for rullst_core::Queue
 impl core::marker::Send for rullst_core::Queue
 impl core::marker::Sync for rullst_core::Queue
 impl core::marker::Unpin for rullst_core::Queue
-pub struct rullst_core::QueuedJobDetail
+#[non_exhaustive] pub struct rullst_core::QueuedJobDetail
 pub rullst_core::QueuedJobDetail::id: alloc::string::String
 pub rullst_core::QueuedJobDetail::name: alloc::string::String
 pub rullst_core::QueuedJobDetail::payload: alloc::string::String
@@ -412,6 +412,9 @@ pub rullst_core::QueuedJobDetail::error: core::option::Option<alloc::string::Str
 pub rullst_core::QueuedJobDetail::attempts: i32
 pub rullst_core::QueuedJobDetail::created_at: alloc::string::String
 pub rullst_core::QueuedJobDetail::updated_at: alloc::string::String
+impl rullst_core::QueuedJobDetail
+pub fn rullst_core::QueuedJobDetail::new(id: impl core::convert::Into<alloc::string::String>, name: impl core::convert::Into<alloc::string::String>, payload: impl core::convert::Into<alloc::string::String>, status: impl core::convert::Into<alloc::string::String>, attempts: i32, created_at: impl core::convert::Into<alloc::string::String>, updated_at: impl core::convert::Into<alloc::string::String>) -> Self
+pub fn rullst_core::QueuedJobDetail::with_error(self, error: impl core::convert::Into<alloc::string::String>) -> Self
 impl core::clone::Clone for rullst_core::QueuedJobDetail
 impl core::fmt::Debug for rullst_core::QueuedJobDetail
 impl serde_core::ser::Serialize for rullst_core::QueuedJobDetail
@@ -466,7 +469,7 @@ impl core::marker::Sync for rullst_core::ReadinessSnapshot
 impl core::marker::Unpin for rullst_core::ReadinessSnapshot
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::ReadinessSnapshot
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::ReadinessSnapshot
-pub enum rullst_core::RealtimeError
+#[non_exhaustive] pub enum rullst_core::RealtimeError
 pub rullst_core::RealtimeError::BroadcastError(alloc::string::String)
 pub rullst_core::RealtimeError::InvalidChannel(alloc::string::String)
 pub rullst_core::RealtimeError::InvalidEvent(alloc::string::String)
@@ -485,7 +488,7 @@ impl core::marker::Sync for rullst_core::RealtimeError
 impl core::marker::Unpin for rullst_core::RealtimeError
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::RealtimeError
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::RealtimeError
-pub struct rullst_core::RealtimeMessage
+#[non_exhaustive] pub struct rullst_core::RealtimeMessage
 pub rullst_core::RealtimeMessage::channel: alloc::string::String
 pub rullst_core::RealtimeMessage::event: alloc::string::String
 pub rullst_core::RealtimeMessage::payload: alloc::string::String
@@ -830,7 +833,7 @@ impl core::marker::Sync for rullst_core::StorageDriver
 impl core::marker::Unpin for rullst_core::StorageDriver
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::StorageDriver
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::StorageDriver
-pub enum rullst_core::StorageError
+#[non_exhaustive] pub enum rullst_core::StorageError
 pub rullst_core::StorageError::Io(alloc::string::String)
 pub rullst_core::StorageError::NotFound(alloc::string::String)
 pub rullst_core::StorageError::PathTraversal(alloc::string::String)
@@ -1150,7 +1153,7 @@ impl<T> core::marker::Sync for rullst_core::ValidatedJson<T> where T: core::mark
 impl<T> core::marker::Unpin for rullst_core::ValidatedJson<T> where T: core::marker::Unpin
 impl<T> core::panic::unwind_safe::RefUnwindSafe for rullst_core::ValidatedJson<T> where T: core::panic::unwind_safe::RefUnwindSafe
 impl<T> core::panic::unwind_safe::UnwindSafe for rullst_core::ValidatedJson<T> where T: core::panic::unwind_safe::UnwindSafe
-pub enum rullst_core::ValidationError
+#[non_exhaustive] pub enum rullst_core::ValidationError
 pub rullst_core::ValidationError::ExtractionError { .. }
 pub rullst_core::ValidationError::ExtractionError::message: alloc::string::String
 pub rullst_core::ValidationError::ExtractionError::is_htmx: bool
@@ -1205,7 +1208,7 @@ impl !core::panic::unwind_safe::UnwindSafe for rullst_core::WorkerHandle
 impl core::marker::Send for rullst_core::WorkerHandle
 impl core::marker::Sync for rullst_core::WorkerHandle
 impl core::marker::Unpin for rullst_core::WorkerHandle
-pub enum rullst_core::WsError
+#[non_exhaustive] pub enum rullst_core::WsError
 pub rullst_core::WsError::SendError(alloc::string::String)
 pub rullst_core::WsError::RecvError(alloc::string::String)
 impl core::error::Error for rullst_core::WsError
@@ -1478,7 +1481,7 @@ impl core::marker::Sync for rullst_core::devops::DevOpsAgent
 impl core::marker::Unpin for rullst_core::devops::DevOpsAgent
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::devops::DevOpsAgent
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::devops::DevOpsAgent
-pub struct rullst_core::devops::InfrastructureRecommendation
+#[non_exhaustive] pub struct rullst_core::devops::InfrastructureRecommendation
 pub rullst_core::devops::InfrastructureRecommendation::metric_name: alloc::string::String
 pub rullst_core::devops::InfrastructureRecommendation::current_value: f64
 pub rullst_core::devops::InfrastructureRecommendation::target_value: f64
@@ -1559,7 +1562,7 @@ impl core::marker::Sync for rullst_core::error_console::ExplainQuery
 impl core::marker::Unpin for rullst_core::error_console::ExplainQuery
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::error_console::ExplainQuery
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::error_console::ExplainQuery
-pub struct rullst_core::error_console::StackFrame
+#[non_exhaustive] pub struct rullst_core::error_console::StackFrame
 pub rullst_core::error_console::StackFrame::file: alloc::string::String
 pub rullst_core::error_console::StackFrame::line: u32
 pub rullst_core::error_console::StackFrame::function: alloc::string::String
@@ -2349,11 +2352,13 @@ impl core::marker::Sync for rullst_core::queue::QueueError
 impl core::marker::Unpin for rullst_core::queue::QueueError
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::queue::QueueError
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::queue::QueueError
-pub struct rullst_core::queue::QueuedJob
+#[non_exhaustive] pub struct rullst_core::queue::QueuedJob
 pub rullst_core::queue::QueuedJob::id: alloc::string::String
 pub rullst_core::queue::QueuedJob::name: alloc::string::String
 pub rullst_core::queue::QueuedJob::payload: serde_json::value::Value
 pub rullst_core::queue::QueuedJob::attempts: u32
+impl rullst_core::queue::QueuedJob
+pub fn rullst_core::queue::QueuedJob::new(id: impl core::convert::Into<alloc::string::String>, name: impl core::convert::Into<alloc::string::String>, payload: serde_json::value::Value, attempts: u32) -> Self
 impl core::clone::Clone for rullst_core::queue::QueuedJob
 impl core::fmt::Debug for rullst_core::queue::QueuedJob
 impl core::marker::Send for rullst_core::queue::QueuedJob
@@ -2459,7 +2464,7 @@ pub use rullst_core::queue::worker::JobHandler = type_alias rullst_core::queue::
 pub use rullst_core::queue::worker::Worker = struct rullst_core::Worker
 pub use rullst_core::queue::worker::WorkerHandle = struct rullst_core::WorkerHandle
 pub mod rullst_core::radar
-pub struct rullst_core::radar::RadarSnapshot
+#[non_exhaustive] pub struct rullst_core::radar::RadarSnapshot
 pub rullst_core::radar::RadarSnapshot::uptime_seconds: u64
 pub rullst_core::radar::RadarSnapshot::memory_rss_mb: core::option::Option<f64>
 pub rullst_core::radar::RadarSnapshot::cpu_usage_percent: core::option::Option<f64>
@@ -2582,7 +2587,7 @@ pub use rullst_core::scheduler::SchedulerFailurePolicy = enum rullst_core::Sched
 pub use rullst_core::scheduler::SchedulerHandle = struct rullst_core::SchedulerHandle
 pub use rullst_core::scheduler::TimeWindow = struct rullst_core::queue::TimeWindow
 pub mod rullst_core::security
-pub struct rullst_core::security::BannedIpRecord
+#[non_exhaustive] pub struct rullst_core::security::BannedIpRecord
 pub rullst_core::security::BannedIpRecord::ip: alloc::string::String
 pub rullst_core::security::BannedIpRecord::reason: alloc::string::String
 pub rullst_core::security::BannedIpRecord::timestamp_str: alloc::string::String
@@ -2676,7 +2681,7 @@ impl core::marker::Sync for rullst_core::security::ForwardedProto
 impl core::marker::Unpin for rullst_core::security::ForwardedProto
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::security::ForwardedProto
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::security::ForwardedProto
-pub struct rullst_core::security::LiveSecurityEvent
+#[non_exhaustive] pub struct rullst_core::security::LiveSecurityEvent
 pub rullst_core::security::LiveSecurityEvent::schema_version: u16
 pub rullst_core::security::LiveSecurityEvent::event_type: alloc::string::String
 pub rullst_core::security::LiveSecurityEvent::details: alloc::string::String
@@ -2827,7 +2832,7 @@ impl core::marker::Send for rullst_core::security::SecurityStore
 impl core::marker::Sync for rullst_core::security::SecurityStore
 impl core::marker::Unpin for rullst_core::security::SecurityStore
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::security::SecurityStore
-pub struct rullst_core::security::TelemetrySnapshot
+#[non_exhaustive] pub struct rullst_core::security::TelemetrySnapshot
 pub rullst_core::security::TelemetrySnapshot::sanitizations: u64
 pub rullst_core::security::TelemetrySnapshot::honeypot_traps: u64
 pub rullst_core::security::TelemetrySnapshot::rbac_denials: u64
@@ -3178,7 +3183,7 @@ impl core::marker::Sync for rullst_core::storage::cloud::multipart::MultipartLim
 impl core::marker::Unpin for rullst_core::storage::cloud::multipart::MultipartLimits
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::storage::cloud::multipart::MultipartLimits
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::storage::cloud::multipart::MultipartLimits
-pub struct rullst_core::storage::cloud::multipart::MultipartPart
+#[non_exhaustive] pub struct rullst_core::storage::cloud::multipart::MultipartPart
 pub rullst_core::storage::cloud::multipart::MultipartPart::number: u16
 pub rullst_core::storage::cloud::multipart::MultipartPart::size_bytes: u64
 pub rullst_core::storage::cloud::multipart::MultipartPart::matches_checkpoint: bool
@@ -3228,7 +3233,7 @@ impl !core::panic::unwind_safe::UnwindSafe for rullst_core::telemetry::distribut
 impl core::marker::Send for rullst_core::telemetry::distributed::DistributedTelemetry
 impl core::marker::Sync for rullst_core::telemetry::distributed::DistributedTelemetry
 impl core::marker::Unpin for rullst_core::telemetry::distributed::DistributedTelemetry
-pub enum rullst_core::telemetry::distributed::ParentPolicy
+#[non_exhaustive] pub enum rullst_core::telemetry::distributed::ParentPolicy
 pub rullst_core::telemetry::distributed::ParentPolicy::StartNew
 pub rullst_core::telemetry::distributed::ParentPolicy::TrustedPeer
 impl core::clone::Clone for rullst_core::telemetry::distributed::ParentPolicy
@@ -3257,7 +3262,7 @@ impl core::marker::Sync for rullst_core::telemetry::distributed::TelemetryConfig
 impl core::marker::Unpin for rullst_core::telemetry::distributed::TelemetryConfig
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::telemetry::distributed::TelemetryConfig
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::telemetry::distributed::TelemetryConfig
-pub enum rullst_core::telemetry::distributed::TelemetryError
+#[non_exhaustive] pub enum rullst_core::telemetry::distributed::TelemetryError
 pub rullst_core::telemetry::distributed::TelemetryError::InvalidConfig
 pub rullst_core::telemetry::distributed::TelemetryError::InvalidContext
 pub rullst_core::telemetry::distributed::TelemetryError::Unavailable
@@ -3274,7 +3279,7 @@ impl core::marker::Sync for rullst_core::telemetry::distributed::TelemetryError
 impl core::marker::Unpin for rullst_core::telemetry::distributed::TelemetryError
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::telemetry::distributed::TelemetryError
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::telemetry::distributed::TelemetryError
-pub struct rullst_core::telemetry::distributed::TelemetryStatus
+#[non_exhaustive] pub struct rullst_core::telemetry::distributed::TelemetryStatus
 pub rullst_core::telemetry::distributed::TelemetryStatus::forwarded_spans: u64
 pub rullst_core::telemetry::distributed::TelemetryStatus::rejected_spans: u64
 pub rullst_core::telemetry::distributed::TelemetryStatus::offline_spans: u64
@@ -3320,11 +3325,13 @@ impl core::marker::Sync for rullst_core::telemetry_spans::SpanCollector
 impl core::marker::Unpin for rullst_core::telemetry_spans::SpanCollector
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::telemetry_spans::SpanCollector
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::telemetry_spans::SpanCollector
-pub struct rullst_core::telemetry_spans::TraceSpan
+#[non_exhaustive] pub struct rullst_core::telemetry_spans::TraceSpan
 pub rullst_core::telemetry_spans::TraceSpan::name: alloc::string::String
 pub rullst_core::telemetry_spans::TraceSpan::kind: alloc::string::String
 pub rullst_core::telemetry_spans::TraceSpan::duration_us: u64
 pub rullst_core::telemetry_spans::TraceSpan::timestamp: u64
+impl rullst_core::telemetry_spans::TraceSpan
+pub fn rullst_core::telemetry_spans::TraceSpan::new(name: impl core::convert::Into<alloc::string::String>, kind: impl core::convert::Into<alloc::string::String>, duration_us: u64, timestamp: u64) -> Self
 impl core::clone::Clone for rullst_core::telemetry_spans::TraceSpan
 impl core::fmt::Debug for rullst_core::telemetry_spans::TraceSpan
 impl serde_core::ser::Serialize for rullst_core::telemetry_spans::TraceSpan

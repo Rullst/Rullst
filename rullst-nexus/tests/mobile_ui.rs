@@ -38,21 +38,14 @@ fn check_mobile_ui(kind: &str, html: &str) {
 #[tokio::test]
 async fn nexus_shell_renders_and_checks_mobile_browser_when_requested() {
     use rullst_nexus::nexus::{crud::views::render_record_form, types::*, ui::*};
-    use std::sync::Arc;
-    let entry = RegistryEntry {
-        table: "projects",
-        label: "Projects",
-        icon: "📁",
-        pk: "id",
-        pk_columns: Vec::new(),
-        tenant_column: None,
-        fields: vec![FieldMeta::new("title", "Title", FieldKind::Text)],
-    };
-    let state = NexusState {
-        registry: Arc::new(vec![entry.clone()]),
-        brand: Arc::new("Portfolio & CMS".to_owned()),
-        audit_policy: NexusAuditPolicy::Disabled,
-    };
+    let entry = RegistryEntry::new(
+        "projects",
+        "Projects",
+        "📁",
+        "id",
+        vec![FieldMeta::new("title", "Title", FieldKind::Text)],
+    );
+    let state = NexusState::new(vec![entry.clone()], "Portfolio & CMS");
     // A table wider than the screen and the table view's record dialog with
     // the real create form: the browser check saves it, the fixture server
     // answers 404, and the error must be readable above the dialog backdrop.

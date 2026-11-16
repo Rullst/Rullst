@@ -288,7 +288,9 @@ mod tests {
     #[test]
     fn registered_sessions_are_recognized_by_their_public_async_start() {
         let directory = tempfile::tempdir().unwrap();
-        let root = directory.path();
+        // The generators read through `consumer_files::project_root`, which
+        // resolves links above the project (macOS: `/var` -> `/private/var`).
+        let root = &directory.path().canonicalize().unwrap();
         assert!(!registers_sessions(root));
         let middleware = root.join("src/middlewares/auth_middleware.rs");
         fs::create_dir_all(middleware.parent().unwrap()).unwrap();

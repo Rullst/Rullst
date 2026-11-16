@@ -51,11 +51,19 @@ From the framework checkout, using Node 24 and a locally installed Chromium
 
 ```bash
 mdbook build docs
+python3 .github/set-book-language.py
 python3 .github/validate-site.py
 python3 .github/test-llms-txt.py
 node --check docs/site.js
 node .github/site-browser-smoke.mjs
 ```
+
+mdBook writes the book's language, `en`, into the `<html lang>` of every
+page. `.github/set-book-language.py`, which `pages.yml` and
+`documentation.yml` run after the build, sets `lang="pt-BR"` on the pages
+under `pt-BR/`, so screen readers read them in Portuguese, and fails when a
+translated page or any other page declares the wrong language, or a
+translation has no page.
 
 The Pages build also writes `llms.txt` (an index of every book page in
 `SUMMARY.md` order) and `llms-full.txt` (their Markdown, with mdBook include

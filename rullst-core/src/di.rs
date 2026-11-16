@@ -15,6 +15,7 @@ use std::sync::Arc;
 
 /// Strongly-typed error domain for Rullst Dependency Injection.
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DiError {
     /// The requested service type was not registered in the DI Container.
     #[error("Dependency of type '{0}' is not registered in the DI Container")]
@@ -97,6 +98,9 @@ impl Container {
 ///     Json(user_svc.list_users().await)
 /// }
 /// ```
+///
+/// Exhaustive on purpose: a newtype extractor that handlers destructure as
+/// `Inject(service)`; the wrapped service is all it carries.
 pub struct Inject<T: Send + Sync + 'static>(pub Arc<T>);
 
 impl<T: Send + Sync + 'static> Deref for Inject<T> {

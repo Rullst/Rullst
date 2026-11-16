@@ -18,6 +18,7 @@ use std::path::Path;
 
 /// How much history is kept.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Retention {
     /// Samples older than this many seconds are deleted.
     pub max_age_seconds: u64,

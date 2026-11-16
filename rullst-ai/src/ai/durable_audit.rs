@@ -23,6 +23,7 @@ const FRAME_PREFIX_BYTES: usize = LENGTH_HEX_BYTES + 1 + DIGEST_HEX_BYTES + 1;
 
 /// Typed local AI audit failures. Paths and event bodies are deliberately omitted.
 #[derive(Clone, Debug, thiserror::Error, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum DurableAuditError {
     /// The byte quota is zero, too small, or above the crate ceiling.
     #[error("AI audit capacity must be between 512 bytes and 16 MiB")]

@@ -214,11 +214,11 @@ rullst-messaging/src/wire.rs:247:9: replace Reader<'a>::is_finished -> bool with
 # rullst-connect (alpha.6 campaign, targeted runs with the package's tests):
 # each name below has a row in docs/src/mutation-testing.md "Accepted
 # equivalent mutants".
-rullst-connect/src/mock_idp/handlers.rs:99:60: replace > with >= in authorize_handler
-rullst-connect/src/mock_idp/handlers.rs:167:9: replace || with && in token_handler
-rullst-connect/src/mock_idp/handlers.rs:216:59: replace > with >= in token_handler
-rullst-connect/src/mock_idp/handlers.rs:253:43: replace && with || in userinfo_handler
-rullst-connect/src/mock_idp/handlers.rs:263:59: replace > with >= in userinfo_handler
-rullst-connect/src/mock_idp/handlers.rs:267:43: replace > with >= in userinfo_handler
-rullst-connect/src/mock_idp/handlers.rs:436:5: replace server_error -> Response with Default::default()
+rullst-connect/src/mock_idp/handlers.rs:126:60: replace > with >= in authorize_handler
+rullst-connect/src/mock_idp/handlers.rs:194:9: replace || with && in token_handler
+rullst-connect/src/mock_idp/handlers.rs:243:59: replace > with >= in token_handler
+rullst-connect/src/mock_idp/handlers.rs:280:43: replace && with || in userinfo_handler
+rullst-connect/src/mock_idp/handlers.rs:290:59: replace > with >= in userinfo_handler
+rullst-connect/src/mock_idp/handlers.rs:294:43: replace > with >= in userinfo_handler
+rullst-connect/src/mock_idp/handlers.rs:463:5: replace server_error -> Response with Default::default()
 rullst-connect/src/provider/id_token.rs:121:13: replace || with && in validate_claims_with_presenters

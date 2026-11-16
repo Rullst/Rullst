@@ -22,12 +22,12 @@ impl QueueDriver for FixtureQueue {
     async fn push(&self, id: &str, name: &str, payload: &str) -> Result<(), QueueError> {
         let mut jobs = self.0.jobs.lock().unwrap();
         assert!(jobs.len() < 16);
-        jobs.push_back(QueuedJob {
-            id: id.to_owned(),
-            name: name.to_owned(),
-            payload: serde_json::from_str(payload).unwrap(),
-            attempts: 1,
-        });
+        jobs.push_back(QueuedJob::new(
+            id,
+            name,
+            serde_json::from_str(payload).unwrap(),
+            1,
+        ));
         Ok(())
     }
     async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> {

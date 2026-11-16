@@ -56,7 +56,7 @@ impl rullst_studio::data_browser::IntoStudioPort for &str
 impl rullst_studio::data_browser::IntoStudioPort for alloc::string::String
 impl rullst_studio::data_browser::IntoStudioPort for core::option::Option<u16>
 impl rullst_studio::data_browser::IntoStudioPort for u16
-pub struct rullst_studio::data_browser::TableQuery
+#[non_exhaustive] pub struct rullst_studio::data_browser::TableQuery
 pub rullst_studio::data_browser::TableQuery::page: core::option::Option<usize>
 pub rullst_studio::data_browser::TableQuery::search: core::option::Option<alloc::string::String>
 impl core::fmt::Debug for rullst_studio::data_browser::TableQuery
@@ -112,7 +112,7 @@ pub use rullst_studio::data_browser::run_studio = function rullst_studio::run_st
 pub fn rullst_studio::data_browser::studio_layout(content: alloc::string::String, _active_table: core::option::Option<&str>, _tables: &[alloc::string::String]) -> alloc::string::String
 pub mod rullst_studio::distributed_traces
 pub const rullst_studio::distributed_traces::DEFAULT_TRACE_STORE_CAPACITY: usize
-pub enum rullst_studio::distributed_traces::DistributedTraceKind
+#[non_exhaustive] pub enum rullst_studio::distributed_traces::DistributedTraceKind
 pub rullst_studio::distributed_traces::DistributedTraceKind::Http
 pub rullst_studio::distributed_traces::DistributedTraceKind::Sql
 pub rullst_studio::distributed_traces::DistributedTraceKind::Ai
@@ -180,7 +180,7 @@ impl core::marker::Sync for rullst_studio::distributed_traces::DistributedTraceS
 impl core::marker::Unpin for rullst_studio::distributed_traces::DistributedTraceStore
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_studio::distributed_traces::DistributedTraceStore
 impl core::panic::unwind_safe::UnwindSafe for rullst_studio::distributed_traces::DistributedTraceStore
-pub struct rullst_studio::distributed_traces::IngestionSummary
+#[non_exhaustive] pub struct rullst_studio::distributed_traces::IngestionSummary
 pub rullst_studio::distributed_traces::IngestionSummary::accepted: usize
 pub rullst_studio::distributed_traces::IngestionSummary::duplicates: usize
 impl core::clone::Clone for rullst_studio::distributed_traces::IngestionSummary
@@ -201,7 +201,7 @@ pub const rullst_studio::distributed_traces::MAX_SPAN_FUTURE_SKEW_SECS: u64
 pub const rullst_studio::distributed_traces::MAX_TRACE_BATCH_BYTES: usize
 pub const rullst_studio::distributed_traces::MAX_TRACE_STORE_CAPACITY: usize
 pub const rullst_studio::distributed_traces::N_PLUS_ONE_THRESHOLD: usize
-pub struct rullst_studio::distributed_traces::QueryFinding
+#[non_exhaustive] pub struct rullst_studio::distributed_traces::QueryFinding
 pub rullst_studio::distributed_traces::QueryFinding::kind: rullst_studio::distributed_traces::QueryFindingKind
 pub rullst_studio::distributed_traces::QueryFinding::source: alloc::string::String
 pub rullst_studio::distributed_traces::QueryFinding::trace_id: alloc::string::String
@@ -217,7 +217,7 @@ impl core::marker::Sync for rullst_studio::distributed_traces::QueryFinding
 impl core::marker::Unpin for rullst_studio::distributed_traces::QueryFinding
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_studio::distributed_traces::QueryFinding
 impl core::panic::unwind_safe::UnwindSafe for rullst_studio::distributed_traces::QueryFinding
-pub enum rullst_studio::distributed_traces::QueryFindingKind
+#[non_exhaustive] pub enum rullst_studio::distributed_traces::QueryFindingKind
 pub rullst_studio::distributed_traces::QueryFindingKind::RepeatedOperation
 pub rullst_studio::distributed_traces::QueryFindingKind::SlowOperation
 impl core::clone::Clone for rullst_studio::distributed_traces::QueryFindingKind
@@ -246,7 +246,7 @@ impl core::marker::Sync for rullst_studio::distributed_traces::SignedTraceBatch
 impl core::marker::Unpin for rullst_studio::distributed_traces::SignedTraceBatch
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_studio::distributed_traces::SignedTraceBatch
 impl core::panic::unwind_safe::UnwindSafe for rullst_studio::distributed_traces::SignedTraceBatch
-pub struct rullst_studio::distributed_traces::StoredDistributedTraceSpan
+#[non_exhaustive] pub struct rullst_studio::distributed_traces::StoredDistributedTraceSpan
 pub rullst_studio::distributed_traces::StoredDistributedTraceSpan::source: alloc::string::String
 pub rullst_studio::distributed_traces::StoredDistributedTraceSpan::received_at_unix_s: u64
 pub rullst_studio::distributed_traces::StoredDistributedTraceSpan::span: rullst_studio::distributed_traces::DistributedTraceSpanV1
@@ -343,7 +343,7 @@ pub fn rullst_studio::feature_flags::router() -> axum::routing::Router
 pub mod rullst_studio::jobs_monitor
 pub fn rullst_studio::jobs_monitor::router(queue: rullst_core::queue::Queue) -> axum::routing::Router
 pub mod rullst_studio::logger
-pub struct rullst_studio::logger::LoggerState
+#[non_exhaustive] pub struct rullst_studio::logger::LoggerState
 pub rullst_studio::logger::LoggerState::tx: tokio::sync::broadcast::Sender<rullst_studio::logger::RequestLog>
 impl rullst_studio::logger::LoggerState
 pub fn rullst_studio::logger::LoggerState::new() -> Self
@@ -354,7 +354,7 @@ impl !core::panic::unwind_safe::UnwindSafe for rullst_studio::logger::LoggerStat
 impl core::marker::Send for rullst_studio::logger::LoggerState
 impl core::marker::Sync for rullst_studio::logger::LoggerState
 impl core::marker::Unpin for rullst_studio::logger::LoggerState
-pub struct rullst_studio::logger::RequestLog
+#[non_exhaustive] pub struct rullst_studio::logger::RequestLog
 pub rullst_studio::logger::RequestLog::method: alloc::string::String
 pub rullst_studio::logger::RequestLog::uri: alloc::string::String
 pub rullst_studio::logger::RequestLog::status: u16
@@ -372,7 +372,7 @@ impl core::panic::unwind_safe::UnwindSafe for rullst_studio::logger::RequestLog
 pub async fn rullst_studio::logger::logger_middleware(state: axum::extract::state::State<alloc::sync::Arc<rullst_studio::logger::LoggerState>>, req: axum_core::extract::Request, next: axum::middleware::from_fn::Next) -> axum_core::response::Response
 pub fn rullst_studio::logger::router(state: alloc::sync::Arc<rullst_studio::logger::LoggerState>) -> axum::routing::Router
 pub mod rullst_studio::migration_manager
-pub struct rullst_studio::migration_manager::ApiResponse
+#[non_exhaustive] pub struct rullst_studio::migration_manager::ApiResponse
 pub rullst_studio::migration_manager::ApiResponse::success: bool
 pub rullst_studio::migration_manager::ApiResponse::message: alloc::string::String
 impl core::fmt::Debug for rullst_studio::migration_manager::ApiResponse
@@ -383,7 +383,7 @@ impl core::marker::Sync for rullst_studio::migration_manager::ApiResponse
 impl core::marker::Unpin for rullst_studio::migration_manager::ApiResponse
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_studio::migration_manager::ApiResponse
 impl core::panic::unwind_safe::UnwindSafe for rullst_studio::migration_manager::ApiResponse
-pub struct rullst_studio::migration_manager::MigrationStatusItem
+#[non_exhaustive] pub struct rullst_studio::migration_manager::MigrationStatusItem
 pub rullst_studio::migration_manager::MigrationStatusItem::name: alloc::string::String
 pub rullst_studio::migration_manager::MigrationStatusItem::status: alloc::string::String
 impl core::fmt::Debug for rullst_studio::migration_manager::MigrationStatusItem
@@ -403,7 +403,7 @@ pub async fn rullst_studio::radar_visualizer::api_radar_handler() -> impl axum_c
 pub async fn rullst_studio::radar_visualizer::render_radar_page() -> alloc::string::String
 pub fn rullst_studio::radar_visualizer::router() -> axum::routing::Router
 pub mod rullst_studio::remote
-pub struct rullst_studio::remote::AlertRules
+#[non_exhaustive] pub struct rullst_studio::remote::AlertRules
 pub rullst_studio::remote::AlertRules::unreachable: bool
 pub rullst_studio::remote::AlertRules::error_rate_percent: core::option::Option<f64>
 pub rullst_studio::remote::AlertRules::p95_ms: core::option::Option<f64>
@@ -454,7 +454,7 @@ impl core::marker::Sync for rullst_studio::remote::FetchError
 impl core::marker::Unpin for rullst_studio::remote::FetchError
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_studio::remote::FetchError
 impl core::panic::unwind_safe::UnwindSafe for rullst_studio::remote::FetchError
-pub struct rullst_studio::remote::FetchLimits
+#[non_exhaustive] pub struct rullst_studio::remote::FetchLimits
 pub rullst_studio::remote::FetchLimits::max_bytes: usize
 pub rullst_studio::remote::FetchLimits::timeout: core::time::Duration
 pub rullst_studio::remote::FetchLimits::connect_timeout: core::time::Duration
@@ -526,7 +526,7 @@ impl core::marker::Sync for rullst_studio::remote::RemoteStudioOptions
 impl core::marker::Unpin for rullst_studio::remote::RemoteStudioOptions
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_studio::remote::RemoteStudioOptions
 impl core::panic::unwind_safe::UnwindSafe for rullst_studio::remote::RemoteStudioOptions
-pub struct rullst_studio::remote::Retention
+#[non_exhaustive] pub struct rullst_studio::remote::Retention
 pub rullst_studio::remote::Retention::max_age_seconds: u64
 pub rullst_studio::remote::Retention::max_samples_per_project: u32
 pub rullst_studio::remote::Retention::max_alerts: u32
@@ -541,7 +541,7 @@ impl core::marker::Sync for rullst_studio::remote::Retention
 impl core::marker::Unpin for rullst_studio::remote::Retention
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_studio::remote::Retention
 impl core::panic::unwind_safe::UnwindSafe for rullst_studio::remote::Retention
-pub struct rullst_studio::remote::StudioPaths
+#[non_exhaustive] pub struct rullst_studio::remote::StudioPaths
 pub rullst_studio::remote::StudioPaths::projects: std::path::PathBuf
 pub rullst_studio::remote::StudioPaths::key: std::path::PathBuf
 pub rullst_studio::remote::StudioPaths::history: std::path::PathBuf
@@ -566,7 +566,7 @@ pub fn rullst_studio::revenue_dashboard::render_revenue_dashboard_page() -> allo
 pub fn rullst_studio::revenue_dashboard::router() -> axum::routing::Router
 pub async fn rullst_studio::run_studio(port: impl rullst_studio::data_browser::IntoStudioPort) -> core::result::Result<(), alloc::boxed::Box<dyn core::error::Error + core::marker::Send + core::marker::Sync>>
 pub mod rullst_studio::security_radar
-pub struct rullst_studio::security_radar::ThreatRadarStats
+#[non_exhaustive] pub struct rullst_studio::security_radar::ThreatRadarStats
 pub rullst_studio::security_radar::ThreatRadarStats::honeypot_traps_blocked: u64
 pub rullst_studio::security_radar::ThreatRadarStats::active_ip_bans: usize
 pub rullst_studio::security_radar::ThreatRadarStats::xss_sanitizations: u64

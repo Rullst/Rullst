@@ -57,6 +57,7 @@ pub enum JwtError {
 
 /// Deployment posture enforced when verifying an application JWT.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum JwtPolicyMode {
     Development,
     Production,
@@ -87,6 +88,7 @@ impl JwtSigningKey {
 
 /// Versioned claims issued only by [`ApplicationJwtPolicy`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct ApplicationJwtClaims {
     pub sub: String,
     pub iss: String,

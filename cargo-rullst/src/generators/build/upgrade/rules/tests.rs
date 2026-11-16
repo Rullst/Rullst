@@ -14,6 +14,7 @@ mod alpha5_slimming;
 mod alpha6_defaults;
 mod alpha6_deprecated;
 mod alpha6_media;
+mod alpha6_non_exhaustive;
 mod alpha6_orm_save_mode;
 mod alpha6_passkeys;
 mod data;
@@ -27,6 +28,7 @@ mod releases;
 mod reviewed;
 mod scanner;
 mod syntax;
+mod test_code;
 
 /// Codes and lines found in one Rust source.
 fn scan_with(source: &str, file_name: &str, facts: &WorkspaceFacts) -> Vec<(&'static str, usize)> {

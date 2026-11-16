@@ -8,6 +8,7 @@ pub const MAX_SRI_ASSET_BYTES: u64 = 64 * 1024 * 1024;
 
 /// File-backed SRI generation failure.
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum SriError {
     #[error("failed to inspect SRI asset `{path}`: {source}")]
     Inspect {

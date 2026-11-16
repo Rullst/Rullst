@@ -30,26 +30,37 @@ fn temporary_audit(label: &str) -> PathBuf {
     ))
 }
 
+// Rullst records these events; outside the crate, a test reads one back from
+// its serialized form because the structs are `#[non_exhaustive]`.
 fn rag_event(index: usize) -> RagAuditEvent {
-    RagAuditEvent {
-        tenant_id: "acme".to_string(),
-        query_sha256: format!("{index:064x}"),
-        retrieved_documents: 2,
-        included_documents: 1,
-        context_chars: 42,
-        outcome: RagAuditOutcome::Succeeded,
-    }
+    let event: RagAuditEvent = serde_json::from_value(serde_json::json!({
+        "tenant_id": "acme",
+        "query_sha256": format!("{index:064x}"),
+        "retrieved_documents": 2,
+        "included_documents": 1,
+        "context_chars": 42,
+        "outcome": "Succeeded",
+    }))
+    .expect("RAG audit event");
+    assert_eq!(event.outcome, RagAuditOutcome::Succeeded);
+    event
 }
 
 fn tool_event(index: usize) -> ToolAuditEvent {
-    ToolAuditEvent {
-        principal: format!("operator-{index}"),
-        tool: "publish_report".to_string(),
-        risk: Some(ToolRisk::Mutating),
-        approved_by: None,
-        approval_reason: None,
-        outcome: ToolAuditOutcome::Succeeded,
-    }
+    let event: ToolAuditEvent = serde_json::from_value(serde_json::json!({
+        "principal": format!("operator-{index}"),
+        "tool": "publish_report",
+        "risk": "Mutating",
+        "approved_by": null,
+        "approval_reason": null,
+        "outcome": "Succeeded",
+    }))
+    .expect("tool audit event");
+    assert_eq!(
+        (event.risk, event.outcome),
+        (Some(ToolRisk::Mutating), ToolAuditOutcome::Succeeded)
+    );
+    event
 }
 
 #[test]

@@ -164,6 +164,7 @@ impl Default for MockIdpConfig {
 /// Legacy authorization-query view retained for source compatibility.
 #[cfg(feature = "axum")]
 #[derive(serde::Deserialize)]
+#[non_exhaustive]
 pub struct AuthQuery {
     pub client_id: String,
     pub redirect_uri: String,
@@ -175,6 +176,7 @@ pub struct AuthQuery {
 /// Legacy token-form view retained for source compatibility.
 #[cfg(feature = "axum")]
 #[derive(serde::Deserialize)]
+#[non_exhaustive]
 pub struct TokenForm {
     pub client_id: String,
     pub client_secret: String,

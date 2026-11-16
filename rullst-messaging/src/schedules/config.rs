@@ -74,6 +74,7 @@ impl std::fmt::Debug for RecurringConfig {
 
 /// UTC policy for occurrences missed while no instance was ticking.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum MissedRunPolicy {
     /// Preserve each due time, producing at most the caller's bounded tick budget.
     CatchUp,

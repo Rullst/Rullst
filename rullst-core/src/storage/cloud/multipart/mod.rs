@@ -130,6 +130,7 @@ impl TenantStorage {
 
 /// Remote part observation; a false receipt match requires explicit re-upload.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct MultipartPart {
     /// Consecutive, one-based part number.
     pub number: u16,
@@ -140,6 +141,9 @@ pub struct MultipartPart {
 }
 
 /// Outcome of checking a possibly lost completion response.
+///
+/// Exhaustive on purpose: a completion is either confirmed or not, and a new
+/// outcome must make every caller decide again whether it may trust the object.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CompletionStatus {
     /// Exact upload marker and expected object length were observed.
@@ -149,6 +153,10 @@ pub enum CompletionStatus {
 }
 
 /// Result of abort followed by a provider existence check.
+///
+/// Exhaustive on purpose: a new outcome must make every caller decide again
+/// whether its writers may continue; `Gone` and `RetryRequired` are the two
+/// answers a provider gives today.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AbortStatus {
     /// Provider reports this upload no longer exists; already completed objects are untouched.
