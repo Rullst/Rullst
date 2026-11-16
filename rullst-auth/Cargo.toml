@@ -62,7 +62,7 @@ async-trait = { workspace = true }
 ring = { workspace = true, features = ["std"] }
 # ES256 passkey keys and signatures (`passkeys`); the same features as
 # rustls's `aws_lc_rs`.
-aws-lc-rs = { version = "1.18.0", default-features = false, features = ["aws-lc-sys", "prebuilt-nasm"], optional = true }
+aws-lc-rs = { version = "1.19.0", default-features = false, features = ["aws-lc-sys", "prebuilt-nasm"], optional = true }
 tower = { workspace = true }
 futures-util = { workspace = true }
 thiserror = { workspace = true }
