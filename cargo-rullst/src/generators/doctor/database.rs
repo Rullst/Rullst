@@ -286,6 +286,11 @@ fn configured_journal_mode(project: &ProjectContext) -> Option<String> {
 
 /// The network filesystem kind of `statfs`'s `f_type`, if it is one. WAL
 /// needs memory shared between every process that opens the database.
+/// Linux magic numbers: elsewhere only the tests call it.
+#[cfg_attr(
+    not(all(target_os = "linux", target_pointer_width = "64")),
+    allow(dead_code)
+)]
 pub(crate) fn network_filesystem_kind(magic: u64) -> Option<&'static str> {
     match magic {
         0x6969 => Some("NFS"),
