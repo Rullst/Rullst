@@ -407,7 +407,7 @@ fn expand_nexus(input: &DeriveInput) -> syn::Result<TokenStream2> {
 
         field_metas.push(quote! {
             {
-                let mut field = ::rullst::nexus::FieldMeta::new(#field_name, #label, #kind);
+                let mut field = ::rullst::nexus::FieldMeta::new(#field_name, #label, #kind,);
                 field.hidden = #hidden;
                 field.readonly = #readonly;
                 field

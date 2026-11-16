@@ -465,7 +465,7 @@ fn nexus_flags_labels_and_generic_types_are_read_exactly() {
         .expect("valid Nexus derive")
         .to_string();
     let first = field_meta(&output, "first_name").expect("first_name");
-    assert!(first.contains("label : \"First name\""), "{first}");
+    assert!(first.starts_with(" , \"First name\" ,"), "{first}");
     let hidden = field_meta(&output, "internal_note").expect("internal_note");
     assert!(hidden.contains("hidden = true"), "{hidden}");
     let ratio = field_meta(&output, "ratio").expect("ratio");
