@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794806616196,
+  "lastUpdate": 1794809582052,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -14375,6 +14375,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 381,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9e80bcbeaff6fb259069f54477c3709c8ee8d376",
+          "message": "Merge pull request #728 from Rullst/feat/v13-alpha6-non-exhaustive-audit\n\nfeat(api)!: non-exhaustive public enums and structs for the 13.0 freeze",
+          "timestamp": "2026-11-16T02:51:57-03:00",
+          "tree_id": "264f02fb2d679c0fd3284d370a809ffb2ae55b94",
+          "url": "https://github.com/Rullst/Rullst/commit/9e80bcbeaff6fb259069f54477c3709c8ee8d376"
+        },
+        "date": 1794809581090,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 538,
+            "range": "± 6",
             "unit": "ns/iter"
           }
         ]
