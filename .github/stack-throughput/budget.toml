@@ -40,5 +40,10 @@ min_ratio = 0.48
 # queries, each behind a ping of SQLx's SQLite worker); with one account
 # query and no ping, 0.079 (9 300 requests/s, 215 µs). Intel Xeon 6975P-C
 # 0.060-0.061 to 0.093-0.094; AMD EPYC 9V45 0.067-0.069 to 0.108-0.116.
+# SQLite WAL in the generated Rullst.toml (calibration run 43825586524,
+# origin/main 325bddc88 against the branch, alternating): AMD EPYC 9V45
+# 0.107-0.112 to 0.115-0.121 (93-96 to 87-90 µs per request), Intel Xeon
+# 6975P-C 0.094 to 0.096 (90-91 to 88 µs). The gain is not clear on every
+# runner and the run drew no EPYC 7763, so the limit stays.
 [saas]
 min_ratio = 0.07

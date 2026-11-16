@@ -252,7 +252,10 @@ async fn the_pool_sets_only_the_journal_mode_its_config_names() {
         rand::random::<u64>()
     ));
     std::fs::create_dir_all(&directory).expect("temporary directory");
-    let url = format!("sqlite://{}/app.db?mode=rwc", directory.display());
+    let url = format!(
+        "sqlite://{}/app.db?mode=rwc",
+        directory.to_string_lossy().replace('\\', "/")
+    );
     let wal = OrmConfig::default().with_sqlite_journal_mode(Wal);
     let delete = OrmConfig::default().with_sqlite_journal_mode(Delete);
     let mut journals = Vec::new();

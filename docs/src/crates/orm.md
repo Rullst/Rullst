@@ -274,10 +274,12 @@ still fails its next query, and SQLx then closes it.
 A SQLite database keeps the journal mode recorded in its file, and `Orm::init`
 does not change it: a new file uses the rollback journal (`DELETE`). In that
 mode every statement locks and unlocks the database file and checks for a
-journal left by a crash, and readers wait while a transaction commits. On the
-SaaS starter's signed-in dashboard that locking was about 14 % of the server's
-CPU. The write-ahead log (WAL) removes it: readers no longer lock the file for
-each statement and never wait for the writer. Since 13.0.0-alpha.6 you choose
+journal left by a crash, and readers wait while a transaction commits. In a
+profile of the SaaS starter's signed-in dashboard that locking was about 14 %
+of the server's CPU. With the write-ahead log (WAL) readers no longer lock the
+file for each statement (they take a lighter lock in shared memory) and never
+wait for the writer; on CI runners the same page then used 2–7 % less server
+CPU per request (13.0.0-alpha.6 calibration). Since 13.0.0-alpha.6 you choose
 the mode explicitly:
 
 ```rust,ignore
