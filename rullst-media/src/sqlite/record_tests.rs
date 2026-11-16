@@ -3,6 +3,9 @@
 
 use super::*;
 
+/// A named corruption of one stored value.
+type Corruption<T> = (&'static str, fn(&mut T));
+
 /// `n` lower-case hex digits.
 fn hex(n: usize) -> String {
     "0123456789abcdef".chars().cycle().take(n).collect()
@@ -91,7 +94,7 @@ fn records_at_every_bound_are_valid() {
 
 #[test]
 fn each_asset_rule_is_enforced_alone() {
-    let cases: [(&str, fn(&mut Record)); 17] = [
+    let cases: [Corruption<Record>; 17] = [
         ("revision", |r| r.asset.revision = 0),
         ("updated_at", |r| r.asset.updated_at = 0),
         ("length", |r| r.asset.length_seconds = 604_801),
@@ -141,7 +144,7 @@ fn each_asset_rule_is_enforced_alone() {
 
 #[test]
 fn each_pending_rule_is_enforced_alone() {
-    let cases: [(&str, fn(&mut Pending)); 9] = [
+    let cases: [Corruption<Pending>; 9] = [
         ("negative revision", |p| p.revision = -1),
         ("revision ahead", |p| p.revision = 6),
         ("negative deadline", |p| {
