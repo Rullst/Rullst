@@ -224,17 +224,16 @@ def patch_release_crates(project: Path, extracted: Path, crates: list[str], vers
 
 
 def add_event_stream(project: Path) -> None:
-    """Mounts EVENT_STREAM at EVENTS on the Blank router (src/main.rs, or
-    src/lib.rs with hot reload); no deployment file changes."""
-    sources = [project / "src" / name for name in ("main.rs", "lib.rs")]
-    holders = [path for path in sources if path.is_file() and ROUTER_ANCHOR in path.read_text()]
-    expect(len(holders) == 1 and holders[0].read_text().count(ROUTER_ANCHOR) == 1,
-           f"the Blank router ends with `{ROUTER_ANCHOR}` once")
-    source = holders[0]
+    """Mounts EVENT_STREAM at EVENTS on the router in the Blank project's
+    src/main.rs (`--default` generates no hot-reload src/lib.rs); no
+    deployment file changes."""
+    main_rs = project / "src" / "main.rs"
+    source = main_rs.read_text()
+    expect(source.count(ROUTER_ANCHOR) == 1, f"the Blank router ends with `{ROUTER_ANCHOR}` once")
     route = (f'{ROUTER_ANCHOR}\n    .merge_axum(rullst::web::axum::Router::new()'
              f'.route("{EVENTS}", rullst::web::axum::routing::get(deploy_smoke_events::events)))')
-    source.write_text(source.read_text().replace(ROUTER_ANCHOR, route) + EVENT_STREAM)
-    log(f"added the event stream route {EVENTS} to {source.relative_to(project)}")
+    main_rs.write_text(source.replace(ROUTER_ANCHOR, route) + EVENT_STREAM)
+    log(f"added the event stream route {EVENTS} to src/main.rs")
 
 
 def production_settings(starter: str) -> str:

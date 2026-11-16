@@ -66,18 +66,17 @@ _SPEC.loader.exec_module(DAST)
 
 def mount_docs(project: Path) -> None:
     """Mounts `controllers::docs_controller::router()`, as make:scalar asks,
-    on the router of src/main.rs (src/lib.rs with hot reload)."""
-    sources = [project / "src" / name for name in ("main.rs", "lib.rs")]
-    holders = [path for path in sources if path.is_file() and ROUTER_ANCHOR in path.read_text()]
-    if len(holders) != 1 or holders[0].read_text().count(ROUTER_ANCHOR) != 1:
+    on the router in src/main.rs (`--default` generates no hot-reload
+    src/lib.rs), and declares the controllers module there."""
+    main_rs = project / "src" / "main.rs"
+    text = main_rs.read_text()
+    if text.count(ROUTER_ANCHOR) != 1:
         raise Failure(f"the Blank router no longer ends with `{ROUTER_ANCHOR}` once")
-    source = holders[0]
-    text = source.read_text().replace(
-        ROUTER_ANCHOR, f"{ROUTER_ANCHOR}\n    .merge_axum(controllers::docs_controller::router())")
+    text = text.replace(ROUTER_ANCHOR, f"{ROUTER_ANCHOR}\n    .merge_axum(controllers::docs_controller::router())")
     if not any(line.strip() in ("mod controllers;", "pub mod controllers;") for line in text.splitlines()):
         text = "mod controllers;\n" + text
-    source.write_text(text)
-    log(f"mounted docs_controller::router() in {source.relative_to(project)}")
+    main_rs.write_text(text)
+    log("mounted docs_controller::router() in src/main.rs")
 
 
 def prepare(cli: Path, work: Path, env: dict[str, str]) -> tuple[Path, Path]:

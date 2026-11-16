@@ -23,7 +23,7 @@ TOKEN_FIELD = re.compile(r'name="_token" value="([A-Za-z0-9_-]{86})"')
 # The Server-Sent Events route check-vm-deploy.py adds to the Blank project,
 # which publishes `event: tick` with `data: tick N` every 500 ms.
 EVENTS = "/deploy-smoke/events"
-TICK = re.compile(r"^event: tick\r?\ndata: tick ([0-9]+)\r?$", re.MULTILINE)
+TICK = re.compile(r"^event: tick\r?\ndata: tick (\d+)\r?$", re.MULTILINE)
 # What clients offer: nothing, each coding of the Caddyfile's `encode zstd
 # gzip` alone, and a browser's list (Caddy then prefers zstd).
 EVENT_ENCODINGS = ("identity", "gzip", "zstd", "gzip, deflate, br, zstd")
