@@ -177,14 +177,22 @@ fn entries(
     })
 }
 
-/// Whether `text` names the crate: `rullst_<name>` or `<name>::`, as in
-/// `rullst::<name>::...`. Core's types are at the root of the facade, so any
-/// `rullst` path counts for them.
+/// Whether `text` names the crate: `rullst_<name>`, or `<name>::` after a
+/// character that cannot end an identifier, as in `rullst::<name>::...` (so
+/// `openai::` does not name `ai`). Core's types are at the root of the
+/// facade, so any `rullst` path counts for them.
 fn names_crate(text: &str, name: &str) -> bool {
     if name == "core" {
         return text.contains("rullst");
     }
-    text.contains(&format!("rullst_{name}")) || text.contains(&format!("{name}::"))
+    let path = format!("{name}::");
+    text.contains(&format!("rullst_{name}"))
+        || text.match_indices(&path).any(|(at, _)| {
+            !text[..at]
+                .chars()
+                .next_back()
+                .is_some_and(|before| before.is_alphanumeric() || before == '_')
+        })
 }
 
 /// The rule for a `match` without a catch-all arm, given whether its arm

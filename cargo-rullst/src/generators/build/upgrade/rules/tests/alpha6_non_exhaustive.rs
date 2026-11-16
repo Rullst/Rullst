@@ -79,6 +79,9 @@ fn literals_with_fields_of_another_struct_are_not_reported() {
     // The application's own `Message` has a `body`, which Mail's has not.
     let own = "use rullst::mail::Mailer;\nstruct Message { to: String, body: String }\nfn m() -> Message { Message { to: String::new(), body: String::new() } }\n";
     assert_eq!(found(own, LITERAL), Vec::<usize>::new());
+    // `openai::` does not name the AI crate.
+    let lookalike = "use async_openai::types;\nstruct Message { role: String, content: String }\nfn m() -> Message { Message { role: String::new(), content: String::new() } }\n";
+    assert_eq!(found(lookalike, LITERAL), Vec::<usize>::new());
     // Without a path that names the crate.
     let elsewhere = "struct TraceSpan { name: String }\nfn s() -> TraceSpan { TraceSpan { name: String::new() } }\n";
     assert_eq!(found(elsewhere, LITERAL), Vec::<usize>::new());
@@ -102,6 +105,6 @@ fn a_mail_message_literal_reports_both_releases() {
     codes.sort_unstable();
     assert_eq!(
         codes,
-        [(LITERAL, 2), (LITERAL, 3), ("V13-MAIL-MESSAGE-REPLY-TO", 2)]
+        [("V13-MAIL-MESSAGE-REPLY-TO", 2), (LITERAL, 2), (LITERAL, 3)]
     );
 }
