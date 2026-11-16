@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794813279847,
+  "lastUpdate": 1794816351456,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -35667,6 +35667,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1741,
             "range": "± 64",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5d47d9606ad33cc7c7f078893bbe14529160ac90",
+          "message": "Merge pull request #734 from Rullst/chore/v13-alpha6-dependency-refresh\n\nchore(deps): pre-freeze refresh, aws-lc-sys 0.47 for the aarch64 ES256 fix",
+          "timestamp": "2026-11-16T05:01:03-03:00",
+          "tree_id": "292cfa4f73e6f7638f6fa02715a53dfc2e3b6d3a",
+          "url": "https://github.com/Rullst/Rullst/commit/5d47d9606ad33cc7c7f078893bbe14529160ac90"
+        },
+        "date": 1794816346835,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 545,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 730,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 327,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1343,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
