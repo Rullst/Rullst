@@ -10,6 +10,7 @@ mod page_weight;
 mod production;
 mod remote;
 mod run;
+mod startup;
 pub(super) mod support;
 
 fn outcome() -> Outcome {
@@ -21,6 +22,13 @@ fn outcome() -> Outcome {
         body_bytes: 600_000,
         encodings: ["br".to_string()].into(),
     }
+}
+
+/// Five timed starts: 12.3, 10.0, 15.5, 11.0 and 13.0 ms.
+fn startup_samples() -> Vec<Duration> {
+    [12_340, 10_000, 15_500, 11_000, 13_000]
+        .map(Duration::from_micros)
+        .to_vec()
 }
 
 fn sample(bench: bool, grid_intensity: Option<f64>) -> Report {
@@ -63,6 +71,11 @@ fn sample(bench: bool, grid_intensity: Option<f64>) -> Report {
             idle_rss_bytes: Metric::measured(16 * 1024 * 1024, "bytes", "VmRSS"),
             dependency_count: Metric::measured(312, "packages", "Cargo.lock"),
             compiled_dependency_count: Metric::measured(287, "packages", "cargo tree"),
+        },
+        startup: if bench {
+            super::startup::Startup::measured("/", &startup_samples())
+        } else {
+            super::startup::Startup::unmeasured(super::startup::ALREADY_RUNNING)
         },
         benchmark,
         page_weight: if bench {
@@ -167,6 +180,15 @@ fn json_keys_are_stable_whatever_was_measured() {
         "production.window_seconds",
         "schema",
         "schema_version",
+        "startup.max_ms",
+        "startup.median_ms",
+        "startup.method",
+        "startup.min_ms",
+        "startup.path",
+        "startup.reason",
+        "startup.runs",
+        "startup.samples_ms",
+        "startup.status",
         "sci_estimate.cpu_energy_kwh",
         "sci_estimate.energy_kwh",
         "sci_estimate.energy_method",
@@ -237,6 +259,17 @@ fn json_keys_are_stable_whatever_was_measured() {
     );
     assert_eq!(value["page_weight"]["status"], "measured");
     assert_eq!(value["notes"].as_array().map(Vec::len), Some(NOTES.len()));
+    assert_eq!(value["startup"]["status"], "measured");
+    assert_eq!(value["startup"]["runs"], 5);
+    assert_eq!(
+        value["startup"]["samples_ms"],
+        serde_json::json!([12.3, 10.0, 15.5, 11.0, 13.0])
+    );
+    assert_eq!(value["startup"]["median_ms"], 12.3);
+    assert_eq!(value["startup"]["min_ms"], 10.0);
+    assert_eq!(value["startup"]["max_ms"], 15.5);
+    assert_eq!(value["startup"]["path"], "/");
+    assert_eq!(value["startup"]["method"], super::startup::METHOD);
 
     let value = serde_json::to_value(sample(false, None)).unwrap();
     assert_eq!(value["benchmark"]["status"], "not_run");
@@ -248,6 +281,10 @@ fn json_keys_are_stable_whatever_was_measured() {
     );
     assert_eq!(value["page_weight"]["status"], "not_run");
     assert_eq!(value["page_weight"]["resources"], serde_json::json!([]));
+    assert_eq!(value["startup"]["status"], "not_measured");
+    assert_eq!(value["startup"]["reason"], super::startup::ALREADY_RUNNING);
+    assert_eq!(value["startup"]["samples_ms"], serde_json::json!([]));
+    assert_eq!(value["startup"]["median_ms"], serde_json::Value::Null);
 }
 
 #[test]
@@ -326,6 +363,8 @@ fn plain_rendering_labels_measurements_and_the_estimate() {
         "Idle RSS      16.0 MiB",
         "Dependencies  312",
         "Compiled deps 287",
+        "Startup time  NOT MEASURED",
+        "not measured for an app that was already running (--url): footprint times the start-up of the release binary it starts",
         "Benchmark     NOT RUN",
         "pass --bench to measure CPU time per request",
         "Page weight   NOT RUN",
@@ -340,6 +379,8 @@ fn plain_rendering_labels_measurements_and_the_estimate() {
 
     let text = render::render(&sample(true, Some(100.0)), plain);
     for expected in [
+        "Startup time  12.3 ms",
+        "median of 5 cold starts (10.0 to 15.5 ms), spawn to the first answer to GET /\n",
         "GET / · 2 s · 4 connections",
         "Requests      400",
         "1 transport errors, 2 HTTP status >= 400",

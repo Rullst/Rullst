@@ -10,8 +10,9 @@ measures it against .github/starter-footprint/<starter>.toml (`--budget`).
 
 Blocking: a limit exceeded; a limit skipped because its figure was not
 measured (the budget would not hold); a footprint failure (build, start or
-reach); a starter without a budget file. CPU time per request is reported in
-the job summary and never budgeted: it varies between shared runners.
+reach); a starter without a budget file. CPU time per request and the median
+start-up time are reported in the job summary and never budgeted: they vary
+between shared runners.
 
 The summary lists each figure with its limit and the limit this check
 suggests (the measured figure plus its margin in MARGINS, and at least
@@ -144,6 +145,14 @@ def show(value: float | None) -> str:
     return f"{value:,.0f}" if float(value).is_integer() else f"{value:,.2f}"
 
 
+def startup_cell(report: dict) -> str:
+    """The median start-up time and how many starts it comes from."""
+    startup = report.get("startup") or {}
+    if startup.get("median_ms") is None:
+        return "not measured"
+    return f"{show(startup['median_ms'])} ({startup.get('runs')} starts)"
+
+
 def status_cell(row: dict) -> str:
     if row["status"] == "passed" and row["allowed"]:
         return f"passed ({row['measured'] / row['allowed']:.0%} of the limit)"
@@ -167,13 +176,14 @@ def render(reports: dict[str, dict], rows: list[dict], problems: list[str]) -> s
         suggested = "—" if row["suggested"] is None else show(row["suggested"])
         lines.append(f"| {row['starter']} | `{row['name']}` | {show(row['measured'])} | {allowed} | "
                      f"{status_cell(row)} | {suggested} |")
-    lines += ["", "Reported, never budgeted (CPU time varies between shared runners):", "",
-              "| Starter | CPU ms per request | Requests in 5 s | HTTP errors | Content-Encoding |",
-              "| :--- | ---: | ---: | ---: | :--- |"]
+    lines += ["", "Reported, never budgeted (CPU and start-up times vary between shared runners):", "",
+              "| Starter | CPU ms per request | Start-up ms (median) | Requests in 5 s | HTTP errors | "
+              "Content-Encoding |",
+              "| :--- | ---: | ---: | ---: | ---: | :--- |"]
     for starter, report in reports.items():
         bench = report["benchmark"]
         encodings = ", ".join(bench.get("content_encodings") or []) or "—"
-        lines.append(f"| {starter} | {show(bench['cpu_ms_per_request']['value'])} | "
+        lines.append(f"| {starter} | {show(bench['cpu_ms_per_request']['value'])} | {startup_cell(report)} | "
                      f"{show(bench.get('requests'))} | {show(bench.get('http_errors'))} | {encodings} |")
     for starter in reports:
         suggested = [row for row in rows if row["starter"] == starter and row["suggested"] is not None]

@@ -234,8 +234,8 @@ each in release mode (its generated `[profile.release]`, the toolchain of
   of `GET /`, and that page's first-visit bytes, repeat-visit bytes, requests
   and third-party origins); a
   limited figure that was not measured; a starter that does not build, start
-  or answer. CPU time per request is in the job summary but never limited,
-  because it varies between shared runners.
+  or answer. CPU time per request and the start-up time are in the job
+  summary but never limited, because they vary between shared runners.
 - **When it runs:** ready pull requests that change a framework crate,
   `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, the starter templates,
   `footprint` or the check; nightly; full manual runs; and the
