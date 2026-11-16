@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794812907351,
+  "lastUpdate": 1794814287898,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -17818,6 +17818,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_past_due",
             "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "325bddc88933a6283cd83c2f83ae48dec3329420",
+          "message": "Merge pull request #730 from Rullst/feat/v13-alpha6-footprint-startup\n\nfeat(cli): footprint start-up time of the release binary",
+          "timestamp": "2026-11-16T04:10:44-03:00",
+          "tree_id": "9a962b7626ec1f54e38333c607edbb78bd3ae8f0",
+          "url": "https://github.com/Rullst/Rullst/commit/325bddc88933a6283cd83c2f83ae48dec3329420"
+        },
+        "date": 1794814287075,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
             "range": "± 0",
             "unit": "ns/iter"
           },
