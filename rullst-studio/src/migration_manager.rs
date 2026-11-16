@@ -8,12 +8,14 @@ use axum::{
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct MigrationStatusItem {
     pub name: String,
     pub status: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct ApiResponse {
     pub success: bool,
     pub message: String,

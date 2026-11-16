@@ -166,6 +166,7 @@ impl DistributedTraceStore {
 
 /// Counts returned after a completely validated batch is committed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct IngestionSummary {
     /// Newly retained spans.
     pub accepted: usize,

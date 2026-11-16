@@ -4,6 +4,9 @@ use serde::{Deserialize, Serialize};
 pub const TRACE_BATCH_VERSION: u8 = 1;
 
 /// A bounded, attribute-free batch of distributed trace spans.
+///
+/// Exhaustive on purpose: the version 1 wire format (`deny_unknown_fields`); a
+/// new field is a new batch version with its own type.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TraceBatchV1 {
@@ -24,6 +27,9 @@ impl TraceBatchV1 {
 }
 
 /// A W3C-ID-compatible, attribute-free span accepted by Studio.
+///
+/// Exhaustive on purpose: the version 1 wire format (`deny_unknown_fields`); a
+/// new field is a new batch version with its own type.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DistributedTraceSpanV1 {
@@ -48,6 +54,7 @@ pub struct DistributedTraceSpanV1 {
 /// Categories supported by the Studio distributed trace contract.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum DistributedTraceKind {
     /// HTTP server or client work.
     Http,
@@ -64,6 +71,9 @@ pub enum DistributedTraceKind {
 }
 
 /// Bounded terminal status carried by a distributed span.
+///
+/// Exhaustive on purpose: OpenTelemetry defines exactly these span status codes
+/// (`Unset`, `Ok`, `Error`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DistributedTraceStatus {
@@ -77,6 +87,7 @@ pub enum DistributedTraceStatus {
 
 /// A validated span retained by Studio with authenticated source metadata.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct StoredDistributedTraceSpan {
     /// Authenticated producer name from the signed request.
     pub source: String,
@@ -88,6 +99,7 @@ pub struct StoredDistributedTraceSpan {
 
 /// Kind of bounded SQL diagnostic inferred by Studio.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[non_exhaustive]
 pub enum QueryFindingKind {
     /// The same operation label appeared repeatedly in one trace.
     RepeatedOperation,
@@ -97,6 +109,7 @@ pub enum QueryFindingKind {
 
 /// Heuristic SQL diagnostic derived without query text or bindings.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct QueryFinding {
     /// Finding category.
     pub kind: QueryFindingKind,

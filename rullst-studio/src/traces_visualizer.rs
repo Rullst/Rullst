@@ -212,33 +212,24 @@ mod tests {
 
     #[tokio::test]
     async fn test_render_traces_page() {
+        use rullst_core::telemetry_spans::TraceSpan;
         let collector = rullst_core::telemetry_spans::global_span_collector();
 
         // Record spans of various kinds
-        collector.record(rullst_core::telemetry_spans::TraceSpan {
-            name: "SELECT * FROM users WHERE id = 1".to_string(),
-            kind: "sql".to_string(),
-            duration_us: 120,
-            timestamp: 1700000000,
-        });
-        collector.record(rullst_core::telemetry_spans::TraceSpan {
-            name: "gemini-2.5-flash generate".to_string(),
-            kind: "ai".to_string(),
-            duration_us: 850,
-            timestamp: 1700000000,
-        });
-        collector.record(rullst_core::telemetry_spans::TraceSpan {
-            name: "send_welcome_email".to_string(),
-            kind: "job".to_string(),
-            duration_us: 450,
-            timestamp: 1700000000,
-        });
-        collector.record(rullst_core::telemetry_spans::TraceSpan {
-            name: "GET /api/v1/health".to_string(),
-            kind: "http".to_string(),
-            duration_us: 95,
-            timestamp: 1700000000,
-        });
+        collector.record(TraceSpan::new(
+            "SELECT * FROM users WHERE id = 1",
+            "sql",
+            120,
+            1700000000,
+        ));
+        collector.record(TraceSpan::new(
+            "gemini-2.5-flash generate",
+            "ai",
+            850,
+            1700000000,
+        ));
+        collector.record(TraceSpan::new("send_welcome_email", "job", 450, 1700000000));
+        collector.record(TraceSpan::new("GET /api/v1/health", "http", 95, 1700000000));
 
         let html = render_traces_page().await.0;
         assert!(html.contains("Trace Inspector"));

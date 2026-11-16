@@ -179,14 +179,14 @@ mod tests {
     fn event_badge_distinguishes_shown_from_retained_events() {
         let manager = RevenueDashboardManager::new();
         for index in 0..25 {
-            manager.record_event(rullst_capital::WebhookEventRecord {
-                id: format!("evt_{index}"),
-                provider: "stripe".to_string(),
-                event_type: "invoice.paid".to_string(),
-                status: "processed".to_string(),
-                payload_snippet: "{}".to_string(),
-                timestamp: 1_700_000_000 + index,
-            });
+            manager.record_event(rullst_capital::WebhookEventRecord::new(
+                format!("evt_{index}"),
+                "stripe",
+                "invoice.paid",
+                "processed",
+                1_700_000_000 + index,
+                "{}",
+            ));
         }
         let html = render_revenue_dashboard_for(&manager);
         assert!(html.contains("Showing 20 most recent of 25 retained webhook events"));
@@ -215,22 +215,22 @@ mod tests {
 
         // Record events in RevenueDashboardManager
         let mgr = get_revenue_manager();
-        mgr.record_event(rullst_capital::WebhookEventRecord {
-            id: "evt_stripe_1".to_string(),
-            provider: "stripe".to_string(),
-            event_type: "customer.subscription.created".to_string(),
-            status: "processed".to_string(),
-            payload_snippet: "{}".to_string(),
-            timestamp: 1700000000,
-        });
-        mgr.record_event(rullst_capital::WebhookEventRecord {
-            id: "evt_infinitepay_2".to_string(),
-            provider: "infinitepay".to_string(),
-            event_type: "charge.failed".to_string(),
-            status: "failed".to_string(),
-            payload_snippet: "{}".to_string(),
-            timestamp: 1700000000,
-        });
+        mgr.record_event(rullst_capital::WebhookEventRecord::new(
+            "evt_stripe_1",
+            "stripe",
+            "customer.subscription.created",
+            "processed",
+            1700000000,
+            "{}",
+        ));
+        mgr.record_event(rullst_capital::WebhookEventRecord::new(
+            "evt_infinitepay_2",
+            "infinitepay",
+            "charge.failed",
+            "failed",
+            1700000000,
+            "{}",
+        ));
 
         let html = render_revenue_dashboard_page();
         assert!(html.contains("Rullst Capital Dashboard"));

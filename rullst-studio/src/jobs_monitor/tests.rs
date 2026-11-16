@@ -172,16 +172,16 @@ fn previews_are_cut_on_character_boundaries() {
 #[test]
 fn job_rows_escape_untrusted_values_and_accept_short_identifiers() {
     let html = render_table_rows(&[QueuedJobPreview::from_detail(
-        QueuedJobDetail {
-            id: "é".to_string(),
-            name: "<script>".to_string(),
-            payload: "{\"value\":\"<img>\"}".to_string(),
-            status: "failed".to_string(),
-            error: Some("<b>failure</b>".to_string()),
-            attempts: 1,
-            created_at: "now".to_string(),
-            updated_at: "now".to_string(),
-        },
+        QueuedJobDetail::new(
+            "é",
+            "<script>",
+            "{\"value\":\"<img>\"}",
+            "failed",
+            1,
+            "now",
+            "now",
+        )
+        .with_error("<b>failure</b>"),
         PREVIEW_BYTES,
     )]);
 
