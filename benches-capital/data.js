@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794851919472,
+  "lastUpdate": 1794853475441,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -18158,6 +18158,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ec891db8bcee62cadd8bd1c27299e6338fd0d4b4",
+          "message": "Merge pull request #747 from Rullst/test/v13-mutants-media\n\ntest(media): close 13.0 mutation campaign gaps",
+          "timestamp": "2026-11-16T15:09:09-03:00",
+          "tree_id": "f7e56ba49c5f05b95e23781b76125c2a23735944",
+          "url": "https://github.com/Rullst/Rullst/commit/ec891db8bcee62cadd8bd1c27299e6338fd0d4b4"
+        },
+        "date": 1794853474445,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 9,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 3,
             "range": "± 0",
             "unit": "ns/iter"
           }
