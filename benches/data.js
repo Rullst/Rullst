@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794793507119,
+  "lastUpdate": 1794794767819,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -35235,6 +35235,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1966,
             "range": "± 32",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0902531b4dfea2615aa840572cb40ce3cb93b587",
+          "message": "Merge pull request #724 from Rullst/feat/v13-alpha6-capital-one-off-method-webhook\n\nfeat(capital): one-off payment method, instalments and per-checkout notification URL",
+          "timestamp": "2026-11-15T23:01:26-03:00",
+          "tree_id": "d8572183089533b4c11a50a9fbed35790355638d",
+          "url": "https://github.com/Rullst/Rullst/commit/0902531b4dfea2615aa840572cb40ce3cb93b587"
+        },
+        "date": 1794794763944,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 684,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 895,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 431,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1941,
+            "range": "± 29",
             "unit": "ns/iter"
           }
         ]
