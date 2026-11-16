@@ -3,8 +3,10 @@
 - **Breaking:** the CSRF token that pages embed is masked per response, a
   defence against BREACH. `CsrfToken::as_str()` now returns
   `mask || (token XOR mask)` in URL-safe base64, with a fresh random mask
-  from the operating system for every request (86 characters for the
-  32-character token the middleware mints), instead of the `rullst_csrf`
+  for every request from a ChaCha12 generator per thread, seeded and
+  reseeded from the operating system (86 characters for the 32-character
+  token the middleware mints, which comes from the operating system's
+  random source), instead of the `rullst_csrf`
   cookie value, which used to be the same in every response and could be
   recovered from a compressed page that also reflected attacker-controlled
   input. The middleware unmasks the `_token` field or `X-CSRF-Token` header
