@@ -1,21 +1,31 @@
 //! Random values of the double-submit CSRF protection.
 //!
-//! The cookie token is the secret: each one comes from a generator seeded
-//! for that token alone from the operating system's random source. The
-//! per-response mask only has to make every embedded value different (BREACH
-//! resistance, see `csrf_mask`), so it comes from a ChaCha12 generator per
-//! thread, seeded from the operating system and reseeded after every
-//! [`RESEED_AFTER_BYTES`] bytes, instead of a system call per response.
-//! Either source failing yields `None`, which the middleware answers with
-//! `500`: a page never embeds an unmasked token.
+//! The cookie token is the secret: its characters come straight from the
+//! operating system's random source. The per-response mask only has to make
+//! every embedded value different (BREACH resistance, see `csrf_mask`), so it
+//! comes from a ChaCha12 generator per thread, seeded from the operating
+//! system and reseeded after every [`RESEED_AFTER_BYTES`] bytes, instead of a
+//! system call per response. Either source failing yields `None`, which the
+//! middleware answers with `500`: a page never embeds an unmasked token.
 
-use rand::distr::{Alphanumeric, SampleString};
 use rand::rngs::{StdRng, SysRng};
-use rand::{Rng, SeedableRng};
+use rand::{Rng, SeedableRng, TryRng};
 use std::cell::RefCell;
 
 /// Length of a minted cookie token.
 const TOKEN_LENGTH: usize = 32;
+
+/// The characters of a minted token: `generate_csrf_token`'s alphabet.
+const ALPHANUMERIC: &[u8; 62] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+/// Operating-system bytes drawn at a time for a token. A byte's top six bits
+/// pick a character, or none for the two values past the alphabet; 40 bytes
+/// give 32 characters except about three times in a million, which draw
+/// again.
+const TOKEN_DRAW: usize = 40;
+
+/// Draws a token may take before minting fails, far beyond any real need.
+const TOKEN_DRAWS: usize = 4;
 
 /// Mask bytes a thread's generator produces before it is reseeded from the
 /// operating system: 64 KiB, as `rand`'s `ThreadRng`, about 2,000 masks of a
@@ -32,22 +42,44 @@ thread_local! {
     static MASK_GENERATOR: RefCell<Option<MaskGenerator>> = const { RefCell::new(None) };
 }
 
-/// A ChaCha12 generator seeded from the operating system's random source, or
-/// `None` when it fails.
-fn os_seeded() -> Option<StdRng> {
+/// Fills `bytes` from the operating system's random source; `None` when it
+/// fails.
+fn os_fill(bytes: &mut [u8]) -> Option<()> {
     #[cfg(test)]
     if failure::os_source_fails() {
         return None;
     }
-    StdRng::try_from_rng(&mut SysRng).ok()
+    SysRng.try_fill_bytes(bytes).ok()
 }
 
-/// A new `rullst_csrf` cookie token: 32 ASCII letters and digits, drawn
-/// from a generator seeded for this token alone from the operating system's
-/// random source. `None` when that source fails.
+/// A ChaCha12 generator seeded from the operating system's random source, or
+/// `None` when it fails.
+fn os_seeded() -> Option<StdRng> {
+    let mut seed = [0_u8; 32];
+    os_fill(&mut seed)?;
+    Some(StdRng::from_seed(seed))
+}
+
+/// A new `rullst_csrf` cookie token: 32 ASCII letters and digits, each one
+/// six bits of the operating system's random source (uniform, since bytes
+/// past the alphabet are skipped). `None` when that source fails.
 pub(crate) fn mint_cookie_token() -> Option<String> {
-    let mut rng = os_seeded()?;
-    Some(Alphanumeric.sample_string(&mut rng, TOKEN_LENGTH))
+    let mut token = String::with_capacity(TOKEN_LENGTH);
+    let mut bytes = [0_u8; TOKEN_DRAW];
+    for _ in 0..TOKEN_DRAWS {
+        os_fill(&mut bytes)?;
+        for byte in bytes {
+            if token.len() < TOKEN_LENGTH
+                && let Some(&symbol) = ALPHANUMERIC.get(usize::from(byte >> 2))
+            {
+                token.push(char::from(symbol));
+            }
+        }
+        if token.len() == TOKEN_LENGTH {
+            return Some(token);
+        }
+    }
+    None
 }
 
 /// Fills `mask` from this thread's generator. `None` when the operating
