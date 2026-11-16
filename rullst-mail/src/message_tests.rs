@@ -82,6 +82,7 @@ fn security_and_deliverability_helpers_cover_present_and_absent_bodies() {
     );
     let disposable = Message::new().to("reader@mailinator.com");
     assert!(disposable.is_disposable());
+    assert!(!Message::new().to("reader@rullst.dev").is_disposable());
     assert!(disposable.validate_deliverability().is_err());
     assert!(
         Message::new()
@@ -270,4 +271,44 @@ fn reply_to_is_validated_by_the_pipeline_and_omitted_when_unset() {
     assert_eq!(with_reply["reply_to"], "Ana Souza <ana@example.com>");
     let round_trip: Message = serde_json::from_value(with_reply).unwrap();
     assert_eq!(round_trip, message);
+}
+
+#[test]
+fn debug_shows_only_the_attachment_count_and_schedule() {
+    let message = Message::new()
+        .to("reader@example.com")
+        .subject("private subject")
+        .text("private body")
+        .attach_bytes("a.txt", b"a".to_vec(), "text/plain")
+        .send_in(std::time::Duration::from_secs(60));
+    assert_eq!(
+        format!("{message:?}"),
+        r#"Message { content: "[REDACTED]", attachments: 1, scheduled: true, .. }"#
+    );
+    assert_eq!(
+        format!("{:?}", Message::new()),
+        r#"Message { content: "[REDACTED]", attachments: 0, scheduled: false, .. }"#
+    );
+}
+
+#[test]
+fn plain_text_breaks_lines_at_block_tags_and_keeps_one_blank_line() {
+    for tag in [
+        "div", "/div", "tr", "/tr", "h1", "h2", "h3", "h4", "h5", "h6", "/h1", "/h2", "/h3", "/h4",
+        "/h5", "/h6",
+    ] {
+        assert_eq!(
+            strip_html_to_plain_text(&format!("a<{tag}>b")),
+            "a\nb",
+            "<{tag}>"
+        );
+    }
+    assert_eq!(strip_html_to_plain_text("a<br><br><br><br>b"), "a\n\nb");
+    // A target holding whitespace or a control character is not appended.
+    for href in ["https://a.example/x y", "https://a.example/\u{1}x"] {
+        assert_eq!(
+            strip_html_to_plain_text(&format!(r#"<a href="{href}">Go</a>"#)),
+            "Go"
+        );
+    }
 }

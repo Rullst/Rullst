@@ -152,4 +152,27 @@ mod tests {
         let error = recipient("jos\u{e9}@example.com").unwrap_err();
         assert!(!error.to_string().contains("example.com"));
     }
+
+    #[test]
+    fn encoded_words_hold_up_to_45_bytes_of_the_name() {
+        // `é` and 43 `a` are 45 bytes and fit one encoded-word; one byte
+        // more starts a second word.
+        let fits = format!("\u{e9}{}", "a".repeat(43));
+        let word = "=?UTF-8?B?w6lhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFh?=";
+        assert_eq!(display_name(&fits), word);
+        assert_eq!(
+            display_name(&format!("{fits}b")),
+            format!("{word} =?UTF-8?B?Yg==?=")
+        );
+        // 100 two-byte characters split into four words of 22 and one of 12.
+        let words = display_name(&"\u{e9}".repeat(100));
+        let lengths: Vec<usize> = words
+            .split(' ')
+            .map(|word| {
+                let payload = &word[10..word.len() - 2];
+                STANDARD.decode(payload).unwrap().len()
+            })
+            .collect();
+        assert_eq!(lengths, [44, 44, 44, 44, 24]);
+    }
 }

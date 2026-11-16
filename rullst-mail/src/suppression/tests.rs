@@ -478,3 +478,5 @@ async fn internationalized_domains_share_their_a_label_key() {
     ));
     assert_eq!(deliveries.lock().expect("deliveries").len(), 1);
 }
+
+mod memory_store;

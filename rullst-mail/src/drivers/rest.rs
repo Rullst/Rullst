@@ -129,8 +129,23 @@ mod tests {
         )
         .await
         .unwrap();
-        server.await.unwrap();
+        // A request that is never sent leaves the fixture waiting to accept.
+        tokio::time::timeout(std::time::Duration::from_secs(3), server)
+            .await
+            .expect("the request reached the fixture")
+            .unwrap();
         result
+    }
+
+    #[test]
+    fn encoded_requests_hold_at_most_ten_million_bytes() {
+        // A JSON string encodes as its characters and two quotes.
+        let at_limit = encode(&Value::String("e".repeat(9_999_998))).unwrap();
+        assert_eq!(at_limit.len(), 10_000_000);
+        assert!(matches!(
+            encode(&Value::String("e".repeat(9_999_999))),
+            Err(MailError::ValidationError(_))
+        ));
     }
 
     #[tokio::test]
@@ -152,6 +167,16 @@ mod tests {
         assert!(!format!("{error:?}").contains("token=secret"));
         assert!(respond("200 OK", "not JSON", "").await.is_err());
         assert!(respond("200 OK", &" ".repeat(65537), "").await.is_err());
+        // A receipt of exactly 64 KiB is read; one byte more is refused.
+        let receipt = |length: usize| format!("\"{}\"", "r".repeat(length - 2));
+        assert_eq!(
+            respond("200 OK", &receipt(65_536), "").await.unwrap(),
+            Value::String("r".repeat(65_534))
+        );
+        assert!(matches!(
+            respond("200 OK", &receipt(65_537), "").await,
+            Err(MailError::SendError(_))
+        ));
         assert!(
             respond("302 Found", "", "Location: https://example.com\r\n")
                 .await
