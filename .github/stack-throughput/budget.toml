@@ -22,3 +22,9 @@
 
 [throughput]
 min_ratio = 0.47
+
+# The SaaS starter's signed-in GET /dashboard (session cookie and CSRF
+# cookie sent, SQLite) against the same run's minimal /json. PROVISIONAL:
+# set from the first measurement of this pull request.
+[saas]
+min_ratio = 0.05

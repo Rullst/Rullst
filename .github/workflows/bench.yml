@@ -25,14 +25,16 @@ env:
 
 jobs:
   # The production stack of a generated application against the same routes
-  # without layers, on one runner (.github/check-stack-throughput.py): a
-  # throughput regression of the stack fails this job.
+  # without layers, and the SaaS starter's signed-in dashboard, on one runner
+  # (.github/check-stack-throughput.py): a throughput regression of either
+  # fails this job.
   stack-throughput:
     name: Generated stack throughput
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     env:
       RUSTC_WRAPPER: ""
+      RULLST_DISABLE_UPDATE_CHECK: "true"
     steps:
       - name: Checkout Rullst
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -42,7 +44,9 @@ jobs:
       - name: Set up Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
         with:
+          # The SaaS starter builds as a newcomer builds it.
           rustflags: ""
+          build-warnings: ""
           cache: false
 
       - name: Install bombardier 2.0.2 (the load generator of Rullst/Benchmarks)
@@ -53,8 +57,15 @@ jobs:
           echo "d3dc4a9ecec3f8bd43f8c196ad533cb4b79ca55b11fc74c3184231e00a95bc0b  $RUNNER_TEMP/bombardier" | sha256sum --check
           chmod +x "$RUNNER_TEMP/bombardier"
 
-      - name: Compare the generated stack with the minimal one
-        run: python3 .github/check-stack-throughput.py --bombardier "$RUNNER_TEMP/bombardier" --out stack-throughput-results
+      - name: Build the CLI from this checkout (it generates the SaaS starter)
+        run: |
+          cargo fetch --locked
+          cargo build --locked -p cargo-rullst --bin cargo-rullst
+
+      - name: Compare the generated stacks with the minimal one
+        run: |
+          python3 .github/check-stack-throughput.py --bombardier "$RUNNER_TEMP/bombardier" \
+            --cli target/debug/cargo-rullst --work "$RUNNER_TEMP/stack-throughput" --out stack-throughput-results
 
       - name: Upload the load generator results
         if: always()

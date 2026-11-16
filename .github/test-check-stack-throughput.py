@@ -22,10 +22,15 @@ def result(ok=100_000, taken=10.0, p99_us=2500, errors=0) -> dict:
                        "timeTakenSeconds": taken, "latency": {"percentiles": {"99": p99_us}}}}
 
 
-def rounds(minimal, generated, errors=0):
-    return [{"minimal": CHECK.figures(result(ok=m), 20.0),
-             "generated": CHECK.figures(result(ok=g, errors=errors), 20.0)}
-            for m, g in zip(minimal, generated)]
+def rounds(minimal, generated, errors=0, saas=None):
+    measured = []
+    for index, (m, g) in enumerate(zip(minimal, generated)):
+        one = {"minimal": CHECK.figures(result(ok=m), 20.0),
+               "generated": CHECK.figures(result(ok=g, errors=errors), 20.0)}
+        if saas is not None:
+            one["saas"] = CHECK.figures(result(ok=saas[index]), 20.0)
+        measured.append(one)
+    return measured
 
 
 class StackThroughputTest(unittest.TestCase):
@@ -38,15 +43,18 @@ class StackThroughputTest(unittest.TestCase):
         self.assertAlmostEqual(f["server_cpus"], 1.9)
 
     def test_the_ratio_compares_medians(self):
-        measured = rounds([1000, 1200, 900], [500, 700, 100])
+        measured = rounds([1000, 1200, 900], [500, 700, 100], saas=[200, 300, 250])
         self.assertAlmostEqual(CHECK.ratio(measured), 500 / 1000)
+        self.assertAlmostEqual(CHECK.ratio(measured, "saas"), 250 / 1000)
 
-    def test_a_ratio_below_the_limit_or_an_error_blocks(self):
-        measured = rounds([1000, 1000, 1000], [600, 600, 600])
-        self.assertEqual(CHECK.verdict(measured, 0.55), [])
+    def test_a_ratio_below_its_limit_or_an_error_blocks(self):
+        measured = rounds([1000, 1000, 1000], [600, 600, 600], saas=[300, 300, 300])
+        self.assertEqual(CHECK.verdict(measured, {"generated": 0.55, "saas": 0.25}), [])
         self.assertEqual(CHECK.verdict(measured, None), [])
-        self.assertEqual(CHECK.verdict(measured, 0.65),
-                         ["generated/minimal ratio 0.600 is below the limit 0.650"])
+        self.assertEqual(CHECK.verdict(measured, {"generated": 0.65, "saas": 0.25}),
+                         ["Blank generated/minimal ratio 0.600 is below the limit 0.650"])
+        self.assertEqual(CHECK.verdict(measured, {"generated": 0.55, "saas": 0.35}),
+                         ["SaaS signed-in dashboard/minimal ratio 0.300 is below the limit 0.350"])
         failing = rounds([1000], [600], errors=2)
         self.assertEqual(CHECK.verdict(failing, None),
                          ["round 1: 2 non-2xx responses from the generated stack"])
@@ -58,14 +66,29 @@ class StackThroughputTest(unittest.TestCase):
         del headers["x-frame-options"]
         headers["Set-Cookie"] = "other=1"
         self.assertEqual(CHECK.missing_security(headers), ["x-frame-options", "set-cookie: rullst_csrf"])
+        # A request with the CSRF cookie gets no new one.
+        self.assertEqual(CHECK.missing_security(headers, cookieless=False), ["x-frame-options"])
 
-    def test_the_summary_names_the_ratio_limit_and_suggestion(self):
-        measured = rounds([1000], [600])
-        text = CHECK.summary(measured, 0.5, [])
-        self.assertIn("ratio (medians): **0.600**", text)
-        self.assertIn("Limit: 0.500. Suggested limit: 0.510.", text)
+    def test_the_measured_saas_page_is_the_signed_in_dashboard(self):
+        headers = {name: "x" for name in CHECK.SECURITY_HEADERS}
+        page = f"<h1>Welcome, {CHECK.ACCOUNT_NAME}</h1>"
+        self.assertEqual(CHECK.dashboard_problems(200, headers, page), [])
+        self.assertEqual(CHECK.dashboard_problems(200, headers, "<h1>Sign in</h1>"), ["the account's dashboard"])
+        del headers["referrer-policy"]
+        self.assertEqual(CHECK.dashboard_problems(503, headers, ""),
+                         ["status 503", "the account's dashboard", "referrer-policy"])
+
+    def test_the_summary_names_each_ratio_limit_and_suggestion(self):
+        measured = rounds([1000], [600], saas=[300])
+        text = CHECK.summary(measured, {"generated": 0.5, "saas": 0.2}, [])
+        self.assertIn("Blank generated/minimal ratio (medians): **0.600**. Limit: 0.500. "
+                      "Suggested limit: 0.510.", text)
+        self.assertIn("SaaS signed-in dashboard/minimal ratio (medians): **0.300**. Limit: 0.200. "
+                      "Suggested limit: 0.255.", text)
+        self.assertIn("| 1 | saas | 30 |", text)
         self.assertIn("Passed.", text)
-        self.assertIn("**Failed:** slow", CHECK.summary(measured, 0.7, ["slow"]))
+        self.assertIn("**Failed:** slow", CHECK.summary(measured, None, ["slow"]))
+        self.assertNotIn("Limit:", CHECK.summary(measured, None, []))
 
     def test_the_summary_names_the_cpu_model(self):
         self.assertEqual(CHECK.cpu_model("processor\t: 0\nmodel name\t: AMD EPYC 7763 64-Core Processor\n"),
@@ -73,10 +96,12 @@ class StackThroughputTest(unittest.TestCase):
         self.assertEqual(CHECK.cpu_model(""), "unknown CPU")
         self.assertIn("CPU: Test CPU", CHECK.summary(rounds([1000], [600]), None, [], "Test CPU"))
 
-    def test_the_budget_holds_a_ratio_below_one(self):
-        budget = tomllib.loads(CHECK.BUDGET.read_text())["throughput"]
-        self.assertGreater(budget["min_ratio"], 0)
-        self.assertLess(budget["min_ratio"], 1)
+    def test_the_budget_holds_a_ratio_below_one_for_each_stack(self):
+        budget = CHECK.limits(tomllib.loads(CHECK.BUDGET.read_text()))
+        self.assertEqual(set(budget), {"generated", "saas"})
+        for limit in budget.values():
+            self.assertGreater(limit, 0)
+            self.assertLess(limit, 1)
 
 
 if __name__ == "__main__":
