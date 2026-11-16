@@ -308,6 +308,8 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-ai/src/ai/guardrails/tax_ids.rs`: `token_end`, `bytes.get(index + 1)` with `index - 1` | A separator then joins when a digit precedes it instead of follows it, but the end moves only on digits and a second separator stops both scans, so every token ends at the same digit. |
 | `rullst-ai/src/ai/guardrails/tax_ids.rs`: `is_valid_tax_id`, the CNPJ `all_digits && token.len() == 14` with `\|\|` | `digit_values` still requires exactly 14 digits, which only a 14-digit token or the CNPJ layout holds. |
 | `rullst-ai/src/ai/evaluation/types.rs`: `AiEvaluationReport::schema_version` with `1` | Its fields are private to the evaluation module, whose only constructor, `build_report`, sets `schema_version: 1`; the report has no `Deserialize`. |
+| `rullst-ai/src/ai/durable_audit.rs`: `decode_file`, the record number `events.len() + 1` of the end-offset `checked_add` error with `-` or `*` | `cursor + relative_end` indexes the bytes already read, so the addition never overflows and the error is never built. |
+| `rullst-ai/src/ai/memory.rs`: `InMemoryChatMemory::append_exchange`, `excess > 0` with `>=` | `drain(..0)` removes nothing, so draining a zero excess leaves the history unchanged. |
 
 Timed-out mutants are not counted as caught, and cargo-mutants reports them
 separately. The campaign rewrote the scanning loops of the WAF detector, the
@@ -384,6 +386,11 @@ every test of the file reaches, so no single test can fail first:
   `mark_fenced` and `span_contents` as `*=`, and `blank_code` with
   `code[group_start] || is_blank(...)` as `&&`, which stops on a blank line.
   The guardrail tests reach these scans, which then never finish.
+- `rullst-ai/src/ai/providers/sse.rs`: `SseDecoder::push` with
+  `boundary + delimiter_bytes` as `-`, and `event_boundary` returning
+  `Some((0, 0))` or `Some((1, 0))`, so the decoder parses the same event
+  again forever in every streaming test (a data event adds one frame per
+  turn, which reaches the address-space limit only after the timeout).
 
 `rullst-security/src/timing_guard.rs`: `TimingScope::finish` with the jitter
 `%` replaced by `+` does not loop: it sleeps for up to 72 minutes in the

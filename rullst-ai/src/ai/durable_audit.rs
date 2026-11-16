@@ -436,3 +436,7 @@ fn io_failure(operation: &'static str, error: &io::Error) -> DurableAuditError {
         kind: error.kind(),
     }
 }
+
+#[cfg(test)]
+#[path = "durable_audit_tests.rs"]
+mod tests;

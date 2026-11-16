@@ -236,3 +236,84 @@ fn histories_fail_closed_on_gaps_partial_exchanges_and_role_inversion() {
     assert_eq!(expired.revision(), 2);
     assert!(expired.entries().is_empty());
 }
+
+#[test]
+fn identifier_entry_and_config_bounds_are_exact() {
+    assert!(ConversationId::try_new("c".repeat(128)).is_ok());
+    assert_eq!(
+        ConversationId::try_new("c".repeat(129)),
+        Err(ChatMemoryError::InvalidConversationId)
+    );
+    let config = ChatMemoryConfig::try_new(4, 7).expect("memory config");
+    assert_eq!(
+        (config.history_messages(), config.memory_conversations()),
+        (4, 7)
+    );
+
+    let entry = ChatMemoryEntry::try_new(1, "user", "hello", 1_700_000_000).expect("entry");
+    assert_eq!(entry.created_at_epoch(), 1_700_000_000);
+    // The epoch itself is a valid creation time; sequence numbers start at 1.
+    assert!(ChatMemoryEntry::try_new(1, "user", "hello", 0).is_ok());
+    for (sequence, created_at) in [(0, 1), (1, -1)] {
+        assert_eq!(
+            ChatMemoryEntry::try_new(sequence, "user", "hello", created_at),
+            Err(ChatMemoryError::CorruptHistory)
+        );
+    }
+}
+
+/// `count` well-ordered entries ending at sequence `revision`.
+fn window(revision: i64, count: i64) -> Vec<ChatMemoryEntry> {
+    (revision - count + 1..=revision)
+        .map(|sequence| {
+            let role = if sequence % 2 == 1 {
+                "user"
+            } else {
+                "assistant"
+            };
+            ChatMemoryEntry::try_new(sequence, role, "bounded", 1).expect("valid entry")
+        })
+        .collect()
+}
+
+#[test]
+fn histories_hold_whole_exchanges_up_to_1024_messages() {
+    let full = ChatHistory::try_new(2_048, window(2_048, 1_024)).expect("1,024 messages");
+    assert_eq!(full.entries().len(), 1_024);
+    assert_eq!(
+        ChatHistory::try_new(2_048, window(2_048, 1_026)),
+        Err(ChatMemoryError::CorruptHistory)
+    );
+    // Half an exchange, or an odd revision, is corrupt even when ordered.
+    assert_eq!(
+        ChatHistory::try_new(2, window(2, 1)),
+        Err(ChatMemoryError::CorruptHistory)
+    );
+    assert_eq!(
+        ChatHistory::try_new(3, Vec::new()),
+        Err(ChatMemoryError::CorruptHistory)
+    );
+}
+
+#[tokio::test]
+async fn in_memory_capacity_admits_known_conversations_and_delete_reports_presence() {
+    let memory = InMemoryChatMemory::new(ChatMemoryConfig::try_new(2, 1).expect("config"));
+    let tenant = TenantContext::try_new("tenant-a").expect("tenant");
+    let first = ConversationId::try_new("first").expect("conversation");
+    let second = ConversationId::try_new("second").expect("conversation");
+    memory
+        .ensure_conversation(&tenant, &first)
+        .await
+        .expect("first conversation");
+    // A full store still reopens a known conversation but refuses a new one.
+    memory
+        .ensure_conversation(&tenant, &first)
+        .await
+        .expect("known conversation");
+    assert_eq!(
+        memory.ensure_conversation(&tenant, &second).await,
+        Err(ChatMemoryError::CapacityReached)
+    );
+    assert_eq!(memory.delete_conversation(&tenant, &first).await, Ok(true));
+    assert_eq!(memory.delete_conversation(&tenant, &first).await, Ok(false));
+}
