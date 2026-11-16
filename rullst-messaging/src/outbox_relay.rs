@@ -246,16 +246,16 @@ mod tests {
     }
 
     fn claim() -> ClaimedOutboxEvent {
-        ClaimedOutboxEvent {
-            id: 7,
-            stream: "tenant-a".to_owned(),
-            event_key: "order-42".to_owned(),
-            event_kind: "order.ready".to_owned(),
-            payload_json: "{\"id\":42}".to_owned(),
-            attempts: 1,
-            claim_key: "claim-0123".to_owned(),
-            claim_expires_at_epoch: 1_800_000_000,
-        }
+        let mut claim = ClaimedOutboxEvent::default();
+        claim.id = 7;
+        claim.stream = "tenant-a".to_owned();
+        claim.event_key = "order-42".to_owned();
+        claim.event_kind = "order.ready".to_owned();
+        claim.payload_json = "{\"id\":42}".to_owned();
+        claim.attempts = 1;
+        claim.claim_key = "claim-0123".to_owned();
+        claim.claim_expires_at_epoch = 1_800_000_000;
+        claim
     }
 
     fn relay() -> OrmOutboxRelay<crate::InMemoryBroker> {

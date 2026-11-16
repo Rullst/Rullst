@@ -23,6 +23,7 @@ use std::future::Future;
 
 /// Errors contain no subject references, storage details or application data.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
 pub enum ConsentError {
     #[error("invalid optional-processing purpose or choice")]
     InvalidConfiguration,
@@ -45,6 +46,7 @@ pub enum ConsentError {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ConsentDurability {
     ProcessLocal,
     SharedDurable,

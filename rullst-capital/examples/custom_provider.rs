@@ -163,14 +163,15 @@ impl BillingProvider for AcmePayProvider {
             "canceled" => SubscriptionStatus::Canceled,
             _ => return Err(CapitalError::PayloadParseError("acmepay status".into())),
         };
-        Ok(WebhookEvent {
-            subscription_id: text("subscription")?,
-            customer_id: text("customer")?,
-            customer_email: text("email")?,
-            plan_id: text("plan")?,
+        let mut event = WebhookEvent::new(
+            text("subscription")?,
+            text("customer")?,
+            text("email")?,
+            text("plan")?,
             status,
-            ends_at: json["data"]["current_period_end"].as_i64(),
-        })
+        );
+        event.ends_at = json["data"]["current_period_end"].as_i64();
+        Ok(event)
     }
 
     async fn create_customer_portal(

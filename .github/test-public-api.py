@@ -94,6 +94,32 @@ class ListingTests(unittest.TestCase):
         self.assertIn("#[non_exhaustive] pub struct demo::Point", lines)
         self.assertIn("pub use demo::prelude::Point = struct demo::Point", lines)
 
+    def test_exhaustive_types_need_a_documented_decision(self) -> None:
+        krate = crate()
+        index = krate["index"]
+        index["0"]["inner"]["module"]["items"] += [20, 22, 23, 24, 26]
+        unit = {"plain": {"fields": [], "has_stripped_fields": False}}
+        index["20"] = item("Mode", {"enum": {"generics": NO_GENERICS, "variants": [21], "impls": [],
+                                             "has_stripped_variants": False}})
+        index["21"] = item("Fast", {"variant": {"kind": "plain", "discriminant": None}})
+        index["22"] = item("Open", {"struct": {"kind": {"plain": {"fields": [2], "has_stripped_fields": False}},
+                                              "generics": NO_GENERICS, "impls": []}})
+        index["23"] = item("Sealed", {"struct": {"kind": {"plain": {"fields": [2], "has_stripped_fields": True}},
+                                                "generics": NO_GENERICS, "impls": []}})
+        index["24"] = item("Wrapper", {"struct": {"kind": {"tuple": [25]}, "generics": NO_GENERICS, "impls": []}})
+        index["25"] = item("0", {"struct_field": {"primitive": "u8"}})
+        index["26"] = item("Marker", {"struct": {"kind": unit, "generics": NO_GENERICS, "impls": []}})
+        listing = MODULE.Listing(krate)
+        listing.render()
+        # Point is #[non_exhaustive]; Sealed has a private field; Marker has none.
+        self.assertEqual(listing.undecided(), ["enum demo::Mode", "struct demo::Open", "struct demo::Wrapper"])
+        index["20"]["docs"] = "Speed.\n\nExhaustive on\npurpose: a closed set."
+        index["22"]["attrs"] = ["non_exhaustive"]
+        index["25"]["visibility"] = "default"
+        listing = MODULE.Listing(krate)
+        listing.render()
+        self.assertEqual(listing.undecided(), [])
+
     def test_another_rustdoc_format_is_refused(self) -> None:
         with self.assertRaises(SystemExit):
             MODULE.Listing(crate(MODULE.FORMAT_VERSION + 1))

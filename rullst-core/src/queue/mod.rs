@@ -101,6 +101,7 @@ pub const MAX_STALLED_LEASES_LIMIT: u32 = 1_000;
 
 /// A job that has been placed on the queue and is ready for processing.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct QueuedJob {
     /// Unique identifier for this job instance.
     pub id: String,
@@ -114,6 +115,7 @@ pub struct QueuedJob {
 
 /// Detailed job information, used for dashboard monitoring
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[non_exhaustive]
 pub struct QueuedJobDetail {
     /// Unique identifier of the queued job.
     pub id: String,
@@ -131,6 +133,57 @@ pub struct QueuedJobDetail {
     pub created_at: String,
     /// Time when the job status was last updated.
     pub updated_at: String,
+}
+
+impl QueuedJob {
+    /// A job as a custom [`QueueDriver`] returns it from `pop`. The struct is
+    /// `#[non_exhaustive]` since 13.0.0-alpha.6, so drivers outside this crate
+    /// build it here.
+    pub fn new(
+        id: impl Into<String>,
+        name: impl Into<String>,
+        payload: Value,
+        attempts: u32,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            name: name.into(),
+            payload,
+            attempts,
+        }
+    }
+}
+
+impl QueuedJobDetail {
+    /// A job as a custom [`QueueDriver`] lists it, without an error; add one
+    /// with [`QueuedJobDetail::with_error`]. The struct is `#[non_exhaustive]`
+    /// since 13.0.0-alpha.6, so drivers outside this crate build it here.
+    pub fn new(
+        id: impl Into<String>,
+        name: impl Into<String>,
+        payload: impl Into<String>,
+        status: impl Into<String>,
+        attempts: i32,
+        created_at: impl Into<String>,
+        updated_at: impl Into<String>,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            name: name.into(),
+            payload: payload.into(),
+            status: status.into(),
+            error: None,
+            attempts,
+            created_at: created_at.into(),
+            updated_at: updated_at.into(),
+        }
+    }
+
+    /// The same job with the error message of its last failed attempt.
+    pub fn with_error(mut self, error: impl Into<String>) -> Self {
+        self.error = Some(error.into());
+        self
+    }
 }
 
 // ─── Queue Driver Trait ─────────────────────────────────────────────────────

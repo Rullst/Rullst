@@ -5,11 +5,10 @@ mod support;
 
 use axum::{body::Body, http::StatusCode};
 use rullst_nexus::{
-    FieldKind, FieldMeta, Nexus, NexusAuditPolicy, NexusModel, NexusState, RegistryEntry,
+    FieldKind, FieldMeta, Nexus, NexusModel, NexusState, RegistryEntry,
     crud::views::{render_record_form, render_table_rows},
 };
 use rullst_orm::{_sqlx as sqlx, _sqlx::Row, Orm, RullstPool};
-use std::sync::Arc;
 use support::{authenticated_test_router, local_request};
 use tower::ServiceExt;
 
@@ -67,20 +66,18 @@ async fn stored_cells_remain_text_including_entity_prefixes() {
     ];
     let mut browser_cases = Vec::new();
     for kind in kinds {
-        let entry = RegistryEntry {
-            table: "nexus_cell_fixture",
-            label: "Cell fixture",
-            icon: "",
-            pk: "id",
-            pk_columns: Vec::new(),
-            tenant_column: None,
-            fields: vec![
+        let entry = RegistryEntry::new(
+            "nexus_cell_fixture",
+            "Cell fixture",
+            "",
+            "id",
+            vec![
                 FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
                 FieldMeta::new("value", "Value", kind.clone()),
                 FieldMeta::new("enabled", "Enabled", FieldKind::Boolean),
                 FieldMeta::new("quantity", "Quantity", FieldKind::Number),
             ],
-        };
+        );
         for (index, (value, expected)) in cases.iter().enumerate() {
             let enabled = index % 2 == 0;
             sqlx::query("DELETE FROM nexus_cell_fixture")
@@ -124,20 +121,18 @@ async fn stored_cells_remain_text_including_entity_prefixes() {
 }
 
 fn fixture_entry(value_kind: FieldKind) -> RegistryEntry {
-    RegistryEntry {
-        table: "nexus_cell_fixture",
-        label: "Cell fixture",
-        icon: "",
-        pk: "id",
-        pk_columns: Vec::new(),
-        tenant_column: None,
-        fields: vec![
+    RegistryEntry::new(
+        "nexus_cell_fixture",
+        "Cell fixture",
+        "",
+        "id",
+        vec![
             FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
             FieldMeta::new("value", "Value", value_kind),
             FieldMeta::new("enabled", "Enabled", FieldKind::Boolean),
             FieldMeta::new("quantity", "Quantity", FieldKind::Number),
         ],
-    }
+    )
 }
 
 /// A Password column shows a fixed mask in the list and an empty input in the
@@ -163,11 +158,7 @@ async fn password_values_are_never_rendered(pool: &RullstPool) {
     assert!(list.contains(&mask));
     assert!(!list.contains(stored));
 
-    let state = NexusState {
-        registry: Arc::new(vec![entry.clone()]),
-        brand: Arc::new("Nexus".to_owned()),
-        audit_policy: NexusAuditPolicy::Disabled,
-    };
+    let state = NexusState::new(vec![entry.clone()], "Nexus");
     let form = render_record_form(&state, &entry, Some("1"), None).await;
     // The quantity proves that the edit form really read the stored row.
     assert!(form.contains("name=\"quantity\" value=\"42\""));

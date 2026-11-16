@@ -33,6 +33,7 @@ pub use validator::Validate;
 /// `validator` derive stores each rejected input as a `value` parameter, so
 /// the raw errors (which can hold a password or other personal data) are
 /// never formatted.
+#[non_exhaustive]
 pub enum ValidationError {
     /// A deserialization error occurred before validation could run (e.g. malformed JSON body).
     ExtractionError {
@@ -263,6 +264,9 @@ impl IntoResponse for ValidationError {
 }
 
 /// Extractor for validating form payloads
+///
+/// Exhaustive on purpose: a newtype extractor that handlers destructure as
+/// `ValidatedForm(form)`; the validated value is all it carries.
 #[derive(Debug)]
 pub struct ValidatedForm<T>(pub T);
 
@@ -294,6 +298,9 @@ where
 }
 
 /// Extractor for validating JSON payloads
+///
+/// Exhaustive on purpose: a newtype extractor that handlers destructure as
+/// `ValidatedJson(body)`; the validated value is all it carries.
 #[derive(Debug)]
 pub struct ValidatedJson<T>(pub T);
 

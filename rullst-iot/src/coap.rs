@@ -12,6 +12,7 @@ const MAX_URI_PATH_SEGMENT_BYTES: usize = 255;
 
 /// CoAP message type accepted by the request helper.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum CoapMessageType {
     /// Requires acknowledgement/retransmission handling by the caller.
     Confirmable,
@@ -30,6 +31,7 @@ impl CoapMessageType {
 
 /// Request methods defined by the base CoAP specification.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum CoapMethod {
     /// Retrieve a resource.
     Get,

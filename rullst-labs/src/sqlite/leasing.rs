@@ -34,6 +34,8 @@ impl LeasedJob {
         &self.input
     }
 }
+/// Exhaustive on purpose: a worker continues only while its lease is `Active`,
+/// and a new status must make every controller decide again whether to stop.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LeaseStatus {
     Active,

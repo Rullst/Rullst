@@ -29,11 +29,11 @@ pub enum ExecutionProfile {
 /// Pin independently verified files; caller-supplied hashes are configuration,
 /// not evidence that a worker actually loaded or enforced those tools.
 ///
-/// The seven slots of the protocol v1 profile. Their names follow the removed
-/// Rust-to-Wasm candidate and are serialized into the store binding, so they
-/// stay as they are: a runner records what fills each slot for its own tools,
-/// and another language gets its own `ExecutionProfile` variant instead of new
-/// fields here.
+/// Exhaustive on purpose: these are the seven slots of the protocol v1
+/// profile. Their names follow the removed Rust-to-Wasm candidate and are
+/// serialized into the store binding, so they stay as they are: a runner
+/// records what fills each slot for its own tools, and another language gets
+/// its own `ExecutionProfile` variant instead of new fields here.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ToolIdentity {

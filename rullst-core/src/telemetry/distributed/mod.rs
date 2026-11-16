@@ -25,6 +25,7 @@ use std::{
 
 /// Secret-minimized telemetry errors; no collector URL, token or error body.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
 pub enum TelemetryError {
     /// An explicit configuration value violates the supported profile.
     #[error("invalid telemetry configuration")]
@@ -51,6 +52,7 @@ pub(super) struct Counters {
 
 /// Process-local cumulative observations, not durable delivery receipts.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct TelemetryStatus {
     /// Approved spans offered to the SDK queue; saturation may still drop them.
     pub forwarded_spans: u64,

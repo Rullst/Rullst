@@ -96,9 +96,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
             Extension(identity), Form(CheckoutForm {{ plan: "price_pro".into() }})
         ).await;
         assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
-        let event = WebhookEvent {{ subscription_id: "sub_fixture".into(), customer_id: "cus_fixture".into(),
-            customer_email: "owner@example.com".into(), plan_id: "price_pro".into(),
-            status: SubscriptionStatus::Active, ends_at: None }};
+        let event = WebhookEvent::new("sub_fixture", "cus_fixture", "owner@example.com", "price_pro",
+            SubscriptionStatus::Active);
         let response = controllers::billing_controller::webhook_handler(Extension(event)).await;
         assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
         let router = Router::new().route("/webhook", rullst::routing::post(|| async {{ StatusCode::IM_A_TEAPOT }}))
@@ -134,14 +133,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     let first = BillingCustomer::find_by_email("first@example.com").await?.ok_or("checkout created no customer")?;
     {customer_stamps}
 
-    let event = WebhookEvent {{
-        subscription_id: "sub_contract".to_string(),
-        customer_id: "cus_owner".to_string(),
-        customer_email: owner.email.clone(),
-        plan_id: "price_pro".to_string(),
-        status: SubscriptionStatus::Active,
-        ends_at: None,
-    }};
+    let event = WebhookEvent::new(
+        "sub_contract",
+        "cus_owner",
+        owner.email.clone(),
+        "price_pro",
+        SubscriptionStatus::Active,
+    );
     let response = controllers::billing_controller::webhook_handler(Extension(event)).await;
     assert_eq!(response.status(), StatusCode::OK);
     let subscription = Subscription::find_by_subscription_id("sub_contract")
@@ -161,24 +159,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         {snapshot}
     }};
     other.save().await?;
-    let unknown_plan = WebhookEvent {{
-        subscription_id: "sub_unknown".to_string(),
-        customer_id: "cus_other".to_string(),
-        customer_email: other.email.clone(),
-        plan_id: "price_unknown".to_string(),
-        status: SubscriptionStatus::Active,
-        ends_at: None,
-    }};
+    let unknown_plan = WebhookEvent::new(
+        "sub_unknown",
+        "cus_other",
+        other.email.clone(),
+        "price_unknown",
+        SubscriptionStatus::Active,
+    );
     let response = controllers::billing_controller::webhook_handler(Extension(unknown_plan)).await;
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
-    let forged_owner = WebhookEvent {{
-        subscription_id: "sub_contract".to_string(),
-        customer_id: "cus_other".to_string(),
-        customer_email: other.email.clone(),
-        plan_id: "price_pro".to_string(),
-        status: SubscriptionStatus::Active,
-        ends_at: None,
-    }};
+    let forged_owner = WebhookEvent::new(
+        "sub_contract",
+        "cus_other",
+        other.email.clone(),
+        "price_pro",
+        SubscriptionStatus::Active,
+    );
     let response = controllers::billing_controller::webhook_handler(Extension(forged_owner)).await;
     assert_eq!(response.status(), StatusCode::FORBIDDEN);
     let other = BillingCustomer::find_by_email("other@example.com")
@@ -197,11 +193,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         }};
         customer.save().await?;
         execute_sql(&format!("CREATE TRIGGER reject_billing_update BEFORE {{operation}} ON {{table}} BEGIN SELECT RAISE(ABORT, 'injected billing failure'); END")).await?;
-        let event = WebhookEvent {{
-            subscription_id: format!("sub_rollback{{index}}"), customer_id: format!("cus_rollback{{index}}"),
-            customer_email: email.clone(), plan_id: "price_pro".into(),
-            status: SubscriptionStatus::Active, ends_at: None,
-        }};
+        let event = WebhookEvent::new(
+            format!("sub_rollback{{index}}"), format!("cus_rollback{{index}}"),
+            email.clone(), "price_pro", SubscriptionStatus::Active,
+        );
         let failed = controllers::billing_controller::webhook_handler(Extension(event.clone())).await;
         assert_eq!(failed.status(), StatusCode::INTERNAL_SERVER_ERROR);
         let unchanged = BillingCustomer::find_by_email(&email).await?.ok_or("customer disappeared")?;

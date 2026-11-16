@@ -12,6 +12,10 @@ use serde::{Deserialize, Serialize};
 /// it was cancelled; that attestation is never graded. Report a lost worker
 /// through `abandon_attempt` and `reconcile_cleanup`, which may retry once:
 /// sent to `complete`, a `WorkerLost` output becomes a terminal `Failed` job.
+///
+/// Exhaustive on purpose: the signed receipt of protocol version 1
+/// (`deny_unknown_fields`); a new field is a new protocol version that every
+/// runner implements.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ExecutionReceipt {
@@ -30,6 +34,8 @@ pub struct ExecutionReceipt {
     /// Distinguishes confirmed empty group/workspace cleanup from uncertain loss.
     pub teardown: Teardown,
 }
+/// Exhaustive on purpose: a teardown is confirmed or it is not, and a
+/// controller must decide again what any other answer means.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Teardown {
     Confirmed,

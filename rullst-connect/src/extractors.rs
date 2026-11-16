@@ -32,7 +32,12 @@ pub use session::{
 ///     format!("Exchange authorization code: {code}").into_response()
 /// }
 /// ```
-#[derive(Deserialize, Clone, PartialEq)]
+///
+/// The struct is `#[non_exhaustive]` since 13.0.0-alpha.6. To build one from
+/// another source, such as a provider's `form_post` callback, start from
+/// `AuthCallback::default()` (every parameter missing) and set the fields.
+#[derive(Deserialize, Clone, Default, PartialEq)]
+#[non_exhaustive]
 pub struct AuthCallback {
     pub code: Option<String>,
     pub state: Option<String>,

@@ -3,6 +3,7 @@ use serde_json::Value;
 
 /// Represents a standardized user profile returned from any OAuth2 provider.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct ConnectUser {
     /// The unique identifier of the user in the provider's system.
     pub id: String,
@@ -52,6 +53,30 @@ pub struct ConnectUser {
     pub expires_in: Option<u64>,
 }
 
+impl ConnectUser {
+    /// A user as a custom [`Provider`](crate::Provider) returns it, with no
+    /// email, avatar, refresh token or expiry and a `null` `raw_data`; set
+    /// those fields on the value. The struct is `#[non_exhaustive]` since
+    /// 13.0.0-alpha.6, so providers outside this crate build it here.
+    pub fn new(
+        id: impl Into<String>,
+        name: impl Into<String>,
+        access_token: impl Into<secrecy::SecretString>,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            name: name.into(),
+            email: None,
+            email_verified: None,
+            avatar_url: None,
+            raw_data: Value::Null,
+            access_token: access_token.into(),
+            refresh_token: None,
+            expires_in: None,
+        }
+    }
+}
+
 mod secret_serde {
     use secrecy::SecretString;
     use serde::{Deserialize, Deserializer};
@@ -96,6 +121,7 @@ pub(crate) fn email_verified_claim(value: &Value) -> Option<bool> {
 /// deliberately excluded. Persist tokens only in a dedicated encrypted secret
 /// store with an application-defined lifecycle.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct UniversalProfile {
     pub id: String,
     pub name: String,
@@ -137,6 +163,7 @@ pub trait IntoDatabaseUser<T> {
 
 /// Represents the response from a device authorization request (RFC 8628).
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[non_exhaustive]
 pub struct DeviceAuthorizationResponse {
     pub device_code: String,
     pub user_code: String,

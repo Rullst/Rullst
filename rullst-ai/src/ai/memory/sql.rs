@@ -17,6 +17,7 @@ mod mysql;
 
 /// SQL dialect used by a [`SqlChatMemory`] pool.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum SqlChatBackend {
     /// PostgreSQL wire protocol and placeholders.
     Postgres,

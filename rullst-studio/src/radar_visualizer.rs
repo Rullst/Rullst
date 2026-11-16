@@ -231,18 +231,15 @@ mod tests {
 
         // Record spans and test HTML output
         let collector = rullst_core::telemetry_spans::global_span_collector();
-        collector.record(rullst_core::telemetry_spans::TraceSpan {
-            name: "db.query".to_string(),
-            kind: "sql".to_string(),
-            duration_us: 200,
-            timestamp: 1700000000,
-        });
-        collector.record(rullst_core::telemetry_spans::TraceSpan {
-            name: "security.waf".to_string(),
-            kind: "security".to_string(),
-            duration_us: 15,
-            timestamp: 1700000000,
-        });
+        collector.record(rullst_core::telemetry_spans::TraceSpan::new(
+            "db.query", "sql", 200, 1700000000,
+        ));
+        collector.record(rullst_core::telemetry_spans::TraceSpan::new(
+            "security.waf",
+            "security",
+            15,
+            1700000000,
+        ));
 
         let html = render_radar_page().await;
         assert!(html.contains("Telemetry & Rullst Radar"));

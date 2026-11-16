@@ -8,6 +8,10 @@ const SIGNING_CONTEXT: &[u8] = b"rullst.age-assurance.v1\0";
 
 /// Predicate result from the selected method. For a facial challenge,
 /// `BelowThreshold` requires an alternative; it does not establish minority.
+///
+/// Exhaustive on purpose: a signed attestation of version 1 carries this
+/// predicate result, and a new result must make every caller decide again what
+/// it permits.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AgeOutcome {

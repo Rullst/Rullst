@@ -6,6 +6,7 @@ use serde::Deserialize;
 
 /// Query parameters for table pagination, filtering, and sorting.
 #[derive(Deserialize)]
+#[non_exhaustive]
 pub struct PaginationParams {
     /// Current page number (1-indexed).
     pub page: Option<u32>,
@@ -18,6 +19,7 @@ pub struct PaginationParams {
 }
 
 /// Form payload for batch actions (e.g. bulk deletion).
+#[non_exhaustive]
 pub struct BatchActionForm {
     /// Action verb (e.g. `delete`).
     pub action: String,

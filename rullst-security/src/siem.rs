@@ -33,6 +33,7 @@ pub use spool::{
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct SiemAlertPayload {
     pub version: String,
     pub event_type: String,
@@ -154,16 +155,12 @@ mod tests {
 
     #[test]
     fn unnormalized_event_types_cannot_forge_cef_header_fields() {
-        let event = LiveSecurityEvent {
-            schema_version: 1,
-            event_type:
-                "LOGIN_OK|LOGIN_OK|0|src=10.0.0.1 msg=ok\nCEF:0|RullstSecurity|Framework|1|X|X|10|"
-                    .to_string(),
-            details: "ok".to_string(),
-            client_ip: "10.0.0.1".to_string(),
-            timestamp_str: "2026-09-30T00:00:00Z".to_string(),
-            verified_hmac: false,
-        };
+        // A deserialized event can carry any text; `local` would normalize it.
+        let mut event = LiveSecurityEvent::local("LOGIN_OK", "ok", "10.0.0.1");
+        event.event_type =
+            "LOGIN_OK|LOGIN_OK|0|src=10.0.0.1 msg=ok\nCEF:0|RullstSecurity|Framework|1|X|X|10|"
+                .to_string();
+        event.timestamp_str = "2026-09-30T00:00:00Z".to_string();
         let cef = format_cef_event(&event);
         assert!(!cef.contains('\n') && !cef.contains('\r'));
         assert_eq!(

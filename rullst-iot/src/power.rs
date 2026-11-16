@@ -2,6 +2,7 @@
 
 /// Power governor operating modes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PowerMode {
     /// Recommendation for full execution.
     FullActive,
@@ -13,6 +14,7 @@ pub enum PowerMode {
 
 /// Solar harvester voltage state.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum HarvesterState {
     Charging,
     Full,
@@ -24,6 +26,7 @@ pub enum HarvesterState {
 ///
 /// It recommends a mode but does not control platform sleep, wake, charging,
 /// or solar-harvesting hardware.
+#[non_exhaustive]
 pub struct PowerGovernor {
     pub mode: PowerMode,
     pub battery_mv: u32,

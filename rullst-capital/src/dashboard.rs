@@ -5,6 +5,7 @@ use std::sync::RwLock;
 
 /// Application-supplied revenue analytics metrics payload.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[non_exhaustive]
 pub struct RevenueMetrics {
     /// Monthly Recurring Revenue in cents.
     pub mrr_cents: u64,
@@ -16,6 +17,27 @@ pub struct RevenueMetrics {
     pub active_subscriptions: u32,
     /// Estimated monthly churn rate percentage.
     pub churn_rate_percent: f64,
+}
+
+impl RevenueMetrics {
+    /// The metrics to pass to [`RevenueDashboardManager::update_metrics`]. The
+    /// struct is `#[non_exhaustive]` since 13.0.0-alpha.6, so code outside this
+    /// crate builds it here.
+    pub fn new(
+        mrr_cents: u64,
+        arr_cents: u64,
+        net_revenue_cents: u64,
+        active_subscriptions: u32,
+        churn_rate_percent: f64,
+    ) -> Self {
+        Self {
+            mrr_cents,
+            arr_cents,
+            net_revenue_cents,
+            active_subscriptions,
+            churn_rate_percent,
+        }
+    }
 }
 
 impl Default for RevenueMetrics {
@@ -33,6 +55,7 @@ impl Default for RevenueMetrics {
 /// Application-supplied record describing the result of a webhook processing
 /// path. Constructing this value does not perform signature verification.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct WebhookEventRecord {
     /// Unique event identifier.
     pub id: String,
@@ -46,6 +69,29 @@ pub struct WebhookEventRecord {
     pub timestamp: u64,
     /// Raw or truncated JSON payload snippet.
     pub payload_snippet: String,
+}
+
+impl WebhookEventRecord {
+    /// A record to pass to [`RevenueDashboardManager::record_event`]. The
+    /// struct is `#[non_exhaustive]` since 13.0.0-alpha.6, so code outside
+    /// this crate builds it here.
+    pub fn new(
+        id: impl Into<String>,
+        provider: impl Into<String>,
+        event_type: impl Into<String>,
+        status: impl Into<String>,
+        timestamp: u64,
+        payload_snippet: impl Into<String>,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            provider: provider.into(),
+            event_type: event_type.into(),
+            status: status.into(),
+            timestamp,
+            payload_snippet: payload_snippet.into(),
+        }
+    }
 }
 
 /// Central manager for Rullst Capital analytics and webhook audit logs.

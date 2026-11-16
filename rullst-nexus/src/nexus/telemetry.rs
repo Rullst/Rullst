@@ -133,12 +133,12 @@ mod tests {
     #[tokio::test]
     async fn telemetry_lists_the_most_recent_spans() {
         for index in 0..20 {
-            global_span_collector().record(TraceSpan {
-                name: format!("nexus-span-order-{index:02}"),
-                kind: "job".to_string(),
-                duration_us: 10,
-                timestamp: 1_700_000_000,
-            });
+            global_span_collector().record(TraceSpan::new(
+                format!("nexus-span-order-{index:02}"),
+                "job",
+                10,
+                1_700_000_000,
+            ));
         }
         let state = Arc::new(NexusState {
             registry: Arc::new(Vec::new()),

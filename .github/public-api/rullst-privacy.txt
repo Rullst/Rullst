@@ -63,7 +63,7 @@ impl core::marker::Sync for rullst_privacy::age_assurance::AgeDeclaration
 impl core::marker::Unpin for rullst_privacy::age_assurance::AgeDeclaration
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_privacy::age_assurance::AgeDeclaration
 impl core::panic::unwind_safe::UnwindSafe for rullst_privacy::age_assurance::AgeDeclaration
-pub enum rullst_privacy::age_assurance::AgeError
+#[non_exhaustive] pub enum rullst_privacy::age_assurance::AgeError
 pub rullst_privacy::age_assurance::AgeError::InvalidConfiguration
 pub rullst_privacy::age_assurance::AgeError::MethodNotAllowed
 pub rullst_privacy::age_assurance::AgeError::InvalidChallenge
@@ -227,7 +227,7 @@ impl !core::panic::unwind_safe::UnwindSafe for rullst_privacy::age_assurance::Po
 impl core::marker::Send for rullst_privacy::age_assurance::PostgresReplayStore
 impl core::marker::Sync for rullst_privacy::age_assurance::PostgresReplayStore
 impl core::marker::Unpin for rullst_privacy::age_assurance::PostgresReplayStore
-pub enum rullst_privacy::age_assurance::ReplayDurability
+#[non_exhaustive] pub enum rullst_privacy::age_assurance::ReplayDurability
 pub rullst_privacy::age_assurance::ReplayDurability::ProcessLocal
 pub rullst_privacy::age_assurance::ReplayDurability::SharedDurable
 impl core::clone::Clone for rullst_privacy::age_assurance::ReplayDurability
@@ -326,7 +326,7 @@ impl core::panic::unwind_safe::RefUnwindSafe for rullst_privacy::consent::Consen
 impl core::panic::unwind_safe::UnwindSafe for rullst_privacy::consent::ConsentChoice
 pub trait rullst_privacy::consent::ConsentClock: core::marker::Send + core::marker::Sync
 pub fn rullst_privacy::consent::ConsentClock::now(&self) -> core::result::Result<i64, rullst_privacy::consent::ConsentError>
-pub enum rullst_privacy::consent::ConsentDurability
+#[non_exhaustive] pub enum rullst_privacy::consent::ConsentDurability
 pub rullst_privacy::consent::ConsentDurability::ProcessLocal
 pub rullst_privacy::consent::ConsentDurability::SharedDurable
 impl core::clone::Clone for rullst_privacy::consent::ConsentDurability
@@ -339,7 +339,7 @@ impl core::marker::Sync for rullst_privacy::consent::ConsentDurability
 impl core::marker::Unpin for rullst_privacy::consent::ConsentDurability
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_privacy::consent::ConsentDurability
 impl core::panic::unwind_safe::UnwindSafe for rullst_privacy::consent::ConsentDurability
-pub enum rullst_privacy::consent::ConsentError
+#[non_exhaustive] pub enum rullst_privacy::consent::ConsentError
 pub rullst_privacy::consent::ConsentError::InvalidConfiguration
 pub rullst_privacy::consent::ConsentError::BindingMismatch
 pub rullst_privacy::consent::ConsentError::RevisionConflict

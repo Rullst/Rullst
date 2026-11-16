@@ -602,11 +602,7 @@ let (code_verifier, code_challenge) = generate_pkce();
 let auth_url = provider.with_pkce(&code_challenge).redirect_url();
 
 // 4. In the callback route, fetch the user using the saved verifier:
-let params = rullst_connect::provider::ExchangeParams {
-    auth_code: &code,
-    code_verifier: Some(&code_verifier),
-    ..Default::default()
-};
+let params = rullst_connect::provider::ExchangeParams::new(&code).with_code_verifier(&code_verifier);
 let user = provider.get_user(params).await?;
 ```
 

@@ -9,6 +9,7 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 /// Explicit upstream trust policy. Trace context never authenticates a caller.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ParentPolicy {
     /// Discards all incoming context, including attacker-supplied sampling flags.
     StartNew,

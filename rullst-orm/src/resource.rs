@@ -4,6 +4,7 @@ pub trait ApiResource {
     fn to_array(&self) -> Value;
 }
 
+#[non_exhaustive]
 pub struct JsonResource<'a, T: ApiResource> {
     pub data: &'a T,
 }
@@ -18,6 +19,7 @@ impl<'a, T: ApiResource> JsonResource<'a, T> {
     }
 }
 
+#[non_exhaustive]
 pub struct ResourceCollection<'a, T: ApiResource> {
     pub data: &'a [T],
 }

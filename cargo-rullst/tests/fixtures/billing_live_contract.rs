@@ -64,11 +64,12 @@ impl Gateway for Fake {
         if self.0.pause_read.swap(false, Ordering::SeqCst) {
             self.0.entered.notify_one(); self.0.resume.notified().await;
         }
-        Ok(Subscription { event: rullst::capital::WebhookEvent {
-            subscription_id: request.subscription_id().into(), customer_id: request.customer_id().into(), customer_email: String::new(),
-            plan_id: request.price_id().into(), status: if canceled { rullst::capital::SubscriptionStatus::Canceled } else { rullst::capital::SubscriptionStatus::Active },
-            ends_at: Some(1900000000),
-        }, status: if canceled { "canceled" } else { "active" }.into() })
+        let status = if canceled { rullst::capital::SubscriptionStatus::Canceled } else { rullst::capital::SubscriptionStatus::Active };
+        let event = rullst::capital::WebhookEvent::new(
+            request.subscription_id(), request.customer_id(), String::new(), request.price_id(), status,
+        )
+        .with_ends_at(1900000000);
+        Ok(Subscription { event, status: if canceled { "canceled" } else { "active" }.into() })
     }
 }
 fn config() -> BillingConfig {

@@ -1,6 +1,7 @@
 use crate::value::BindRullstValue;
 use crate::{Error, RullstValue};
 
+#[non_exhaustive]
 pub struct RawQueryBuilder {
     pub sql: String,
     pub bindings: Vec<RullstValue>,

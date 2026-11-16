@@ -39,19 +39,22 @@ fn claims(jti: String, subject: String) -> ApplicationJwtClaims {
         .duration_since(UNIX_EPOCH)
         .expect("system clock should follow epoch")
         .as_secs();
-    ApplicationJwtClaims {
-        sub: subject,
-        iss: "https://auth.example.test".to_string(),
-        aud: "rullst-academy".to_string(),
-        iat: now,
-        nbf: now,
-        exp: now + 3_600,
-        jti,
-        session_version: 1,
-        scopes: Vec::new(),
-        token_use: "access".to_string(),
-        schema_version: 1,
-    }
+    // Only `ApplicationJwtPolicy` issues claims, and the struct is
+    // `#[non_exhaustive]`: a test reads them from their JSON form.
+    serde_json::from_value(serde_json::json!({
+        "sub": subject,
+        "iss": "https://auth.example.test",
+        "aud": "rullst-academy",
+        "iat": now,
+        "nbf": now,
+        "exp": now + 3_600,
+        "jti": jti,
+        "session_version": 1,
+        "scopes": [],
+        "token_use": "access",
+        "schema_version": 1,
+    }))
+    .expect("test claims")
 }
 
 fn remove_database(path: &Path) {

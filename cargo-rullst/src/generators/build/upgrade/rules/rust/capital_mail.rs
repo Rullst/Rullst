@@ -1,6 +1,7 @@
 //! 13.0.0-alpha.5 Capital and Mail struct literals: Capital's invoices moved
 //! from `f64` amounts to integer minor units behind constructors, and Mail's
-//! `Message` gained a `reply_to` field.
+//! `Message` gained a `reply_to` field. The `vec![...]` finder also reports
+//! the 13.0.0-alpha.6 literals of [`super::non_exhaustive`].
 
 use super::super::Rule;
 use super::super::catalog::{CAPITAL_INVOICE_MINOR_UNITS, MAIL_MESSAGE_REPLY_TO};
@@ -96,6 +97,8 @@ impl Finder<'_> {
 impl<'ast> Visit<'ast> for Finder<'_> {
     fn visit_expr_struct(&mut self, expr: &'ast syn::ExprStruct) {
         self.found.extend(legacy_literal(expr, self.text));
+        self.found
+            .extend(super::non_exhaustive::literal(expr, self.text));
         visit::visit_expr_struct(self, expr);
     }
 

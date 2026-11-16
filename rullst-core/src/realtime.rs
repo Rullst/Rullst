@@ -28,6 +28,7 @@ const MAX_CHANNEL_CAPACITY: usize = 65_536;
 
 /// Payload model for realtime broadcast events.
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct RealtimeMessage {
     /// Target channel name.
     pub channel: String,
@@ -46,6 +47,7 @@ pub struct Channel {
 
 /// Strongly-typed error domain for Rullst Realtime and Broadcast operations.
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RealtimeError {
     /// Broadcast transmission failed.
     #[error("Broadcast send error: {0}")]

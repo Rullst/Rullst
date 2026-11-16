@@ -10,6 +10,7 @@ const MAX_PAYLOAD_LEN: usize = 5 * 1024 * 1024;
 
 /// One persisted mutation record.
 #[derive(Clone, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct AuditLog {
     pub id: i32,
     pub model_type: String,

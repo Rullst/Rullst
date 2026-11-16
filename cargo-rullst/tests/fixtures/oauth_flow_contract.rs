@@ -141,17 +141,10 @@ async fn users() -> i64 {
 }
 
 fn profile(subject: &str, email: &str, verified: Option<bool>) -> ConnectUser {
-    ConnectUser {
-        id: subject.to_owned(),
-        name: "Test Person".to_owned(),
-        email: Some(email.to_owned()),
-        email_verified: verified,
-        avatar_url: None,
-        raw_data: serde_json::Value::Null,
-        access_token: rullst::connect::prelude::SecretString::from(String::new()),
-        refresh_token: None,
-        expires_in: None,
-    }
+    let mut user = ConnectUser::new(subject, "Test Person", String::new());
+    user.email = Some(email.to_owned());
+    user.email_verified = verified;
+    user
 }
 
 #[tokio::test]

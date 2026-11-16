@@ -29,6 +29,7 @@ const DEFAULT_HONEYPOT_BAN_TTL: Duration = Duration::from_secs(15 * 60);
 
 /// An active honeypot ban shown on the security dashboards.
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct BannedIpRecord {
     /// Canonical IP address of the banned peer.
     pub ip: String,

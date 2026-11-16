@@ -195,13 +195,13 @@ pub fn generate_execution_methods(
             }
             let data = data_builder.get().await?;
 
-            Ok(rullst_orm::PaginationResult {
+            Ok(rullst_orm::PaginationResult::new(
                 data,
                 total,
                 per_page,
                 current_page,
                 last_page,
-            })
+            ))
         },
     );
     let count_traced = instrument_query(

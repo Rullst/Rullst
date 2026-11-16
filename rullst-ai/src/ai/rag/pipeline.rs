@@ -126,7 +126,17 @@ impl RagAnswer {
 /// Typed failure returned by an application retriever.
 #[derive(Debug, Clone, thiserror::Error, PartialEq, Eq)]
 #[error("RAG retrieval failed: {0}")]
+#[non_exhaustive]
 pub struct RagRetrievalError(pub String);
+
+impl RagRetrievalError {
+    /// The error a retriever returns, with a message that names no document
+    /// content. The struct is `#[non_exhaustive]` since 13.0.0-alpha.6, so
+    /// retrievers outside this crate build it here.
+    pub fn new(message: impl Into<String>) -> Self {
+        Self(message.into())
+    }
+}
 
 /// Tenant-aware vector/document retrieval boundary.
 ///

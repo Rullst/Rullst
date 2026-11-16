@@ -77,6 +77,7 @@ pub enum FieldKind {
 
 /// Describes a single field/column in a model's schema for the Nexus Panel.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct FieldMeta {
     /// Database/struct column name (e.g. "created_at").
     pub name: &'static str,
@@ -155,6 +156,7 @@ pub trait NexusModel: Send + Sync + 'static {
 
 /// Internal representation of a registered model used by the Nexus Panel engine.
 #[derive(Clone)]
+#[non_exhaustive]
 pub struct RegistryEntry {
     pub table: &'static str,
     pub label: &'static str,
@@ -169,6 +171,29 @@ pub struct RegistryEntry {
 }
 
 impl RegistryEntry {
+    /// An entry with a single-column key and no tenant column; set
+    /// `pk_columns` and `tenant_column` on the value for others.
+    /// [`Nexus::register`](crate::nexus::Nexus::register) builds the entries
+    /// of a panel; this constructor is for the render helpers and their
+    /// tests. The struct is `#[non_exhaustive]` since 13.0.0-alpha.6.
+    pub fn new(
+        table: &'static str,
+        label: &'static str,
+        icon: &'static str,
+        pk: &'static str,
+        fields: Vec<FieldMeta>,
+    ) -> Self {
+        Self {
+            table,
+            label,
+            icon,
+            pk,
+            pk_columns: Vec::new(),
+            tenant_column: None,
+            fields,
+        }
+    }
+
     /// The primary-key columns in key order: `pk_columns`, or `pk` alone when
     /// that list is empty.
     pub fn key_columns(&self) -> &[&'static str] {
@@ -199,8 +224,24 @@ pub enum NexusAuditPolicy {
 
 /// Shared state passed into all Nexus route handlers.
 #[derive(Clone)]
+#[non_exhaustive]
 pub struct NexusState {
     pub registry: Arc<Vec<RegistryEntry>>,
     pub brand: Arc<String>,
     pub audit_policy: NexusAuditPolicy,
+}
+
+impl NexusState {
+    /// The state of a panel without mutation audit records; set
+    /// `audit_policy` on the value for another policy. The Nexus builder
+    /// creates the state of a mounted panel; this constructor is for the
+    /// render helpers and their tests. The struct is `#[non_exhaustive]`
+    /// since 13.0.0-alpha.6.
+    pub fn new(registry: Vec<RegistryEntry>, brand: impl Into<String>) -> Self {
+        Self {
+            registry: Arc::new(registry),
+            brand: Arc::new(brand.into()),
+            audit_policy: NexusAuditPolicy::Disabled,
+        }
+    }
 }

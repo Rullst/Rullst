@@ -43,54 +43,30 @@ impl NexusModel for Enrollment {
     }
     fn nexus_fields() -> Vec<FieldMeta> {
         vec![
-            FieldMeta {
-                name: "id",
-                label: "ID",
-                kind: FieldKind::Number,
-                hidden: true,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "user_id",
-                label: "Learner",
-                kind: FieldKind::ForeignKey {
+            FieldMeta::new("id", "ID", FieldKind::Number)
+                .hidden()
+                .readonly(),
+            FieldMeta::new(
+                "user_id",
+                "Learner",
+                FieldKind::ForeignKey {
                     table: "users",
                     label_col: "email",
                 },
-                hidden: false,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "course_id",
-                label: "Course",
-                kind: FieldKind::ForeignKey {
+            )
+            .readonly(),
+            FieldMeta::new(
+                "course_id",
+                "Course",
+                FieldKind::ForeignKey {
                     table: "courses",
                     label_col: "title",
                 },
-                hidden: false,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "status",
-                label: "Status",
-                kind: FieldKind::Text,
-                hidden: false,
-                readonly: false,
-            },
-            FieldMeta {
-                name: "created_at",
-                label: "Created At",
-                kind: FieldKind::DateTimeUtc,
-                hidden: false,
-                readonly: true,
-            },
-            FieldMeta {
-                name: "updated_at",
-                label: "Updated At",
-                kind: FieldKind::DateTimeUtc,
-                hidden: false,
-                readonly: true,
-            },
+            )
+            .readonly(),
+            FieldMeta::new("status", "Status", FieldKind::Text),
+            FieldMeta::new("created_at", "Created At", FieldKind::DateTimeUtc).readonly(),
+            FieldMeta::new("updated_at", "Updated At", FieldKind::DateTimeUtc).readonly(),
         ]
     }
 }

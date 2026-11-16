@@ -58,10 +58,7 @@ async fn callback(auth: AuthCallback) -> impl IntoResponse {
                 return Html(format!("<h1>Invalid provider: {}</h1>", safe_error));
             }
         };
-        let params = rullst_connect::provider::ExchangeParams {
-            auth_code: &code,
-            ..Default::default()
-        };
+        let params = rullst_connect::provider::ExchangeParams::new(&code);
         match provider.get_user(params).await {
             Ok(user) => {
                 let safe_name = html_escape(&user.name);

@@ -4,6 +4,9 @@ use super::{
 };
 
 /// The assertion's method, not a certification of the provider or application.
+///
+/// Exhaustive on purpose: callers decide whether an assurance is strong enough
+/// for their purpose, and a new kind must not be accepted by a catch-all arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Assurance {
     Declared,
@@ -14,6 +17,9 @@ pub enum Assurance {
 
 /// Only `Allowed` permits the particular age-gated action. All other decisions
 /// need denial or an appropriate alternative; they are not permission to bypass.
+///
+/// Exhaustive on purpose: only `Allowed` permits the action, and a new decision
+/// must make every caller decide again instead of falling into a catch-all arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AgeDecision {
     Allowed,

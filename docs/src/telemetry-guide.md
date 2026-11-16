@@ -72,12 +72,12 @@ let timestamp = SystemTime::now()
     .map(|duration| duration.as_secs())
     .unwrap_or_default();
 
-global_span_collector().record(TraceSpan {
-    name: "catalog.refresh".to_string(),
-    kind: "job".to_string(),
-    duration_us: u64::try_from(started.elapsed().as_micros()).unwrap_or(u64::MAX),
+global_span_collector().record(TraceSpan::new(
+    "catalog.refresh",
+    "job",
+    u64::try_from(started.elapsed().as_micros()).unwrap_or(u64::MAX),
     timestamp,
-});
+));
 ```
 
 Studio's `/studio/traces` and `/studio/radar` pages display the records that are

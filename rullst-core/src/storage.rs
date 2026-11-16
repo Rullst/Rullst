@@ -17,6 +17,7 @@ mod public_url;
 
 /// Strongly-typed error domain for Rullst Storage operations.
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum StorageError {
     /// File or directory I/O failure.
     #[error("Storage I/O error: {0}")]

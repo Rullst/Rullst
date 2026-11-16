@@ -406,12 +406,11 @@ fn expand_nexus(input: &DeriveInput) -> syn::Result<TokenStream2> {
         let hidden = hidden || tenant_column.as_deref() == Some(field_name.as_str());
 
         field_metas.push(quote! {
-            ::rullst::nexus::FieldMeta {
-                name: #field_name,
-                label: #label,
-                kind: #kind,
-                hidden: #hidden,
-                readonly: #readonly,
+            {
+                let mut field = ::rullst::nexus::FieldMeta::new(#field_name, #label, #kind,);
+                field.hidden = #hidden;
+                field.readonly = #readonly;
+                field
             }
         });
     }

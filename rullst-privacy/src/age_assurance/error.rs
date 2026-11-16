@@ -1,5 +1,6 @@
 /// Errors intentionally exclude provider payloads and subject identifiers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
 pub enum AgeError {
     #[error("invalid age-assurance configuration")]
     InvalidConfiguration,

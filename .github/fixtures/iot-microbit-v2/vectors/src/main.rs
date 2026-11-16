@@ -161,6 +161,8 @@ fn main() {
             AnomalyState::Normal => 0,
             AnomalyState::Warning => 1,
             AnomalyState::CriticalAnomaly => 2,
+            // `AnomalyState` is `#[non_exhaustive]`; a later state reads as unknown.
+            _ => u8::MAX,
         })
         .collect();
     bytes(&mut out, "ANOMALY_STATES", &states);

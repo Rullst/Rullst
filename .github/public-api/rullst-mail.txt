@@ -62,7 +62,7 @@ impl core::marker::Sync for rullst_mail::ActionLink
 impl core::marker::Unpin for rullst_mail::ActionLink
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_mail::ActionLink
 impl core::panic::unwind_safe::UnwindSafe for rullst_mail::ActionLink
-pub struct rullst_mail::Attachment
+#[non_exhaustive] pub struct rullst_mail::Attachment
 pub rullst_mail::Attachment::filename: alloc::string::String
 pub rullst_mail::Attachment::content: alloc::vec::Vec<u8>
 pub rullst_mail::Attachment::mime_type: alloc::string::String
@@ -141,7 +141,7 @@ impl core::marker::Sync for rullst_mail::BoundedMailObserver
 impl core::marker::Unpin for rullst_mail::BoundedMailObserver
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_mail::BoundedMailObserver
 impl core::panic::unwind_safe::UnwindSafe for rullst_mail::BoundedMailObserver
-pub struct rullst_mail::ClickEvent
+#[non_exhaustive] pub struct rullst_mail::ClickEvent
 pub rullst_mail::ClickEvent::email: alloc::string::String
 pub rullst_mail::ClickEvent::target_url: alloc::string::String
 pub rullst_mail::ClickEvent::timestamp: u64
@@ -285,7 +285,7 @@ impl core::marker::Sync for rullst_mail::Mail
 impl core::marker::Unpin for rullst_mail::Mail
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_mail::Mail
 impl core::panic::unwind_safe::UnwindSafe for rullst_mail::Mail
-pub struct rullst_mail::MailAssertion
+#[non_exhaustive] pub struct rullst_mail::MailAssertion
 pub rullst_mail::MailAssertion::message: rullst_mail::Message
 impl rullst_mail::MailAssertion
 pub fn rullst_mail::MailAssertion::with_attachment_count(self, expected_count: usize) -> Self
@@ -527,7 +527,7 @@ impl core::marker::Sync for rullst_mail::MemoryDriver
 impl core::marker::Unpin for rullst_mail::MemoryDriver
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_mail::MemoryDriver
 impl core::panic::unwind_safe::UnwindSafe for rullst_mail::MemoryDriver
-pub struct rullst_mail::Message
+#[non_exhaustive] pub struct rullst_mail::Message
 pub rullst_mail::Message::to: alloc::string::String
 pub rullst_mail::Message::subject: alloc::string::String
 pub rullst_mail::Message::body_html: core::option::Option<alloc::string::String>
@@ -621,7 +621,7 @@ impl core::marker::Sync for rullst_mail::OpaqueAttachmentPolicy
 impl core::marker::Unpin for rullst_mail::OpaqueAttachmentPolicy
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_mail::OpaqueAttachmentPolicy
 impl core::panic::unwind_safe::UnwindSafe for rullst_mail::OpaqueAttachmentPolicy
-pub struct rullst_mail::OpenEvent
+#[non_exhaustive] pub struct rullst_mail::OpenEvent
 pub rullst_mail::OpenEvent::email: alloc::string::String
 pub rullst_mail::OpenEvent::campaign_id: alloc::string::String
 pub rullst_mail::OpenEvent::timestamp: u64
@@ -692,7 +692,7 @@ impl core::marker::Sync for rullst_mail::PreparedMessage
 impl core::marker::Unpin for rullst_mail::PreparedMessage
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_mail::PreparedMessage
 impl core::panic::unwind_safe::UnwindSafe for rullst_mail::PreparedMessage
-pub struct rullst_mail::ResendDriver
+#[non_exhaustive] pub struct rullst_mail::ResendDriver
 pub rullst_mail::ResendDriver::api_key: alloc::string::String
 impl rullst_mail::ResendDriver
 pub fn rullst_mail::ResendDriver::delivery_mode(&self) -> rullst_mail::DeliveryMode
@@ -722,7 +722,7 @@ impl core::marker::Sync for rullst_mail::SendPulseDriver
 impl core::marker::Unpin for rullst_mail::SendPulseDriver
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_mail::SendPulseDriver
 impl core::panic::unwind_safe::UnwindSafe for rullst_mail::SendPulseDriver
-pub struct rullst_mail::SmtpDriver
+#[non_exhaustive] pub struct rullst_mail::SmtpDriver
 pub rullst_mail::SmtpDriver::host: alloc::string::String
 pub rullst_mail::SmtpDriver::port: u16
 pub rullst_mail::SmtpDriver::username: core::option::Option<alloc::string::String>

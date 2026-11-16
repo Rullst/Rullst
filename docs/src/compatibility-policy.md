@@ -72,6 +72,17 @@ The public API of each library crate, as docs.rs documents it, is recorded in
 [`.github/public-api/`](../../.github/public-api/); a pull request that changes
 it updates that listing, so the change is visible in review.
 
+Since 13.0.0-alpha.6 every public enum, and every public struct whose fields
+are all public, is either `#[non_exhaustive]`, so that a minor release can add
+a variant or a field, or documented as "Exhaustive on purpose" with the
+reason: an authorization or decision enum whose next variant must break
+callers until they handle it, a closed set, a versioned wire format or a
+newtype. Adding a variant or a field to an exhaustive type is a major change.
+The listing script fails on a listed type that is neither. Unit structs (such
+as `CspSecurityLayer` or `HtmlSanitizer`) stay outside this rule, because
+their unit expression is how applications build them: adding a field to a
+public unit struct is a v14 change.
+
 The `cargo-rullst` package is the exception. Its library is the CLI's
 implementation, shared by its binaries and tests, and is not a public API: the
 stable contract is the CLI's commands, flags, exit codes and versioned `--json`
