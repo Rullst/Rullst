@@ -154,7 +154,7 @@ fn visit_reported(
         match kind {
             validator::ValidationErrorsKind::Field(field_errors) => {
                 for field_error in field_errors {
-                    visit(&path, &*field_error.code, field_error.message.as_deref());
+                    visit(&path, &field_error.code, field_error.message.as_deref());
                 }
             }
             validator::ValidationErrorsKind::Struct(inner) => {
