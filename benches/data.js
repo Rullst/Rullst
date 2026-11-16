@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794857123131,
+  "lastUpdate": 1794859686561,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -36259,6 +36259,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1420,
             "range": "± 20",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "73395c4d0799ba2975a006d13b6528b78d454468",
+          "message": "Merge pull request #749 from Rullst/test/v13-mutants-ai-iot\n\ntest(ai): close 13.0 mutation campaign gaps",
+          "timestamp": "2026-11-16T17:04:25-03:00",
+          "tree_id": "bc106fc5f3f290878ab77f590b9308dd05cc155a",
+          "url": "https://github.com/Rullst/Rullst/commit/73395c4d0799ba2975a006d13b6528b78d454468"
+        },
+        "date": 1794859682019,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 421,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 600,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 272,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1014,
+            "range": "± 46",
             "unit": "ns/iter"
           }
         ]
