@@ -1149,12 +1149,16 @@ jobs:
     # and critical fail), then the tests `cargo rullst add browser-tests`
     # generates for each starter. A fixture application then gets every
     # `cargo rullst ui add` component and Tailwind and is driven the same way,
-    # in both colour schemes, with the components' keyboard paths. Full manual
-    # runs, the nightly run and the `starter-browsers` diagnostic always run
-    # it; ready pull requests only when the starter templates, the components,
-    # the frontend tools, html!, Core's pages, assets, headers or CSRF, or
-    # these checks change (a first step decides). Branch pushes skip it, so their job
-    # inventory is unchanged. It is not a required release job.
+    # in both colour schemes, with the components' keyboard paths. Last, a
+    # Blank starter with `make:scalar` runs in production and Chromium opens
+    # its /docs page: no CSP violation or console error, and the operation of
+    # its OpenAPI document visible (the policy's style hashes are Scalar
+    # 1.67.0's). Full manual runs, the nightly run and the `starter-browsers`
+    # diagnostic always run it; ready pull requests only when the starter
+    # templates, the components, the frontend tools, html!, Core's pages,
+    # assets, headers, CSRF or Scalar page, or these checks change (a first
+    # step decides). Branch pushes skip it, so their job inventory is
+    # unchanged. It is not a required release job.
     needs: scope
     if: >-
       !cancelled() && github.event_name != 'push' &&
@@ -1182,11 +1186,11 @@ jobs:
             exit 0
           fi
           changed="$(git diff --name-only HEAD^1 HEAD)"
-          if grep -Eq '^(cargo-rullst/src/(blueprints/|generators/(project/|auth/|billing|browser_tests/|components/|add/frontend/|frontend/))|rullst-macros/src/|rullst-core/src/(security/|server/|config/|assets|html[a-z_]*\.rs|htmx\.rs|config\.rs)|\.github/(check-starter-browsers\.py|check-ui-components\.py|fixtures/ui-gallery/|starter-browsers/|dast-generated-app\.py|first_hour_(process|checks)\.py))' <<< "$changed"; then
+          if grep -Eq '^(cargo-rullst/src/(blueprints/|generators/(project/|auth/|billing|browser_tests/|components/|add/frontend/|frontend/|scalar\.rs))|rullst-macros/src/|rullst-core/src/(security/|server/|config/|assets|html[a-z_]*\.rs|htmx\.rs|config\.rs|scalar\.rs)|\.github/(check-starter-browsers\.py|check-ui-components\.py|check-scalar-docs-browser\.py|fixtures/ui-gallery/|starter-browsers/|dast-generated-app\.py|first_hour_(process|checks)\.py))' <<< "$changed"; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "No starter template, html!, Core page/header/CSRF or check change; the nightly and release runs cover this job."
+            echo "No starter template, html!, Core page/header/CSRF/Scalar or check change; the nightly and release runs cover this job."
           fi
 
       - name: Set up content-addressed compiler cache
@@ -1240,6 +1244,15 @@ jobs:
             --cli target/debug/cargo-rullst \
             --work "$RUNNER_TEMP/ui-components" \
             --out "$RUNNER_TEMP/starter-browser-artifacts/ui-components"
+
+      - name: Open the Scalar /docs page in Chromium under the production CSP
+        if: >-
+          !cancelled() && steps.selection.outputs.run == 'true'
+        run: |
+          python3 .github/check-scalar-docs-browser.py \
+            --cli target/debug/cargo-rullst \
+            --work "$RUNNER_TEMP/scalar-docs" \
+            --out "$RUNNER_TEMP/starter-browser-artifacts/scalar-docs"
 
       - name: Keep traces, screenshots and server logs of a failure
         if: failure() && steps.selection.outputs.run == 'true'

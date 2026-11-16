@@ -367,7 +367,10 @@ with rootless Podman (`podman compose` with podman-compose):
   compressed with Zstandard and with gzip whose CSRF token is masked
   differently in two responses, the htmx client served from the image's
   `.br` and `.zst`
-  files (Blank: its content-hashed name stays `immutable`), that only
+  files (Blank: its content-hashed name stays `immutable`), Server-Sent
+  Events that arrive one by one through `encode zstd gzip` with each
+  `Accept-Encoding` (Blank, from a `RealtimeSse` route the check adds to
+  the project; the starters serve no event stream), that only
   Caddy publishes ports, Caddy's fixed address, and in both containers a
   read-only root filesystem, no capabilities except Caddy's
   `NET_BIND_SERVICE`, and `no-new-privileges`;

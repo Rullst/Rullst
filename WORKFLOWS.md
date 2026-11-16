@@ -121,7 +121,10 @@ generated `Dockerfile`, `compose.yaml` and `Caddyfile`, unmodified) and check
 port, the read-only root filesystem, capabilities and `no-new-privileges`,
 Caddy's trusted-proxy address, a page compressed by Caddy (zstd and gzip)
 whose CSRF token is masked differently in every response, the htmx client
-served from the image's `.br`/`.zst` siblings, `db:migrate`, a database-backed page (SaaS:
+served from the image's `.br`/`.zst` siblings, Server-Sent Events that reach
+the client one by one through the Caddyfile's `encode zstd gzip` with each
+`Accept-Encoding` (Blank, from a route the check adds, since the starters
+serve no event stream), `db:migrate`, a database-backed page (SaaS:
 sign-up and sign-in with a Secure cookie), SQLite persistence across a
 restart, the guide's backup command and the absence of panics. Podman runs
 rootless with the unprivileged-port setting the guide documents. Full manual
@@ -188,6 +191,17 @@ generators, `rullst-macros/src/`, Core's security, server, config, `html` or
 starter (no HTML) is covered by the ZAP baseline instead. This is automated
 evidence for the pages exercised, not WCAG conformance or screen-reader
 testing.
+The same job then runs `.github/check-scalar-docs-browser.py`: a Blank
+starter gets `cargo rullst make:scalar`, its controller on the router and an
+`openapi.json` with one operation, and starts with `RULLST_ENV=production`;
+`.github/starter-browsers/scalar-docs.mjs` opens `/docs` in the pinned
+Playwright's Chromium, which loads the pinned Scalar file from jsDelivr.
+Blocking: a `securitypolicyviolation` event, a console error, an uncaught
+page error or a failed same-origin response, or the operation not visible.
+The page's policy admits Scalar's inserted style elements by hash, measured
+with Scalar 1.67.0, so a Scalar upgrade whose styles differ fails here until
+`rullst-core/src/scalar.rs` is updated. Pull requests that change that file or
+`make:scalar` also run the job.
 
 `Starter footprint budgets` runs `.github/check-starter-footprint.py`: with
 the CLI built from the checkout, it generates the Blank, SaaS and API starters
