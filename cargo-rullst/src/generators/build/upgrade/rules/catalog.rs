@@ -277,8 +277,8 @@ rules! {
         "`robots.txt`/`sitemap.xml` advertise relative URLs that crawlers reject",
         "Copy `public_origin`, `path_segment`, `robots_txt` and `sitemap_xml` from a new Blog project and set `RULLST_PUBLIC_ORIGIN`.";
     CREDENTIAL_RATE_LIMIT: "V13-CREDENTIAL-RATE-LIMIT", Review, "13.0.0-alpha.1", "Generated login and registration",
-        "password hashing in this request code runs outside `run_password_work` or another bounded Argon2 permit, and this file applies no `credential_rate_limit`",
-        "Copy the bounded hashing (`run_password_work`) and `credential_rate_limit` changes and apply them to `POST /login` and `/register`.";
+        "password hashing in this request code runs outside `run_password_work` or another bounded Argon2 permit, and this file applies no `credential_rate_limit`; when the limit lives in another module that this rule does not follow, put `// rullst-upgrade: reviewed V13-CREDENTIAL-RATE-LIMIT: <reason>` on the line above the call",
+        "Copy the bounded hashing (`run_password_work`) and `credential_rate_limit` changes and apply them to `POST /login` and `/register`. A call of the application's own `hash_password` already counts as bounded when the package defines it with its hashing under `run_password_work` or a semaphore permit.";
     PASSWORD_HASH_HIDDEN: "V13-PASSWORD-HASH-HIDDEN", Review, "13.0.0-alpha.1", "SaaS user JSON",
         "`password_hash` is not `#[orm(hidden)]`, so `to_json()`, audit rows and model events carry the hash",
         "Add `#[orm(hidden)]` to the field.";

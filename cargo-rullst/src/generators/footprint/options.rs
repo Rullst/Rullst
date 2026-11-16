@@ -51,7 +51,7 @@ pub(crate) fn command() -> Command {
                 .value_parser(|value: &str| {
                     super::target::validate_url(value).map_err(|error| error.to_string())
                 })
-                .help("Measure an app already running on loopback (http://127.0.0.1:PORT); otherwise build and start the project's release binary"),
+                .help("Measure an app already running on loopback (http://127.0.0.1:PORT), or weigh a published site's page (https://…, with --page-weight only); otherwise build and start the project's release binary"),
         )
         .arg(
             Arg::new("env")
@@ -167,7 +167,31 @@ pub(crate) fn command() -> Command {
         )
 }
 
+/// The refusals of a published site's `https://` URL, which is weighed only.
+const REMOTE_BENCH: &str = "--bench loads the app and reads its CPU time, so it needs an app on this machine (--url http://127.0.0.1:PORT, or no --url), not a published https:// site";
+const REMOTE_IMAGE: &str =
+    "--image measures a local container image, not a published https:// site; run it without --url";
+const REMOTE_PAGE_WEIGHT: &str =
+    "footprint only weighs the page of a published https:// site: add --page-weight";
+
 impl Options {
+    /// Why these options cannot run against a published `https://` site, if
+    /// they cannot: footprint weighs its page and measures nothing else.
+    pub(super) fn remote_conflict(&self) -> Option<&'static str> {
+        if !self.url.as_ref().is_some_and(super::target::is_remote) {
+            return None;
+        }
+        if self.bench {
+            Some(REMOTE_BENCH)
+        } else if self.image.is_some() {
+            Some(REMOTE_IMAGE)
+        } else if !self.page_weight {
+            Some(REMOTE_PAGE_WEIGHT)
+        } else {
+            None
+        }
+    }
+
     pub(super) fn from_matches(matches: &ArgMatches) -> Self {
         fn get<T: Clone + Send + Sync + 'static>(matches: &ArgMatches, id: &str) -> Option<T> {
             matches.try_get_one::<T>(id).ok().flatten().cloned()
@@ -363,6 +387,39 @@ mod tests {
         assert!(full.json);
         assert!(parse(&["--page-weight"]).unwrap().page_weight);
         assert_eq!(parse(&["--env", "staging"]).unwrap().environment, "staging");
+    }
+
+    #[test]
+    fn a_published_site_is_weighed_only() {
+        let site = ["--url", "https://app.example"];
+        let with = |extra: &[&'static str]| {
+            let arguments: Vec<&str> = site.iter().chain(extra).copied().collect();
+            parse(&arguments).unwrap().remote_conflict()
+        };
+        assert_eq!(with(&["--page-weight"]), None);
+        assert_eq!(with(&["--page-weight", "--json"]), None);
+        assert_eq!(with(&[]), Some(REMOTE_PAGE_WEIGHT));
+        assert_eq!(with(&["--page-weight", "--bench"]), Some(REMOTE_BENCH));
+        assert_eq!(with(&["--bench"]), Some(REMOTE_BENCH));
+        assert_eq!(
+            with(&["--page-weight", "--image", "app:latest"]),
+            Some(REMOTE_IMAGE)
+        );
+        // An app on this machine, or the started binary, measures everything.
+        for local in [
+            &[
+                "--url",
+                "http://127.0.0.1:3000",
+                "--bench",
+                "--image",
+                "app:1",
+            ][..],
+            &["--url", "http://127.0.0.1:3000"],
+            &["--bench"],
+        ] {
+            assert_eq!(parse(local).unwrap().remote_conflict(), None, "{local:?}");
+        }
+        assert!(parse(&["--url", "https://app.example/x", "--page-weight"]).is_err());
     }
 
     #[test]

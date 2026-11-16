@@ -74,6 +74,16 @@ impl Failure {
         }
     }
 
+    /// The published site's page could not be fetched: `reason` says why.
+    pub(super) fn remote(url: &str, reason: &str) -> Self {
+        Self {
+            stage: "reach",
+            title: "Site not reachable",
+            message: format!("{url}: {reason}."),
+            fix: "Check the URL, the network and the site's certificate. Footprint sends no cookies or credentials, so it weighs only pages that answer without a login.".into(),
+        }
+    }
+
     /// The reason given for the figures that needed the running app.
     pub(super) fn unmeasured(&self) -> &'static str {
         match self.stage {

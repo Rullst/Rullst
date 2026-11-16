@@ -2,7 +2,7 @@
 use super::*;
 
 #[test]
-fn only_loopback_http_origins_are_accepted() {
+fn only_loopback_http_origins_are_accepted_over_http() {
     for (raw, normalized) in [
         ("http://127.0.0.1:3000", "http://127.0.0.1:3000/"),
         ("http://127.10.0.1:8080/", "http://127.10.0.1:8080/"),
@@ -33,7 +33,6 @@ fn only_loopback_http_origins_are_accepted() {
             "http://localhost.evil.example",
             UrlError::NotLoopback("localhost.evil.example".into()),
         ),
-        ("https://127.0.0.1:3000", UrlError::Scheme),
         ("ftp://127.0.0.1", UrlError::Scheme),
         ("http://user:secret@127.0.0.1:3000", UrlError::Extra),
         ("http://user@127.0.0.1:3000", UrlError::Extra),
@@ -47,6 +46,39 @@ fn only_loopback_http_origins_are_accepted() {
     ] {
         assert_eq!(validate_url(raw), Err(error), "{raw}");
     }
+}
+
+#[test]
+fn published_https_origins_are_weighed_without_credentials_paths_or_queries() {
+    for (raw, normalized) in [
+        ("https://app.example", "https://app.example/"),
+        ("https://App.Example:8443/", "https://app.example:8443/"),
+        // Not rewritten to 127.0.0.1: the certificate names the host.
+        ("https://localhost:8443", "https://localhost:8443/"),
+        ("https://127.0.0.1:3000", "https://127.0.0.1:3000/"),
+    ] {
+        let url = validate_url(raw).unwrap();
+        assert_eq!(url.as_str(), normalized, "{raw}");
+        assert!(is_remote(&url), "{raw}");
+    }
+    assert!(!is_remote(&validate_url("http://127.0.0.1:3000").unwrap()));
+    for (raw, error) in [
+        ("https://user:secret@app.example", UrlError::Extra),
+        ("https://user@app.example", UrlError::Extra),
+        ("https://:secret@app.example", UrlError::Extra),
+        ("https://app.example/?utm=1", UrlError::Extra),
+        ("https://app.example/#top", UrlError::Extra),
+        ("https://app.example/pricing", UrlError::Path),
+        ("wss://app.example", UrlError::Scheme),
+    ] {
+        assert_eq!(validate_url(raw), Err(error), "{raw}");
+    }
+    // A published site's path keeps its host too.
+    let base = validate_url("https://app.example").unwrap();
+    assert_eq!(
+        request_url(&base, "/pricing?plan=pro").as_str(),
+        "https://app.example/pricing?plan=pro"
+    );
 }
 
 #[test]
