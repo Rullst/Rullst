@@ -12,9 +12,9 @@
 use jiff::{SignedDuration, civil};
 use sqlx::encode::IsNull;
 use sqlx::error::BoxDynError;
-use sqlx::postgres::{PgArgumentBuffer, PgHasArrayType, PgTypeInfo, PgValueFormat, PgValueRef};
+use sqlx::postgres::{PgArgumentBuffer, PgHasArrayType, PgTypeInfo, PgValueFormat};
 use sqlx::types::time as sqlx_time;
-use sqlx::{Decode, Encode, Postgres, Type};
+use sqlx::{Encode, Postgres, Type};
 
 use super::parse::{self, Moment};
 use super::{Date, DateTime, Time, Timestamp};
@@ -155,53 +155,70 @@ pub(super) fn date_time_from_text(text: &str) -> Option<civil::DateTime> {
     parse::parse(text, items)?.date_time()
 }
 
+/// A binary integer of `N` bytes, big endian; another length is an error.
+fn big_endian<const N: usize>(bytes: &[u8]) -> Result<[u8; N], BoxDynError> {
+    Ok(bytes.try_into()?)
+}
+
 fn decoded<T>(value: Option<T>, what: &str) -> Result<T, BoxDynError> {
     value.ok_or_else(|| format!("invalid or out-of-range PostgreSQL {what}").into())
 }
 
-impl<'r> Decode<'r, Postgres> for Timestamp {
-    fn decode(value: PgValueRef<'r>) -> Result<Self, BoxDynError> {
-        let instant = match value.format() {
-            PgValueFormat::Binary => instant_from_micros(Decode::<Postgres>::decode(value)?),
-            PgValueFormat::Text => instant_from_text(value.as_str()?),
-        };
-        decoded(instant, "TIMESTAMPTZ").map(Self)
-    }
+/// A `TIMESTAMPTZ` value in either result format.
+pub(super) fn instant_from_value(
+    format: PgValueFormat,
+    bytes: &[u8],
+) -> Result<jiff::Timestamp, BoxDynError> {
+    let instant = match format {
+        PgValueFormat::Binary => instant_from_micros(i64::from_be_bytes(big_endian(bytes)?)),
+        PgValueFormat::Text => instant_from_text(std::str::from_utf8(bytes)?),
+    };
+    decoded(instant, "TIMESTAMPTZ")
 }
 
-impl<'r> Decode<'r, Postgres> for DateTime {
-    fn decode(value: PgValueRef<'r>) -> Result<Self, BoxDynError> {
-        let date_time = match value.format() {
-            PgValueFormat::Binary => date_time_from_micros(Decode::<Postgres>::decode(value)?),
-            PgValueFormat::Text => date_time_from_text(value.as_str()?),
-        };
-        decoded(date_time, "TIMESTAMP").map(Self)
-    }
+/// A `TIMESTAMP` value in either result format.
+pub(super) fn date_time_from_value(
+    format: PgValueFormat,
+    bytes: &[u8],
+) -> Result<civil::DateTime, BoxDynError> {
+    let date_time = match format {
+        PgValueFormat::Binary => date_time_from_micros(i64::from_be_bytes(big_endian(bytes)?)),
+        PgValueFormat::Text => date_time_from_text(std::str::from_utf8(bytes)?),
+    };
+    decoded(date_time, "TIMESTAMP")
 }
 
-impl<'r> Decode<'r, Postgres> for Date {
-    fn decode(value: PgValueRef<'r>) -> Result<Self, BoxDynError> {
-        let date = match value.format() {
-            PgValueFormat::Binary => date_from_days(Decode::<Postgres>::decode(value)?),
-            PgValueFormat::Text => {
-                parse::parse(value.as_str()?, parse::DATE_ONLY).and_then(|parsed| parsed.date())
-            }
-        };
-        decoded(date, "DATE").map(Self)
-    }
+/// A `DATE` value in either result format.
+pub(super) fn date_from_value(
+    format: PgValueFormat,
+    bytes: &[u8],
+) -> Result<civil::Date, BoxDynError> {
+    let date = match format {
+        PgValueFormat::Binary => date_from_days(i32::from_be_bytes(big_endian(bytes)?)),
+        PgValueFormat::Text => parse::parse(std::str::from_utf8(bytes)?, parse::DATE_ONLY)
+            .and_then(|parsed| parsed.date()),
+    };
+    decoded(date, "DATE")
 }
 
-impl<'r> Decode<'r, Postgres> for Time {
-    fn decode(value: PgValueRef<'r>) -> Result<Self, BoxDynError> {
-        let time = match value.format() {
-            PgValueFormat::Binary => Some(time_from_micros(Decode::<Postgres>::decode(value)?)),
-            PgValueFormat::Text => {
-                parse::parse(value.as_str()?, parse::TIME).and_then(|parsed| parsed.time())
-            }
-        };
-        decoded(time, "TIME").map(Self)
-    }
+/// A `TIME` value in either result format.
+pub(super) fn time_from_value(
+    format: PgValueFormat,
+    bytes: &[u8],
+) -> Result<civil::Time, BoxDynError> {
+    let time = match format {
+        PgValueFormat::Binary => Some(time_from_micros(i64::from_be_bytes(big_endian(bytes)?))),
+        PgValueFormat::Text => {
+            parse::parse(std::str::from_utf8(bytes)?, parse::TIME).and_then(|parsed| parsed.time())
+        }
+    };
+    decoded(time, "TIME")
 }
+
+// The `Decode` implementations only hand the value's format and bytes to the
+// functions above; they need a live server.
+#[path = "postgres_decode.rs"]
+mod decode;
 
 #[cfg(test)]
 #[path = "postgres_tests.rs"]

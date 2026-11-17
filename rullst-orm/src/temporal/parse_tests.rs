@@ -156,6 +156,27 @@ fn sqlite_text_golden_values() {
             Some("2026-10-15T12:30:00Z".to_string())
         )
     );
+    // The limit is under 24 hours: `+23:59` applies, `+24:00` does not (in
+    // RFC 3339 nor in the other forms).
+    assert_eq!(
+        read("2026-10-15 23:59-23:59"),
+        (
+            "2026-10-15T23:59:00".to_string(),
+            Some("2026-10-16T23:58:00Z".to_string())
+        )
+    );
+    assert_eq!(
+        read("2026-10-15T12:30:00+24:00").1.unwrap(),
+        "2026-10-15T12:30:00Z"
+    );
+    assert_eq!(
+        read("2026-10-15T12:30:00-24:00").1.unwrap(),
+        "2026-10-15T12:30:00Z"
+    );
+    assert_eq!(
+        read("2026-10-15T12:30:00+23:59").1.unwrap(),
+        "2026-10-14T12:31:00Z"
+    );
     // Lowercase separators (RFC 3339), a space before the offset, a minus
     // sign, extra fraction digits and a leap second.
     assert_eq!(
@@ -213,6 +234,11 @@ fn server_text_golden_values() {
         "2026-10-15T13:00:00Z"
     );
     assert!(instant("2026-10-15 09:30:00").is_none());
+    assert!(instant("2026-10-15 09:30:00+24").is_none());
+    assert_eq!(
+        instant("2026-10-15 09:30:00-23:59").unwrap().to_string(),
+        "2026-10-16T09:29:00Z"
+    );
     assert!(instant("2026-10-15 09:30:00+0").is_none());
     assert_eq!(
         parse("2026-10-15 09:30:00.000001", DATE_TIME)

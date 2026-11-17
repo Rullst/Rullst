@@ -284,6 +284,29 @@ mod native {
             );
         }
 
+        // Text-protocol results (`raw_sql`, PostgreSQL's and MySQL's simple
+        // queries) read as the binary ones, by either type.
+        let text_rows = rullst_orm::sqlx::raw_sql(
+            "SELECT starts_at, local_start, day, opens FROM contract_jiff_calendar ORDER BY id",
+        )
+        .fetch_all(Orm::pool().expect("pool"))
+        .await
+        .expect("text-protocol rows");
+        assert_eq!(text_rows.len(), as_jiff.len(), "{driver}");
+        for (row, read) in text_rows.iter().zip(&as_jiff) {
+            use rullst_orm::sqlx::Row;
+            let starts_at: Timestamp = row.try_get(0).expect("text instant");
+            assert_eq!(starts_at, read.starts_at, "{driver} {}", read.title);
+            let chrono_starts_at: ChronoDateTime<Utc> = row.try_get(0).expect("chrono instant");
+            assert_eq!(chrono_starts_at, chrono(read.starts_at), "{driver}");
+            let local_start: DateTime = row.try_get(1).expect("text date-time");
+            assert_eq!(local_start, read.local_start, "{driver} {}", read.title);
+            let day: Date = row.try_get(2).expect("text date");
+            assert_eq!(day, read.day, "{driver} {}", read.title);
+            let opens: Time = row.try_get(3).expect("text time");
+            assert_eq!(opens, read.opens, "{driver} {}", read.title);
+        }
+
         // Filters bind the same parameter for either type, and order over
         // rows written by both.
         let ordinary = &rows[0];

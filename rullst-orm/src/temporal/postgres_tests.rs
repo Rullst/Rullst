@@ -145,3 +145,40 @@ proptest! {
         prop_assert_eq!(instant_from_micros(micros), jiff_instant(theirs.and_utc()));
     }
 }
+
+/// What the `Decode` implementations receive: the format and the bytes.
+#[test]
+fn values_in_either_format() {
+    use sqlx::postgres::PgValueFormat::{Binary, Text};
+
+    use super::{date_from_value, date_time_from_value, instant_from_value, time_from_value};
+
+    let instant = instant_from_value(Binary, &1_000_000_i64.to_be_bytes()).unwrap();
+    assert_eq!(instant.to_string(), "2000-01-01T00:00:01Z");
+    let instant = instant_from_value(Text, b"2000-01-01 00:00:01.5+00").unwrap();
+    assert_eq!(instant.to_string(), "2000-01-01T00:00:01.5Z");
+    let civil = date_time_from_value(Binary, &(-1_i64).to_be_bytes()).unwrap();
+    assert_eq!(civil.to_string(), "1999-12-31T23:59:59.999999");
+    let civil = date_time_from_value(Text, b"1999-12-31 23:59:59").unwrap();
+    assert_eq!(civil.to_string(), "1999-12-31T23:59:59");
+    let date = date_from_value(Binary, &366_i32.to_be_bytes()).unwrap();
+    assert_eq!(date.to_string(), "2001-01-01");
+    assert_eq!(date_from_value(Text, b"2001-01-01").unwrap(), date);
+    let time = time_from_value(Binary, &3_600_000_001_i64.to_be_bytes()).unwrap();
+    assert_eq!(time.to_string(), "01:00:00.000001");
+    assert_eq!(time_from_value(Text, b"01:00:00.000001").unwrap(), time);
+
+    // Wrong lengths, bad text, out-of-range values and `infinity` are errors.
+    assert!(instant_from_value(Binary, &[0; 4]).is_err());
+    assert!(instant_from_value(Binary, &i64::MAX.to_be_bytes()).is_err());
+    assert!(instant_from_value(Text, b"infinity").is_err());
+    assert!(instant_from_value(Text, &[0xff]).is_err());
+    assert!(date_time_from_value(Binary, &[0; 9]).is_err());
+    assert!(date_time_from_value(Binary, &i64::MIN.to_be_bytes()).is_err());
+    assert!(date_time_from_value(Text, b"10000-01-01 00:00:00").is_err());
+    assert!(date_from_value(Binary, &[0; 8]).is_err());
+    assert!(date_from_value(Binary, &i32::MAX.to_be_bytes()).is_err());
+    assert!(date_from_value(Text, b"2001-02-29").is_err());
+    assert!(time_from_value(Binary, &[0; 4]).is_err());
+    assert!(time_from_value(Text, b"25:00:00").is_err());
+}
