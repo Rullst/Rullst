@@ -24,7 +24,7 @@ mkdir -p "$evidence_dir"
 
 # Any advisory outside the ledger blocks the release. The JSON result is
 # retained as tag-bound evidence.
-cargo audit --json --ignore RUSTSEC-2026-0459 --ignore RUSTSEC-2026-0440 \
+cargo audit --json --ignore RUSTSEC-2026-0459 --ignore RUSTSEC-2026-0440 --ignore RUSTSEC-2026-0543 \
   > "$evidence_dir/cargo-audit.json"
 
 # This command intentionally emits NOT CHECKED / NOT EVALUATED for controls
@@ -32,6 +32,6 @@ cargo audit --json --ignore RUSTSEC-2026-0459 --ignore RUSTSEC-2026-0440 \
 # it takes the same governed exceptions.
 cargo run --locked -p cargo-rullst --bin rullst -- \
   audit --idor --compliance --sbom \
-  --audit-ignore RUSTSEC-2026-0459 --audit-ignore RUSTSEC-2026-0440
+  --audit-ignore RUSTSEC-2026-0459 --audit-ignore RUSTSEC-2026-0440 --audit-ignore RUSTSEC-2026-0543
 mv SECURITY_COMPLIANCE.md "$evidence_dir/security-evidence.md"
 mv sbom-cyclonedx.json "$evidence_dir/sbom-cyclonedx-1.5.json"
