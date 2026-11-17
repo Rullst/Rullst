@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794939648812,
+  "lastUpdate": 1794953616841,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -24165,6 +24165,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3674,
             "range": "± 15",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4b9bb9222b7333ac94e172f7bd05a216e09789f3",
+          "message": "Merge pull request #760 from Rullst/ci/v13-template-pin-sync\n\nci: sync generated workflow action pins from Rullst's own",
+          "timestamp": "2026-11-17T18:55:18-03:00",
+          "tree_id": "dc86ca3b012ffd4cbd49b3add54bfccabb00de66",
+          "url": "https://github.com/Rullst/Rullst/commit/4b9bb9222b7333ac94e172f7bd05a216e09789f3"
+        },
+        "date": 1794953615859,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 870,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 673,
+            "range": "± 28",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1566,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3708,
+            "range": "± 13",
             "unit": "ns/iter"
           }
         ]
