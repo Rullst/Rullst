@@ -93,7 +93,9 @@ fn the_rc1_rules_review_the_rows_of_their_alpha4_changes() {
     assert!(native.guidance.contains("`sslrootcert`"));
 }
 
-const SQLITE_CONFIG: &str = "[database]\nurl = \"sqlite://db.sqlite\"\n";
+// The journal mode is set, so `V13-SQLITE-WAL-AVAILABLE` stays out of these.
+const SQLITE_CONFIG: &str =
+    "[database]\nurl = \"sqlite://db.sqlite\"\nsqlite_journal_mode = \"delete\"\n";
 const OLD_DOCKERFILE: &str = "FROM rust:1.96 AS builder\nRUN cargo build --release --locked\n\n  from debian:bookworm-slim\nCOPY --from=builder /app/target/release/app /app/app\n";
 
 #[test]
@@ -118,6 +120,10 @@ fn a_sqlite_dockerfile_without_database_url_is_reviewed_at_its_runtime_stage() {
         .write(
             ".env.example",
             "APP_KEY=\nDATABASE_URL=sqlite://db.sqlite?mode=rwc\n",
+        )
+        .write(
+            "Rullst.toml",
+            "[database]\nsqlite_journal_mode = \"delete\"\n",
         )
         .write("Dockerfile", OLD_DOCKERFILE);
     assert_eq!(

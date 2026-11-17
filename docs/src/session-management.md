@@ -116,7 +116,9 @@ same way in such a starter, and `make:oauth`'s `LinkAndResetPassword` policy
 deletes the account's sessions in the transaction that removes its password
 (`SessionRegistry::revoke_all_sessions_on`), so they also leave "Your
 devices"; in a starter generated before 13.0.0-alpha.6 they keep issuing epoch
-cookies. The middleware's `revalidation(&session)` returns the check for
+cookies (`cargo rullst upgrade` reports those files, `V13-AUTH-SESSION-REGISTRY`,
+and the [alpha.5 to alpha.6 checklist](migration-v13.md#upgrading-an-alpha5-application-to-alpha6)
+lists the changes). The middleware's `revalidation(&session)` returns the check for
 long-lived responses below.
 
 ### Long-lived connections
