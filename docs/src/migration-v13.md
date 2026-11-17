@@ -404,6 +404,184 @@ The starter's `rullst-orm` dependency relies on default features; since
 driver until the backend is named. The `V13-ORM-DEFAULT-FEATURES` finding
 gives the fix.
 
+### Moving off `chrono`
+
+RustSec published
+[RUSTSEC-2026-0543](https://rustsec.org/advisories/RUSTSEC-2026-0543.html)
+on 2026-11-17: `chrono` is unmaintained. The advisory reports no
+vulnerability, and the `chrono` maintainer recommends `jiff` or `time`. Up to
+13.0.0-alpha.5 `chrono` 0.4 was a public dependency of Rullst 13, so
+13.0.0-alpha.6 removes it from every Rullst crate and uses
+[`jiff`](https://docs.rs/jiff/1) 1 instead. This section details the
+"`chrono` replaced by `jiff`" row. Your application may keep using `chrono`
+in its own code: declare it in your own `Cargo.toml` and convert values where
+they reach a Rullst API.
+
+**Database columns.** SQLx 0.9 has date/time codecs only for `chrono` and
+`time`, and Rust's orphan rule prevents Rullst from implementing SQLx's traits
+for jiff's types. The ORM therefore owns four column types in
+`rullst_orm::temporal`, also exported as `rullst::orm::*` and `rullst::db::*`:
+
+| `chrono` type (to alpha.5) | Rullst type (from alpha.6) | Wraps | Schema helper |
+| :--- | :--- | :--- | :--- |
+| `DateTime<Utc>` | `rullst::orm::Timestamp` | `jiff::Timestamp` | `timestamp_tz()`, and `timestamps()` |
+| `NaiveDateTime` | `rullst::orm::DateTime` | `jiff::civil::DateTime` | `timestamp()` |
+| `NaiveDate` | `rullst::orm::Date` | `jiff::civil::Date` | `date()` |
+| `NaiveTime` | `rullst::orm::Time` | `jiff::civil::Time` | `time()` |
+
+Each type converts to and from the jiff type with `From` and dereferences to
+it, so jiff's methods apply (`at.as_second()`). It also implements `Display`
+and `FromStr` (jiff's ISO 8601 and RFC 3339 forms, `Err = jiff::Error`),
+transparent serde in jiff's format, `Copy`, `Ord` and `Hash`.
+`Timestamp::now()` reads the system clock. `rullst::orm::chrono`
+(`rullst_orm::chrono`) is removed, and `rullst::orm::jiff` re-exports the jiff
+crate that these types use. Use the new types in model fields (also inside
+`Option`), in `#[derive(Nexus)]` models and as query values. In
+`RullstValue`, the variants `Timestamp`, `CivilDateTime`, `CivilDate` and
+`CivilTime` replace `DateTime`, `NaiveDateTime`, `Date` and `Time`. Your own
+SQLx queries can bind and read the new types on the strict pools; the SQLx
+`Any` pool has no codec for them, as it had none for `chrono`. If your own
+SQLx code binds or reads `chrono` values (or names `sqlx::types::chrono`),
+enable the `chrono` feature on your own `sqlx` dependency, because Rullst no
+longer enables it.
+
+**Stored data needs no migration.** On SQLite, PostgreSQL, MySQL and MariaDB
+the new types write exactly the bytes that the `chrono` types wrote, and they
+read every form those types read. Existing rows need no data migration, and
+old and new rows can share a column. jiff sets three limits:
+
+- years run from -9999 to 9999, so a stored value outside that range no
+  longer decodes (`chrono` accepted a far wider range);
+- a leap second (`:60`) reads as second 59;
+- `Default` is jiff's value: `Date` and `DateTime` default to 0000-01-01
+  (`chrono` used 1970-01-01), while `Timestamp` still defaults to the Unix
+  epoch and `Time` to midnight.
+
+**APIs outside the database take jiff's own types:**
+
+- **Core.** `Locale::format_date(date: impl Into<jiff::civil::Date>, style)`,
+  `format_time(time: impl Into<jiff::civil::Time>, style)` and
+  `format_datetime(value: impl Into<jiff::civil::DateTime>, date_style,
+  time_style)` used to take `&impl chrono::Datelike` and `Timelike`. Pass a
+  civil value by value: an ORM `Date`, `Time` or `DateTime` converts as it
+  is, and `*value` turns an ORM `DateTime` into the civil date-time that
+  `format_date` and `format_time` also accept. For an instant, pass
+  `&jiff::ZonedDateTime` in the reader's zone
+  (`at.in_tz("America/Sao_Paulo")?`). The formatted text is unchanged. Every
+  Core build now depends on `jiff`. The scheduler's API is unchanged, and the
+  `scheduler-tz` feature still adds the IANA time zone database.
+- **Mail.** `Message.send_at` is an `Option<jiff::Timestamp>`, and so are the
+  arguments of `Message::send_at(timestamp: jiff::Timestamp)` and of the
+  memory driver's assertion `with_scheduled_at(expected: jiff::Timestamp)`.
+  The `expires_at` field of `AccountEvent::PasswordResetAt` and
+  `AccountEvent::EmailLoginAt` is also a `jiff::Timestamp`.
+- **Capital.** `Invoice.date` is a `jiff::Timestamp`:
+  `Invoice::new(invoice_id, customer_email, date: jiff::Timestamp, currency)`.
+- Mail and Capital take the plain `jiff::Timestamp`, so convert an ORM
+  `Timestamp` with `.into()` or `*at`.
+- Messaging, Security and Auth have no public change. The serialized forms
+  do not change: messages queued as JSON before the upgrade deliver at their
+  time, and an invoice's JSON is byte for byte the same.
+
+**Typical rewrites.** In the right column, `Timestamp`, `SignedDuration` and
+`at` are jiff's types. An ORM `Timestamp` dereferences to `jiff::Timestamp`,
+so write `*at` where an expression needs the jiff value itself.
+
+| To alpha.5 (`chrono`) | From alpha.6 (`jiff`) |
+| :--- | :--- |
+| `Utc::now()` | `jiff::Timestamp::now()`, or `rullst::orm::Timestamp::now()` for a model field |
+| `Utc::now() + Duration::minutes(5)` | `Timestamp::now() + SignedDuration::from_mins(5)`, or `Timestamp::now().checked_add(SignedDuration::from_mins(5))?`, which returns an error instead of panicking at the end of jiff's range |
+| `at.timestamp()` | `at.as_second()` |
+| `NaiveDate::from_ymd_opt(2026, 10, 22)` | `jiff::civil::Date::new(2026, 10, 22)?` (or `jiff::civil::date(2026, 10, 22)` for a constant) |
+| `"2026-10-15T09:30:00Z".parse::<DateTime<Utc>>()` | `"2026-10-15T09:30:00Z".parse::<Timestamp>()` |
+| `at.format("%d/%m/%Y")` | `at.strftime("%d/%m/%Y")` |
+| `at.naive_utc()` | `jiff::tz::TimeZone::UTC.to_datetime(at)` |
+
+```rust
+use rullst::orm::jiff::{civil, SignedDuration};
+use rullst::orm::{Date, Timestamp};
+
+// A `timestamp_tz()` field and an instant five minutes later.
+let created_at = Timestamp::now();
+let expires_at = created_at.checked_add(SignedDuration::from_mins(5))?;
+assert_eq!(expires_at.as_second() - created_at.as_second(), 300);
+
+// A `date()` field, and the plain jiff types that Mail and Capital take.
+let due: Date = civil::Date::new(2026, 10, 22)?.into();
+assert_eq!(due.to_string(), "2026-10-22");
+let invoice = rullst::capital::Invoice::new("INV-1", "ana@example.com", created_at.into(), "BRL");
+let reminder = rullst::mail::Message::new().send_at(expires_at);
+# let _ = (invoice, reminder);
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+**How `cargo rullst upgrade` helps.** Four `MUST-CHANGE` rules, all
+introduced in 13.0.0-alpha.6, report the code that passes or reads `chrono`
+values where Rullst now takes the new types. Each one names the "`chrono`
+replaced by `jiff`" row and the replacement to apply by hand:
+
+- `V13-ORM-CHRONO-TYPES`: `chrono` types in model fields, Nexus models and
+  query values, and `rullst::orm::chrono` paths;
+- `V13-LOCALE-JIFF-DATES`: `Locale::format_date`, `format_time` and
+  `format_datetime` calls;
+- `V13-MAIL-JIFF-TIMESTAMPS`: `Message::send_at`, `with_scheduled_at` and the
+  `expires_at` of the account events;
+- `V13-CAPITAL-INVOICE-JIFF-DATE`: `Invoice::new` and `invoice.date`.
+
+### Messaging schedules and POSIX cron
+
+The `cron` crate depends on `chrono`, so 13.0.0-alpha.6 also stops using it
+for Messaging's durable recurring publications (`schedules-postgres`, facade
+`messaging-schedules-postgres`); see the "Messaging schedules use the
+scheduler's cron syntax" row. A new `RecurringDefinition` now reads its five
+fields exactly like [Core's `Scheduler::task`](crates/core.md), with POSIX
+semantics in UTC:
+
+| | Up to alpha.5 (the `cron` crate) | From alpha.6 (POSIX, like `Scheduler::task`) |
+| :--- | :--- | :--- |
+| Weekday numbers | 1 = Sunday to 7 = Saturday; 0 is rejected | 0 to 7: 0 and 7 are Sunday, 1 is Monday |
+| Day-of-month and weekday both restricted | both must match | either one matches |
+| A field that starts or ends with `,`, `-` or `/` | joined with its neighbour, which shifts the later fields | rejected |
+
+Weekday names (`Mon`, `Mon-Fri`) mean the same day in both syntaxes. The same
+text can change meaning, as these examples show:
+
+| Expression | Up to alpha.5 | From alpha.6 |
+| :--- | :--- | :--- |
+| `0 9 * * 1` | Sundays at 09:00 | Mondays at 09:00 |
+| `0 9 * * 2-6` | Monday to Friday | Tuesday to Saturday |
+| `0 9 * * 7` | Saturdays | Sundays |
+| `0 9 * * 0` | rejected | Sundays |
+| `0 0 1 * Mon` | the 1st, when it is a Monday | the 1st of every month, and every Monday |
+| `1, 2 * * *` | accepted, with `1,` and `2` joined into one field | rejected |
+
+Definitions stored before the upgrade keep their meaning. Each definition
+records the syntax it was created with, and a definition stored without that
+record is read with the earlier `cron`-crate rules, now called the legacy
+syntax. The legacy syntax is deprecated: reading such definitions is planned
+for removal in 14.0. A `RecurringDefinition` accessor reports which syntax a
+definition uses.
+<!-- TODO(jiff-docs): name the RecurringDefinition syntax accessor once the
+messaging pull request settles it. -->
+
+To move a schedule to the new syntax:
+
+1. Rewrite each expression your code passes to `RecurringDefinition::new`.
+   Subtract one from each weekday number, or use weekday names. Where an
+   expression restricts both the day of the month and the weekday, decide
+   whether you mean "both" or "either". `cargo rullst upgrade` reports
+   `V13-MESSAGING-CRON-POSIX` where your code builds a definition. Check
+   expressions read from configuration or a database yourself.
+2. Definitions are immutable. Replace a stored legacy definition the usual
+   way: cancel it, then create a definition under a new name with the
+   rewritten expression.
+   <!-- TODO(jiff-docs): say what `create` does with the name and expression of
+   a stored legacy definition (identical replay or conflict) once the
+   messaging pull request settles it. -->
+3. Plan a rollback as a database restore. A 13.0 prerelease before alpha.6
+   cannot read definitions that record their syntax, so take a backup before
+   alpha.6 creates its first definition.
+
 ## Upgrading an alpha.2 application to alpha.3
 
 This checklist moves an application from 13.0.0-alpha.2 to 13.0.0-alpha.3.
