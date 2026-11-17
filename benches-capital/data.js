@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794865113440,
+  "lastUpdate": 1794878760853,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -18320,6 +18320,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_past_due",
             "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "602bf170861af5bcea7827f224af8a6a96d6e8b8",
+          "message": "Merge pull request #740 from Rullst/feat/v13-upgrade-alpha6-gaps\n\nfeat(cli): report the alpha.6 checklist items that upgrade rules can locate",
+          "timestamp": "2026-11-16T22:04:19-03:00",
+          "tree_id": "b712ad6b059c96cd9e1fb89fcf69b72ba394d29f",
+          "url": "https://github.com/Rullst/Rullst/commit/602bf170861af5bcea7827f224af8a6a96d6e8b8"
+        },
+        "date": 1794878760063,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 11,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 13,
             "range": "± 0",
             "unit": "ns/iter"
           },
