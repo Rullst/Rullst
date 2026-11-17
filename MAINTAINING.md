@@ -208,6 +208,13 @@ and fails on any surviving mutant.
   (`pr-security-evidence.yml` installs no cargo-audit, so its dependency check
   reports NOT CHECKED and takes no flags.) Prefer an upgrade; an exception is
   temporary and time-bounded.
+- **Scheduled advisory alerts.** `supply-chain.yml` also runs at 08:00 and
+  20:00 UTC (GitHub often starts scheduled runs hours late). When a scheduled
+  run fails, its last job opens an issue titled "Scheduled supply-chain check
+  failed" with the `supply-chain-alert` label, or comments on the open one,
+  with the failed jobs and the RustSec IDs from their logs. Fix it with an
+  upgrade or a governed exception; the next scheduled run that passes closes
+  the issue.
 - **CodeQL.** Rust results go through
   `.github/filter-codeql-test-fixtures.py` before upload, which drops the
   listed rules in test code only. Real findings in production code are fixed,
