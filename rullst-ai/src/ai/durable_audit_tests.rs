@@ -181,6 +181,18 @@ fn targets_must_be_regular_files_and_metadata_errors_surface() {
     std::fs::write(&file, b"x").expect("write file");
     assert_eq!(validate_target(&file), Ok(()));
     assert_eq!(validate_target(&directory.join("missing")), Ok(()));
+    // Any metadata error other than NotFound surfaces. A NUL byte is refused
+    // as InvalidInput on every platform.
+    assert_eq!(
+        validate_target(&directory.join("bad\0name")),
+        Err(DurableAuditError::Io {
+            operation: "metadata",
+            kind: io::ErrorKind::InvalidInput,
+        })
+    );
+    // Unix reports a path below a regular file as ENOTDIR. Windows reports it
+    // as not found, so it passes as a missing target and the open fails.
+    #[cfg(unix)]
     assert_eq!(
         validate_target(&file.join("child")),
         Err(DurableAuditError::Io {
@@ -188,6 +200,17 @@ fn targets_must_be_regular_files_and_metadata_errors_surface() {
             kind: io::ErrorKind::NotADirectory,
         })
     );
+    #[cfg(windows)]
+    {
+        assert_eq!(validate_target(&file.join("child")), Ok(()));
+        assert!(matches!(
+            open_audit_file(&file.join("child")),
+            Err(DurableAuditError::Io {
+                operation: "open",
+                ..
+            })
+        ));
+    }
     std::fs::remove_dir_all(&directory).expect("remove directory");
 }
 
