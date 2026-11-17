@@ -2,6 +2,8 @@
 //! Hosts own tenant authorization and consumer-side effect deduplication.
 mod config;
 mod connection;
+#[cfg(test)]
+mod cron_expression;
 mod crypto;
 mod delivery;
 mod error;
