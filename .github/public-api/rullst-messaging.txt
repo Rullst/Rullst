@@ -741,6 +741,7 @@ pub fn rullst_messaging::schedules::RecurringDefinition::first_after_ms(&self) -
 pub fn rullst_messaging::schedules::RecurringDefinition::missed_run_policy(&self) -> rullst_messaging::schedules::MissedRunPolicy
 pub fn rullst_messaging::schedules::RecurringDefinition::name(&self) -> &str
 pub fn rullst_messaging::schedules::RecurringDefinition::new(name: impl core::convert::Into<alloc::string::String>, expression: impl core::convert::Into<alloc::string::String>, first_after_ms: i64, missed: rullst_messaging::schedules::MissedRunPolicy, message: rullst_messaging::schedules::ScheduledMessage) -> core::result::Result<Self, rullst_messaging::schedules::RecurringError>
+pub fn rullst_messaging::schedules::RecurringDefinition::posix_equivalent(&self) -> core::option::Option<alloc::string::String>
 pub fn rullst_messaging::schedules::RecurringDefinition::syntax(&self) -> rullst_messaging::schedules::CronSyntax
 impl core::clone::Clone for rullst_messaging::schedules::RecurringDefinition
 impl core::cmp::Eq for rullst_messaging::schedules::RecurringDefinition

@@ -174,3 +174,68 @@ fn expressions_parse_and_occur_as_the_cron_crate_computed() {
         }
     }
 }
+
+#[test]
+fn legacy_schedules_translate_to_posix_when_they_can() {
+    let posix = |expression: &str| {
+        Schedule::parse_five_fields(expression)
+            .unwrap()
+            .posix_equivalent()
+    };
+    assert_eq!(posix("0 9 * * 1").as_deref(), Some("0 9 * * 0"));
+    assert_eq!(posix("0 9 * * 2-6").as_deref(), Some("0 9 * * 1-5"));
+    assert_eq!(posix("0 9 * * sun,sat").as_deref(), Some("0 9 * * 0,6"));
+    assert_eq!(posix("0 9 * * 7,1").as_deref(), Some("0 9 * * 0,6"));
+    assert_eq!(
+        posix("*/20 0,12 1 jan-mar *").as_deref(),
+        Some("0,20,40 0,12 1 1-3 *")
+    );
+    assert_eq!(posix("1, 2 * * *").as_deref(), Some("1,2 * * * *"));
+    assert_eq!(posix("0 0 ? * ?").as_deref(), Some("0 0 * * *"));
+    assert_eq!(posix("0 0 1-31 * 1-7").as_deref(), Some("0 0 * * *"));
+    // Both day fields restricted, seconds or years reached by tokens, or too
+    // long a result.
+    assert_eq!(posix("0 0 1 * 2"), None);
+    assert_eq!(posix("/5 * * * *"), None);
+    assert_eq!(posix("*/2 */2 */2 * *"), None);
+    let every_other_minute = posix("*/2 * * * *").unwrap();
+    assert!(
+        every_other_minute.starts_with("0,2,4,6,8,10,12,"),
+        "{every_other_minute}"
+    );
+}
+
+/// For every golden expression with a POSIX equivalent, Core's POSIX rules
+/// give the occurrences the `cron` crate computed.
+#[test]
+fn posix_equivalents_occur_as_the_cron_crate_computed() {
+    let mut translated = 0;
+    for vector in vectors() {
+        let Some(runs) = &vector.runs else { continue };
+        let Some(posix) = Schedule::parse_five_fields(vector.expression)
+            .unwrap()
+            .posix_equivalent()
+        else {
+            continue;
+        };
+        let schedule = super::super::posix_cron::PosixSchedule::parse(&posix)
+            .unwrap_or_else(|error| panic!("`{posix}` from `{}`: {error}", vector.expression));
+        translated += 1;
+        for (after, results) in runs {
+            let mut cursor = *after;
+            for expected in results {
+                let label = format!("`{posix}` from `{}` after {cursor}", vector.expression);
+                match *expected {
+                    "error" => break,
+                    "end" => assert_eq!(schedule.next_after(cursor), None, "{label}"),
+                    value => {
+                        let value: i64 = value.parse().unwrap();
+                        assert_eq!(schedule.next_after(cursor), Some(value), "{label}");
+                        cursor = value;
+                    }
+                }
+            }
+        }
+    }
+    assert!(translated > 300, "{translated} translated expressions");
+}

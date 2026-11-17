@@ -407,3 +407,16 @@ fn create_replays_a_legacy_definition_only_with_the_same_fields() {
             .contains("keep its expression to keep it running")
     );
 }
+
+#[test]
+fn definitions_report_their_posix_equivalent() {
+    assert_eq!(
+        posix("0 9 * * 1").posix_equivalent().as_deref(),
+        Some("0 9 * * 1")
+    );
+    assert_eq!(
+        legacy("0 9 * * 1").posix_equivalent().as_deref(),
+        Some("0 9 * * 0")
+    );
+    assert_eq!(legacy("0 0 1 * 2").posix_equivalent(), None);
+}

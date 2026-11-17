@@ -293,6 +293,22 @@ impl RecurringDefinition {
         };
         Ok(next.filter(|value| *value <= MAX_TIMESTAMP))
     }
+    /// The POSIX expression whose occurrences are exactly those of this
+    /// definition, to recreate a [`CronSyntax::Legacy`] definition as POSIX
+    /// under a new name: `0 9 * * 1` (Sunday in the legacy grammar) gives
+    /// `0 9 * * 0`. `None` when there is none: both day fields restricted
+    /// (POSIX runs on a day matching either, legacy only on one matching
+    /// both), tokens that joined or split into a seconds or year field, or a
+    /// result longer than 128 bytes. A POSIX definition returns its own
+    /// expression. Since 13.0.0-alpha.6.
+    pub fn posix_equivalent(&self) -> Option<String> {
+        match self.syntax {
+            CronSyntax::Posix => Some(self.expression.clone()),
+            CronSyntax::Legacy => {
+                cron_expression::Schedule::parse_five_fields(&self.expression)?.posix_equivalent()
+            }
+        }
+    }
     /// What `create` does when `self` is stored under the requested
     /// definition's name: `Ok(false)` replays an equal definition and
     /// `Ok(true)` replays a legacy one that differs only in its syntax,

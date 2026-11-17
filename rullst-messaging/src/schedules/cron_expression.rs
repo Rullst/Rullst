@@ -98,6 +98,34 @@ impl Schedule {
         Ok(None)
     }
 
+    /// The POSIX expression whose occurrences are exactly these, if there is
+    /// one: seconds only `0`, every year, and at most one restricted day
+    /// field (POSIX would match either of two). Weekdays move from 1-7
+    /// (Sunday first) to 0-6, and the result fits a definition's 128 bytes.
+    pub(super) fn posix_equivalent(&self) -> Option<String> {
+        let only_second_zero = self.seconds.members().eq([0]);
+        if !only_second_zero || !self.years.is_all() {
+            return None;
+        }
+        if !self.days_of_month.is_all() && !self.days_of_week.is_all() {
+            return None;
+        }
+        let weekdays = Values {
+            min: 0,
+            allowed: self.days_of_week.allowed.clone(),
+        };
+        let expression = [
+            &self.minutes,
+            &self.hours,
+            &self.days_of_month,
+            &self.months,
+            &weekdays,
+        ]
+        .map(Values::posix_field)
+        .join(" ");
+        (expression.len() <= 128).then_some(expression)
+    }
+
     /// Whether the year, month and both day fields select `day`.
     fn runs_on(&self, day: i64) -> bool {
         let (year, month, day_of_month) = civil_from_days(day);
@@ -140,6 +168,40 @@ struct Values {
 }
 
 impl Values {
+    fn is_all(&self) -> bool {
+        self.allowed.iter().all(|allowed| *allowed)
+    }
+
+    /// The allowed values, in order.
+    fn members(&self) -> impl Iterator<Item = i64> + '_ {
+        (self.min..)
+            .zip(&self.allowed)
+            .filter_map(|(value, allowed)| allowed.then_some(value))
+    }
+
+    /// `*`, or the allowed values as a list of numbers and ranges of three
+    /// or more.
+    fn posix_field(&self) -> String {
+        if self.is_all() {
+            return "*".to_string();
+        }
+        let mut runs: Vec<(i64, i64)> = Vec::new();
+        for value in self.members() {
+            match runs.last_mut() {
+                Some((_, end)) if *end + 1 == value => *end = value,
+                _ => runs.push((value, value)),
+            }
+        }
+        runs.iter()
+            .map(|&(start, end)| match end - start {
+                0 => start.to_string(),
+                1 => format!("{start},{end}"),
+                _ => format!("{start}-{end}"),
+            })
+            .collect::<Vec<_>>()
+            .join(",")
+    }
+
     fn contains(&self, value: i64) -> bool {
         value
             .checked_sub(self.min)

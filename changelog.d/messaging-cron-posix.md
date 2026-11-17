@@ -12,7 +12,10 @@
   no marker and keep the old grammar (`CronSyntax::Legacy`, deprecated,
   removal planned for 14.0), so their occurrences never change. The new
   `CronSyntax` enum, `RecurringDefinition::syntax` and
-  `RecurringMetadata::syntax` (from `create` and `schedules`) tell them apart.
+  `RecurringMetadata::syntax` (from `create` and `schedules`) tell them apart,
+  and `RecurringDefinition::posix_equivalent` gives the POSIX expression with
+  exactly a legacy definition's occurrences (`0 9 * * 1` gives `0 9 * * 0`),
+  or `None` when there is none (both day fields restricted, for example).
   `PostgresRecurringStore::create` keeps a stored legacy definition: one with
   the same expression and fields replays it, still legacy, with a `tracing`
   warning; any other difference fails with the new
