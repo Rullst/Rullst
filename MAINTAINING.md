@@ -192,6 +192,22 @@ and fails on any surviving mutant.
   (`.github/check-public-dependencies.py`). A crate newly exposed in the API
   gets a row there and in the policy table. A security exception changes both in
   the same pull request, and the CHANGELOG marks it.
+- **Public dependency health** (`dependency-health.yml`, monthly and manual;
+  informational). `.github/public-dependency-health.py` reads crates.io, the
+  rustsec/advisory-db repository and the GitHub API for every crate in
+  `.github/public-dependencies.json`, and flags one with no release for 12
+  months, a newer incompatible line (a newer major, or a newer 0.x minor), an
+  advisory (unmaintained, unsound and notice ones included) that the newest
+  release of its 13.x line does not escape, or an archived repository. A run
+  from `main` opens the "Public dependency health needs review" issue
+  (`dependency-health` label), or updates its description with the new
+  report, and comments only when the set of flags changed; a clean run closes
+  it. A flag is a reason to plan, not a failure: an abandoned public
+  dependency forces a breaking change (as chrono did in November 2026), so
+  plan its replacement before a release freezes the line, or record why it
+  stays. Locally, `python3 .github/public-dependency-health.py` prints the
+  same report (`GITHUB_TOKEN` is optional; the offline tests are
+  `.github/test-public-dependency-health.py`).
 - **Feature matrix** (`.github/check-feature-matrix.py`) and feature
   boundaries (`.github/check-feature-boundaries.sh`) must list every facade
   feature.
@@ -208,6 +224,13 @@ and fails on any surviving mutant.
   (`pr-security-evidence.yml` installs no cargo-audit, so its dependency check
   reports NOT CHECKED and takes no flags.) Prefer an upgrade; an exception is
   temporary and time-bounded.
+- **Scheduled advisory alerts.** `supply-chain.yml` also runs at 08:00 and
+  20:00 UTC (GitHub often starts scheduled runs hours late). When a scheduled
+  run fails, its last job opens an issue titled "Scheduled supply-chain check
+  failed" with the `supply-chain-alert` label, or comments on the open one,
+  with the failed jobs and the RustSec IDs from their logs. Fix it with an
+  upgrade or a governed exception; the next scheduled run that passes closes
+  the issue.
 - **CodeQL.** Rust results go through
   `.github/filter-codeql-test-fixtures.py` before upload, which drops the
   listed rules in test code only. Real findings in production code are fixed,
@@ -300,8 +323,10 @@ Full measurements run on hosted runners with `mutants.yml`
 -f test_scope=package [-f shard=k/n]`). A dispatch from a branch runs that
 branch's version of the workflow. Download each run's `outcomes.json`, list
 the `MissedMutant` and `Timeout` entries, and kill them with tests as in
-section 4. Measure `cargo-rullst` files with `-f test_scope=lib`, the scope the
-pull-request gate uses for them; a file reaches the gate's
+section 4. Measure `cargo-rullst` files with `-f test_scope=lib` and
+`-f timeout_seconds=900`, the scope and test timeout the pull-request gate
+uses for them (the default 300 s is below some runners' baseline); a file
+reaches the gate's
 `.github/mutants-pr-cli.txt` once that run leaves only accepted equivalents. Record campaign status (what is measured, what remains) in
 [`docs/src/mutation-testing.md`](docs/src/mutation-testing.md#campaign-status);
 mutants that only a live provider response reaches stay with provider sandbox
