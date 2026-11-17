@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794939996629,
+  "lastUpdate": 1794953939879,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -18524,6 +18524,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_active",
             "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4b9bb9222b7333ac94e172f7bd05a216e09789f3",
+          "message": "Merge pull request #760 from Rullst/ci/v13-template-pin-sync\n\nci: sync generated workflow action pins from Rullst's own",
+          "timestamp": "2026-11-17T18:55:18-03:00",
+          "tree_id": "dc86ca3b012ffd4cbd49b3add54bfccabb00de66",
+          "url": "https://github.com/Rullst/Rullst/commit/4b9bb9222b7333ac94e172f7bd05a216e09789f3"
+        },
+        "date": 1794953938929,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 13,
             "range": "± 0",
             "unit": "ns/iter"
           },
