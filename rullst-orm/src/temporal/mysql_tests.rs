@@ -147,6 +147,17 @@ fn golden_reads() {
         read(&[11, 0xe0, 0x07, 12, 31, 23, 59, 59, 0x60, 0xe3, 0x16, 0x00]).unwrap(),
         "2016-12-31T23:59:59.5"
     );
+    // The length byte decides: 7 reads no microseconds even if bytes follow,
+    // 11 reads up to 8 microsecond bytes.
+    assert_eq!(
+        read(&[7, 0xea, 0x07, 10, 15, 9, 30, 0, 1, 0, 0, 0]).unwrap(),
+        "2026-10-15T09:30:00"
+    );
+    assert_eq!(
+        read(&[11, 0xea, 0x07, 10, 15, 9, 30, 0, 1, 0, 0, 0, 0, 0, 0, 0]).unwrap(),
+        "2026-10-15T09:30:00.000001"
+    );
+    assert!(read(&[11, 0xea, 0x07, 10, 15, 9, 30, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]).is_err());
     // The zero date and short buffers are errors, never panics.
     assert!(read(&[0]).is_err());
     assert!(read(&[]).is_err());
