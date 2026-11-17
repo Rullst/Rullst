@@ -181,6 +181,9 @@ impl Scanner<'_, '_> {
             Some("routes") => self.root_routes(&tokens),
             _ => {}
         }
+        for at in super::alpha6_gaps::csrf_comparisons(&tokens, macro_name, self.context.text) {
+            self.hit(&CSRF_TOKEN_COMPARED, at);
+        }
         let comparison_macro = matches!(
             macro_name,
             Some("matches" | "assert_eq" | "assert_ne" | "debug_assert_eq" | "debug_assert_ne")
@@ -300,6 +303,11 @@ impl Scanner<'_, '_> {
         if is_punct(tokens.get(end), '!')
             && let Some(TokenTree::Group(body)) = tokens.get(end + 1)
         {
+            if last == "define_provider"
+                && let Some(TokenTree::Ident(name)) = body.stream().into_iter().next()
+            {
+                self.out.add_provider(name.to_string());
+            }
             self.level(body.stream(), Some(&last));
             chain.clear();
             return end + 2;
@@ -383,6 +391,9 @@ impl Scanner<'_, '_> {
         if let Some(rule) = super::alpha6_passkeys::path_rule(segments, self.context.text, facts) {
             self.hit(rule, at);
         }
+        if let Some(rule) = super::alpha6_gaps::path_rule(segments, self.context) {
+            self.hit(rule, at);
+        }
         if let Some(rule) =
             super::alpha6_public_deps::path_rule(segments, tokens.get(end), self.context.text)
         {
@@ -413,6 +424,9 @@ impl Scanner<'_, '_> {
         let names: Vec<&str> = segments.iter().map(String::as_str).collect();
         let args: Vec<TokenTree> = args.into_iter().collect();
         let first_string = string_value(args.first());
+        if let [.., ty, "new"] = names.as_slice() {
+            self.out.add_constructor(ty, at);
+        }
         if let Some(rule) = super::alpha6_public_deps::call_rule(&names, &args) {
             self.hit(rule, at);
         }
@@ -480,6 +494,9 @@ impl Scanner<'_, '_> {
             self.hit(rule, at);
         }
         if let Some(rule) = super::alpha6_defaults::cookie_rule(name, &args, self.context.text) {
+            self.hit(rule, at);
+        }
+        if let Some(rule) = super::alpha6_gaps::cron_rule(name, &args, self.context.text) {
             self.hit(rule, at);
         }
         if let Some(rule) =

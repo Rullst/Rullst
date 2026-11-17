@@ -16,6 +16,7 @@ mod alpha5_runtime;
 mod alpha5_slimming;
 mod alpha6_defaults;
 mod alpha6_deprecated;
+mod alpha6_gaps;
 mod alpha6_media;
 mod alpha6_non_exhaustive;
 mod alpha6_passkeys;
@@ -185,6 +186,12 @@ struct Collector {
     calls: BTreeMap<usize, &'static str>,
     /// Hasher-named functions of this file whose hashing is bounded.
     bounded: BTreeSet<&'static str>,
+    /// `Type::new` calls with their lines: `V13-CONNECT-INFALLIBLE-NEW-REMOVED`
+    /// when the package defines `Type` with `define_provider!`
+    /// ([`Self::add_provider`]), in this file or another.
+    constructors: Vec<(usize, String)>,
+    /// Types this file defines with `define_provider!`.
+    providers: BTreeSet<String>,
 }
 
 impl Collector {
@@ -201,6 +208,27 @@ impl Collector {
     /// This file defines `name` (a hasher's name) with its hashing bounded.
     fn add_bounded(&mut self, name: &'static str) {
         self.bounded.insert(name);
+    }
+
+    /// A `ty::new(..)` call at `line`, a removed constructor when `ty` is a
+    /// `define_provider!` type of the package.
+    fn add_constructor(&mut self, ty: &str, line: usize) {
+        self.constructors.push((line.max(1), ty.to_string()));
+    }
+
+    /// This file defines `name` with `define_provider!`.
+    fn add_provider(&mut self, name: String) {
+        self.providers.insert(name);
+    }
+
+    /// The constructor calls a `define_provider!` in another file may still
+    /// resolve, and the providers this file defines; [`Self::finish`] then
+    /// resolves none.
+    fn take_constructors(&mut self) -> (Vec<(usize, String)>, BTreeSet<String>) {
+        (
+            std::mem::take(&mut self.constructors),
+            std::mem::take(&mut self.providers),
+        )
     }
 
     /// The calls a definition in another file may still resolve, and the
@@ -253,6 +281,11 @@ impl Collector {
                 self.add(&catalog::CREDENTIAL_RATE_LIMIT, line);
             }
         }
+        for (line, ty) in std::mem::take(&mut self.constructors) {
+            if self.providers.contains(&ty) {
+                self.add(&catalog::CONNECT_INFALLIBLE_NEW_REMOVED, line);
+            }
+        }
         let mut hits: Vec<_> = self.lines.into_iter().collect();
         hits.sort_by_key(|((code, line), _)| (*line, *code));
         findings.extend(hits.into_iter().map(|((_, line), rule)| SourceFinding {
@@ -273,6 +306,14 @@ pub(super) struct WorkspaceFacts {
     /// or a feature that includes it on `rullst`, or `passkeys` (or `sqlite`,
     /// `passkey-postgres`) on `rullst-auth`, in a declaration or `[features]`.
     pub passkeys: bool,
+    /// A manifest enables a server-side session registry (13.0.0-alpha.6):
+    /// `auth-session-registry-sqlite`, `-postgres` or `-mysql` on `rullst`,
+    /// or `session-registry-*` on `rullst-auth`, in a declaration or
+    /// `[features]`.
+    pub session_registry: bool,
+    /// A manifest declares `jsonwebtoken` older than 12, whose `from_secret`
+    /// key constructors do not return a `Result`.
+    pub jsonwebtoken_below_12: bool,
 }
 
 /// Scans the workspace when the plan targets v13.
@@ -329,6 +370,9 @@ fn scan_package(
     // Calls of application hashers, resolved once every file is read.
     let mut calls: Vec<(PathBuf, usize, &'static str)> = Vec::new();
     let mut bounded: BTreeSet<&'static str> = BTreeSet::new();
+    // `Type::new` calls and the `define_provider!` types, likewise.
+    let mut constructors: Vec<(PathBuf, usize, String)> = Vec::new();
+    let mut providers: BTreeSet<String> = BTreeSet::new();
     let mut mounts_health = false;
     let mut entries = 0usize;
     for entry in WalkDir::new(package_root)
@@ -387,6 +431,13 @@ fn scan_package(
                 .map(|(line, callee)| (path.to_path_buf(), line, callee)),
         );
         bounded.extend(file_bounded);
+        let (file_constructors, file_providers) = collector.take_constructors();
+        constructors.extend(
+            file_constructors
+                .into_iter()
+                .map(|(line, ty)| (path.to_path_buf(), line, ty)),
+        );
+        providers.extend(file_providers);
         collector.finish(path, &mut scan.findings);
     }
     scan.findings.extend(
@@ -395,6 +446,16 @@ fn scan_package(
             .filter(|(_, _, callee)| !bounded.contains(callee))
             .map(|(path, line, _)| SourceFinding {
                 rule: &catalog::CREDENTIAL_RATE_LIMIT,
+                path,
+                line,
+            }),
+    );
+    scan.findings.extend(
+        constructors
+            .into_iter()
+            .filter(|(_, _, ty)| providers.contains(ty))
+            .map(|(path, line, _)| SourceFinding {
+                rule: &catalog::CONNECT_INFALLIBLE_NEW_REMOVED,
                 path,
                 line,
             }),

@@ -9,6 +9,8 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
+#[path = "files/alpha6.rs"]
+mod alpha6;
 #[path = "files/deploy.rs"]
 mod deploy;
 #[path = "files/features.rs"]
@@ -156,6 +158,16 @@ fn relies_on_default_driver(declaration: &toml::Value) -> bool {
     defaults && !selects_driver
 }
 
+/// The lowest major and minor a declaration's requirement admits.
+fn minimum(declaration: &toml::Value) -> Option<(u64, u64)> {
+    let requirement = declaration
+        .as_str()
+        .or_else(|| declaration.get("version").and_then(toml::Value::as_str))?;
+    let parsed = semver::VersionReq::parse(requirement).ok()?;
+    let comparator = parsed.comparators.first()?;
+    Some((comparator.major, comparator.minor.unwrap_or(0)))
+}
+
 /// The features v13 removed from a Rullst package, with their rule:
 /// `V13-POLYGLOT-FEATURE`, `V13-OFFLINE-SYNC-REMOVED`,
 /// `V13-ORM-ADAPTERS-REMOVED` and `V13-ORM-QDRANT-REMOVED`.
@@ -215,6 +227,7 @@ pub(super) fn manifest_findings(
 ) -> (Vec<SourceFinding>, WorkspaceFacts) {
     let mut findings = Vec::new();
     let mut facts = WorkspaceFacts::default();
+    let mut alpha6 = alpha6::Alpha6Manifests::default();
     for plan in plans {
         let Ok(document) = toml::from_str::<toml::Value>(&plan.original) else {
             continue;
@@ -246,6 +259,12 @@ pub(super) fn manifest_findings(
                 ));
             }
             facts.passkeys |= has_feature(&declaration, passkey_features(&package));
+            alpha6.declaration(
+                (plan.path.as_path(), plan.original.as_str()),
+                (key.as_str(), package.as_str()),
+                &declaration,
+                &mut facts,
+            );
             match package.as_str() {
                 "sqlx" => {
                     facts.sqlx_macros |= enables_sqlx_macros(&declaration);
@@ -280,6 +299,7 @@ pub(super) fn manifest_findings(
                 passkey_features(package).contains(&name).then_some(())
             })
             .is_some();
+        alpha6.features(&document, &plan.original, &packages, &mut facts);
         if let Some((line, rule)) = removed_feature_reference(&document, &plan.original, &packages)
         {
             findings.push(finding(rule, plan.path.clone(), line));
@@ -296,6 +316,7 @@ pub(super) fn manifest_findings(
             }
         }
     }
+    findings.extend(alpha6.findings());
     (findings, facts)
 }
 
@@ -472,6 +493,9 @@ pub(super) fn project_findings(
         && let Some(line) = removed_mail_driver_line(&text)
     {
         push(&MAIL_REMOVED, "Rullst.toml", line);
+    }
+    if let Some((file, line)) = alpha6::sqlite_without_journal_mode(root) {
+        push(&SQLITE_WAL_AVAILABLE, file, line);
     }
     let mut scripts: Vec<String> = root_names(root)
         .into_iter()
