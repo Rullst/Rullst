@@ -463,7 +463,10 @@ fn token(input: &str, accept: impl Fn(u8) -> bool) -> Option<(&str, &str)> {
         .bytes()
         .position(|byte| !accept(byte))
         .unwrap_or(input.len());
-    (end > 0).then(|| (&input[..end], skip_space(&input[end..])))
+    if end == 0 {
+        return None;
+    }
+    Some((&input[..end], skip_space(&input[end..])))
 }
 
 fn skip_space(input: &str) -> &str {

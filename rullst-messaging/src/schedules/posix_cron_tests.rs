@@ -33,19 +33,12 @@ fn ours(expression: &str, after_ms: i64, steps: usize) -> Result<Vec<Option<i64>
     Ok(occurrences)
 }
 
-/// Both evaluators accept or reject `expression` alike and agree on its
-/// next four occurrences after each start.
+/// Both evaluators accept or reject `expression` alike, with the same
+/// message, and agree on its next four occurrences after each start.
 fn assert_same(expression: &str, starts: &[i64]) {
     for &start in starts {
         let (ours, core) = (ours(expression, start, 4), core(expression, start, 4));
-        assert_eq!(
-            ours.is_ok(),
-            core.is_ok(),
-            "`{expression}`: {ours:?} {core:?}"
-        );
-        if let (Ok(ours), Ok(core)) = (ours, core) {
-            assert_eq!(ours, core, "`{expression}` after {start}");
-        }
+        assert_eq!(ours, core, "`{expression}` after {start}");
     }
 }
 
@@ -244,6 +237,8 @@ fn documented_and_calendar_edge_expressions_agree_with_core() {
         -30_000,
         -617_760_000_000,
         -62_167_219_200_000,
+        -62_167_219_201_000,
+        -62_167_219_200_001,
         -62_167_219_202_000,
         1_794_910_470_001,
         1_794_910_469_999,
