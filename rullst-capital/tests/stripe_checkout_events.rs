@@ -11,7 +11,7 @@ fn fixture(kind: &str) -> Value {
 }
 fn sign(body: &Value) -> (Vec<u8>, HashMap<String, String>) {
     let body = serde_json::to_vec(body).unwrap();
-    let timestamp = chrono::Utc::now().timestamp();
+    let timestamp = jiff::Timestamp::now().as_second();
     let mut signer =
         <hmac::Hmac<sha2::Sha256> as hmac::KeyInit>::new_from_slice(b"whsec_fixture").unwrap();
     hmac::Mac::update(&mut signer, format!("{timestamp}.").as_bytes());

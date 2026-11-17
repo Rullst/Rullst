@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 mod labels;
@@ -50,8 +50,10 @@ pub struct Invoice {
     pub invoice_id: String,
     /// The recipient, which must equal the charge receipt's e-mail address.
     pub customer_email: String,
-    /// Issue date, printed as `YYYY-MM-DD`.
-    pub date: DateTime<Utc>,
+    /// Issue instant; its UTC date is printed as `YYYY-MM-DD`. Serialized as
+    /// RFC 3339 in UTC (`2026-10-22T15:45:30Z`), as before 13.0.0-alpha.6.
+    #[serde(with = "rullst_core::rfc3339::serde_utc")]
+    pub date: Timestamp,
     /// One to 128 line items.
     pub items: Vec<InvoiceItem>,
     /// Three-letter ISO 4217 currency code of every amount.
@@ -66,7 +68,7 @@ impl Invoice {
     pub fn new(
         invoice_id: impl Into<String>,
         customer_email: impl Into<String>,
-        date: DateTime<Utc>,
+        date: Timestamp,
         currency: impl Into<String>,
     ) -> Self {
         Self {
@@ -181,7 +183,7 @@ impl Invoice {
             escape_html(&labels.billed_to),
             escape_html(&self.customer_email),
             escape_html(&labels.date),
-            self.date.format("%Y-%m-%d"),
+            rullst_core::rfc3339::utc_date(self.date),
             escape_html(&labels.description),
             escape_html(&labels.amount),
             items_html,
