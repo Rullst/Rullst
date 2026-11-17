@@ -626,6 +626,22 @@ impl core::marker::Unpin for rullst_messaging::WireEnvelopeCodec
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_messaging::WireEnvelopeCodec
 impl core::panic::unwind_safe::UnwindSafe for rullst_messaging::WireEnvelopeCodec
 pub mod rullst_messaging::schedules
+#[non_exhaustive] pub enum rullst_messaging::schedules::CronSyntax
+pub rullst_messaging::schedules::CronSyntax::Posix
+pub rullst_messaging::schedules::CronSyntax::Legacy
+impl core::clone::Clone for rullst_messaging::schedules::CronSyntax
+impl core::cmp::Eq for rullst_messaging::schedules::CronSyntax
+impl core::cmp::PartialEq for rullst_messaging::schedules::CronSyntax
+impl core::fmt::Debug for rullst_messaging::schedules::CronSyntax
+impl core::hash::Hash for rullst_messaging::schedules::CronSyntax
+impl core::marker::Copy for rullst_messaging::schedules::CronSyntax
+impl serde_core::ser::Serialize for rullst_messaging::schedules::CronSyntax
+impl<'de> serde_core::de::Deserialize<'de> for rullst_messaging::schedules::CronSyntax
+impl core::marker::Send for rullst_messaging::schedules::CronSyntax
+impl core::marker::Sync for rullst_messaging::schedules::CronSyntax
+impl core::marker::Unpin for rullst_messaging::schedules::CronSyntax
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_messaging::schedules::CronSyntax
+impl core::panic::unwind_safe::UnwindSafe for rullst_messaging::schedules::CronSyntax
 #[non_exhaustive] pub enum rullst_messaging::schedules::MissedRunPolicy
 pub rullst_messaging::schedules::MissedRunPolicy::CatchUp
 pub rullst_messaging::schedules::MissedRunPolicy::Coalesce
@@ -725,6 +741,7 @@ pub fn rullst_messaging::schedules::RecurringDefinition::first_after_ms(&self) -
 pub fn rullst_messaging::schedules::RecurringDefinition::missed_run_policy(&self) -> rullst_messaging::schedules::MissedRunPolicy
 pub fn rullst_messaging::schedules::RecurringDefinition::name(&self) -> &str
 pub fn rullst_messaging::schedules::RecurringDefinition::new(name: impl core::convert::Into<alloc::string::String>, expression: impl core::convert::Into<alloc::string::String>, first_after_ms: i64, missed: rullst_messaging::schedules::MissedRunPolicy, message: rullst_messaging::schedules::ScheduledMessage) -> core::result::Result<Self, rullst_messaging::schedules::RecurringError>
+pub fn rullst_messaging::schedules::RecurringDefinition::syntax(&self) -> rullst_messaging::schedules::CronSyntax
 impl core::clone::Clone for rullst_messaging::schedules::RecurringDefinition
 impl core::cmp::Eq for rullst_messaging::schedules::RecurringDefinition
 impl core::cmp::PartialEq for rullst_messaging::schedules::RecurringDefinition
@@ -740,6 +757,7 @@ impl core::panic::unwind_safe::UnwindSafe for rullst_messaging::schedules::Recur
 pub rullst_messaging::schedules::RecurringError::InvalidInput(&'static str)
 pub rullst_messaging::schedules::RecurringError::Configuration
 pub rullst_messaging::schedules::RecurringError::Conflict
+pub rullst_messaging::schedules::RecurringError::LegacyDefinition
 pub rullst_messaging::schedules::RecurringError::Capacity
 pub rullst_messaging::schedules::RecurringError::NotFound
 pub rullst_messaging::schedules::RecurringError::InvalidLease
@@ -765,6 +783,7 @@ pub fn rullst_messaging::schedules::RecurringMetadata::generation(&self) -> &str
 pub fn rullst_messaging::schedules::RecurringMetadata::is_cancelled(&self) -> bool
 pub fn rullst_messaging::schedules::RecurringMetadata::name(&self) -> &str
 pub fn rullst_messaging::schedules::RecurringMetadata::next_due_at_ms(&self) -> core::option::Option<i64>
+pub fn rullst_messaging::schedules::RecurringMetadata::syntax(&self) -> rullst_messaging::schedules::CronSyntax
 impl core::clone::Clone for rullst_messaging::schedules::RecurringMetadata
 impl core::cmp::Eq for rullst_messaging::schedules::RecurringMetadata
 impl core::cmp::PartialEq for rullst_messaging::schedules::RecurringMetadata

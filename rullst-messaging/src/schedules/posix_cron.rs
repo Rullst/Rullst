@@ -79,10 +79,11 @@ impl PosixSchedule {
         let last_day = days_from_civil(LAST_YEAR, 12, 31);
         while day <= last_day {
             let (_, month, day_of_month) = civil_from_days(day);
-            if self.months.contains(as_value(month)) && self.runs_on(day, day_of_month) {
-                if let Some(minute) = self.first_minute_from(earliest / 60) {
-                    return (day * SECONDS_PER_DAY + minute * 60).checked_mul(1_000);
-                }
+            if self.months.contains(as_value(month))
+                && self.runs_on(day, day_of_month)
+                && let Some(minute) = self.first_minute_from(earliest / 60)
+            {
+                return (day * SECONDS_PER_DAY + minute * 60).checked_mul(1_000);
             }
             day += 1;
             earliest = 0;
@@ -107,10 +108,10 @@ impl PosixSchedule {
     /// The first matching minute of the day at or after minute `earliest`.
     fn first_minute_from(&self, earliest: i64) -> Option<i64> {
         let hour = as_value(earliest / 60);
-        if self.hours.contains(hour) {
-            if let Some(minute) = self.minutes.first_from(as_value(earliest % 60)) {
-                return Some(i64::from(hour) * 60 + i64::from(minute));
-            }
+        if self.hours.contains(hour)
+            && let Some(minute) = self.minutes.first_from(as_value(earliest % 60))
+        {
+            return Some(i64::from(hour) * 60 + i64::from(minute));
         }
         let hour = self.hours.first_from(hour + 1)?;
         Some(i64::from(hour) * 60 + i64::from(self.minutes.first_from(0)?))
