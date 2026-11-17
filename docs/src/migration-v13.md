@@ -1350,7 +1350,9 @@ Work through the steps in order.
       creating it again under the same name with a changed expression fails
       with `RecurringError::LegacyDefinition`. To migrate it, cancel it and
       create the POSIX expression under a new name; a cancelled name is never
-      reused.
+      reused. `RecurringDefinition::posix_equivalent()` of the stored
+      definition (deserialized from its JSON) gives that expression when
+      one exists.
     - For a schedule first created after the upgrade, write POSIX: move each
       weekday number down by one (`2-6`, Monday to Friday, becomes `1-5`;
       names stay) and, where the expression restricts both the day of the

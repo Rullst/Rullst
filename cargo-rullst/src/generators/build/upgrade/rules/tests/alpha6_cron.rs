@@ -42,6 +42,10 @@ fn the_rule_is_an_alpha6_must_change_rule() {
     assert!(rule.guidance.contains("`RecurringError::LegacyDefinition`"));
     assert!(rule.guidance.contains("`CronSyntax::Legacy`"));
     assert!(
+        rule.guidance
+            .contains("`RecurringDefinition::posix_equivalent()`")
+    );
+    assert!(
         rule.message
             .ends_with("Review the schedule this call creates")
     );
