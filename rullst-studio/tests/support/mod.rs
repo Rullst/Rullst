@@ -13,6 +13,7 @@ use tower::ServiceExt;
 mod bounded_view;
 mod er_keys;
 mod feature_flags;
+mod form_bounds;
 mod incomplete_key;
 mod paging;
 mod postgres_schema;
@@ -183,6 +184,16 @@ pub async fn exercise_mutations(database_url: &str, driver: &str, table: &str) {
         "dashboard omitted matrix table: {dashboard}"
     );
     assert!(dashboard.contains(&parent_table));
+    let engine = match driver {
+        "postgres" => "POSTGRESQL",
+        "mysql" => "MYSQL / MARIADB",
+        _ => "SQLITE",
+    };
+    assert_eq!(
+        rullst_studio::data_browser::db::resolve_driver_display_name(),
+        engine
+    );
+    assert!(dashboard.contains(engine));
 
     let migrations = app
         .clone()
@@ -292,12 +303,16 @@ pub async fn exercise_mutations(database_url: &str, driver: &str, table: &str) {
         .push(&quoted_table)
         .push(" WHERE id = ")
         .push_bind(7_i64);
-    let name: String = fixture(&mut select, driver)
+    let row = fixture(&mut select, driver)
         .fetch_one(pool)
         .await
-        .and_then(|row| _sqlx::Row::try_get(&row, 0))
         .expect("read Studio-updated row");
+    let name: String = _sqlx::Row::try_get(&row, 0).expect("Studio-updated name");
     assert_eq!(name, "after");
+    assert_eq!(
+        rullst_studio::data_browser::db::get_any_value_as_string(&row, 0),
+        "after"
+    );
 
     let boolean_update = app
         .clone()
@@ -344,6 +359,8 @@ pub async fn exercise_mutations(database_url: &str, driver: &str, table: &str) {
     for invalid_body in [
         "column=name&value=blocked&set_null=true&pk_id=7",
         "column=name&value=blocked&set_null=maybe&pk_id=7",
+        // An unsupported selector is refused even for a nullable column.
+        "column=score&value=2.5&set_null=maybe&pk_id=7",
         "column=unknown&value=blocked&pk_id=7",
         "column=name&pk_id=7",
         "column=name&value=blocked&pk_id=7&unexpected=true",
@@ -356,6 +373,22 @@ pub async fn exercise_mutations(database_url: &str, driver: &str, table: &str) {
             .expect("Studio invalid typed update response");
         assert_eq!(invalid.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }
+
+    // A row action on a table that does not exist is not found, even while
+    // other tables do.
+    let missing_table_update = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/studio/tables/not_present/rows/update")
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .body(Body::from("column=name&value=after&pk_id=7"))
+                .expect("valid missing-table update request"),
+        )
+        .await
+        .expect("Studio missing-table update response");
+    assert_eq!(missing_table_update.status(), StatusCode::NOT_FOUND);
 
     let missing_row = app
         .clone()
@@ -447,6 +480,9 @@ pub async fn exercise_mutations(database_url: &str, driver: &str, table: &str) {
     bounded_view::exercise_bounded_table_view(&app, pool, driver, table).await;
     paging::exercise_stable_paging(&app, pool, driver, table).await;
     er_keys::exercise_composite_keys(&app, pool, driver, table).await;
+    if driver != "mysql" {
+        form_bounds::exercise_form_bounds(&app, pool, driver, table).await;
+    }
     if driver == "mysql" {
         unsigned::exercise_unsigned_columns(&app, pool, table).await;
     }
