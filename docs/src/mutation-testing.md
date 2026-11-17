@@ -291,6 +291,30 @@ most branches of `manager.rs` and the recovery files have unit tests: a
 contract run reports those mutants as missed, and a targeted run of the file
 catches them.
 
+## Pull-request gate timeouts
+
+`.github/mutants-pr.sh` gives cargo-mutants explicit timeouts. An explicit
+`--timeout` also bounds the unmutated baseline, so it must exceed the slowest
+baseline a hosted runner takes, while a mutant that loops forever still stops
+in bounded time.
+
+| Pass | Test timeout | Build timeout | Measured baseline tests (hosted, 15–17 November 2026) |
+| --- | --- | --- | --- |
+| Workspace (each mutated package's whole suite) | 300 s | 300 s | 0–77 s |
+| CLI (`cargo test --lib` of `cargo-rullst`, every feature) | 900 s | 300 s | 112–309 s in about 50 runs; two targeted runs exceeded 300 s |
+
+Until November 2026 both passes used 300 s. The same CLI shard took 146 s on
+one runner and 309 s on another, so 300 s failed baselines (twice in targeted
+`mutants.yml` runs, which take the same value by default) and turned ordinary
+test runs into timeouts, which the gate accepts as detections: in one shard
+whose baseline took 299 s, 6 of 21 mutants timed out at 300 s while the
+caught ones took 263–300 s. Within one runner a mutant's tests take about as
+long as its baseline, so 900 s, about three times the slowest baseline seen,
+leaves room for slower runners and a growing suite, and a mutant that never
+finishes (the CLI's accepted timeouts below) costs 15 minutes. Raise it when
+a CLI baseline passes 450 s. Targeted runs of CLI files with
+`test_scope=lib` should pass `-f timeout_seconds=900` too.
+
 ## Accepted equivalent mutants
 
 The v13 focused campaign (targeted runs of security and correctness files
