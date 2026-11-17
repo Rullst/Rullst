@@ -32,6 +32,15 @@ release's source, work scheduled for the next one) are in that release's
   `cargo rullst new` writes ignores `RUSTSEC-2026-0459` in its `cargo audit`
   step until the same date.
 
+- For all of 13.x, the 25 public dependencies listed in the
+  [compatibility policy](compatibility-policy.md#public-dependencies) stay on
+  their version lines. An incompatible update of one ships only in 14.0, as a
+  security exception, or behind a new opt-in feature next to the 13.x line.
+  Pre-1.0 ones among them, such as `axum` 0.8, `sqlx` 0.9, `tower` 0.5,
+  `tower-http` 0.7, `tower-sessions` 0.15 (Connect's `axum-session`),
+  `validator` 0.21, `pgvector` 0.4 and `secrecy` 0.10, may fall behind
+  upstream during 13.x.
+
 ## Upgrades
 
 - `cargo rullst upgrade` changes the Rullst versions, applies the compiler's
