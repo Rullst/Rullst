@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794937329903,
+  "lastUpdate": 1794939707097,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -14943,6 +14943,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 381,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3953a1f6e870d595f1c58181f7a49f2294d3d5bc",
+          "message": "Merge pull request #752 from Rullst/test/v13-mutants-studio-facade\n\ntest(studio): close the local Studio and facade mutation campaigns",
+          "timestamp": "2026-11-17T15:02:12-03:00",
+          "tree_id": "0529f51844bc19015b30efb82c197874bde35656",
+          "url": "https://github.com/Rullst/Rullst/commit/3953a1f6e870d595f1c58181f7a49f2294d3d5bc"
+        },
+        "date": 1794939706110,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 396,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
