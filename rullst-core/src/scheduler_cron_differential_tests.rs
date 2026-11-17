@@ -402,3 +402,187 @@ fn documented_and_calendar_edge_expressions_agree_with_the_cron_crate() {
         }
     }
 }
+
+/// Golden vectors of the tests above, for when the `cron` crate is gone.
+mod golden {
+    use super::*;
+    use proptest::strategy::ValueTree;
+    use proptest::test_runner::{Config, RngAlgorithm, TestRng, TestRunner};
+    use std::fmt::Write as _;
+
+    fn instant_text(instant: &DateTime<Utc>) -> String {
+        match instant.timestamp_subsec_nanos() {
+            0 => instant.timestamp().to_string(),
+            nanos => format!("{}.{nanos:09}", instant.timestamp()),
+        }
+    }
+
+    /// Expressions in first-seen order with their verdict and runs.
+    #[derive(Default)]
+    struct Expressions {
+        order: Vec<String>,
+        entries: std::collections::HashMap<String, (bool, Vec<String>)>,
+    }
+
+    impl Expressions {
+        fn record(&mut self, expression: &str, starts: &[DateTime<Utc>], steps: usize) {
+            let accepted = CronSchedule::parse(expression).is_ok();
+            if !self.entries.contains_key(expression) {
+                self.order.push(expression.to_string());
+            }
+            let entry = self
+                .entries
+                .entry(expression.to_string())
+                .or_insert((accepted, Vec::new()));
+            if !accepted {
+                return;
+            }
+            let theirs = legacy::CronSchedule::parse(expression).unwrap();
+            for start in starts {
+                let mut cursor = *start;
+                let mut results = Vec::new();
+                for _ in 0..steps {
+                    match theirs.next_after(&cursor) {
+                        Some(next) => {
+                            results.push(next.timestamp().to_string());
+                            cursor = next;
+                        }
+                        None => {
+                            results.push("end".to_string());
+                            break;
+                        }
+                    }
+                }
+                entry
+                    .1
+                    .push(format!("{}\t{}", instant_text(start), results.join(" ")));
+            }
+        }
+
+        fn write(&self, out: &mut String) {
+            for expression in &self.order {
+                let (accepted, runs) = &self.entries[expression];
+                let _ = writeln!(
+                    out,
+                    "{expression}\t{}",
+                    if *accepted { "ok" } else { "reject" }
+                );
+                for run in runs {
+                    let _ = writeln!(out, "\t{run}");
+                }
+            }
+        }
+    }
+
+    fn draw<S: Strategy>(strategy: S, runner: &mut TestRunner) -> S::Value {
+        strategy.new_tree(runner).unwrap().current()
+    }
+
+    #[test]
+    #[ignore = "writes src/scheduler_cron_golden/*.txt from the `cron` crate"]
+    fn generate_golden_vectors() {
+        let mut runner = TestRunner::new_with_rng(
+            Config::default(),
+            TestRng::from_seed(RngAlgorithm::ChaCha, &[13; 32]),
+        );
+        let directory = concat!(env!("CARGO_MANIFEST_DIR"), "/src/scheduler_cron_golden");
+        std::fs::create_dir_all(directory).unwrap();
+
+        // `each_field_parses_as_the_cron_crate_parsed_it`: 2,048 draws.
+        let mut fields = String::from("# fields\n");
+        let mut seen = std::collections::HashSet::new();
+        for _ in 0..2_048 {
+            let texts = draw((field(59), field(23), field(31), field(12)), &mut runner);
+            for (slot, text) in Slot::ALL.into_iter().zip([texts.0, texts.1, texts.2, texts.3]) {
+                if !seen.insert(format!("{slot:?}\t{text}")) {
+                    continue;
+                }
+                assert_eq!(slot.values(&text), slot.crate_values(&text), "{slot:?} `{text}`");
+                let values = match slot.crate_values(&text) {
+                    Some(values) => values
+                        .iter()
+                        .map(u32::to_string)
+                        .collect::<Vec<_>>()
+                        .join(","),
+                    None => "reject".to_string(),
+                };
+                let _ = writeln!(fields, "{slot:?}\t{text}\t{values}");
+            }
+        }
+        std::fs::write(format!("{directory}/fields.txt"), fields).unwrap();
+
+        let mut expressions = Expressions::default();
+        // `expressions_run_when_the_cron_crate_ran_them`: 768 draws.
+        for _ in 0..768 {
+            let (minute, hour, day_of_month, month, day_of_week, starts) = draw(
+                (
+                    field(59),
+                    field(23),
+                    field(31),
+                    field(12),
+                    weekday_field(),
+                    prop::collection::vec(instant(), 3),
+                ),
+                &mut runner,
+            );
+            let expression = format!("{minute} {hour} {day_of_month} {month} {day_of_week}");
+            let fields_valid = Slot::ALL
+                .into_iter()
+                .zip([&minute, &hour, &day_of_month, &month])
+                .all(|(slot, text)| slot.crate_values(text).is_some());
+            let weekdays_valid = legacy::crate_day_of_week(&day_of_week).is_ok();
+            assert_eq!(
+                CronSchedule::parse(&expression).is_ok(),
+                fields_valid && weekdays_valid
+            );
+            expressions.record(&expression, &starts, 4);
+        }
+        // `valid_expressions_occur_when_the_cron_crate_said`: 768 draws.
+        for _ in 0..768 {
+            let (minute, hour, day_of_month, month, day_of_week, starts) = draw(
+                (
+                    valid_field(0, 59, false, false),
+                    valid_field(0, 23, false, false),
+                    valid_field(1, 31, false, true),
+                    valid_field(1, 12, true, false),
+                    valid_weekday_field(),
+                    prop::collection::vec(instant(), 3),
+                ),
+                &mut runner,
+            );
+            let expression = format!("{minute} {hour} {day_of_month} {month} {day_of_week}");
+            assert!(CronSchedule::parse(&expression).is_ok(), "`{expression}`");
+            expressions.record(&expression, &starts, 4);
+        }
+        let mut out = String::from("# expressions\n");
+        expressions.write(&mut out);
+        std::fs::write(format!("{directory}/expressions.txt"), out).unwrap();
+
+        // `documented_and_calendar_edge_expressions_agree_with_the_cron_crate`.
+        let mut starts = vec![
+            Utc.with_ymd_and_hms(2026, 11, 14, 12, 0, 0).unwrap(),
+            Utc.with_ymd_and_hms(2024, 2, 28, 23, 59, 0).unwrap(),
+            Utc.with_ymd_and_hms(2024, 2, 29, 0, 0, 0).unwrap(),
+            Utc.with_ymd_and_hms(2025, 2, 28, 23, 59, 59).unwrap(),
+            Utc.with_ymd_and_hms(2026, 1, 31, 23, 59, 0).unwrap(),
+            Utc.with_ymd_and_hms(2026, 4, 30, 23, 59, 0).unwrap(),
+            Utc.with_ymd_and_hms(2026, 12, 31, 23, 59, 0).unwrap(),
+            Utc.with_ymd_and_hms(1999, 12, 31, 23, 59, 59).unwrap(),
+            Utc.with_ymd_and_hms(2099, 12, 31, 23, 0, 0).unwrap(),
+            Utc.with_ymd_and_hms(2100, 12, 31, 23, 58, 30).unwrap(),
+            Utc.with_ymd_and_hms(1969, 12, 31, 23, 59, 30).unwrap(),
+            Utc.with_ymd_and_hms(1950, 6, 1, 0, 0, 0).unwrap(),
+            Utc.with_ymd_and_hms(0, 1, 1, 0, 0, 0).unwrap(),
+            Utc.with_ymd_and_hms(-1, 12, 31, 23, 59, 58).unwrap(),
+        ];
+        starts.push(starts[0] + TimeDelta::nanoseconds(1));
+        starts.push(starts[0] - TimeDelta::nanoseconds(1));
+        let mut corpus = Expressions::default();
+        for expression in CORPUS {
+            corpus.record(expression, &starts, 6);
+        }
+        let mut out = String::from("# corpus\n");
+        corpus.write(&mut out);
+        std::fs::write(format!("{directory}/corpus.txt"), out).unwrap();
+    }
+}
