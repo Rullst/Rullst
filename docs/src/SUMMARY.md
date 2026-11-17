@@ -11,6 +11,7 @@
 - [💡 The Rullst Philosophy](philosophy.md)
 - [Simple Capability Status](capability-status.md)
 - [Maturity Tiers: Core, Extension, Experimental](maturity.md)
+- [Scope and Limits](scope-and-limits.md)
 
 # 🍳 Rullst Cookbook & Tutorials
 

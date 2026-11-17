@@ -8,6 +8,16 @@ mutates the changed lines of every pull request to `main`. How to run a
 campaign and kill survivors is in
 [MAINTAINING.md](https://github.com/Rullst/Rullst/blob/main/MAINTAINING.md#6-mutation-campaigns).
 
+## Where campaigns run
+
+The pull-request gate (`mutants-pr.yml`) and any mutation result used as
+release evidence run only in `Rullst/Rullst`. A campaign that gates nothing
+may run in a maintainer's fork of the repository, with only `mutants.yml`
+enabled there, after the fork is synced to the commit being measured. Each
+entry below names the measured commit and links its runs wherever they ran,
+so a result can be checked against its source; see
+[MAINTAINING.md](https://github.com/Rullst/Rullst/blob/main/MAINTAINING.md#gating-evidence-and-fork-runs).
+
 ## Campaign status
 
 Measured on hosted runners for the 13.0 prereleases. A missed mutant either
@@ -37,7 +47,7 @@ received a test or is listed under
   plural-variant map was removed. The final runs gave 432 mutants: 314 caught,
   117 unviable, 1 timeout (listed below) and no survivor; a mutant whose
   expansion no longer compiles in an integration test counts as unviable.
-- **`rullst-ai`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+- **`rullst-ai`** (13.0 campaign on `cdb68d3b`,
   [PR #749](https://github.com/Rullst/Rullst/pull/749), runs in the
   maintainer's fork
   [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)):
@@ -60,7 +70,7 @@ received a test or is listed under
   Reruns of the four changed files ([43949255885](https://github.com/venelouis/rullst-ci/actions/runs/43949255885), [43949275446](https://github.com/venelouis/rullst-ci/actions/runs/43949275446),
   [43949290366](https://github.com/venelouis/rullst-ci/actions/runs/43949290366), [43949305052](https://github.com/venelouis/rullst-ci/actions/runs/43949305052)) gave 261 mutants: 234 caught, 27
   unviable and none missed.
-- **`rullst-iot`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+- **`rullst-iot`** (13.0 campaign on `cdb68d3b`,
   [PR #749](https://github.com/Rullst/Rullst/pull/749), same fork): targeted
   runs of the 19 files (1 has no mutants) gave 371 mutants: 321 caught, 41
   unviable, no timeout and 9 missed, all accepted equivalents listed below.
@@ -72,11 +82,14 @@ received a test or is listed under
   pool: since 13.0.0-alpha.3 `rullst-core/tests/artisan_open_pool.rs` opens one
   in a PostgreSQL testcontainer, so a run with Docker, such as one on the
   hosted runners, kills it; a run without Docker skips that test (see below).
-- **`rullst-mail`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+- **`rullst-mail`** (13.0 campaign on `cdb68d3b`,
   [PR #748](https://github.com/Rullst/Rullst/pull/748), runs in the
   maintainer's fork
   [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml);
-  four files unchanged since `5e6b65c5` keep their runs in this repository):
+  four files unchanged since `5e6b65c5` keep their runs in this repository:
+  `validator.rs`, `pipeline.rs`, `suppression/mod.rs` and
+  `drivers/aws_ses.rs`, runs 43726484317, 43726494711, 43726978533 and
+  43727720830):
   targeted runs of the 53 files, the five PostgreSQL adapter files included
   (3 have no mutants), gave 1,761 mutants: 1,323 caught, 184 unviable, 13
   timeouts and 241 missed. 55 of the misses are PostgreSQL adapter branches
@@ -110,7 +123,7 @@ received a test or is listed under
   `redis_streams/` (excluded from the gate) was measured with targeted runs
   and the `messaging-redis` contract run: 202 mutants, of which only the
   accepted `Remote::decode` arm survives both.
-- **`rullst-media`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+- **`rullst-media`** (13.0 campaign on `cdb68d3b`,
   [PR #747](https://github.com/Rullst/Rullst/pull/747), runs in the
   maintainer's fork
   [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)):
@@ -141,7 +154,7 @@ received a test or is listed under
   crate-private clock that its tests set (the public `mock_router` keeps the
   system clock), and a test that exchanges a code 299 and 300 seconds after
   issuing it kills that mutant, which leaves the eight accepted equivalents.
-- **`rullst-auth`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+- **`rullst-auth`** (13.0 campaign on `cdb68d3b`,
   [PR #743](https://github.com/Rullst/Rullst/pull/743), runs in the
   maintainer's fork
   [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)):
@@ -169,7 +182,7 @@ received a test or is listed under
 - **`rullst-nexus`**: first measured in PR #532 (26 files, 876 mutants). New
   tests killed 170 of the 171 first misses, one is an accepted equivalent, and
   one real defect was fixed.
-- **`rullst-security`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+- **`rullst-security`** (13.0 campaign on `cdb68d3b`,
   [PR #746](https://github.com/Rullst/Rullst/pull/746), runs in the
   maintainer's fork
   [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)):
@@ -192,7 +205,17 @@ received a test or is listed under
   bounds that only very large projects reach (hundreds of mebibytes, or 10,000
   to 250,000 files): upgrade snapshot 6, upgrade source walk 3, project
   snapshot 13, replacement and verification totals 2 and 2, and the 64 MiB
-  preparation report 4.
+  preparation report 4. In 13.0.0-alpha.6
+  ([PR #740](https://github.com/Rullst/Rullst/pull/740)) targeted runs with
+  the library tests measured the two new upgrade rule files:
+  `upgrade/rules/files/alpha6.rs` (run 43871104947) had 44 mutants caught and
+  none missed; the run of `upgrade/rules/alpha6_gaps.rs` (run 43871101055)
+  reached the job's time limit after 65 of its 109 mutants, with one
+  survivor, since killed. Both files are in `.github/mutants-pr-cli.txt`, and
+  the gate of PR #740 mutated every line of both; a library test killed the
+  one survivor it found. The other upgrade rule files of 13.0.0-alpha.6
+  (`alpha6_defaults.rs`, `alpha6_deprecated.rs`, `alpha6_media.rs`,
+  `alpha6_non_exhaustive.rs` and `alpha6_passkeys.rs`) are not in that list.
 - **`green` (now `footprint`), `deploy` and guided update** (13.0.0-alpha.4):
   the nine `green` files, `generators/deploy.rs` and `update/guided.rs` gave 337 mutants, 93
   missed and no timeout. New library tests (a loopback test server, fake app
@@ -207,7 +230,7 @@ received a test or is listed under
   mutants, 30 caught and 4 unviable, no survivor, so it is listed too.
 - **Studio remote mode** (20 files, measured with the `cargo-rullst` campaign):
   no survivor left.
-- **`rullst-labs`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+- **`rullst-labs`** (13.0 campaign on `cdb68d3b`,
   [PR #744](https://github.com/Rullst/Rullst/pull/744), runs in the
   maintainer's fork
   [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)):
@@ -216,7 +239,7 @@ received a test or is listed under
   listed below.
 - **`rullst-capital`**: 29 mutants that only a live Stripe response reaches
   stay with provider sandbox testing.
-- **`rullst-privacy`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+- **`rullst-privacy`** (13.0 campaign on `cdb68d3b`,
   [PR #745](https://github.com/Rullst/Rullst/pull/745), runs in the
   maintainer's fork
   [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)):
@@ -226,7 +249,7 @@ received a test or is listed under
   contract run
   ([43900834362](https://github.com/venelouis/rullst-ci/actions/runs/43900834362))
   caught the 58 viable mutants of those adapters (79 mutants, 21 unviable).
-- **`rullst-supervision`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+- **`rullst-supervision`** (13.0 campaign on `cdb68d3b`,
   [PR #745](https://github.com/Rullst/Rullst/pull/745), runs in the
   maintainer's fork
   [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)):
@@ -246,27 +269,6 @@ choice-code decoding and, in `passkey-postgres` and `auth-recovery-postgres`,
 most branches of `manager.rs` and the recovery files have unit tests: a
 contract run reports those mutants as missed, and a targeted run of the file
 catches them.
-
-### Planned before 13.0.0-rc.1
-
-Recorded on 16 November 2026. Campaigns for `rullst-mail`, `rullst-ai`,
-`rullst-auth`, `rullst-security`, `rullst-privacy`, `rullst-iot`,
-`rullst-labs`, `rullst-media` and `rullst-supervision` run on hosted runners
-after 13.0.0-alpha.6 and before 13.0.0-rc.1. Earlier v13 campaigns measured
-some or all of their files (see
-[accepted equivalent mutants](#accepted-equivalent-mutants)), not the
-13.0.0-alpha.6 source. Each survivor gets a test or is listed below as an
-accepted equivalent with its reason, and each crate then gets an entry in the
-campaign status above.
-
-The `rullst-mail` campaign was started on the 13.0.0-alpha.6 development
-source (commit `5e6b65c5`). Targeted runs of four files, unchanged since, gave
-210 mutants and no timeout: `validator.rs` 35 (34 caught, 1 unviable),
-`pipeline.rs` 52 (34 caught, 7 unviable, 11 missed), `suppression/mod.rs` 81
-(65 caught, 7 unviable, 9 missed) and `drivers/aws_ses.rs` 42 (33 caught,
-7 unviable, 2 missed), in runs 43726484317, 43726494711, 43726978533 and
-43727720830. The 22 missed mutants have no test or accepted-equivalent entry
-yet.
 
 ## Accepted equivalent mutants
 

@@ -494,6 +494,17 @@ the counts above.
     ([#734](https://github.com/Rullst/Rullst/pull/734)); and the website's
     single landing page and comparison page (see the
     [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha6---2026-11-17)).
+  - **Mutation campaigns:** done in the 13.0.0-alpha.6 source. The 13.0
+    campaigns of `rullst-auth`, `rullst-security`, `rullst-privacy`,
+    `rullst-supervision`, `rullst-labs`, `rullst-media`, `rullst-mail`,
+    `rullst-iot` and `rullst-ai` ran on `cdb68d3b` in a maintainer's fork and
+    found no defect in production code; each survivor got a test
+    ([#743](https://github.com/Rullst/Rullst/pull/743) to
+    [#749](https://github.com/Rullst/Rullst/pull/749)) or is listed as an
+    accepted equivalent, except three `rullst-ai` checks that only a live
+    HTTPS origin reaches, and [#750](https://github.com/Rullst/Rullst/pull/750)
+    removed the redundant conditions behind 11 of the equivalents
+    ([campaign status](docs/src/mutation-testing.md#campaign-status)).
 
 ### Planned after 13.0.0-alpha.6
 
@@ -501,13 +512,6 @@ Work items for later prereleases, not shipped features. They add no milestone
 to the counts above. The order is reports from the platforms upgraded to
 alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
 
-- **Mutation campaigns before rc.1.** Campaigns for `rullst-mail`,
-  `rullst-ai`, `rullst-auth`, `rullst-security`, `rullst-privacy`,
-  `rullst-iot`, `rullst-labs`, `rullst-media` and `rullst-supervision` run
-  after 13.0.0-alpha.6 and before 13.0.0-rc.1, each survivor fixed with a test
-  or documented as an accepted equivalent
-  ([plan](docs/src/mutation-testing.md#planned-before-1300-rc1)). The
-  `rullst-mail` campaign was started: four files measured, 22 survivors open.
 - **Reports from the platforms upgraded to 13.0.0-alpha.6.** They choose the
   fixes of rc.1, as the reports on alpha.1 to alpha.5 chose those of the next
   prerelease.
