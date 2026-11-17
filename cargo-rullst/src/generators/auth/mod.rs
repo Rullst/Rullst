@@ -71,7 +71,7 @@ pub(crate) fn scaffold_auth() -> Result<bool, Box<dyn std::error::Error>> {
     );
 
     // One timestamp: the users migration sorts before the reset tokens one.
-    let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
+    let timestamp = crate::clock::local_migration_stamp()?;
     models::write_user_model_and_migration(&users, &timestamp)?;
     passwords::generate_password_flows(&timestamp)?;
     sessions::generate_sessions_migration(&timestamp)?;

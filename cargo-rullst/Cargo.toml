@@ -54,7 +54,9 @@ rullst-core = { workspace = true }
 clap = { version = "4.6.1", features = ["derive"] }
 clap_complete = "4.6.11"
 colored = "3.1.1"
-chrono = { workspace = true, features = ["clock"] }
+# The system time zone for migration stamps (`tz-system`); IANA names from
+# the system database, bundled on Windows, where there is none.
+jiff = { workspace = true, features = ["tz-system", "tzdb-zoneinfo", "tzdb-bundle-platform"] }
 dialoguer = "0.12.0"
 ratatui = "0.30.2"
 crossterm = "0.29.0"

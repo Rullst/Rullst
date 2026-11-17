@@ -43,14 +43,21 @@ pub(crate) fn stamp_path(file: &str) -> Option<PathBuf> {
     cache_base(|name| std::env::var_os(name)).map(|base| base.join(DIRECTORY).join(file))
 }
 
-/// Today's local date as the stamp content.
+/// Today's local date as the stamp content, empty when the system clock is
+/// outside jiff's range (beyond the year 9999).
 pub(crate) fn today() -> String {
-    chrono::Local::now().format("%Y-%m-%d").to_string()
+    crate::clock::now()
+        .map(|now| crate::clock::date(now, &crate::clock::local_zone()))
+        .unwrap_or_default()
 }
 
 /// Claims today's animation: returns `true` only when the stamp did not
-/// already hold `today` and was successfully replaced by it.
+/// already hold `today` and was successfully replaced by it. Without a date
+/// (`today` empty) nothing animates.
 pub(crate) fn claim_daily_animation(path: &Path, today: &str) -> bool {
+    if today.is_empty() {
+        return false;
+    }
     match read_stamp(path) {
         Ok(Some(stamp)) if stamp == today => false,
         Ok(_) => write_stamp(path, today).is_ok(),

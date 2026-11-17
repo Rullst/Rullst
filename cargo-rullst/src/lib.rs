@@ -36,6 +36,7 @@ extern crate rullst_core as rullst;
 
 pub mod blueprints;
 pub mod cli;
+mod clock;
 mod diff;
 pub mod generators;
 pub mod pkg;

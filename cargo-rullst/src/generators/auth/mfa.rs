@@ -153,7 +153,7 @@ pub fn scaffold_mfa_system() -> Result<(), Box<dyn Error>> {
     }
     reject_turso_primary("make:mfa")?;
     require_migration_runner("make:mfa")?;
-    let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
+    let timestamp = crate::clock::local_migration_stamp()?;
     let plan = plan(&std::env::current_dir()?, &timestamp)?;
     writes::apply(&plan.edits)?;
     println!(

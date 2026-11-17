@@ -219,7 +219,7 @@ async fn measure(options: &Options) -> Result<Report, Box<dyn Error>> {
         schema_version: report::SCHEMA_VERSION,
         schema: report::SCHEMA_VERSION,
         cli_version: env!("CARGO_PKG_VERSION"),
-        measured_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true),
+        measured_at: crate::clock::rfc3339_seconds(crate::clock::now()?),
         machine: Machine::current(),
         target: subject.target.clone(),
         measured,

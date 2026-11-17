@@ -140,7 +140,7 @@ pub(crate) fn with_session_epoch_methods(template: &str) -> String {
 
 /// Writes a complete `users` table migration and the `User` model.
 pub fn generate_user_model_and_migration() -> Result<(), Box<dyn std::error::Error>> {
-    let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
+    let timestamp = crate::clock::local_migration_stamp()?;
     write_user_model_and_migration(&UsersTable::Create, &timestamp)
 }
 
