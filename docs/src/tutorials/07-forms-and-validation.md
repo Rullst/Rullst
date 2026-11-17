@@ -69,7 +69,7 @@ The following handler assumes the `User` model (`src/models/user.rs`) that
 use rullst::{html, server::StatusCode, Markup, ValidatedForm};
 use rullst::auth::hash_password_async;
 use rullst::db::RowSnapshot;
-use rullst::orm::chrono::Utc;
+use rullst::orm::Timestamp;
 
 pub async fn store(
     ValidatedForm(form): ValidatedForm<CreateUserForm>,
@@ -84,7 +84,7 @@ pub async fn store(
 
     // The ORM inserts every field, so the model carries the `timestamps()`
     // values instead of relying on the column defaults.
-    let now = Utc::now();
+    let now = Timestamp::now();
     let mut user = crate::models::user::User {
         id: 0,
         name: form.name.trim().to_owned(),

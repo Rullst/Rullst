@@ -74,9 +74,10 @@ dentro do `CREATE TABLE`.
 `table.timestamps()` cria as colunas `created_at`/`updated_at`, que aceitam
 nulo, guardam instantes em UTC e têm como padrão a hora atual: `TIMESTAMPTZ` no
 PostgreSQL, `DATETIME(6)` no MySQL/MariaDB e texto RFC 3339 no SQLite. Leia-as
-como campos `rullst::orm::chrono::DateTime<Utc>` do modelo. `date()`, `time()`,
+como campos `rullst::orm::Timestamp` do modelo. `date()`, `time()`,
 `timestamp()` e `timestamp_tz()` adicionam colunas individuais de data/hora
-para campos `NaiveDate`, `NaiveTime`, `NaiveDateTime` e `DateTime<Utc>`. Elas
+para campos `rullst::orm::Date`, `Time`, `DateTime` e `Timestamp`, que
+envolvem os tipos do crate `jiff`. Elas
 precisam de uma feature de driver estrita (`strict-postgres`, `strict-mysql` ou
 `strict-sqlite`), que o `cargo rullst new` escolhe: o pool `Any` do SQLx, com
 vários drivers, não consegue ler valores de data/hora, então com ele

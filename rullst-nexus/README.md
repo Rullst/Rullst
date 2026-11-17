@@ -54,10 +54,11 @@ applies); text, textarea, e-mail and URL fields store `''`.
 
 Date and time fields are parsed by kind and bound as typed values, so native
 `DATE`, `TIME`, `TIMESTAMP` and `TIMESTAMPTZ` columns accept them as well as
-text columns: `Date` (`YYYY-MM-DD`, year 0001 to 9999, from `NaiveDate`),
-`Time` (`HH:MM[:SS[.fraction]]`, a `time` input, from `NaiveTime`), `DateTime`
-(a local `datetime-local` value with a `T` or space separator, from
-`NaiveDateTime`) and `DateTimeUtc` (from `DateTime<Utc>`). A `datetime-local`
+text columns: `Date` (`YYYY-MM-DD`, year 0001 to 9999, from the ORM's
+`Date`), `Time` (`HH:MM[:SS[.fraction]]`, a `time` input, from `Time`),
+`DateTime` (a local `datetime-local` value with a `T` or space separator, from
+`DateTime`) and `DateTimeUtc` (from `Timestamp`). The derive recognizes these
+`rullst::orm` types under any path, import or alias. A `datetime-local`
 input has no zone, so a `DateTimeUtc` field shows the stored instant as a wall
 time in the panel's time zone, reads a submitted value without an offset as a
 wall time in that zone and is labelled with its name; one with `Z`, `±HH:MM`

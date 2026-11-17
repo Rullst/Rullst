@@ -76,9 +76,10 @@ inside `CREATE TABLE`.
 `table.timestamps()` creates nullable `created_at`/`updated_at` UTC-instant
 columns that default to the current time: `TIMESTAMPTZ` on PostgreSQL,
 `DATETIME(6)` on MySQL/MariaDB and RFC 3339 text on SQLite. Read them as
-`rullst::orm::chrono::DateTime<Utc>` model fields. `date()`, `time()`,
+`rullst::orm::Timestamp` model fields. `date()`, `time()`,
 `timestamp()` and `timestamp_tz()` add single date/time columns for
-`NaiveDate`, `NaiveTime`, `NaiveDateTime` and `DateTime<Utc>` fields. They need
+`rullst::orm::Date`, `Time`, `DateTime` and `Timestamp` fields, which wrap the
+`jiff` crate's types. They need
 a strict driver feature (`strict-postgres`, `strict-mysql` or `strict-sqlite`),
 which `cargo rullst new` selects: the multi-driver SQLx `Any` pool cannot read
 date/time values, so with it `timestamps()` keeps `TEXT` columns for `String`
