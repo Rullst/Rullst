@@ -548,5 +548,10 @@ async fn run_studio_reports_a_port_already_in_use() {
         .await
         .expect("an ephemeral loopback port");
     let port = holder.local_addr().expect("bound address").port();
-    assert!(super::run_studio(port).await.is_err());
+    // A deadline keeps a server that did start (on another port) from
+    // running forever.
+    let result = tokio::time::timeout(std::time::Duration::from_secs(10), super::run_studio(port))
+        .await
+        .expect("run_studio returns before the deadline");
+    assert!(result.is_err());
 }
