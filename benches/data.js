@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794883220390,
+  "lastUpdate": 1794936553751,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -36529,6 +36529,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1004,
             "range": "± 45",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "35d84425c23c24a37253b740299319f54be9ba33",
+          "message": "Merge pull request #753 from Rullst/ci/v13-chrono-bridge-exception\n\nci(supply-chain): govern RUSTSEC-2026-0543 while chrono is replaced",
+          "timestamp": "2026-11-17T14:24:38-03:00",
+          "tree_id": "4f831289cb2e030765678243deb59514d6ec39ca",
+          "url": "https://github.com/Rullst/Rullst/commit/35d84425c23c24a37253b740299319f54be9ba33"
+        },
+        "date": 1794936548893,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 552,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 734,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 327,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1460,
+            "range": "± 10",
             "unit": "ns/iter"
           }
         ]
