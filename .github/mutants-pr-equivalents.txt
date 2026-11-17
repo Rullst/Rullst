@@ -196,6 +196,28 @@ cargo-rullst/src/generators/footprint/target.rs:240:79: replace < with <= in Own
 # tests): see docs/src/mutation-testing.md "Accepted equivalent mutants".
 rullst-studio/src/remote/history.rs:72:51: replace > with >= in Sample::from_outcome
 
+# rullst-studio local Studio (13.0 campaign, targeted runs with the package's
+# tests and the PostgreSQL data-browser matrix): each name below has a row in
+# docs/src/mutation-testing.md "Accepted equivalent mutants".
+rullst-studio/src/data_browser/db.rs:231:9: delete match arm "mysql" in fetch_table_schema
+rullst-studio/src/data_browser/db.rs:261:13: delete ! in fetch_table_schema
+rullst-studio/src/data_browser/db.rs:261:40: replace && with || in fetch_table_schema
+rullst-studio/src/data_browser/db.rs:261:43: delete ! in fetch_table_schema
+rullst-studio/src/data_browser/db.rs:281:70: replace != with == in row_flag
+rullst-studio/src/er_diagram.rs:36:70: replace != with == in row_is_primary_key
+rullst-studio/src/er_diagram.rs:96:5: replace get_sqlite_schema -> Result<String, sqlx::Error> with Ok(String::new())
+rullst-studio/src/er_diagram.rs:96:5: replace get_sqlite_schema -> Result<String, sqlx::Error> with Ok("xyzzy".into())
+rullst-studio/src/er_diagram.rs:200:5: replace get_mysql_schema -> Result<String, sqlx::Error> with Ok(String::new())
+rullst-studio/src/er_diagram.rs:200:5: replace get_mysql_schema -> Result<String, sqlx::Error> with Ok("xyzzy".into())
+rullst-studio/src/er_diagram.rs:244:9: delete match arm "mysql" | "mariadb" in schema_for_driver
+rullst-studio/src/er_diagram.rs:245:9: delete match arm "sqlite" | "libsql" | "turso" in schema_for_driver
+rullst-studio/src/data_browser/portable.rs:22:15: replace != with == in build_for_driver
+rullst-studio/src/data_browser/handlers/telemetry.rs:36:5: replace capital_not_enabled_page -> &'static str with ""
+rullst-studio/src/data_browser/handlers/telemetry.rs:36:5: replace capital_not_enabled_page -> &'static str with "xyzzy"
+rullst-studio/src/feature_flags.rs:106:24: replace != with == in render_flag_rows
+rullst-studio/src/data_browser/handlers/table.rs:137:47: replace && with || in handle_table
+rullst-studio/src/distributed_traces/auth.rs:124:47: replace | with ^ in TraceBatchSigner::sign
+
 # rullst-messaging (alpha.6 campaign, targeted runs with the package's tests):
 # each name below has a row in docs/src/mutation-testing.md "Accepted
 # equivalent mutants".

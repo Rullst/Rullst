@@ -49,7 +49,7 @@ pub(super) async fn exercise_feature_flags(
         .expect("Studio wrongly shaped feature-flags response");
     assert_eq!(wrong_shape.status(), StatusCode::OK);
     let wrong_shape = response_text(wrong_shape).await;
-    assert!(wrong_shape.contains("query failed"));
+    assert!(wrong_shape.contains("query failed (database code "));
     assert!(!wrong_shape.contains("CREATE TABLE rullst_feature_flags"));
     rullst_orm::_sqlx::query("DROP TABLE rullst_feature_flags")
         .execute(pool)
@@ -67,6 +67,22 @@ pub(super) async fn exercise_feature_flags(
         .execute(pool)
         .await
         .expect("create Studio matrix feature-flag table");
+    let empty_flags = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/studio/features")
+                .body(Body::empty())
+                .expect("valid empty feature-flags request"),
+        )
+        .await
+        .expect("Studio empty feature-flags response");
+    assert_eq!(empty_flags.status(), StatusCode::OK);
+    assert!(
+        response_text(empty_flags)
+            .await
+            .contains("No feature flags found.")
+    );
 
     let mut insert_flag = rullst_orm::_sqlx::QueryBuilder::<rullst_orm::RullstDatabase>::new(
         "INSERT INTO rullst_feature_flags \
@@ -101,6 +117,8 @@ pub(super) async fn exercise_feature_flags(
     assert!(feature_flags.contains("academy_beta"));
     assert!(feature_flags.contains("&lt;script&gt;unsafe&lt;/script&gt;"));
     assert!(!feature_flags.contains("<script>unsafe</script>"));
+    assert!(feature_flags.contains(">DISABLED</button>"));
+    assert!(!feature_flags.contains(">ENABLED</button>"));
 
     let toggle_flag = app
         .clone()
@@ -114,6 +132,19 @@ pub(super) async fn exercise_feature_flags(
         .await
         .expect("Studio feature-flag toggle response");
     assert!(toggle_flag.status().is_redirection());
+    let toggled = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/studio/features")
+                .body(Body::empty())
+                .expect("valid toggled feature-flags request"),
+        )
+        .await
+        .expect("Studio toggled feature-flags response");
+    let toggled = response_text(toggled).await;
+    assert!(toggled.contains(">ENABLED</button>"));
+    assert!(!toggled.contains(">DISABLED</button>"));
 
     let missing_flag = app
         .clone()

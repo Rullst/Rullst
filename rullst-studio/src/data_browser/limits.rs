@@ -38,6 +38,13 @@ mod tests {
     use super::*;
 
     #[test]
+    fn bounds_have_their_documented_values() {
+        assert_eq!(MAX_CELL_BYTES, 16_384);
+        assert_eq!(MAX_DISPLAY_CHARS, 256);
+        assert_eq!(MAX_SEARCH_BYTES, 256);
+    }
+
+    #[test]
     fn display_cells_are_cut_on_character_boundaries() {
         let exact = "é".repeat(MAX_DISPLAY_CHARS);
         assert!(matches!(display_cell(&exact), Cow::Borrowed(_)));

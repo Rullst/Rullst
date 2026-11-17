@@ -4,7 +4,7 @@ Rullst does not treat an ignored scanner finding as remediated. Any temporary
 exception must have a narrow scope, a compensating control, an owner, and an
 expiry date. CI must fail for every advisory that is not actively governed here.
 
-Last reviewed: **2026-11-14**.
+Last reviewed: **2026-11-17**.
 
 ## Active exceptions
 
@@ -12,6 +12,7 @@ Last reviewed: **2026-11-14**.
 | --- | --- | --- | --- | --- | --- |
 | `RUSTSEC-2026-0459` | `libsqlite3-sys` 0.37.0 (bundled SQLite 3.53) ← `sqlx-sqlite` 0.9.0 ← every Rullst SQLite feature | See below | Maintainer (Venelouis) | 2027-01-28 | An `sqlx` release that accepts `libsqlite3-sys` ≥ 0.39, then required by `rullst-orm` |
 | `RUSTSEC-2026-0440` | `astral-tokio-tar` 0.6.4 ← `testcontainers` 0.27.3 ← dev-dependency of the integration tests | See below | Maintainer (Venelouis) | 2027-01-28 | A `testcontainers` release without `astral-tokio-tar`, or the tests move to another container client |
+| `RUSTSEC-2026-0543` | `chrono` 0.4.45 ← `rullst-orm`, `rullst-core`, `rullst-mail`, `rullst-capital`, `rullst-studio`, `cargo-rullst`, the `rullst` facade, `sqlx`'s `chrono` feature and the `cron` dev-dependency | See below | Maintainer (Venelouis) | 2026-12-17 | `chrono` is no longer in the resolved dependency graph; the pull request that removes it also removes this exception |
 
 **`RUSTSEC-2026-0459`** (medium; CVE-2026-119375, published 2026-10-30): SQLite
 before 3.54.0 can return uninitialized page-cache memory when it opens a
@@ -41,6 +42,16 @@ tests use it only to copy their own files into local containers. `testcontainers
 moving to it would not end the exception. The tests stay on 0.27.3 until
 `testcontainers-modules`, whose PostgreSQL, MySQL, MariaDB and SurrealDB images
 they use, publishes a release for 0.28: 0.15.0, the newest, requires 0.27.
+
+**`RUSTSEC-2026-0543`** (unmaintained, no known vulnerability; published
+2026-11-17): the maintainer of `chrono` is winding down its maintenance and
+recommends `jiff` or `time`; no patched version exists. `chrono` is a public
+dependency of Rullst 13 (`rullst::orm::chrono`, Core date formatting, Mail and
+Capital). This is a bridge, not a lasting exception: it lets the replacement
+land in several pull requests while CI keeps checking every other advisory.
+13.0.0-alpha.6 is not published while it exists, so no Rullst release ships
+with `chrono` after the advisory. The compensating control is that release
+gate and the 30-day expiry.
 
 ## Remediation history
 

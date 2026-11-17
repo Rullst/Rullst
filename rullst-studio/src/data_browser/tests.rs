@@ -305,6 +305,72 @@ fn test_mutable_column_type_boundary() {
 }
 
 #[test]
+fn sized_column_types_and_key_shapes_decide_mutability() {
+    for (database_type, kind) in [
+        ("varchar(255)", StudioColumnKind::Text),
+        ("CHAR(12)", StudioColumnKind::Text),
+        ("integer(4)", StudioColumnKind::Integer),
+        ("int(11)", StudioColumnKind::Integer),
+        ("bigint(20)", StudioColumnKind::Integer),
+        ("smallint(6)", StudioColumnKind::Integer),
+        ("tinyint(4)", StudioColumnKind::Integer),
+        ("float(10)", StudioColumnKind::Float),
+        ("double(8,2)", StudioColumnKind::Float),
+    ] {
+        assert_eq!(
+            StudioColumnKind::from_database_type(database_type),
+            kind,
+            "{database_type}"
+        );
+    }
+
+    for kind in [
+        StudioColumnKind::Text,
+        StudioColumnKind::Integer,
+        StudioColumnKind::Float,
+        StudioColumnKind::Boolean,
+    ] {
+        assert!(kind.is_editable(), "{kind:?}");
+    }
+    assert!(!StudioColumnKind::Unsupported.is_editable());
+    for kind in [
+        StudioColumnKind::Text,
+        StudioColumnKind::Integer,
+        StudioColumnKind::Boolean,
+    ] {
+        assert!(kind.round_trips_as_key(), "{kind:?}");
+    }
+    assert!(!StudioColumnKind::Float.round_trips_as_key());
+    assert!(!StudioColumnKind::Unsupported.round_trips_as_key());
+
+    let column = |name: &str, kind, primary_key| StudioColumn {
+        name: name.to_string(),
+        kind,
+        primary_key,
+        nullable: false,
+    };
+    let schema = |columns, primary_key_complete| StudioTableSchema {
+        columns,
+        primary_key_complete,
+    };
+    let keyed = vec![
+        column("tenant", StudioColumnKind::Text, true),
+        column("title", StudioColumnKind::Text, false),
+        column("id", StudioColumnKind::Integer, true),
+    ];
+    assert!(schema(keyed.clone(), true).supports_mutations());
+    assert_eq!(schema(keyed.clone(), true).primary_key_indices(), [0, 2]);
+    assert!(!schema(keyed, false).supports_mutations());
+
+    let unkeyed = vec![column("title", StudioColumnKind::Text, false)];
+    assert!(!schema(unkeyed.clone(), true).supports_mutations());
+    assert!(schema(unkeyed, true).primary_key_indices().is_empty());
+
+    let float_key = vec![column("ratio", StudioColumnKind::Float, true)];
+    assert!(!schema(float_key, true).supports_mutations());
+}
+
+#[test]
 fn empty_rows_and_studio_port_inputs_have_deterministic_fallbacks() {
     let rows = build_rows_html(&[], &[]);
     assert!(rows.contains("No records found"));
@@ -474,4 +540,18 @@ fn engine_labels_name_each_supported_driver() {
 async fn engine_label_describes_the_active_pool() {
     super::pool::test_sqlite_pool().await;
     assert_eq!(resolve_driver_display_name(), "SQLITE");
+}
+
+#[tokio::test]
+async fn run_studio_reports_a_port_already_in_use() {
+    let holder = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("an ephemeral loopback port");
+    let port = holder.local_addr().expect("bound address").port();
+    // A deadline keeps a server that did start (on another port) from
+    // running forever.
+    let result = tokio::time::timeout(std::time::Duration::from_secs(10), super::run_studio(port))
+        .await
+        .expect("run_studio returns before the deadline");
+    assert!(result.is_err());
 }

@@ -213,3 +213,81 @@ fn long_text_is_cut_on_a_character_boundary() {
     assert!(cut.ends_with('…'));
     assert_eq!(bounded("short"), "short");
 }
+
+#[test]
+fn exactly_the_rendered_maximum_shows_no_truncation_notice() {
+    let mut paths = serde_json::Map::new();
+    for index in 0..500 {
+        paths.insert(
+            format!("/item/{index}"),
+            json!({ "get": { "responses": { "200": { "description": "ok" } } } }),
+        );
+    }
+    let full = render_reference(&document(json!({
+        "openapi": "3.1.0",
+        "info": { "title": "Full", "version": "0" },
+        "paths": paths
+    })));
+    assert_eq!(full.matches("<article").count(), 500);
+    assert!(full.contains("500 operations"));
+    assert!(!full.contains("Showing the first"));
+}
+
+#[test]
+fn badges_tags_and_deprecation_belong_to_their_operation() {
+    assert_eq!(
+        method_badge_class("GET"),
+        "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+    );
+    assert_eq!(
+        method_badge_class("POST"),
+        "bg-sky-500/10 text-sky-400 border-sky-400/20"
+    );
+    for method in ["PUT", "PATCH"] {
+        assert_eq!(
+            method_badge_class(method),
+            "bg-amber-500/10 text-amber-400 border-amber-500/20"
+        );
+    }
+    assert_eq!(
+        method_badge_class("DELETE"),
+        "bg-rose-500/10 text-rose-400 border-rose-500/20"
+    );
+    assert_eq!(
+        method_badge_class("OPTIONS"),
+        "bg-purple-500/10 text-purple-400 border-purple-500/20"
+    );
+
+    let body = render_reference(&sample());
+    let split = body.find(">DELETE<").unwrap();
+    let (get, delete) = (&body[..split], &body[split..]);
+    assert!(get.contains("tags orders"));
+    assert!(!get.contains(">deprecated</span>"));
+    assert!(delete.contains(">deprecated</span>"));
+}
+
+#[test]
+fn only_a_parameter_with_the_same_name_and_location_overrides() {
+    let body = render_reference(&document(json!({
+        "openapi": "3.1.0",
+        "info": { "title": "Pages", "version": "0" },
+        "paths": {
+            "/pages": {
+                "parameters": [
+                    { "name": "page", "in": "query", "required": false, "schema": { "type": "integer" } },
+                    { "name": "trace", "in": "header", "required": false, "schema": { "type": "string" } }
+                ],
+                "get": {
+                    "tags": [],
+                    "parameters": [
+                        { "name": "page", "in": "header", "required": true, "schema": { "type": "integer" } }
+                    ],
+                    "responses": { "200": { "description": "ok" } }
+                }
+            }
+        }
+    })));
+    assert_eq!(body.matches(">page</td>").count(), 2);
+    assert_eq!(body.matches(">trace</td>").count(), 1);
+    assert!(!body.contains("tags "));
+}
