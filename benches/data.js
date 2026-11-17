@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794936553751,
+  "lastUpdate": 1794938946964,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -36583,6 +36583,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1460,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3953a1f6e870d595f1c58181f7a49f2294d3d5bc",
+          "message": "Merge pull request #752 from Rullst/test/v13-mutants-studio-facade\n\ntest(studio): close the local Studio and facade mutation campaigns",
+          "timestamp": "2026-11-17T15:02:12-03:00",
+          "tree_id": "0529f51844bc19015b30efb82c197874bde35656",
+          "url": "https://github.com/Rullst/Rullst/commit/3953a1f6e870d595f1c58181f7a49f2294d3d5bc"
+        },
+        "date": 1794938942925,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 593,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 758,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 318,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1510,
+            "range": "± 35",
             "unit": "ns/iter"
           }
         ]
