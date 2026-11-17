@@ -89,7 +89,7 @@ fn both_day_fields_joined_fields_and_bad_weekdays_are_explained() {
     let both = advice("0 9 1 * 2").unwrap();
     assert_eq!(
         both,
-        "it restricts both the day of the month (`1`) and the weekday (`2`): a schedule already stored keeps running on days that match both; one created after the upgrade runs on days that match either, so restrict one field and check the other when the message is handled; its weekdays in POSIX numbers: `0 9 1 * 1` (Sunday is 0 or 7, Monday 1, Saturday 6)"
+        "it restricts both the day of the month (`1`) and the weekday (`2`): a schedule already stored keeps running on days that match both; one created after the upgrade runs on days that match either, so restrict one field and check the other when the message is handled"
     );
     let named = advice("0 9 1-7 * MON").unwrap();
     assert!(
@@ -97,6 +97,17 @@ fn both_day_fields_joined_fields_and_bad_weekdays_are_explained() {
         "{named}"
     );
     assert!(!named.contains("POSIX numbers"), "{named}");
+    // A mechanical form that outgrows the 128 bytes `new` accepts.
+    let mut minutes = String::from("0");
+    let mut next = 1;
+    while minutes.len() + " 9 * * 2/2".len() < 127 {
+        minutes.push_str(&format!(",{}", next % 60));
+        next += 1;
+    }
+    let long = format!("{minutes} 9 * * 2/2");
+    let note = advice(&long).unwrap();
+    assert!(long.len() <= 128, "{long}");
+    assert!(note.ends_with("is longer than the 128 bytes `RecurringDefinition::new` accepts; write a schedule not yet stored by hand"), "{note}");
     // `*/2` and `?` leave a day field unrestricted.
     assert_eq!(advice("0 9 */2 * MON"), None);
 

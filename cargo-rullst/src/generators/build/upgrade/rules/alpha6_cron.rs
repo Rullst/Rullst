@@ -26,6 +26,9 @@ use super::catalog::MESSAGING_CRON_POSIX;
 use super::tokens::string_value;
 use proc_macro2::TokenTree;
 
+/// The longest expression `RecurringDefinition::new` accepts.
+const MAX_EXPRESSION_BYTES: usize = 128;
+
 /// The rule and the location's note for a call `segments(args)`, if any.
 pub(super) fn call_rule(
     segments: &[&str],
@@ -73,30 +76,32 @@ pub(super) fn advice(expression: &str) -> Option<String> {
             .is_ok()
     };
     let posix = weekdays(weekday).map(|weekday| format!("{minute} {hour} {day} {month} {weekday}"));
-    let mut notes = Vec::new();
     let normalized = fields.join(" ");
+    let mut notes = Vec::new();
+    // AND before, OR now: no POSIX expression has the old schedule, as
+    // messaging's `posix_equivalent()` also answers.
+    if both_days {
+        notes.push(format!(
+            "it restricts both the day of the month (`{day}`) and the weekday (`{weekday}`): a schedule already stored keeps running on days that match both; one created after the upgrade runs on days that match either, so restrict one field and check the other when the message is handled"
+        ));
+    }
     match posix {
+        None => notes.push(format!(
+            "`{expression}` has a weekday number outside 1 to 7, which neither syntax accepts; write the POSIX expression by hand"
+        )),
         Some(posix) if !accepted(&posix) && posix == normalized => notes.push(format!(
             "`RecurringDefinition::new` now refuses `{expression}`. A schedule already stored with it keeps running, but this call fails: stop creating it here, or cancel it and create a POSIX expression under a new name"
         )),
         Some(posix) if !accepted(&posix) => notes.push(format!(
             "no mechanical POSIX form: `{posix}`, its weekday numbers moved down by one, is refused; write a schedule not yet stored by hand"
         )),
-        None => notes.push(format!(
-            "`{expression}` has a weekday number outside 1 to 7, which neither syntax accepts; write the POSIX expression by hand"
-        )),
-        Some(posix) if posix == normalized => {}
-        Some(posix) if both_days => notes.push(format!(
-            "its weekdays in POSIX numbers: `{posix}` (Sunday is 0 or 7, Monday 1, Saturday 6)"
+        Some(posix) if posix == normalized || both_days => {}
+        Some(posix) if posix.len() > MAX_EXPRESSION_BYTES => notes.push(format!(
+            "no mechanical POSIX form: `{posix}`, its weekday numbers moved down by one, is longer than the 128 bytes `RecurringDefinition::new` accepts; write a schedule not yet stored by hand"
         )),
         Some(posix) => notes.push(format!(
             "POSIX form for a schedule not yet stored: `{posix}` (weekday numbers move down by one: Sunday is 0 or 7, Monday 1, Saturday 6)"
         )),
-    }
-    if both_days {
-        notes.insert(0, format!(
-            "it restricts both the day of the month (`{day}`) and the weekday (`{weekday}`): a schedule already stored keeps running on days that match both; one created after the upgrade runs on days that match either, so restrict one field and check the other when the message is handled"
-        ));
     }
     (!notes.is_empty()).then(|| notes.join("; "))
 }
