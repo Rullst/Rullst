@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794864889739,
+  "lastUpdate": 1794878421279,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -23925,6 +23925,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3560,
             "range": "± 66",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "602bf170861af5bcea7827f224af8a6a96d6e8b8",
+          "message": "Merge pull request #740 from Rullst/feat/v13-upgrade-alpha6-gaps\n\nfeat(cli): report the alpha.6 checklist items that upgrade rules can locate",
+          "timestamp": "2026-11-16T22:04:19-03:00",
+          "tree_id": "b712ad6b059c96cd9e1fb89fcf69b72ba394d29f",
+          "url": "https://github.com/Rullst/Rullst/commit/602bf170861af5bcea7827f224af8a6a96d6e8b8"
+        },
+        "date": 1794878420746,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 723,
+            "range": "± 59",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 562,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1299,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1979,
+            "range": "± 13",
             "unit": "ns/iter"
           }
         ]
