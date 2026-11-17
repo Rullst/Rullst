@@ -320,7 +320,6 @@ pub fn build_headers_html(col_names: &[String], primary_keys: &[usize]) -> Strin
 }
 
 /// Helper to build table rows HTML. Cell text is cut to 256 characters.
-#[cfg_attr(mutants, mutants::skip)]
 pub fn build_rows_html(
     records: &[<rullst_orm::RullstDatabase as sqlx::Database>::Row],
     col_names: &[String],

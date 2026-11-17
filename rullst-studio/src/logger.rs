@@ -79,7 +79,6 @@ pub fn router(state: Arc<LoggerState>) -> Router {
         .with_state(state)
 }
 
-#[cfg_attr(mutants, mutants::skip)]
 async fn logger_dashboard() -> Html<String> {
     Html(r#"<!DOCTYPE html>
 <html lang="en" class="h-full bg-slate-950 text-slate-100">
