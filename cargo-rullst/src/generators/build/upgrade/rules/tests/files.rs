@@ -80,7 +80,9 @@ utoipa = "5.3"
 package = "rullst-labs-runner"
 version = "12"
 "#;
-    let (findings, facts) = manifest_findings(&[plan(PathBuf::from("Cargo.toml"), manifest)]);
+    // Since 13.0.0-alpha.6 Studio takes any utoipa version's document, so a
+    // utoipa 5 dependency is no longer reported.
+    let (findings, _) = manifest_findings(&[plan(PathBuf::from("Cargo.toml"), manifest)]);
     let found: Vec<_> = findings
         .iter()
         .map(|finding| (finding.rule.code, finding.line))
@@ -92,7 +94,6 @@ version = "12"
             ("V13-LABS-RUNNER-REMOVED", 9)
         ]
     );
-    assert!(facts.utoipa_below_6);
 
     // A `rullst` dependency on the defaults, which no longer select a driver.
     for (manifest, line) in [
@@ -137,14 +138,13 @@ utoipa-axum = "0.3"
 [workspace.dependencies]
 inherited = { workspace = true, package = "rullst-orm" }
 "#;
-    let (findings, facts) = manifest_findings(&[plan(PathBuf::from("Cargo.toml"), current)]);
+    let (findings, _) = manifest_findings(&[plan(PathBuf::from("Cargo.toml"), current)]);
     assert!(findings.is_empty());
-    assert!(!facts.utoipa_below_6);
-    let (_, facts) = manifest_findings(&[plan(
+    let (findings, _) = manifest_findings(&[plan(
         PathBuf::from("Cargo.toml"),
         "[dependencies]\nutoipa-axum = \"0.2\"\n",
     )]);
-    assert!(facts.utoipa_below_6);
+    assert!(findings.is_empty());
 }
 
 #[test]

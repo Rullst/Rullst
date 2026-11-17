@@ -5,6 +5,13 @@
 //! The page loads no script and no remote asset, so it works offline and
 //! under a strict Content Security Policy. It is a read-only reference: it
 //! does not send requests to the application.
+//!
+//! The document is any `serde::Serialize` value that serializes to an OpenAPI
+//! document, such as the `utoipa::openapi::OpenApi` of any utoipa version
+//! (`ApiDoc::openapi()`) or a `serde_json::Value` read from a file. Studio
+//! serializes it once, serves those bytes as the JSON document, and renders
+//! the page from them: OpenAPI 3.1 and 3.2 documents are listed operation by
+//! operation; for another document the page says so and links the JSON.
 
 use crate::data_browser::studio_layout;
 use axum::{
@@ -15,6 +22,7 @@ use axum::{
     routing::get,
 };
 use rullst_core::html::escape_str;
+use serde::Serialize;
 use std::fmt::Write;
 use utoipa::openapi::{
     Deprecated, OpenApi, RefOr, Required,
@@ -30,12 +38,29 @@ const MAX_RENDERED_OPERATIONS: usize = 500;
 /// Characters of free text (titles, summaries, descriptions) shown per field.
 const MAX_TEXT_CHARS: usize = 512;
 
-/// Mounts the reference page and the JSON document for `openapi`.
+/// An application's OpenAPI document, serialized once when Studio receives it.
+pub(crate) struct Document(Option<Bytes>);
+
+impl Document {
+    pub(crate) fn new(openapi: &impl Serialize) -> Self {
+        Self(serde_json::to_vec(openapi).ok().map(Bytes::from))
+    }
+}
+
+/// Mounts the reference page and the JSON document for `openapi`, any value
+/// that serializes to an OpenAPI document (see the [module](self) page).
 ///
 /// `/studio/api/` (the former Swagger UI location) redirects to the page.
-pub fn router(openapi: OpenApi) -> Router {
-    let page = Html(studio_layout(render_reference(&openapi), None, &[]));
-    let document = serde_json::to_vec(&openapi).ok().map(Bytes::from);
+pub fn router(openapi: impl Serialize) -> Router {
+    mount(Document::new(&openapi))
+}
+
+pub(crate) fn mount(Document(document): Document) -> Router {
+    let page = Html(studio_layout(
+        render_document(document.as_deref()),
+        None,
+        &[],
+    ));
     Router::new()
         .route(
             PAGE_PATH,
@@ -71,6 +96,21 @@ fn document_response(document: Option<Bytes>) -> Response {
         )
             .into_response(),
     }
+}
+
+/// Renders the page body from the serialized document: the reference of an
+/// OpenAPI 3.1 or 3.2 document, or a notice for any other value.
+fn render_document(document: Option<&[u8]>) -> String {
+    let notice = match document.map(serde_json::from_slice::<OpenApi>) {
+        Some(Ok(openapi)) => return render_reference(&openapi),
+        Some(Err(_)) => format!(
+            r#"Studio lists the operations of OpenAPI 3.1 and 3.2 documents, and could not read the supplied document as one. The document itself is served at <a class="text-sky-400 hover:text-white" href="{DOCUMENT_PATH}">{DOCUMENT_PATH}</a>."#
+        ),
+        None => "The OpenAPI document could not be serialized.".to_string(),
+    };
+    format!(
+        r#"<div class="p-8 space-y-6 max-w-6xl mx-auto"><h1 class="text-3xl font-extrabold text-white">API reference</h1><p class="p-4 rounded-xl border border-amber-800/50 bg-amber-950/20 text-xs text-amber-300">{notice}</p></div>"#
+    )
 }
 
 /// Renders the page body: document header, then one card per operation.

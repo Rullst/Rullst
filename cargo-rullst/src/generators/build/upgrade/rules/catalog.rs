@@ -51,9 +51,6 @@ rules! {
     QUEUE_DRIVER_PREVIEWS: "V13-QUEUE-DRIVER-PREVIEWS", Review, "13.0.0-alpha.1", "Studio queue monitor",
         "Studio lists jobs with `QueueDriver::list_job_previews`; custom drivers can override it to bound payloads",
         "Optionally override `list_job_previews` in the custom driver to cut payloads and errors in the store; the default projection keeps working.";
-    UTOIPA_6: "V13-STUDIO-UTOIPA-6", MustChange, "13.0.0-alpha.1", "Studio API playground",
-        "`Studio::with_openapi` now takes a utoipa 6 `OpenApi`; this workspace declares an older utoipa",
-        "Upgrade `utoipa` to 6 (and `utoipa-axum` to 0.3 when used) in Cargo.toml and adapt the OpenAPI derives; Studio renders its own API reference, so it needs no `utoipa-swagger-ui`.";
     STUDIO_TABLE_VALUES: "V13-STUDIO-TABLE-VALUES", Review, "13.0.0-alpha.1", "Studio local access and table view",
         "`get_any_value_as_string` reports undecodable values as `unreadable` instead of `NULL`",
         "Update callers or tests that expected `NULL` for non-UTF-8 BLOBs or a text `NULL`.";
@@ -552,6 +549,15 @@ rules! {
     AUTH_SESSION_REGISTRY: "V13-AUTH-SESSION-REGISTRY", Review, "13.0.0-alpha.6", "Server-side login sessions",
         "since 13.0.0-alpha.6 `cargo rullst auth` and the SaaS starter record every sign-in in a server-side session registry, so signing out ends every copy of the cookie; this file, generated before alpha.6, issues or accepts session-epoch cookies (`make_login_cookie_with_epoch`, `decrypt_session_claims`) and no manifest enables a session registry feature, so a copied cookie stays valid until it expires",
         "Nothing breaks if you keep epoch cookies. To adopt the registry, follow the session step of the alpha.5 to alpha.6 checklist (https://rullst.github.io/Rullst/book/migration-v13.html#upgrading-an-alpha5-application-to-alpha6): enable `auth-session-registry-sqlite`, `-postgres` or `-mysql`, add the `rullst_auth_sessions` migration, sign in with `start_session` and check requests with `authenticate_request` in `src/middlewares/auth_middleware.rs`, sign out with `sign_out`, and revoke the account's sessions where the epoch changes; a project that the alpha.6 CLI generates with the same starter and database has every file to compare with.";
+    TELEMETRY_LAYER_TYPE: "V13-TELEMETRY-LAYER-TYPE", MustChange, "13.0.0-alpha.6", "Distributed tracing layer type",
+        "`DistributedTelemetry::layer` returns an opaque `impl Layer<S>` since 13.0.0-alpha.6, not `tracing_opentelemetry::OpenTelemetryLayer`; code that names that type or calls its own methods on the layer no longer compiles",
+        "Name the layer `impl tracing_subscriber::Layer<S>`, or box it (`.boxed()`, `Box<dyn Layer<S> + Send + Sync>`) where a type must be written, and drop `OpenTelemetryLayer`'s own builder calls (`with_location`, `with_threads`, `with_level`, `with_target`, …): the minimized pipeline exports no span attributes or events. `Layer` methods such as `.with_filter(..)` keep working.";
+    VALIDATION_FIELD_ERRORS: "V13-VALIDATION-FIELD-ERRORS", MustChange, "13.0.0-alpha.6", "Validation field errors",
+        "`ValidationError::ValidationError`'s `errors` is `rullst::validation::FieldErrors` since 13.0.0-alpha.6, not `validator::ValidationErrors`; code that reads it with `validator`'s API or builds the variant from `validator` errors no longer compiles",
+        "Read the failures with `errors.messages()` or `errors.codes()` (field path to messages or codes) and `errors.is_empty()`; reach `validator`'s own errors with `errors.as_any().downcast_ref::<validator::ValidationErrors>()`. Build the variant from `FieldErrors::validate(&payload)` or `FieldErrors::default()` and `add(field, code, message)`.";
+    STUDIO_OPENAPI_INFERRED: "V13-STUDIO-OPENAPI-INFERRED", MustChange, "13.0.0-alpha.6", "Studio OpenAPI documents",
+        "`Studio::with_openapi` and `api_playground::router` take any `serde::Serialize` document since 13.0.0-alpha.6, so an argument whose type was inferred from the former `utoipa::openapi::OpenApi` parameter no longer compiles",
+        "Name the document's type: `utoipa::openapi::OpenApi::default()`, `serde_json::from_str::<serde_json::Value>(..)?` or `ApiDoc::openapi()`; a value of a named type, of any utoipa version, needs no change.";
 }
 
 /// Review rules that name APIs v13 removed: code using them no longer

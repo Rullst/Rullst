@@ -238,7 +238,8 @@ Source findings (rullst-upgrade-rules-v4): 1 must-change, 2 review
 - **must-change**: a compile-breaking or API-shape change that the code uses
   (for example a dynamic `onclick={...}` in `html!`, a `belongs_to` without
   `foreign_key`, a struct-level `#[sqlx(rename_all)]` on a model, a `match` on
-  `FieldKind` without a wildcard, a utoipa 5 dependency used with Studio).
+  `FieldKind` without a wildcard, code that names the OpenTelemetry layer type
+  that `DistributedTelemetry::layer` returned before 13.0.0-alpha.6).
 - **review**: the code uses an API, feature or configuration whose behaviour
   changed (for example `Model::all()`, `ValidatedJson`, the `Mail` facade,
   `render_page`, a generated `.gitignore` without the SQLite journal files).
@@ -297,7 +298,7 @@ release:
 
 | Release | Rules |
 | :--- | :--- |
-| 13.0.0-alpha.1 | The other 95 rules |
+| 13.0.0-alpha.1 | The other 94 rules |
 | 13.0.0-alpha.2 | `V13-HTML-MARKUP-RETURN`, `V13-HTML-RAW-MARKUP`, `V13-ORM-CONSTRAINT-ERRORS`, `V13-TEXT-TIMESTAMPS`, `V13-POLYGLOT-FEATURE` |
 | 13.0.0-alpha.3 | `V13-CONNECT-GITHUB-EMAIL`, `V13-ORM-TRANSACTION-ERRORS`, `V13-ORM-SKIP-MANAGED-COLUMNS`, `V13-ORM-DEFAULT-FEATURES` (reworded: `rullst-orm` has no default driver), `V13-RULLST-DEFAULT-FEATURES`, `V13-OMNI-REMOVED`, `V13-OFFLINE-SYNC-REMOVED` |
 | 13.0.0-alpha.4 | `V13-DEPLOY-TARGETS-REMOVED`, `V13-DEPLOY-GENERATORS-REMOVED`, `V13-CLI-SELF-UPDATE-REMOVED`, `V13-CLI-AI-REMOVED`, `V13-ORM-FROM-ROW`, `V13-SQLX-MACROS`, `V13-NEXUS-AI-FEATURE`, `V13-SQLX-TLS-RING` |
@@ -328,6 +329,9 @@ release:
 | 13.0.0-alpha.6 | `V13-ED25519-DALEK-3` (a dependency major) |
 | 13.0.0-alpha.6 | `V13-SQLITE-WAL-AVAILABLE` (the opt-in WAL journal) |
 | 13.0.0-alpha.6 | `V13-AUTH-SESSION-REGISTRY` (the opt-in session registry) |
+| 13.0.0-alpha.6 | `V13-TELEMETRY-LAYER-TYPE` (a dependency kept out of the API) |
+| 13.0.0-alpha.6 | `V13-VALIDATION-FIELD-ERRORS` (a dependency kept out of the API) |
+| 13.0.0-alpha.6 | `V13-STUDIO-OPENAPI-INFERRED` (a dependency kept out of the API) |
 
 A rule is dated by the first release tag whose catalog contains its code
 (`git show v13.0.0-alpha.2:cargo-rullst/src/generators/build/upgrade/rules/catalog.rs`,
@@ -348,7 +352,7 @@ alpha.2 rules, because the earlier changes are already in the version it runs. T
 
 ```text
 Source findings (rullst-upgrade-rules-v4): 0 must-change, 1 review
-  Rules: introduced after 13.0.0-alpha.2, the Rullst version this project uses; earlier rules skipped: 100 (findings hidden: 3); --all-rules applies every rule
+  Rules: introduced after 13.0.0-alpha.2, the Rullst version this project uses; earlier rules skipped: 99 (findings hidden: 3); --all-rules applies every rule
 ```
 
 A v12 application, or one whose version cannot be read (path dependencies
@@ -400,8 +404,9 @@ A practical order:
 1. `cargo rullst upgrade --dry-run` and read every finding with its migration row.
 2. Fix findings that also compile against v12 (most review items and the
    `html!`, ORM and Nexus must-change items), then run the v12 tests.
-3. `cargo rullst upgrade`. When a fix needs a v13 API (for example utoipa 6
-   with Studio), run `cargo rullst upgrade --keep-on-failure`, fix the kept
+3. `cargo rullst upgrade`. When a fix needs a v13 API (for example
+   `rullst::FieldErrors` for a validation failure), run
+   `cargo rullst upgrade --keep-on-failure`, fix the kept
    state, and finish with `cargo rullst upgrade` (no further version edits; it
    validates the result).
 4. Run the application-owned gates below.
@@ -550,7 +555,7 @@ totals, which every new row or rule would change.
 | Core scheduler, cache and realtime | (b) review | `V13-PRESENCE-COUNTING` | The `TenantCache` key encoding is not located |
 | Core memory cache sweeps | (c) none | — | Internal sweep cadence; reads unchanged |
 | Studio queue monitor | (b) review | `V13-QUEUE-DRIVER-PREVIEWS` |  |
-| Studio API playground | (a) must-change | `V13-STUDIO-UTOIPA-6` | Must-change when a manifest declares utoipa < 6 or utoipa-axum < 0.3 |
+| Studio API playground | (c) none | — | Since 13.0.0-alpha.6 `with_openapi` takes any utoipa version's document, so the utoipa 6 requirement that this row's must-change rule reported until alpha.5 is gone; the Studio OpenAPI documents row has the rule for what remains |
 | Studio local access and table view | (b) review | `V13-STUDIO-TABLE-VALUES` |  |
 | LMS blueprint | (c) none | — | Generator output; existing applications keep their code |
 | Consumer generators | (c) none | — | Generator commands |
@@ -808,6 +813,9 @@ totals, which every new row or rule would change.
 | Passkeys feature | (a) must-change | `V13-AUTH-PASSKEYS-FEATURE` | `rullst::auth::passkey` and `rullst_auth::passkey` paths (also through `auth::auth`, and `auth::passkey` in a file that names `rullst::auth` or `rullst_auth`) in `use` items, groups and code, at every location, when no workspace manifest enables `auth-passkeys`, `auth-sqlite` or `auth-passkey-postgres` on `rullst`, or `passkeys`, `sqlite` or `passkey-postgres` on `rullst-auth`, in a dependency or a `[features]` entry; introduced in 13.0.0-alpha.6 |
 | Media processing states | (a) must-change | `V13-MEDIA-PROCESSING-MATCH` | A `match` whose arm patterns name `AwaitingUpload` and that has no catch-all arm, in a file that names `rullst_media`; comparisons and `matches!` keep compiling; introduced in 13.0.0-alpha.6 |
 | Non-exhaustive enums and structs | (a) must-change | `V13-NON-EXHAUSTIVE-MATCH`, `V13-NON-EXHAUSTIVE-LITERAL` | A `match` without a catch-all arm whose arm patterns name one of the enums that became `#[non_exhaustive]` and one of its variants; a struct literal (also inside `vec![...]`) of one of the structs that did, whose fields are all fields of that struct; and a call of the tuple structs `RagRetrievalError` and `RagAuditError`; each in a file that names the type's crate (`rullst_<crate>` or `<crate>::`, any `rullst` path for Core), so an application's own type of the same name is left alone; introduced in 13.0.0-alpha.6 |
+| Distributed tracing layer type | (a) must-change | `V13-TELEMETRY-LAYER-TYPE` | `OpenTelemetryLayer`, or one of its own builder methods called on `.layer()`, in a file that names `DistributedTelemetry` or `telemetry::distributed`, so an application's own OpenTelemetry pipeline is left alone; the `Send + Sync` bound on the subscriber has no rule; introduced in 13.0.0-alpha.6 |
+| Validation field errors | (a) must-change | `V13-VALIDATION-FIELD-ERRORS` | A `ValidationError::ValidationError { .. }` pattern or value that names its `errors` field, in a file that names `rullst`; introduced in 13.0.0-alpha.6 |
+| Studio OpenAPI documents | (a) must-change | `V13-STUDIO-OPENAPI-INFERRED` | `with_openapi(..)` or `api_playground::router(..)` whose argument is `Default::default()`, a `from_str`, `from_slice`, `from_value` or `from_reader` call without a turbofish, or ends in `.into()`; introduced in 13.0.0-alpha.6 |
 
 ## Planned simpler update experience
 

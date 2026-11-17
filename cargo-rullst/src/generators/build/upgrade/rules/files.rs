@@ -291,14 +291,6 @@ pub(super) fn manifest_findings(
                         dependency_line(&plan.original, &key),
                     ));
                 }
-                "utoipa" => {
-                    facts.utoipa_below_6 |=
-                        minimum(&declaration).is_some_and(|(major, _)| major < 6);
-                }
-                "utoipa-axum" => {
-                    facts.utoipa_below_6 |=
-                        minimum(&declaration).is_some_and(|(major, minor)| major == 0 && minor < 3);
-                }
                 _ => {}
             }
         }

@@ -51,13 +51,13 @@ fn an_alpha_2_application_sees_only_the_alpha_3_rules() {
         serde_json::json!({
             "current_version": "13.0.0-alpha.2",
             "all_rules": false,
-            "skipped_rules": 100,
+            "skipped_rules": 99,
             "hidden_findings": 2
         })
     );
     let human = output_text(&fixture.run(&["upgrade", "--dry-run"]));
     assert!(
-        human.contains("Rules: introduced after 13.0.0-alpha.2, the Rullst version this project uses; earlier rules skipped: 100 (findings hidden: 2); --all-rules applies every rule"),
+        human.contains("Rules: introduced after 13.0.0-alpha.2, the Rullst version this project uses; earlier rules skipped: 99 (findings hidden: 2); --all-rules applies every rule"),
         "{human}"
     );
     assert!(!human.contains(ALPHA_1_RULE), "{human}");
@@ -72,7 +72,7 @@ fn an_alpha_1_application_sees_the_alpha_2_and_alpha_3_rules() {
         report["rule_selection"]["current_version"],
         "13.0.0-alpha.1"
     );
-    assert_eq!(report["rule_selection"]["skipped_rules"], 95);
+    assert_eq!(report["rule_selection"]["skipped_rules"], 94);
     assert_eq!(report["rule_selection"]["hidden_findings"], 1);
 }
 
