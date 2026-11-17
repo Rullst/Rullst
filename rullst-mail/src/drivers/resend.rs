@@ -10,8 +10,8 @@ use async_trait::async_trait;
 
 /// Furthest ahead Resend accepts `scheduled_at`: "Emails can be scheduled up
 /// to 30 days in advance" (<https://resend.com/docs/dashboard/emails/schedule-email>).
-/// Later schedules need a durable Rullst queue.
-const MAX_PROVIDER_SCHEDULE: jiff::SignedDuration = jiff::SignedDuration::from_hours(30 * 24);
+/// Later schedules need a durable Rullst queue. 30 days are 720 hours.
+const MAX_PROVIDER_SCHEDULE: jiff::SignedDuration = jiff::SignedDuration::from_hours(720);
 
 /// A Resend HTTP REST API driver
 #[non_exhaustive]

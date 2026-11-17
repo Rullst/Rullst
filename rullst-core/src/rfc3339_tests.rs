@@ -162,6 +162,8 @@ fn strict_parser_accepts_what_chrono_accepted() {
         "2025-10-22T15:45:30.Z",
         "2025-10-22T15:45:30+0300",
         "2025-10-22T15:45:30+03",
+        "2025-10-22T15:45:30+03:000",
+        "2025-10-22T15:45:30+03100",
         "2025-10-22T15:45:30+24:00",
         "2025-10-22T15:45:30+03:60",
         "2025-10-22T15:45:30Z ",
@@ -249,7 +251,35 @@ fn serde_round_trips_in_chrono_form() {
     assert_eq!(missing, none);
     let error = serde_json::from_str::<Record>(r#"{"at":"soon"}"#).unwrap_err();
     assert!(error.to_string().contains("invalid RFC 3339"), "{error}");
-    assert!(serde_json::from_str::<Record>(r#"{"at":5}"#).is_err());
+    let error = serde_json::from_str::<Record>(r#"{"at":5}"#).unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("expected an RFC 3339 date and time with an offset"),
+        "{error}"
+    );
+}
+
+/// Every day from about 220 BCE to 4160 CE, centuries and 400-year cycles
+/// included, against jiff's calendar.
+#[test]
+fn civil_days_match_jiff_for_every_day() {
+    for days in -800_000..800_000_i64 {
+        let date = jiff::tz::Offset::UTC
+            .to_datetime(Timestamp::from_second(days * 86_400).unwrap())
+            .date();
+        let expected = (
+            i64::from(date.year()),
+            i64::from(date.month()),
+            i64::from(date.day()),
+        );
+        assert_eq!(civil_from_days(days), expected, "{days}");
+        assert_eq!(
+            days_from_civil(expected.0, expected.1, expected.2),
+            days,
+            "{date}"
+        );
+    }
 }
 
 #[test]
