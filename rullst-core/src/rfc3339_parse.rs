@@ -31,11 +31,8 @@ pub(super) fn parse_parts(text: &str, signed_years: bool) -> Option<(i64, u32)> 
         }
         _ => (digits(text, 0..4)?, text.get(4..)?),
     };
-    // `-MM-DD`, a separator, `hh:mm:ss`: 15 bytes.
+    // `-MM-DD`, a separator, `hh:mm:ss`.
     let bytes = rest.as_bytes();
-    if bytes.len() < 15 {
-        return None;
-    }
     let month = digits(rest, 1..3)?;
     let day = digits(rest, 4..6)?;
     let hour = digits(rest, 7..9)?;

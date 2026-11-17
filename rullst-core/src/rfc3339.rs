@@ -198,7 +198,9 @@ fn write(
     push_two(out, of_day % 60);
     match fraction {
         Fraction::Auto if nanos == 0 => {}
-        Fraction::Auto if nanos.is_multiple_of(1_000_000) => push_fraction(out, nanos / 1_000_000, 3),
+        Fraction::Auto if nanos.is_multiple_of(1_000_000) => {
+            push_fraction(out, nanos / 1_000_000, 3)
+        }
         Fraction::Auto if nanos.is_multiple_of(1_000) => push_fraction(out, nanos / 1_000, 6),
         Fraction::Auto | Fraction::Nanos => push_fraction(out, nanos, 9),
         Fraction::Millis => push_fraction(out, nanos / 1_000_000, 3),

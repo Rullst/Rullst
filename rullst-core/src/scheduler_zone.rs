@@ -116,7 +116,9 @@ impl ZonedCron {
         // Wall times are written as UTC values, which is how the cron fields
         // are matched. Start one second before the current wall time, so a
         // match at that very time is examined and rejected below.
-        let mut wall = shift(after, offset.seconds() - 1)?;
+        let mut wall = shift(after, offset.seconds())?
+            .checked_sub(SignedDuration::from_secs(1))
+            .ok()?;
         for _ in 0..MAX_CANDIDATES {
             wall = self.schedule.next_after(&wall)?;
             let instant = self.instant_of(&wall)?;
