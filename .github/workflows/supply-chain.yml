@@ -68,10 +68,10 @@ jobs:
       - name: Audit production, fuzz and fixture dependency locks
         shell: bash
         run: |
-          cargo audit --ignore RUSTSEC-2026-0459 --ignore RUSTSEC-2026-0440
+          cargo audit --ignore RUSTSEC-2026-0459 --ignore RUSTSEC-2026-0440 --ignore RUSTSEC-2026-0543
           while IFS= read -r lockfile; do
             echo "Auditing $lockfile"
-            cargo audit --no-fetch --ignore RUSTSEC-2026-0459 --ignore RUSTSEC-2026-0440 --file "$lockfile"
+            cargo audit --no-fetch --ignore RUSTSEC-2026-0459 --ignore RUSTSEC-2026-0440 --ignore RUSTSEC-2026-0543 --file "$lockfile"
           done < <({
             find . -mindepth 3 -maxdepth 3 -path '*/fuzz/Cargo.lock' -print
             find ./.github/fixtures -name Cargo.lock -print

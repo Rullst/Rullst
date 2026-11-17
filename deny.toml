@@ -6,6 +6,7 @@
 ignore = [
     { id = "RUSTSEC-2026-0459", reason = "bundled SQLite < 3.54 in libsqlite3-sys 0.37; sqlx-sqlite 0.9.0 caps it below 0.38; see docs/src/security-advisory-exceptions.md" },
     { id = "RUSTSEC-2026-0440", reason = "astral-tokio-tar is unmaintained; dev-dependency of testcontainers only; see docs/src/security-advisory-exceptions.md" },
+    { id = "RUSTSEC-2026-0543", reason = "chrono is unmaintained; bridge while Rullst 13 replaces it before 13.0.0-alpha.6; see docs/src/security-advisory-exceptions.md" },
 ]
 
 [licenses]
