@@ -1,6 +1,6 @@
 # Tutorial 05: migrações e seeders do banco de dados 🗄️
 
-> **Tradução** da página em inglês [`05-migrations-and-seeds.md`](../../tutorials/05-migrations-and-seeds.md), feita a partir do commit [`654944c44`](https://github.com/Rullst/Rullst/commit/654944c445e464c2b55d4720e6dd70105a07e44d). Se as duas versões divergirem, vale a versão em inglês.
+> **Tradução** da página em inglês [`05-migrations-and-seeds.md`](../../tutorials/05-migrations-and-seeds.md), feita a partir do commit [`1e58b0e89`](https://github.com/Rullst/Rullst/commit/1e58b0e8933f3a257077a45d44056988d52058e6). Se as duas versões divergirem, vale a versão em inglês.
 
 O Rullst usa módulos Rust de migração com timestamp em projetos cujo banco
 principal é do SQLx. Projetos com o Turso como banco principal recebem, em vez
