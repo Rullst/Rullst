@@ -305,6 +305,72 @@ fn test_mutable_column_type_boundary() {
 }
 
 #[test]
+fn sized_column_types_and_key_shapes_decide_mutability() {
+    for (database_type, kind) in [
+        ("varchar(255)", StudioColumnKind::Text),
+        ("CHAR(12)", StudioColumnKind::Text),
+        ("integer(4)", StudioColumnKind::Integer),
+        ("int(11)", StudioColumnKind::Integer),
+        ("bigint(20)", StudioColumnKind::Integer),
+        ("smallint(6)", StudioColumnKind::Integer),
+        ("tinyint(4)", StudioColumnKind::Integer),
+        ("float(10)", StudioColumnKind::Float),
+        ("double(8,2)", StudioColumnKind::Float),
+    ] {
+        assert_eq!(
+            StudioColumnKind::from_database_type(database_type),
+            kind,
+            "{database_type}"
+        );
+    }
+
+    for kind in [
+        StudioColumnKind::Text,
+        StudioColumnKind::Integer,
+        StudioColumnKind::Float,
+        StudioColumnKind::Boolean,
+    ] {
+        assert!(kind.is_editable(), "{kind:?}");
+    }
+    assert!(!StudioColumnKind::Unsupported.is_editable());
+    for kind in [
+        StudioColumnKind::Text,
+        StudioColumnKind::Integer,
+        StudioColumnKind::Boolean,
+    ] {
+        assert!(kind.round_trips_as_key(), "{kind:?}");
+    }
+    assert!(!StudioColumnKind::Float.round_trips_as_key());
+    assert!(!StudioColumnKind::Unsupported.round_trips_as_key());
+
+    let column = |name: &str, kind, primary_key| StudioColumn {
+        name: name.to_string(),
+        kind,
+        primary_key,
+        nullable: false,
+    };
+    let schema = |columns, primary_key_complete| StudioTableSchema {
+        columns,
+        primary_key_complete,
+    };
+    let keyed = vec![
+        column("tenant", StudioColumnKind::Text, true),
+        column("title", StudioColumnKind::Text, false),
+        column("id", StudioColumnKind::Integer, true),
+    ];
+    assert!(schema(keyed.clone(), true).supports_mutations());
+    assert_eq!(schema(keyed.clone(), true).primary_key_indices(), [0, 2]);
+    assert!(!schema(keyed, false).supports_mutations());
+
+    let unkeyed = vec![column("title", StudioColumnKind::Text, false)];
+    assert!(!schema(unkeyed.clone(), true).supports_mutations());
+    assert!(schema(unkeyed, true).primary_key_indices().is_empty());
+
+    let float_key = vec![column("ratio", StudioColumnKind::Float, true)];
+    assert!(!schema(float_key, true).supports_mutations());
+}
+
+#[test]
 fn empty_rows_and_studio_port_inputs_have_deterministic_fallbacks() {
     let rows = build_rows_html(&[], &[]);
     assert!(rows.contains("No records found"));

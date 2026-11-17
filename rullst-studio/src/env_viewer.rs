@@ -337,6 +337,14 @@ mod tests {
     }
 
     #[test]
+    fn user_information_is_found_right_after_a_short_scheme() {
+        // The authority starts three bytes after `://`, wherever the scheme ends.
+        assert!(value_may_hold_credentials("s://ana:pw@db/x"));
+        assert!(value_may_hold_credentials("db://ana:pw@db"));
+        assert!(!value_may_hold_credentials("s://db.internal/x@y"));
+    }
+
+    #[test]
     fn database_config_projection_never_returns_the_connection_url() {
         assert_eq!(
             database_driver_name("postgres://admin:secret@example.test/app"),

@@ -19,7 +19,7 @@ mod postgres_schema;
 mod unsigned;
 
 // The SQLite matrix binary under the default build compiles this unused.
-#[cfg(not(feature = "strict-sqlite"))]
+#[cfg(any(feature = "strict-postgres", not(feature = "strict-sqlite")))]
 #[allow(dead_code)]
 pub fn handle_container_start_error(provider: &str, error: impl std::fmt::Display) {
     if std::env::var("RULLST_REQUIRE_TESTCONTAINERS").as_deref() == Ok("true") {

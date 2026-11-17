@@ -172,3 +172,39 @@ pub(crate) fn build_mutable_rows_html(
     }
     html
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data_browser::db::StudioColumnKind;
+
+    #[test]
+    fn form_sizes_count_every_encoded_byte() {
+        // 8 + 64 + 7 + 3 * 16384 + 14 bytes.
+        assert_eq!(UPDATE_FORM_BYTES, 49_245);
+        assert_eq!(form_encoded_len("aZ09*-._ "), 9);
+        assert_eq!(form_encoded_len("%/é"), 12);
+
+        let columns = [
+            StudioColumn {
+                name: "id".to_string(),
+                kind: StudioColumnKind::Integer,
+                primary_key: true,
+                nullable: false,
+            },
+            StudioColumn {
+                name: "tenant".to_string(),
+                kind: StudioColumnKind::Text,
+                primary_key: true,
+                nullable: false,
+            },
+        ];
+        // `pk_id=` + `a+b%` encoded as `a+b%25` + `&`: 3 + 2 + 1 + 6 + 1.
+        assert_eq!(key_form_bytes(&columns, &[0], &["a b%".to_string()]), 13);
+        // Plus `pk_tenant=acme&`: 3 + 6 + 1 + 4 + 1.
+        assert_eq!(
+            key_form_bytes(&columns, &[0, 1], &["a b%".to_string(), "acme".to_string()]),
+            28
+        );
+    }
+}

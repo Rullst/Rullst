@@ -1,10 +1,14 @@
 // Runs under `strict-postgres` and under the default `sqlx::Any` build, whose
 // `QueryBuilder` writes `?` markers that Studio must renumber for PostgreSQL.
+// The all-feature build selects the PostgreSQL pool, so it runs this matrix
+// too: mutation testing measures Studio with every feature enabled.
 #![cfg(all(
     debug_assertions,
     feature = "local",
-    not(feature = "strict-mysql"),
-    not(feature = "strict-sqlite")
+    any(
+        feature = "strict-postgres",
+        not(any(feature = "strict-mysql", feature = "strict-sqlite"))
+    )
 ))]
 
 mod support;

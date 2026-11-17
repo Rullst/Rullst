@@ -273,3 +273,48 @@ fn secret_debug_is_redacted_and_policy_rejects_weak_inputs() {
         Err(TraceIngestionError::InvalidCapacity)
     ));
 }
+
+#[test]
+fn source_names_and_the_clock_window_are_bounded_inclusively() {
+    let key = || TraceIngestionKey::new(KEY).expect("trace key");
+    for accepted in ["a", "api_1.eu-west", &"s".repeat(64)] {
+        assert!(TraceBatchSigner::new(accepted, key()).is_ok(), "{accepted}");
+    }
+    for rejected in ["", "api 1", "api/1", "fonte-ç", &"s".repeat(65)] {
+        assert!(
+            matches!(
+                TraceBatchSigner::new(rejected, key()),
+                Err(TraceIngestionError::AuthenticationFailed)
+            ),
+            "{rejected}"
+        );
+    }
+
+    let now = 1_800_000_000;
+    let signer = TraceBatchSigner::new("api-1", key()).expect("trace signer");
+    let batch = TraceBatchV1::new(vec![span(now, 1, "users.fetch", 50)]);
+    let verify = |timestamp: u64| {
+        let signed = signer
+            .sign_at(&batch, timestamp, [3; 16])
+            .expect("signed trace");
+        auth::authenticate(
+            &key(),
+            signed.source(),
+            signed.timestamp(),
+            signed.nonce(),
+            signed.signature(),
+            signed.body(),
+            now,
+        )
+    };
+    assert_eq!(verify(now - 60), Ok(now - 60));
+    assert_eq!(verify(now + 60), Ok(now + 60));
+    assert_eq!(
+        verify(now - 61),
+        Err(TraceIngestionError::TimestampOutsideWindow)
+    );
+    assert_eq!(
+        verify(now + 61),
+        Err(TraceIngestionError::TimestampOutsideWindow)
+    );
+}
