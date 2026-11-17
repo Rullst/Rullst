@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794878421279,
+  "lastUpdate": 1794880372232,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -23973,6 +23973,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1979,
             "range": "± 13",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6068e4581af5d441852f13eeafee4802a51210d4",
+          "message": "Merge pull request #737 from Rullst/dependabot/github_actions/main/ci-tools-67a7f8299f\n\nchore(deps): Bump the ci-tools group across 1 directory with 3 updates",
+          "timestamp": "2026-11-16T22:37:22-03:00",
+          "tree_id": "dea1220f12454838bf7b67647be33ea9c1d6bdcc",
+          "url": "https://github.com/Rullst/Rullst/commit/6068e4581af5d441852f13eeafee4802a51210d4"
+        },
+        "date": 1794880371611,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1006,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 750,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1759,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4185,
+            "range": "± 41",
             "unit": "ns/iter"
           }
         ]
