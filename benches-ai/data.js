@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794884076068,
+  "lastUpdate": 1794937557607,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -21477,6 +21477,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 181,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "35d84425c23c24a37253b740299319f54be9ba33",
+          "message": "Merge pull request #753 from Rullst/ci/v13-chrono-bridge-exception\n\nci(supply-chain): govern RUSTSEC-2026-0543 while chrono is replaced",
+          "timestamp": "2026-11-17T14:24:38-03:00",
+          "tree_id": "4f831289cb2e030765678243deb59514d6ec39ca",
+          "url": "https://github.com/Rullst/Rullst/commit/35d84425c23c24a37253b740299319f54be9ba33"
+        },
+        "date": 1794937556464,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1426,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 253,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 283,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
