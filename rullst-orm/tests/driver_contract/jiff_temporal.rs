@@ -100,7 +100,9 @@ mod native {
                 let epoch = civil::date(2000, 1, 1).at(0, 0, 0, 0);
                 let micros = value.duration_since(epoch).as_micros();
                 let micros = i64::try_from(micros).expect("in range");
-                epoch.checked_add(SignedDuration::from_micros(micros)).expect("in range")
+                epoch
+                    .checked_add(SignedDuration::from_micros(micros))
+                    .expect("in range")
             }
             _ => {
                 let nanos = value.subsec_nanosecond();
@@ -120,7 +122,13 @@ mod native {
         Timestamp::from(jiff::tz::Offset::UTC.to_timestamp(*kept).expect("in range"))
     }
 
-    fn jiff_entry(title: &str, starts_at: &str, local_start: &str, day: &str, opens: &str) -> JiffEntry {
+    fn jiff_entry(
+        title: &str,
+        starts_at: &str,
+        local_start: &str,
+        day: &str,
+        opens: &str,
+    ) -> JiffEntry {
         JiffEntry {
             id: 0,
             title: title.to_string(),
@@ -141,7 +149,8 @@ mod native {
             starts_at: chrono(entry.starts_at),
             local_start: naive(entry.local_start),
             day: NaiveDate::parse_from_str(&entry.day.to_string(), "%Y-%m-%d").expect("date"),
-            opens: NaiveTime::parse_from_str(&entry.opens.to_string(), "%H:%M:%S%.f").expect("time"),
+            opens: NaiveTime::parse_from_str(&entry.opens.to_string(), "%H:%M:%S%.f")
+                .expect("time"),
             ends_at: entry.ends_at.map(chrono),
             created_at: None,
             updated_at: None,
@@ -149,7 +158,10 @@ mod native {
     }
 
     fn titles<T>(entries: &[T], title: impl Fn(&T) -> &str) -> Vec<String> {
-        entries.iter().map(|entry| title(entry).to_string()).collect()
+        entries
+            .iter()
+            .map(|entry| title(entry).to_string())
+            .collect()
     }
 
     pub(super) async fn exercise(driver: &str) {
@@ -197,7 +209,9 @@ mod native {
 
         let before = jiff::Timestamp::now();
         for row in &mut rows {
-            row.save().await.unwrap_or_else(|error| panic!("{driver} {}: {error}", row.title));
+            row.save()
+                .await
+                .unwrap_or_else(|error| panic!("{driver} {}: {error}", row.title));
             let mut twin = chrono_entry(row);
             twin.save()
                 .await
@@ -207,16 +221,38 @@ mod native {
 
         // Each type reads every row, whichever type wrote it, as the same
         // value.
-        let as_jiff = JiffEntry::query().order_by("id").get().await.expect("read as jiff");
-        let as_chrono = ChronoEntry::query().order_by("id").get().await.expect("read as chrono");
+        let as_jiff = JiffEntry::query()
+            .order_by("id")
+            .get()
+            .await
+            .expect("read as jiff");
+        let as_chrono = ChronoEntry::query()
+            .order_by("id")
+            .get()
+            .await
+            .expect("read as chrono");
         assert_eq!(as_jiff.len(), rows.len() * 2, "{driver}");
         for (index, row) in rows.iter().enumerate() {
             for read in &as_jiff[index * 2..index * 2 + 2] {
-                assert_eq!(read.starts_at, stored(driver, row.starts_at), "{driver} {}", read.title);
-                assert_eq!(read.local_start, stored_civil(driver, row.local_start), "{driver} {}", read.title);
+                assert_eq!(
+                    read.starts_at,
+                    stored(driver, row.starts_at),
+                    "{driver} {}",
+                    read.title
+                );
+                assert_eq!(
+                    read.local_start,
+                    stored_civil(driver, row.local_start),
+                    "{driver} {}",
+                    read.title
+                );
                 assert_eq!(read.day, row.day, "{driver} {}", read.title);
                 assert_eq!(read.opens, row.opens, "{driver} {}", read.title);
-                assert_eq!(read.ends_at, row.ends_at.map(|at| stored(driver, at)), "{driver}");
+                assert_eq!(
+                    read.ends_at,
+                    row.ends_at.map(|at| stored(driver, at)),
+                    "{driver}"
+                );
                 let created = read.created_at.expect("database default");
                 assert!(
                     *created > before - SignedDuration::from_mins(10)
@@ -226,9 +262,21 @@ mod native {
             }
         }
         for (jiff_read, chrono_read) in as_jiff.iter().zip(&as_chrono) {
-            assert_eq!(chrono(jiff_read.starts_at), chrono_read.starts_at, "{driver}");
-            assert_eq!(naive(jiff_read.local_start), chrono_read.local_start, "{driver}");
-            assert_eq!(jiff_read.day.to_string(), chrono_read.day.to_string(), "{driver}");
+            assert_eq!(
+                chrono(jiff_read.starts_at),
+                chrono_read.starts_at,
+                "{driver}"
+            );
+            assert_eq!(
+                naive(jiff_read.local_start),
+                chrono_read.local_start,
+                "{driver}"
+            );
+            assert_eq!(
+                jiff_read.day.to_string(),
+                chrono_read.day.to_string(),
+                "{driver}"
+            );
             assert_eq!(
                 jiff_read.created_at.map(chrono),
                 chrono_read.created_at,
@@ -298,14 +346,18 @@ mod native {
             ["ordinary", "ordinary (chrono)"],
             "{driver}"
         );
-        let ended = Orm::raw("SELECT title FROM contract_jiff_calendar WHERE ends_at = ? ORDER BY id")
-            .bind(ordinary.ends_at)
-            .map_to::<(String,)>()
-            .await
-            .expect("raw filter by an instant");
+        let ended =
+            Orm::raw("SELECT title FROM contract_jiff_calendar WHERE ends_at = ? ORDER BY id")
+                .bind(ordinary.ends_at)
+                .map_to::<(String,)>()
+                .await
+                .expect("raw filter by an instant");
         assert_eq!(
             ended,
-            [("ordinary".to_string(),), ("ordinary (chrono)".to_string(),)],
+            [
+                ("ordinary".to_string(),),
+                ("ordinary (chrono)".to_string(),)
+            ],
             "{driver}"
         );
 
@@ -330,9 +382,16 @@ mod native {
         let mut first = as_jiff[0].clone();
         first.ends_at = Some("2026-10-15T12:00:00Z".parse().expect("instant"));
         first.save().await.expect("full-row save");
-        let reread = ChronoEntry::find(first.id).await.expect("find").expect("row");
+        let reread = ChronoEntry::find(first.id)
+            .await
+            .expect("find")
+            .expect("row");
         assert_eq!(reread.ends_at, first.ends_at.map(chrono), "{driver}");
-        assert_eq!(reread.created_at, first.created_at.map(chrono), "{driver} keeps created_at");
+        assert_eq!(
+            reread.created_at,
+            first.created_at.map(chrono),
+            "{driver} keeps created_at"
+        );
 
         Schema::drop_if_exists(TABLE).await.expect("drop calendar");
     }

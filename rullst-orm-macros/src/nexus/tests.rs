@@ -436,7 +436,9 @@ fn infers_orm_date_time_widgets_by_type() {
         assert!(at.contains(&arm), "{kind}: {at}");
     }
     assert!(
-        at.contains(":: core :: option :: Option :: None => :: rullst :: nexus :: FieldKind :: Text"),
+        at.contains(
+            ":: core :: option :: Option :: None => :: rullst :: nexus :: FieldKind :: Text"
+        ),
         "{at}"
     );
     let maybe = field_meta(&output, "maybe").expect("maybe metadata");

@@ -204,9 +204,15 @@ mod same_parameters_as_chrono {
     #[test]
     fn and_never_the_null_parameter() {
         let at: crate::Timestamp = "2026-10-15T09:30:00.5Z".parse().unwrap();
-        assert_ne!(bound(&RullstValue::Timestamp(at)), bound(&RullstValue::Null));
+        assert_ne!(
+            bound(&RullstValue::Timestamp(at)),
+            bound(&RullstValue::Null)
+        );
         let day: crate::Date = "2026-10-15".parse().unwrap();
-        assert_ne!(bound(&RullstValue::CivilDate(day)), bound(&RullstValue::Null));
+        assert_ne!(
+            bound(&RullstValue::CivilDate(day)),
+            bound(&RullstValue::Null)
+        );
     }
 }
 
@@ -229,7 +235,13 @@ fn the_any_pool_binds_jiff_dates_as_the_same_iso_text() {
         r#"[Text("2026-10-15 09:30:00.500")]"#
     );
     let day: crate::Date = "2026-10-15".parse().unwrap();
-    assert_eq!(bound(&RullstValue::CivilDate(day)), r#"[Text("2026-10-15")]"#);
+    assert_eq!(
+        bound(&RullstValue::CivilDate(day)),
+        r#"[Text("2026-10-15")]"#
+    );
     let clock: crate::Time = "09:30:00.5".parse().unwrap();
-    assert_eq!(bound(&RullstValue::CivilTime(clock)), r#"[Text("09:30:00.500")]"#);
+    assert_eq!(
+        bound(&RullstValue::CivilTime(clock)),
+        r#"[Text("09:30:00.500")]"#
+    );
 }

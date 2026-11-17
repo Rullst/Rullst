@@ -128,7 +128,10 @@ fn assert_same_server_text(text: &str) {
 fn sqlite_text_golden_values() {
     let read = |text: &str| {
         let moment = sqlite_date_time(text).expect(text);
-        (moment.local.to_string(), moment.instant().map(|at| at.to_string()))
+        (
+            moment.local.to_string(),
+            moment.instant().map(|at| at.to_string()),
+        )
     };
     assert_eq!(
         read("2026-10-15T09:30:00.123456+00:00"),
@@ -155,8 +158,14 @@ fn sqlite_text_golden_values() {
     );
     // Lowercase separators (RFC 3339), a space before the offset, a minus
     // sign, extra fraction digits and a leap second.
-    assert_eq!(read("2026-10-15t09:30:00z").1.unwrap(), "2026-10-15T09:30:00Z");
-    assert_eq!(read("2026-10-15T09:30 \u{2212}01:00").1.unwrap(), "2026-10-15T10:30:00Z");
+    assert_eq!(
+        read("2026-10-15t09:30:00z").1.unwrap(),
+        "2026-10-15T09:30:00Z"
+    );
+    assert_eq!(
+        read("2026-10-15T09:30 \u{2212}01:00").1.unwrap(),
+        "2026-10-15T10:30:00Z"
+    );
     assert_eq!(
         read("2026-10-15 09:30:00.1234567891").0,
         "2026-10-15T09:30:00.123456789"
@@ -278,7 +287,11 @@ fn time_text() -> impl Strategy<Value = String> {
         0_u32..=25,
         0_u32..=61,
         prop::option::of(0_u32..=61),
-        prop_oneof![Just(String::new()), "\\.[0-9]{0,12}", Just(".f".to_string())],
+        prop_oneof![
+            Just(String::new()),
+            "\\.[0-9]{0,12}",
+            Just(".f".to_string())
+        ],
         prop_oneof![
             Just(String::new()),
             Just("Z".to_string()),

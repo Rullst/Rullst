@@ -522,7 +522,7 @@ mod tests {
         };
         for text in [
             "2026-10-15T09:30:00.000000005Z",
-            "-0044-03-15T12:00:00Z",
+            "-000044-03-15T12:00:00Z",
             "1999-12-31T23:59:59.5Z",
         ] {
             let at: Timestamp = text.parse().expect("instant");
@@ -545,8 +545,14 @@ mod tests {
                 key(RullstValue::CivilTime(clock)),
                 key(RullstValue::Time(chrono_time(*clock)))
             );
-            assert_ne!(key(RullstValue::Timestamp(at)), key(RullstValue::CivilDateTime(civil)));
-            assert_ne!(key(RullstValue::CivilDate(day)), key(RullstValue::CivilTime(clock)));
+            assert_ne!(
+                key(RullstValue::Timestamp(at)),
+                key(RullstValue::CivilDateTime(civil))
+            );
+            assert_ne!(
+                key(RullstValue::CivilDate(day)),
+                key(RullstValue::CivilTime(clock))
+            );
         }
         assert_eq!(
             text::timestamp_nanos("2026-10-15T09:30:00.5Z".parse().expect("instant")),

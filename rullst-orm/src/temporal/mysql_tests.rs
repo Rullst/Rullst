@@ -71,9 +71,9 @@ fn golden_parameters() {
         (vec![12, 0, 0, 0, 0, 0, 9, 30, 0, 1, 0, 0, 0], 13)
     );
     // MySQL has no negative years.
-    let ancient: Date = "-0001-01-01".parse().unwrap();
+    let ancient: Date = "-000001-01-01".parse().unwrap();
     let mut buffer = Vec::new();
-    assert!(ancient.encode_by_ref(&mut buffer).is_err());
+    assert!(Encode::<MySql>::encode_by_ref(&ancient, &mut buffer).is_err());
 }
 
 /// sqlx-mysql 0.9's binary `NaiveDateTime` decoder, with its panics on short
@@ -134,7 +134,10 @@ fn same_parameter<'q, A: Encode<'q, MySql>, B: Encode<'q, MySql>>(ours: A, their
 #[test]
 fn golden_reads() {
     let read = |bytes: &[u8]| date_time_from_binary(bytes).map(|value| value.to_string());
-    assert_eq!(read(&[4, 0xea, 0x07, 10, 15]).unwrap(), "2026-10-15T00:00:00");
+    assert_eq!(
+        read(&[4, 0xea, 0x07, 10, 15]).unwrap(),
+        "2026-10-15T00:00:00"
+    );
     assert_eq!(
         read(&[11, 0xea, 0x07, 10, 15, 9, 30, 0, 1, 0, 0, 0]).unwrap(),
         "2026-10-15T09:30:00.000001"

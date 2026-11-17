@@ -262,7 +262,10 @@ fn fraction(text: &str) -> Option<(&str, i32)> {
     let digits = text.len() - rest.len();
     let scale = 10_i64.pow(9 - u32::try_from(digits).ok()?);
     let nanosecond = i32::try_from(value * scale).ok()?;
-    Some((rest.trim_start_matches(|c: char| c.is_ascii_digit()), nanosecond))
+    Some((
+        rest.trim_start_matches(|c: char| c.is_ascii_digit()),
+        nanosecond,
+    ))
 }
 
 /// How an offset's hours and minutes are separated.

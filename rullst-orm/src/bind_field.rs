@@ -156,12 +156,18 @@ mod tests {
             format!("{instant:?}")
         };
         assert_eq!(format!("{:?}", timestamp_wire(instant)), expected);
-        assert_eq!(format!("{:?}", (&Field(&instant)).__rullst_encode()), expected);
+        assert_eq!(
+            format!("{:?}", (&Field(&instant)).__rullst_encode()),
+            expected
+        );
         assert_eq!(
             format!("{:?}", (&Field(&present)).__rullst_encode()),
             format!("Some({expected})")
         );
-        assert_eq!(format!("{:?}", (&Field(&missing)).__rullst_encode()), "None");
+        assert_eq!(
+            format!("{:?}", (&Field(&missing)).__rullst_encode()),
+            "None"
+        );
         // The civil types are bound unchanged.
         assert_eq!((&Field(&wall)).__rullst_encode(), wall);
     }

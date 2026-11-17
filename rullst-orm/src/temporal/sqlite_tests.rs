@@ -80,13 +80,25 @@ fn type_descriptors_and_compatible_columns_match_chrono() {
 #[test]
 fn golden_text() {
     let at: Timestamp = "2026-10-15T09:30:00.5Z".parse().unwrap();
-    assert_eq!(encoded(at), r#"SqliteArgumentsBuffer([Text("2026-10-15T09:30:00.500+00:00")])"#);
+    assert_eq!(
+        encoded(at),
+        r#"SqliteArgumentsBuffer([Text("2026-10-15T09:30:00.500+00:00")])"#
+    );
     let civil: DateTime = "2026-10-15T09:30:00.000001".parse().unwrap();
-    assert_eq!(encoded(civil), r#"SqliteArgumentsBuffer([Text("2026-10-15 09:30:00.000001")])"#);
-    let date: Date = "-0044-03-15".parse().unwrap();
-    assert_eq!(encoded(date), r#"SqliteArgumentsBuffer([Text("-0044-03-15")])"#);
+    assert_eq!(
+        encoded(civil),
+        r#"SqliteArgumentsBuffer([Text("2026-10-15 09:30:00.000001")])"#
+    );
+    let date: Date = "-000044-03-15".parse().unwrap();
+    assert_eq!(
+        encoded(date),
+        r#"SqliteArgumentsBuffer([Text("-0044-03-15")])"#
+    );
     let time: Time = "23:59:59.000000007".parse().unwrap();
-    assert_eq!(encoded(time), r#"SqliteArgumentsBuffer([Text("23:59:59.000000007")])"#);
+    assert_eq!(
+        encoded(time),
+        r#"SqliteArgumentsBuffer([Text("23:59:59.000000007")])"#
+    );
 }
 
 proptest! {
@@ -178,8 +190,38 @@ async fn every_storage_class_reads_as_chrono_reads_it() {
     ] {
         read_both(&mut connection, sql).await;
     }
+    // Out of jiff's range: chrono reads these, ours report a decode error.
+    for sql in [
+        "'+10000-01-01 00:00'",
+        "253402300800",
+        "'-10000-12-31T00:00:00Z'",
+    ] {
+        let row = sqlx::query(sqlx::AssertSqlSafe(format!("SELECT {sql}")))
+            .fetch_one(&mut connection)
+            .await
+            .expect("select");
+        assert!(row.try_get::<chrono::DateTime<Utc>, _>(0).is_ok(), "{sql}");
+        assert!(row.try_get::<Timestamp, _>(0).is_err(), "{sql}");
+        assert!(row.try_get::<DateTime, _>(0).is_err(), "{sql}");
+    }
+    let row = sqlx::query("SELECT '+10000-01-01', '2016-12-31T23:59:60.5Z'")
+        .fetch_one(&mut connection)
+        .await
+        .expect("select");
+    assert!(row.try_get::<NaiveDate, _>(0).is_ok());
+    assert!(row.try_get::<Date, _>(0).is_err());
+    // A leap second reads as second 59.
+    assert_eq!(
+        row.try_get::<Timestamp, _>(1)
+            .expect("leap second")
+            .to_string(),
+        "2016-12-31T23:59:59.5Z"
+    );
+
     let row = sqlx::query("SELECT CAST(? AS TEXT)")
-        .bind(Timestamp::from(jiff::Timestamp::from_second(1_792_056_600).unwrap()))
+        .bind(Timestamp::from(
+            jiff::Timestamp::from_second(1_792_056_600).unwrap(),
+        ))
         .fetch_one(&mut connection)
         .await
         .expect("bind");

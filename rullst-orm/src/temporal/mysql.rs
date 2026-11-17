@@ -58,8 +58,8 @@ impl Type<MySql> for Time {
 /// The year (MySQL's range is 1000 to 9999; a negative year cannot be sent),
 /// month and day.
 fn push_date(date: civil::Date, buf: &mut Vec<u8>) -> Result<(), BoxDynError> {
-    let year = u16::try_from(date.year())
-        .map_err(|_| format!("date out of range for MySQL: {date}"))?;
+    let year =
+        u16::try_from(date.year()).map_err(|_| format!("date out of range for MySQL: {date}"))?;
     buf.extend_from_slice(&year.to_le_bytes());
     buf.extend_from_slice(&[date.month().unsigned_abs(), date.day().unsigned_abs()]);
     Ok(())
@@ -138,7 +138,11 @@ impl Encode<'_, MySql> for Time {
     }
 
     fn size_hint(&self) -> usize {
-        if self.0.subsec_nanosecond() != 0 { 13 } else { 9 }
+        if self.0.subsec_nanosecond() != 0 {
+            13
+        } else {
+            9
+        }
     }
 }
 

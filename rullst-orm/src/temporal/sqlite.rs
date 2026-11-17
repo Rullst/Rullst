@@ -129,7 +129,9 @@ fn utc_moment(instant: jiff::Timestamp) -> Option<Moment> {
 impl<'r> Decode<'r, Sqlite> for Timestamp {
     fn decode(value: SqliteValueRef<'r>) -> Result<Self, BoxDynError> {
         let instant = moment(value)?.instant();
-        instant.map(Self).ok_or_else(|| "datetime out of range".into())
+        instant
+            .map(Self)
+            .ok_or_else(|| "datetime out of range".into())
     }
 }
 

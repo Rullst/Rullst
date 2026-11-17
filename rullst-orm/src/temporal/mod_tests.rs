@@ -40,7 +40,10 @@ fn serde_is_jiffs_representation() {
     assert_eq!(read, instant());
 
     let civil: DateTime = serde_json::from_str("\"2026-10-15T09:30:00.500\"").unwrap();
-    assert_eq!(serde_json::to_string(&civil).unwrap(), "\"2026-10-15T09:30:00.5\"");
+    assert_eq!(
+        serde_json::to_string(&civil).unwrap(),
+        "\"2026-10-15T09:30:00.5\""
+    );
     let date: Date = serde_json::from_str("\"2026-10-15\"").unwrap();
     assert_eq!(serde_json::to_string(&date).unwrap(), "\"2026-10-15\"");
     let time: Time = serde_json::from_str("\"09:30:00.500\"").unwrap();
@@ -66,11 +69,23 @@ fn conversions_and_deref_reach_the_jiff_value() {
 }
 
 #[test]
-fn defaults_are_jiffs() {
-    assert_eq!(Timestamp::default().as_second(), 0);
-    assert_eq!(DateTime::default().to_string(), "0000-01-01T00:00:00");
-    assert_eq!(Date::default().to_string(), "0000-01-01");
+fn defaults_are_chronos() {
+    use super::test_support::{chrono_date, chrono_date_time, chrono_instant, chrono_time};
+
+    assert_eq!(Timestamp::default().to_string(), "1970-01-01T00:00:00Z");
+    assert_eq!(DateTime::default().to_string(), "1970-01-01T00:00:00");
+    assert_eq!(Date::default().to_string(), "1970-01-01");
     assert_eq!(Time::default().to_string(), "00:00:00");
+    assert_eq!(
+        chrono_instant(Timestamp::default()),
+        chrono::DateTime::<chrono::Utc>::default()
+    );
+    assert_eq!(
+        chrono_date_time(DateTime::default()),
+        chrono::NaiveDateTime::default()
+    );
+    assert_eq!(chrono_date(*Date::default()), chrono::NaiveDate::default());
+    assert_eq!(chrono_time(*Time::default()), chrono::NaiveTime::default());
 }
 
 #[test]
@@ -83,7 +98,11 @@ fn now_reads_the_clock() {
 
 #[test]
 fn ordering_follows_time() {
-    let later = Timestamp::from(instant().checked_add(jiff::SignedDuration::from_nanos(1)).unwrap());
+    let later = Timestamp::from(
+        instant()
+            .checked_add(jiff::SignedDuration::from_nanos(1))
+            .unwrap(),
+    );
     assert!(instant() < later);
     let mut values = [later, instant()];
     values.sort();

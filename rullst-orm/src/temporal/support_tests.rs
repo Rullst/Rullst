@@ -2,7 +2,9 @@
 //! `chrono` codecs take and the jiff values ours take, and value strategies
 //! over jiff's whole range.
 
-use chrono::{DateTime as ChronoDateTime, Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike, Utc};
+use chrono::{
+    DateTime as ChronoDateTime, Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike, Utc,
+};
 use jiff::civil;
 use proptest::prelude::*;
 
@@ -89,18 +91,33 @@ pub(crate) fn instant() -> impl Strategy<Value = Timestamp> {
         (min..=max, nanos()),
         (946_684_790_i64..946_684_810, nanos()),
         (-10_i64..10, nanos()),
-        (prop_oneof![Just(min), Just(max), Just(min + 1), Just(max - 1)], nanos()),
+        (
+            prop_oneof![Just(min), Just(max), Just(min + 1), Just(max - 1)],
+            nanos()
+        ),
     ]
     .prop_filter_map("in range", |(second, nanos)| {
-        let nanos = if second < 0 && nanos > 0 { -nanos } else { nanos };
-        jiff::Timestamp::new(second, nanos).ok().map(Timestamp::from)
+        let nanos = if second < 0 && nanos > 0 {
+            -nanos
+        } else {
+            nanos
+        };
+        jiff::Timestamp::new(second, nanos)
+            .ok()
+            .map(Timestamp::from)
     })
 }
 
 /// Any date-time jiff holds.
 pub(crate) fn date_time() -> impl Strategy<Value = DateTime> {
     (
-        prop_oneof![-9999_i16..=9999, 1999_i16..=2001, Just(-9999), Just(9999), 0_i16..=1],
+        prop_oneof![
+            -9999_i16..=9999,
+            1999_i16..=2001,
+            Just(-9999),
+            Just(9999),
+            0_i16..=1
+        ],
         1_i8..=12,
         1_i8..=31,
         0_i8..=23,
@@ -108,11 +125,14 @@ pub(crate) fn date_time() -> impl Strategy<Value = DateTime> {
         0_i8..=59,
         nanos(),
     )
-        .prop_filter_map("a real day", |(year, month, day, hour, minute, second, nanos)| {
-            civil::DateTime::new(year, month, day, hour, minute, second, nanos)
-                .ok()
-                .map(DateTime::from)
-        })
+        .prop_filter_map(
+            "a real day",
+            |(year, month, day, hour, minute, second, nanos)| {
+                civil::DateTime::new(year, month, day, hour, minute, second, nanos)
+                    .ok()
+                    .map(DateTime::from)
+            },
+        )
 }
 
 pub(crate) fn date() -> impl Strategy<Value = Date> {

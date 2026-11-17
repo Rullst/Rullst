@@ -89,11 +89,15 @@ fn golden_reads() {
     assert_eq!(time_from_micros(86_400_000_000).to_string(), "00:00:00");
     assert_eq!(time_from_micros(-1).to_string(), "23:59:59.999999");
     assert_eq!(
-        instant_from_text("2026-10-15 09:30:00+00").unwrap().to_string(),
+        instant_from_text("2026-10-15 09:30:00+00")
+            .unwrap()
+            .to_string(),
         "2026-10-15T09:30:00Z"
     );
     assert_eq!(
-        date_time_from_text("2026-10-15 09:30:00+05").unwrap().to_string(),
+        date_time_from_text("2026-10-15 09:30:00+05")
+            .unwrap()
+            .to_string(),
         "2026-10-15T09:30:00",
         "the offset of a `+` text is dropped"
     );

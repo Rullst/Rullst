@@ -94,25 +94,37 @@ impl Encode<'_, Postgres> for Time {
     }
 }
 
-/// A binary `TIMESTAMPTZ`: microseconds since 2000 in UTC.
-pub(super) fn instant_from_micros(micros: i64) -> Option<jiff::Timestamp> {
-    EPOCH_INSTANT
-        .checked_add(SignedDuration::from_micros(micros))
+/// Days from 1970-01-01 to 2000-01-01.
+const EPOCH_UNIX_DAYS: i64 = 10_957;
+const MICROS_PER_DAY: i64 = 86_400_000_000;
+
+/// The date `days` after 1970-01-01. jiff bounds a day count added to a date
+/// by its distance from 1970, so the day counts start there.
+fn date_from_unix_days(days: i64) -> Option<civil::Date> {
+    civil::Date::constant(1970, 1, 1)
+        .checked_add(SignedDuration::from_secs(days.checked_mul(86_400)?))
         .ok()
+}
+
+/// A binary `TIMESTAMPTZ`: microseconds since 2000 in UTC. (jiff's
+/// `from_microsecond` refuses a fraction of its last second, so nanoseconds.)
+pub(super) fn instant_from_micros(micros: i64) -> Option<jiff::Timestamp> {
+    let since_1970 = i128::from(micros) + i128::from(EPOCH_UNIX_DAYS * MICROS_PER_DAY);
+    jiff::Timestamp::from_nanosecond(since_1970 * 1000).ok()
 }
 
 /// A binary `TIMESTAMP`.
 pub(super) fn date_time_from_micros(micros: i64) -> Option<civil::DateTime> {
-    EPOCH
-        .checked_add(SignedDuration::from_micros(micros))
-        .ok()
+    let since_1970 = i128::from(micros) + i128::from(EPOCH_UNIX_DAYS * MICROS_PER_DAY);
+    let days = i64::try_from(since_1970.div_euclid(i128::from(MICROS_PER_DAY))).ok()?;
+    let time_of_day = i64::try_from(since_1970.rem_euclid(i128::from(MICROS_PER_DAY))).ok()?;
+    let time = civil::Time::midnight().wrapping_add(SignedDuration::from_micros(time_of_day));
+    Some(date_from_unix_days(days)?.to_datetime(time))
 }
 
 /// A binary `DATE`.
 pub(super) fn date_from_days(days: i32) -> Option<civil::Date> {
-    EPOCH_DATE
-        .checked_add(SignedDuration::from_secs(i64::from(days) * 86_400))
-        .ok()
+    date_from_unix_days(i64::from(days) + EPOCH_UNIX_DAYS)
 }
 
 /// A binary `TIME`, wrapped into one day as `chrono` added it to midnight.
