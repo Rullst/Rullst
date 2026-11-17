@@ -30,8 +30,26 @@ async fn global_trap_preserves_prepared_attachments_inline_media_and_schedule() 
         .with_attachment_named("terms.txt")
         .with_inline_cid("brand")
         .with_scheduled_at(scheduled_at);
+    assert!(std::panic::catch_unwind(MailTrap::assert_nothing_sent).is_err());
     MailTrap::clear();
     MailTrap::assert_nothing_sent();
+}
+
+#[test]
+fn body_assertions_read_either_body_and_absent_files_fail() {
+    let message = Message::new()
+        .text("text only")
+        .html("<p>html only</p>")
+        .attach_bytes("terms.txt", b"terms".to_vec(), "text/plain")
+        .attach_cid("brand", "brand.png", vec![1, 2, 3], "image/png");
+    let assertion = || MailAssertion {
+        message: message.clone(),
+    };
+    assertion()
+        .with_body_contains("text only")
+        .with_body_contains("html only");
+    assert!(std::panic::catch_unwind(|| assertion().with_attachment_named("missing.txt")).is_err());
+    assert!(std::panic::catch_unwind(|| assertion().with_inline_cid("missing")).is_err());
 }
 
 #[tokio::test]

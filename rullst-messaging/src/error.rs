@@ -41,6 +41,13 @@ pub enum MessagingError {
         /// Static operation label without paths, SQL, payloads, or credentials.
         operation: &'static str,
     },
+    /// Opening durable storage (v13) ran out of time at every attempt: the
+    /// file stayed locked by another connection, or its disk stalled.
+    #[error("durable messaging storage timed out during {operation}")]
+    StorageTimeout {
+        /// Static operation label without paths, SQL, payloads, or credentials.
+        operation: &'static str,
+    },
     /// Persisted state violated the versioned durable-adapter contract.
     #[error("durable messaging storage is corrupt at {context}")]
     CorruptStorage {

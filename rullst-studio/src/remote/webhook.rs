@@ -44,7 +44,7 @@ pub(crate) struct WebhookPayload<'a> {
 #[derive(Clone)]
 pub(crate) struct WebhookClient {
     client: reqwest::Client,
-    /// Set when the proxy plan is [`ProxyPlan::Invalid`].
+    /// Set when the proxy plan blocks every request.
     blocked: bool,
 }
 
@@ -61,7 +61,7 @@ impl WebhookClient {
             .user_agent(concat!("rullst-studio/", env!("CARGO_PKG_VERSION")));
         plan.apply(builder).build().ok().map(|client| Self {
             client,
-            blocked: *plan == ProxyPlan::Invalid,
+            blocked: plan.blocks(),
         })
     }
 

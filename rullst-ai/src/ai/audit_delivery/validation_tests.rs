@@ -102,3 +102,37 @@ fn keys_distinguish_live_strength_from_explicit_mocking() {
     assert!(validate_key("chave-á", ClientMode::Mock).is_err());
     assert!(validate_key(&"x".repeat(MAX_KEY_BYTES + 1), ClientMode::Live).is_err());
 }
+
+#[test]
+fn each_bound_accepts_its_exact_ceiling() {
+    // 128-byte identifiers, 2,048-byte endpoints and 4,096-byte keys are the
+    // largest values accepted; one more byte is refused.
+    assert!(validate_identifier("source", &"s".repeat(128)).is_ok());
+    assert!(validate_identifier("source", &"s".repeat(129)).is_err());
+
+    let prefix = "https://audit.example/";
+    let endpoint = format!("{prefix}{}", "e".repeat(2_048 - prefix.len()));
+    assert_eq!(endpoint.len(), 2_048);
+    assert_eq!(
+        validate_endpoint(endpoint.clone(), EndpointScope::Cloud).as_deref(),
+        Ok(endpoint.as_str())
+    );
+    assert!(validate_endpoint(format!("{endpoint}e"), EndpointScope::Cloud).is_err());
+
+    assert!(validate_key(&"k".repeat(4_096), ClientMode::Live).is_ok());
+    assert!(validate_key(&"k".repeat(4_097), ClientMode::Live).is_err());
+}
+
+#[test]
+fn identifier_errors_name_the_rejected_field() {
+    for (field, message) in [
+        ("source", "audit source is invalid"),
+        ("key ID", "audit key ID is invalid"),
+        ("event ID", "audit event ID is invalid"),
+    ] {
+        assert_eq!(
+            validate_identifier(field, ""),
+            Err(AuditDeliveryError::InvalidConfiguration(message))
+        );
+    }
+}

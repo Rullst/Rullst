@@ -1,6 +1,7 @@
-//! The failure behind the last `LabError::Storage` of the current thread.
+//! The failure behind the last `LabError::Storage` or `StorageTimeout` of the
+//! current thread.
 //!
-//! `Storage` deliberately carries nothing, so a test fixture reads this
+//! Neither carries anything, deliberately, so a test fixture reads this
 //! diagnostic to report why a store failed. It holds a SQLite result code, an
 //! I/O error kind or a pool condition: never a message, SQL text or path.
 

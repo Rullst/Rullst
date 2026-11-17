@@ -44,6 +44,14 @@ fn native_headers_attachments_and_size_accounting_fail_closed() {
     ] {
         assert!(header(name, value).is_err());
     }
+    // A name holds at most 126 bytes, a value at most 995, and both together
+    // at most 996, which with the `: ` separator fill a 998-byte line.
+    let long_name = "N".repeat(126);
+    assert!(header(&long_name, "v".to_string()).is_ok());
+    assert!(header(&"N".repeat(127), "v".to_string()).is_err());
+    assert!(header("X", "x".repeat(995)).is_ok());
+    assert!(header("X-Test", "x".repeat(990)).is_ok());
+    assert!(header("X-Test", "x".repeat(991)).is_err());
 
     for attachment in [
         Attachment::new("", vec![1], "text/plain"),
@@ -62,4 +70,36 @@ fn native_headers_attachments_and_size_accounting_fail_closed() {
         message_size_error(),
         MailError::ValidationError(_)
     ));
+}
+
+#[test]
+fn ses_field_and_encoded_size_bounds_are_inclusive() {
+    // 40 MiB fits exactly; one byte more does not.
+    let mut total = 0;
+    assert!(add_size(&mut total, 41_943_040).is_ok());
+    assert!(add_size(&mut total, 1).is_err());
+
+    for attachment in [
+        Attachment::new("f".repeat(255), vec![1], "text/plain"),
+        Attachment::new("f", vec![1], "m".repeat(78)),
+        Attachment::inline("c".repeat(78), "f", vec![1], "text/plain"),
+    ] {
+        let message = base_message().attach(attachment);
+        assert!(validate_message_limits(&message).is_ok());
+    }
+    let long_name = base_message().attach(Attachment::new("f".repeat(256), vec![1], "text/plain"));
+    assert!(validate_message_limits(&long_name).is_err());
+
+    // The estimate is a 4,096-byte envelope allowance plus each JSON string:
+    // `"a@b.co"` (8), `""` (2), `"f"` (3) and `"a/b"` (5), 4,114 bytes, and
+    // 31,454,199 content bytes encode to 41,938,932 base64 bytes. That is 6
+    // bytes over 40 MiB.
+    let mut message = Message::new().to("a@b.co");
+    message
+        .attachments
+        .push(Attachment::new("f", vec![0_u8; 31_454_199], "a/b"));
+    assert!(validate_message_limits(&message).is_err());
+    // Six content bytes fewer remove 8 base64 bytes and fit.
+    message.attachments[0].content.truncate(31_454_193);
+    assert!(validate_message_limits(&message).is_ok());
 }

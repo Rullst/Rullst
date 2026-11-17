@@ -137,14 +137,17 @@ Encrypt, provider accounts, Arm images and reboots are not covered.
 
 On Linux, the `cli-profiles-relational` shard runs
 `.github/check-auth-starter-sql.py` against disposable PostgreSQL 15, MySQL 8.4
-and MariaDB 11.4 servers: a Blank starter is migrated, given two rows, extended
-with `cargo rullst auth` and migrated again. SQL checks the six added columns,
-the unique `users_email_unique` index, the placeholder e-mails, the unchanged
-starter schema and rows and the migration records; the application signs up an
-account over HTTP (Argon2id hash); `db:rollback` must restore the starter
-exactly and keep every row, and a second `db:migrate` must succeed. It runs on
-`main` pushes, nightly, with the `full-matrix` label and in manual runs. The
-API and SaaS starters and other server versions are not covered.
+and MariaDB 11.4 servers: a Blank starter and an API starter are each
+migrated, given two rows, extended with `cargo rullst auth` and migrated again.
+SQL checks the six added columns, the unique `users_email_unique` index, the
+placeholder e-mails, the unchanged starter schema and rows, the migration
+records and the `rullst_auth_sessions` table; the application signs up an
+account over HTTP through the generated form sign-up (Argon2id hash, one
+registered session; the API starter has no sign-up of its own and applies CSRF
+to this one); `db:rollback` must restore the starter exactly and keep every
+row, and a second `db:migrate` must succeed. It runs on `main` pushes, nightly,
+with the `full-matrix` label and in manual runs. The SaaS starter (which
+already has accounts) and other server versions are not covered.
 
 `First-hour documentation` runs `.github/check-first-hour.py`: in reading
 order, it runs the blocks marked `<!-- first-hour: … -->` in the README
@@ -187,8 +190,17 @@ the job until it is removed. Traces, screenshots and server logs are uploaded
 when it fails. Its triggers follow the deployment jobs (pull requests only
 when they change `cargo-rullst/src/blueprints/`, the project, auth or billing
 generators, `rullst-macros/src/`, Core's security, server, config, `html` or
-`htmx` sources, or the check); it is not a required release job. The API
-starter (no HTML) is covered by the ZAP baseline instead. This is automated
+`htmx` sources, or the check). Since 13.0.0-alpha.6 it is a required release
+job (`.github/release-required-workflows.json`): the full manual run that
+admission needs must pass it. It is not a required pull-request check. Its
+history before that decision: from its first run on 1 November 2026 to
+16 November 2026 it ran 98 times to a result, 91 green; the 7 failures had
+causes since fixed (two runs of the component branch before its merge, and
+five pull requests based on `main` before
+[#662](https://github.com/Rullst/Rullst/pull/662) fixed a race between the
+menu keys and the toast request), and its 15 nightly runs and its last 30
+nightly and pull-request runs were all green. The API starter (no HTML) is
+covered by the ZAP baseline instead. This is automated
 evidence for the pages exercised, not WCAG conformance or screen-reader
 testing.
 The same job then runs `.github/check-scalar-docs-browser.py`: a Blank

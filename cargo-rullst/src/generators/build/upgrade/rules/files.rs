@@ -9,6 +9,8 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
+#[path = "files/alpha6.rs"]
+mod alpha6;
 #[path = "files/deploy.rs"]
 mod deploy;
 #[path = "files/features.rs"]
@@ -225,6 +227,7 @@ pub(super) fn manifest_findings(
 ) -> (Vec<SourceFinding>, WorkspaceFacts) {
     let mut findings = Vec::new();
     let mut facts = WorkspaceFacts::default();
+    let mut alpha6 = alpha6::Alpha6Manifests::default();
     for plan in plans {
         let Ok(document) = toml::from_str::<toml::Value>(&plan.original) else {
             continue;
@@ -256,6 +259,12 @@ pub(super) fn manifest_findings(
                 ));
             }
             facts.passkeys |= has_feature(&declaration, passkey_features(&package));
+            alpha6.declaration(
+                (plan.path.as_path(), plan.original.as_str()),
+                (key.as_str(), package.as_str()),
+                &declaration,
+                &mut facts,
+            );
             match package.as_str() {
                 "sqlx" => {
                     facts.sqlx_macros |= enables_sqlx_macros(&declaration);
@@ -298,6 +307,7 @@ pub(super) fn manifest_findings(
                 passkey_features(package).contains(&name).then_some(())
             })
             .is_some();
+        alpha6.features(&document, &plan.original, &packages, &mut facts);
         if let Some((line, rule)) = removed_feature_reference(&document, &plan.original, &packages)
         {
             findings.push(finding(rule, plan.path.clone(), line));
@@ -314,6 +324,7 @@ pub(super) fn manifest_findings(
             }
         }
     }
+    findings.extend(alpha6.findings());
     (findings, facts)
 }
 
@@ -490,6 +501,9 @@ pub(super) fn project_findings(
         && let Some(line) = removed_mail_driver_line(&text)
     {
         push(&MAIL_REMOVED, "Rullst.toml", line);
+    }
+    if let Some((file, line)) = alpha6::sqlite_without_journal_mode(root) {
+        push(&SQLITE_WAL_AVAILABLE, file, line);
     }
     let mut scripts: Vec<String> = root_names(root)
         .into_iter()

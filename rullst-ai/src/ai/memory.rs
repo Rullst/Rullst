@@ -371,9 +371,7 @@ impl ChatMemory for InMemoryChatMemory {
             .entries
             .len()
             .saturating_sub(self.config.history_messages);
-        if excess > 0 {
-            state.entries.drain(..excess);
-        }
+        state.entries.drain(..excess);
         Ok(revision)
     }
 

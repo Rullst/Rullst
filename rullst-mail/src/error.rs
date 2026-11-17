@@ -302,4 +302,67 @@ mod tests {
         assert!(error.to_string().contains("[REDACTED]"));
         fixture.join().expect("HTTP fixture");
     }
+
+    #[tokio::test]
+    async fn an_error_body_is_read_only_up_to_4096_bytes() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind HTTP fixture");
+        let address = listener.local_addr().expect("fixture address");
+        let fixture = std::thread::spawn(move || {
+            let (mut socket, _) = listener.accept().expect("accept fixture request");
+            let mut request = [0_u8; 1_024];
+            let _ = socket.read(&mut request).expect("read fixture request");
+            // 4,096 of the 8,192 announced bytes, then the connection closes,
+            // so reading past 4,096 bytes fails.
+            write!(
+                socket,
+                "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 8192\r\nConnection: close\r\n\r\n{}",
+                "e".repeat(4_096)
+            )
+            .expect("write fixture response");
+        });
+        let response = reqwest::get(format!("http://{address}/mail"))
+            .await
+            .expect("fixture response");
+        let error = provider_http_error("fixture", response).await;
+        fixture.join().expect("HTTP fixture");
+        assert!(
+            matches!(
+                error,
+                MailError::ProviderResponse {
+                    provider: "fixture",
+                    status: 503,
+                    ..
+                }
+            ),
+            "{error:?}"
+        );
+    }
+
+    #[test]
+    fn failure_labels_and_error_detail_bounds_are_exact() {
+        assert_eq!(MailFailureClass::Permanent.as_str(), "permanent");
+        assert_eq!(MailFailureClass::Transient.as_str(), "transient");
+        assert_eq!(MailFailureClass::RateLimited.as_str(), "rate_limited");
+        // Runs against a deadline, so a truncation scan that stops moving
+        // fails instead of hanging the test binary.
+        let (done, finished) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            assert_eq!(bounded_message("short".to_string()), "short");
+            let exact = "a".repeat(4_096);
+            assert_eq!(bounded_message(exact.clone()), exact);
+            assert_eq!(
+                bounded_message("a".repeat(4_097)),
+                format!("{}…[truncated]", "a".repeat(4_096))
+            );
+            // Byte 4,096 falls inside the two-byte `é`, so the cut moves back one byte.
+            assert_eq!(
+                bounded_message(format!("{}é", "a".repeat(4_095))),
+                format!("{}…[truncated]", "a".repeat(4_095))
+            );
+            let _ = done.send(());
+        });
+        finished
+            .recv_timeout(Duration::from_secs(60))
+            .expect("bounded messages finish with the expected text");
+    }
 }

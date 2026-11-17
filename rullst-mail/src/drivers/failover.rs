@@ -377,4 +377,80 @@ mod tests {
         assert_eq!(tenant_store.lock().expect("tenant store").len(), 1);
         assert!(failover.send_for_tenant("../acme", &message).await.is_err());
     }
+
+    /// Fails its first `failures` sends, then accepts.
+    struct Flaky {
+        failures: usize,
+        sent: std::sync::atomic::AtomicUsize,
+    }
+
+    impl Flaky {
+        fn failing(failures: usize) -> Self {
+            Self {
+                failures,
+                sent: std::sync::atomic::AtomicUsize::new(0),
+            }
+        }
+    }
+
+    #[async_trait]
+    impl MailDriver for Flaky {
+        async fn send(&self, _message: &Message) -> Result<(), MailError> {
+            if self.sent.fetch_add(1, std::sync::atomic::Ordering::SeqCst) < self.failures {
+                Err(MailError::transport("fixture", "unavailable"))
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    #[test]
+    fn fallback_count_counts_each_configured_fallback() {
+        assert_eq!(FailoverDriver::new(TransientFailure).fallback_count(), 0);
+        let chain = FailoverDriver::new(TransientFailure)
+            .with_fallback(TransientFailure)
+            .with_fallback_arc(Arc::new(TransientFailure));
+        assert_eq!(chain.fallback_count(), 2);
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn only_a_primary_success_after_a_failure_resets_and_logs_recovery() {
+        const RECOVERED: &str = "mail.failover.primary_recovered";
+        let message = Message::new().to("user@example.com").subject("Recovery");
+        let names = crate::test_support::EventNames::default();
+        let _guard = tracing::subscriber::set_default(names.clone());
+        // A parallel test can cache a callsite interest computed before this
+        // scoped subscriber existed, so recompute it and retry a few times.
+        let mut recorded = Vec::new();
+        for _ in 0..5 {
+            tracing::callsite::rebuild_interest_cache();
+            names.take();
+            let (healthy, _) = MemoryDriver::isolated();
+            FailoverDriver::new(healthy)
+                .send(&message)
+                .await
+                .expect("primary delivery");
+
+            let (fallback, fallback_store) = MemoryDriver::isolated();
+            let failover = FailoverDriver::new(Flaky::failing(1))
+                .with_fallback(fallback)
+                .with_threshold(5);
+            failover.send(&message).await.expect("fallback delivery");
+            assert_eq!(failover.failure_count().expect("failure count"), 1);
+            failover.send(&message).await.expect("recovered delivery");
+            assert_eq!(failover.failure_count().expect("failure count"), 0);
+            assert_eq!(fallback_store.lock().expect("fallback store").len(), 1);
+
+            recorded = names.take();
+            if recorded.iter().any(|name| name == RECOVERED) {
+                break;
+            }
+        }
+        // The healthy primary's first success logs no recovery.
+        assert_eq!(
+            crate::test_support::EventNames::count(&recorded, RECOVERED),
+            1,
+            "{recorded:?}"
+        );
+    }
 }

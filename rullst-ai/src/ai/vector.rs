@@ -84,9 +84,8 @@ pub fn cosine_similarity(left: &[f32], right: &[f32]) -> f32 {
         norm_left += left_value * left_value;
         norm_right += right_value * right_value;
     }
-    if norm_left == 0.0 || norm_right == 0.0 {
-        return 0.0;
-    }
+    // A zero norm makes the divisor zero (or NaN), so the quotient is not
+    // finite and the check below returns 0.0.
     let similarity = dot_product / (norm_left.sqrt() * norm_right.sqrt());
     if similarity.is_finite() {
         similarity
@@ -105,6 +104,16 @@ mod tests {
         assert!(cosine_similarity(&[1.0, 0.0], &[0.0, 1.0]).abs() < 1e-6);
         assert_eq!(cosine_similarity(&[1.0], &[1.0, 2.0]), 0.0);
         assert_eq!(cosine_similarity(&[], &[]), 0.0);
+    }
+
+    #[test]
+    fn a_zero_norm_scores_zero() {
+        assert_eq!(cosine_similarity(&[0.0, 0.0], &[1.0, 0.0]), 0.0);
+        assert_eq!(cosine_similarity(&[1.0, 0.0], &[0.0, -0.0]), 0.0);
+        assert_eq!(cosine_similarity(&[0.0, 0.0], &[0.0, 0.0]), 0.0);
+        // The square of 1e-30 underflows f32 while the dot product does not.
+        assert_eq!(cosine_similarity(&[1e-30, 0.0], &[1e10, 0.0]), 0.0);
+        assert_eq!(cosine_similarity(&[0.0, 0.0], &[f32::INFINITY, 0.0]), 0.0);
     }
 
     #[test]

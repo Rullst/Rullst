@@ -1,11 +1,11 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
-//! Opening an outbox is tried again when its deadline expires, and only then.
+//! Opening an outbox whose file stays locked past its deadline is tried
+//! again, on every platform.
 
-use super::super::{
+use super::{
     Result, WebhookConfig, WebhookDestination, WebhookError, WebhookOutbox, WebhookSigningKey,
 };
-use super::{retries, retry};
-use crate::{MessagingKeyring, MessagingStorageKey, SystemClock};
+use crate::{MessagingKeyring, MessagingStorageKey, SystemClock, establish::retries};
 use sqlx::{
     Connection, SqliteConnection,
     sqlite::{SqliteConnectOptions, SqliteLockingMode},
@@ -13,58 +13,12 @@ use sqlx::{
 use std::{
     cell::Cell,
     path::{Path, PathBuf},
-    time::{Duration, Instant},
+    time::Duration,
 };
 
-/// Times out until the tenth call, so an unbounded retry would succeed.
-async fn timeouts(calls: &Cell<u32>) -> Result<u32> {
-    calls.set(calls.get() + 1);
-    if calls.get() < 10 {
-        Err(WebhookError::Timeout)
-    } else {
-        Ok(calls.get())
-    }
-}
-
-#[tokio::test]
-async fn an_expired_opening_is_tried_three_times_in_total() {
-    let calls = Cell::new(0);
-    let before = retries();
-    assert_eq!(retry(|| timeouts(&calls)).await, Err(WebhookError::Timeout));
-    assert_eq!(calls.get(), 3);
-    assert_eq!(retries() - before, 2);
-}
-
-#[tokio::test]
-async fn the_third_attempt_may_succeed() {
-    let calls = Cell::new(7);
-    assert_eq!(retry(|| timeouts(&calls)).await, Ok(10));
-    assert_eq!(calls.get(), 10);
-}
-
-#[tokio::test]
-async fn other_failures_and_successes_are_not_retried() {
-    let before = retries();
-    for refusal in [WebhookError::Storage, WebhookError::Configuration] {
-        let calls = Cell::new(0);
-        let outcome = retry(|| {
-            calls.set(calls.get() + 1);
-            std::future::ready(Err::<(), _>(refusal.clone()))
-        })
-        .await;
-        assert_eq!(outcome, Err(refusal));
-        assert_eq!(calls.get(), 1);
-    }
-    let calls = Cell::new(0);
-    let opened = retry(|| {
-        calls.set(calls.get() + 1);
-        std::future::ready(Ok(5))
-    })
-    .await;
-    assert_eq!(opened, Ok(5));
-    assert_eq!(calls.get(), 1);
-    assert_eq!(retries(), before);
-}
+/// A deadline that the held lock outlives quickly; SQLite waits 30 seconds
+/// for the lock, so the deadline always ends the attempt.
+const SHORT: Duration = Duration::from_millis(300);
 
 fn fixture() -> (PathBuf, String) {
     let path = std::env::temp_dir().join(format!(
@@ -85,13 +39,13 @@ fn cleanup(path: &Path) {
     }
 }
 
-async fn open(url: &str) -> Result<WebhookOutbox> {
+async fn open(url: &str, deadline: Duration) -> Result<WebhookOutbox> {
     let destination =
         WebhookDestination::approved_https("https://receiver.example/events").unwrap();
     let config = WebhookConfig::new("stalled", destination, 4).unwrap();
     let key = WebhookSigningKey::new("fixture", "mock_establish").unwrap();
     let storage = MessagingKeyring::new(MessagingStorageKey::try_new("storage", [71; 32]).unwrap());
-    WebhookOutbox::open(url, config, key, storage, SystemClock).await
+    WebhookOutbox::open_within(url.to_owned(), config, key, storage, SystemClock, deadline).await
 }
 
 /// A connection in SQLite's exclusive locking mode that has taken the write
@@ -113,42 +67,45 @@ async fn exclusive_lock(path: &Path) -> SqliteConnection {
 }
 
 /// `open` connects while another connection keeps the file under SQLite's
-/// exclusive lock. The store waits up to 30 seconds for that lock, so the
-/// first attempt outlives its 10-second deadline and ends with `Timeout`. The
-/// lock is released only once `open` has tried again, so the first attempt
-/// never saw the file unlocked. No race decides the outcome (10 seconds
-/// against 30), but the test waits out a whole deadline, so it runs only on
-/// Windows, whose hosted runners showed the stall; `--ignored` runs it
-/// elsewhere. A later attempt may time out too when the runner's disk
-/// stalls, so it asserts at least one retry.
+/// exclusive lock, so the first attempt outlives its deadline and ends with
+/// `Timeout`. The lock is released only once `open` has tried again, so the
+/// first attempt never saw the file unlocked.
 #[tokio::test]
-#[cfg_attr(
-    not(windows),
-    ignore = "waits out a 10-second deadline; the stall it covers is seen on Windows runners"
-)]
 async fn open_tries_again_when_its_deadline_expires_while_connecting() {
     let (path, url) = fixture();
-    open(&url).await.unwrap().close().await;
+    open(&url, super::DEADLINE).await.unwrap().close().await;
     let holder = exclusive_lock(&path).await;
     let before = retries();
     let finished = Cell::new(false);
-    let started = Instant::now();
     let opening = async {
-        let opened = open(&url).await;
+        // A second for each later attempt, in case a runner's disk stalls.
+        let opened = open(&url, Duration::from_secs(1)).await;
         finished.set(true);
         opened
     };
     let releasing = async {
         while retries() == before && !finished.get() {
-            tokio::time::sleep(Duration::from_millis(10)).await;
+            tokio::time::sleep(Duration::from_millis(5)).await;
         }
         holder.close().await.unwrap();
     };
     let (opened, ()) = tokio::join!(opening, releasing);
-    let elapsed = started.elapsed();
-    let outbox = opened.unwrap_or_else(|error| panic!("open: {error:?} after {elapsed:?}"));
-    assert!(retries() > before, "after {elapsed:?}");
-    assert!(elapsed >= Duration::from_secs(10), "after {elapsed:?}");
+    let outbox = opened.unwrap_or_else(|error| panic!("open: {error:?}"));
+    assert!(retries() > before);
     outbox.close().await;
+    cleanup(&path);
+}
+
+/// A lock held past every attempt ends `open` with `Timeout`.
+#[tokio::test]
+async fn open_times_out_when_the_lock_outlives_every_attempt() {
+    let (path, url) = fixture();
+    open(&url, super::DEADLINE).await.unwrap().close().await;
+    let holder = exclusive_lock(&path).await;
+    let before = retries();
+    let opened = open(&url, SHORT).await;
+    holder.close().await.unwrap();
+    assert_eq!(opened.err(), Some(WebhookError::Timeout));
+    assert_eq!(retries() - before, 2);
     cleanup(&path);
 }

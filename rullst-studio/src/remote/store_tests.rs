@@ -191,13 +191,17 @@ fn a_malformed_or_oversized_file_is_reported_without_its_contents() {
     store.add("shop", "https://shop.example", TOKEN).unwrap();
     std::fs::write(
         &paths.projects,
-        "{\"version\": 1, \"projects\": [], \"extra\": true}",
+        "{\"version\": 1, \"projects\": {\"secret-value\": true}}",
     )
     .unwrap();
     assert_eq!(store.load().unwrap_err(), ProjectError::InvalidFile);
     std::fs::write(&paths.projects, " ".repeat(300 * 1024)).unwrap();
     assert_eq!(store.load().unwrap_err(), ProjectError::Storage);
-    assert!(!ProjectError::InvalidFile.to_string().contains("extra"));
+    assert!(
+        !ProjectError::InvalidFile
+            .to_string()
+            .contains("secret-value")
+    );
 }
 
 #[cfg(unix)]
@@ -285,7 +289,7 @@ fn a_base_url_may_fill_512_characters_and_never_carries_credentials() {
 }
 
 #[test]
-fn a_file_with_another_version_or_an_invalid_name_is_malformed() {
+fn a_file_with_version_zero_or_an_invalid_name_is_malformed() {
     let directory = TempDir::new("stored-fields");
     let paths = directory.paths();
     let store = ProjectStore::new(paths.clone());
@@ -293,7 +297,7 @@ fn a_file_with_another_version_or_an_invalid_name_is_malformed() {
     let original: serde_json::Value =
         serde_json::from_slice(&std::fs::read(&paths.projects).unwrap()).unwrap();
     for (pointer, value) in [
-        ("/version", serde_json::json!(2)),
+        ("/version", serde_json::json!(0)),
         ("/projects/0/name", serde_json::json!("-shop")),
     ] {
         let mut edited = original.clone();

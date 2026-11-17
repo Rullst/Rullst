@@ -151,6 +151,7 @@ pub rullst_supervision::SupervisionError::RateLimited
 pub rullst_supervision::SupervisionError::Sequence
 pub rullst_supervision::SupervisionError::Configuration
 pub rullst_supervision::SupervisionError::Storage
+pub rullst_supervision::SupervisionError::StorageTimeout
 pub rullst_supervision::SupervisionError::UncertainCommit
 pub rullst_supervision::SupervisionError::Clock
 pub rullst_supervision::SupervisionError::RevisionExhausted

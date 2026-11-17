@@ -15,15 +15,13 @@ mod transaction;
 mod upgrade;
 
 use crate::{Clock, StoreConfig, SupervisionError as Error, SystemClock};
+use establish::Waits;
 pub use maintenance::PurgeReceipt;
 use sqlx::{
     SqlitePool,
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous},
 };
-use std::{
-    path::{Path, PathBuf},
-    time::Duration,
-};
+use std::path::{Path, PathBuf};
 use transaction::Operation;
 
 /// One private initialized file and exact immutable configuration. Clones share
@@ -61,9 +59,9 @@ impl<C: Clock> SqliteSupervision<C> {
         })?;
         file.sync_all().map_err(|_| Error::Storage)?;
         drop(file);
-        let store = Self::connect(&path, config, clock).await?;
+        let store = Self::connect(&path, config, clock, Waits::STORE).await?;
         let prepared = async {
-            let mut tx = establish::retry(|| store.pool.begin_with("BEGIN IMMEDIATE")).await.map_err(storage)?;
+            let mut tx = establish::retry(|| store.pool.begin_with("BEGIN IMMEDIATE")).await.map_err(startup)?;
             for (_, statement) in schema::SCHEMA { sqlx::query(*statement).execute(&mut *tx).await.map_err(storage)?; }
             let now = crate::clock::checked_time(store.clock.now()?)?;
             sqlx::query("INSERT INTO rullst_supervision_meta (id,version,config,last_now,revision) VALUES (1,2,?,?,0)")
@@ -84,7 +82,18 @@ impl<C: Clock> SqliteSupervision<C> {
         config: StoreConfig,
         clock: C,
     ) -> Result<Self, Error> {
-        let path = resolved_path(path.as_ref())?;
+        Self::open_with(path.as_ref(), config, clock, Waits::STORE).await
+    }
+
+    /// [`open`](Self::open) with the given waits, so that a test can hold a
+    /// lock past them quickly.
+    async fn open_with(
+        path: &Path,
+        config: StoreConfig,
+        clock: C,
+        waits: Waits,
+    ) -> Result<Self, Error> {
+        let path = resolved_path(path)?;
         if !std::fs::symlink_metadata(&path)
             .map_err(|_| Error::Storage)?
             .file_type()
@@ -92,7 +101,7 @@ impl<C: Clock> SqliteSupervision<C> {
         {
             return Err(Error::Configuration);
         }
-        let store = Self::connect(&path, config, clock).await?;
+        let store = Self::connect(&path, config, clock, waits).await?;
         let checked = async {
             store.validate_schema().await?;
             Operation::bootstrap(&store).await?.finish().await
@@ -110,22 +119,27 @@ impl<C: Clock> SqliteSupervision<C> {
         self.pool.close().await;
     }
 
-    async fn connect(path: &Path, config: StoreConfig, clock: C) -> Result<Self, Error> {
+    async fn connect(
+        path: &Path,
+        config: StoreConfig,
+        clock: C,
+        waits: Waits,
+    ) -> Result<Self, Error> {
         let options = SqliteConnectOptions::new()
             .filename(path)
             .create_if_missing(false)
             .journal_mode(SqliteJournalMode::Wal)
             .synchronous(SqliteSynchronous::Full)
             .foreign_keys(true)
-            .busy_timeout(Duration::from_secs(5));
+            .busy_timeout(waits.lock);
         let pool = establish::retry(|| {
             SqlitePoolOptions::new()
                 .max_connections(4)
-                .acquire_timeout(Duration::from_secs(5))
+                .acquire_timeout(waits.pool)
                 .connect_with(options.clone())
         })
         .await
-        .map_err(storage)?;
+        .map_err(startup)?;
         Ok(Self {
             pool,
             config,
@@ -158,12 +172,12 @@ impl<C: Clock> SqliteSupervision<C> {
         key
     }
 
-    /// Runs only in `initialize` and `open`, so it retries a connection that
-    /// times out (see `establish`).
+    /// Runs only in `initialize` and `open`, so it retries a step whose wait
+    /// runs out (see `establish`).
     async fn validate_schema(&self) -> Result<(), Error> {
         let mut tx = establish::retry(|| self.pool.begin_with("BEGIN IMMEDIATE"))
             .await
-            .map_err(storage)?;
+            .map_err(startup)?;
         // Only the literal `sqlite_` prefix is reserved; an unescaped `_` would
         // also skip user objects such as a trigger named `sqliteXhook`.
         let records: Vec<(String, String)> =
@@ -204,6 +218,16 @@ impl<C: Clock> SqliteSupervision<C> {
 
 fn storage(_: sqlx::Error) -> Error {
     Error::Storage
+}
+
+/// The failure of a bootstrap step that [`establish::retry`] ran:
+/// `StorageTimeout` when its wait ran out at every attempt.
+fn startup(error: sqlx::Error) -> Error {
+    if establish::outlived(&error) {
+        Error::StorageTimeout
+    } else {
+        Error::Storage
+    }
 }
 
 fn resolved_path(path: &Path) -> Result<PathBuf, Error> {

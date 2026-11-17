@@ -277,7 +277,10 @@ Every operation, reads and playback included, runs short serialized
 `BEGIN IMMEDIATE` transactions on a pool of four connections. A read commits
 no change unless the stored clock high-water mark advances, so a burst within
 one second adds no durable write. A SQLite lock or connection wait over 5
-seconds returns `Busy`, not `Storage`: nothing was committed, so retry.
+seconds returns `Busy`, not `Storage`: nothing was committed, so retry. In
+`initialize` and `open` such a wait is tried again, three attempts in total,
+and then returns `StorageTimeout` (v13): another process kept the file locked
+or the disk stalled, nothing was changed, and startup can be tried again later.
 Remote metadata updates and deletions are reconciled using authoritative reads.
 Every public operation has a 20-second total timeout; provider calls have bounded
 request and response sizes, with at most one GET retry and no automatic mutation

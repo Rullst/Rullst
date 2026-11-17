@@ -169,7 +169,7 @@ evidence, not more badges or absolute claims.
 | Experiment | Status and plan |
 | :--- | :--- |
 | Differential database testing | **In CI since 13.0.0-alpha.5 (test-only).** The `ORM differential databases` job of `ci.yml` runs the same ORM scenarios on SQLite, PostgreSQL, MySQL and MariaDB and compares normalized results, errors and transaction behaviour; provider-specific semantics are an explicit, reasoned list (`rullst-orm/tests/differential/expected.rs`), and the two ORM defects it found were fixed in 13.0.0-alpha.5. Described in [WORKFLOWS.md](WORKFLOWS.md#required-local-and-release-baseline). |
-| Cross-browser and accessibility testing | **Implemented in CI since 13.0.0-alpha.5 (test-only).** The `Generated starters in browsers` job of `ci.yml` drives the Blank and SaaS starters with Playwright on Chromium, Firefox and WebKit: console and CSP errors, keyboard paths and forms, and axe-core (`serious`/`critical` fail); traces and screenshots are kept on failure ([WORKFLOWS.md](WORKFLOWS.md#packaged-distribution-and-generated-application-jobs)). Not yet a required check or release job; planned as a required check in 13.0.0-alpha.6 if its nightly history is stable. Complements ZAP and the server-level tests; it is not WCAG certification. |
+| Cross-browser and accessibility testing | **Implemented in CI since 13.0.0-alpha.5 (test-only).** The `Generated starters in browsers` job of `ci.yml` drives the Blank and SaaS starters with Playwright on Chromium, Firefox and WebKit: console and CSP errors, keyboard paths and forms, and axe-core (`serious`/`critical` fail); traces and screenshots are kept on failure ([WORKFLOWS.md](WORKFLOWS.md#packaged-distribution-and-generated-application-jobs)). A required release job since 13.0.0-alpha.6, after a stable history (91 of 98 runs green from 1 to 16 November 2026, every failure from a cause since fixed); not a required pull-request check. Complements ZAP and the server-level tests; it is not WCAG certification. |
 | `cargo-careful` | **Implemented in CI since 13.0.0-alpha.5 (test-only).** `miri.yml` runs `cargo careful test` weekly and on dispatch over the `rullst-core`, `rullst-security` and `rullst-orm` library unit tests; informational ([WORKFLOWS.md](WORKFLOWS.md#formal-dynamic-and-stress-analysis)). |
 | Shuttle (in place of Loom) | **Optional 13.x, no date (decided 31 October 2026).** Only if a concurrency defect appears in, or time allows for, the two in-process primitives with explicit invariants: `rullst-messaging`'s in-memory broker (leases, consumer groups) and the rate limiter. Most of Rullst's important concurrency happens inside the database (transactions, `SKIP LOCKED` claims), which a Rust-level scheduler cannot explore. Loom is not planned: it does not model Tokio's async primitives. Never applied to the whole workspace. |
 | Chaos testing with `fail-rs` | **Not planned (decided 31 October 2026).** Rullst injects failures explicitly: injectable `Clock` traits, failing test doubles and storage-outage scenarios in Messaging and the queues. `fail-rs`'s global, name-keyed failpoints are the implicit runtime behaviour the [AI-native directives](AGENTS.md) avoid. More fault coverage extends the trait-based doubles instead. |
@@ -466,9 +466,9 @@ to alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
     `V13-CREDENTIAL-RATE-LIMIT` accepts a call of the application's own
     bounded hasher in another module ([#727](https://github.com/Rullst/Rullst/pull/727)).
   - **Process:** changelog fragments
-    ([#668](https://github.com/Rullst/Rullst/pull/668)), a merge queue, and
-    `Generated starters in browsers` as a required check if its nightly
-    history is stable. Done in the 13.0.0-alpha.6 source: two live CI checks,
+    ([#668](https://github.com/Rullst/Rullst/pull/668)) and a merge queue.
+    Done in the 13.0.0-alpha.6 source: `Generated starters in browsers` is a
+    required release job (its history was stable); two live CI checks,
     Server-Sent Events through the compression of the generated `Caddyfile`
     and Scalar `/docs` in Chromium under the production policy
     ([#721](https://github.com/Rullst/Rullst/pull/721)).
