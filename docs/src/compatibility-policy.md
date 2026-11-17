@@ -194,8 +194,8 @@ It also replaces `chrono` 0.4, which
 | `async-trait` | `0.1` | `rullst::async_trait` |
 | `aws-sdk-sesv2` | `1` | Mail: `rullst::mail::aws_ses_sdk` and the native `AwsSesDriver` constructors |
 | `axum` | `0.8` | `rullst::web::axum`, `Router`, handlers and extractors of Core, Auth, Security, Capital, Connect, Nexus and Studio |
+| `chrono` | `0.4` | Core date formatting, `rullst::orm::chrono`, Mail and Capital |
 | `http` | `1` | `rullst::http` and the header, method and status types of the web crates |
-| `jiff` | `1` | The ORM date/time types (`rullst::orm::Timestamp`, `DateTime`, `Date` and `Time` convert to and dereference to jiff's types; `rullst::orm::jiff`), Core date formatting (`Locale::format_date`, `format_time`, `format_datetime`), Mail scheduling (`Message::send_at`, `AccountEvent` expiries) and Capital's invoice date (`Invoice::new`, `Invoice.date`) |
 | `pgvector` | `0.4` | `rullst::orm::Vector` (`orm-pgvector`) |
 | `redis` | `1` | ORM: `Orm::redis_client` and `Orm::redis_manager` (`redis` feature), deliberately: they hand the application the ORM's own Redis client and connection manager |
 | `secrecy` | `0.10` | Connect tokens (`SecretString`, `prelude::ExposeSecret`) |
