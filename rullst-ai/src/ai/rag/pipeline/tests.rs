@@ -131,3 +131,61 @@ async fn a_foreign_document_after_the_exhausted_budget_is_still_rejected() {
     );
     assert_eq!(*prompts.lock().expect("prompt count"), 0);
 }
+
+#[test]
+fn document_and_question_bounds_accept_their_exact_ceilings() {
+    let tenant = TenantContext::try_new("tenant:docs").expect("tenant");
+    assert!(RagDocument::try_new(&tenant, "d".repeat(256), "content", 0.0).is_ok());
+    assert!(RagDocument::try_new(&tenant, "d".repeat(257), "content", 0.0).is_err());
+    assert!(RagDocument::try_new(&tenant, "doc", "c".repeat(65_536), 0.0).is_ok());
+    assert!(RagDocument::try_new(&tenant, "doc", "c".repeat(65_537), 0.0).is_err());
+    let document = RagDocument::try_new(&tenant, "doc", "content", 0.25).expect("doc");
+    assert_eq!(document.score().to_bits(), 0.25_f32.to_bits());
+
+    assert!(validate_question(&"q".repeat(8_192)).is_ok());
+    assert!(validate_question(&"q".repeat(8_193)).is_err());
+}
+
+/// Answers every prompt with the same text.
+struct FixedAnswer(String);
+
+#[async_trait]
+impl AiProvider for FixedAnswer {
+    async fn prompt(&self, _text: &str) -> Result<String, AiError> {
+        Ok(self.0.clone())
+    }
+
+    async fn chat(&self, _messages: &[Message]) -> Result<String, AiError> {
+        Ok("unused".to_string())
+    }
+
+    async fn embed(&self, _text: &str) -> Result<Vec<f32>, AiError> {
+        Ok(vec![1.0, 0.0])
+    }
+}
+
+#[tokio::test]
+async fn a_whole_document_is_not_truncated_and_a_64_kib_answer_is_kept() {
+    let tenant = TenantContext::try_new("tenant:docs").expect("tenant");
+    let documents = vec![RagDocument::try_new(&tenant, "doc-0", "abcdefgh", 1.0).expect("doc")];
+    let audit = Arc::new(InMemoryRagAuditTrail::new(4).expect("audit"));
+    let long_answer = "a".repeat(65_536);
+    let pipeline = RagPipeline::new(
+        AiClient::new(FixedAnswer(long_answer.clone())),
+        FixtureRetriever { documents },
+        Arc::clone(&audit),
+    )
+    .with_config(RagConfig::try_new(2, 16, 32).expect("config"));
+
+    let result = pipeline
+        .answer(&tenant, "How do I add a logo?")
+        .await
+        .expect("a 64 KiB answer is within the bound");
+    assert_eq!(result.answer(), long_answer);
+    assert_eq!(result.sources()[0].included_chars(), 8);
+    assert!(!result.sources()[0].truncated());
+    // The audit counts the 8 characters used, not the 32-character budget.
+    let entries = audit.entries().expect("audit");
+    assert_eq!(entries[0].event.context_chars, 8);
+    assert_eq!(entries[0].event.outcome, RagAuditOutcome::Succeeded);
+}

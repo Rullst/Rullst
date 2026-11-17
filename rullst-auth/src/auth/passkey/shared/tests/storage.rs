@@ -203,6 +203,9 @@ pub(super) async fn cross_host_clock_skew(url: &str) {
     b.consume([41; 32], [7; 32], CeremonyKind::Registration)
         .await
         .unwrap();
+    // Exactly the five-second tolerance behind is still adopted.
+    lagging_clock.set(996);
+    lagging.issue(&intent(43)).await.unwrap();
     lagging_clock.set(995);
     assert!(matches!(
         lagging.issue(&intent(42)).await,

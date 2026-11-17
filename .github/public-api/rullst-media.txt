@@ -107,6 +107,7 @@ pub rullst_media::MediaError::Rejected
 pub rullst_media::MediaError::Protocol
 pub rullst_media::MediaError::Uncertain
 pub rullst_media::MediaError::Storage
+pub rullst_media::MediaError::StorageTimeout
 pub rullst_media::MediaError::Signature
 pub rullst_media::MediaError::Unsupported
 impl core::clone::Clone for rullst_media::MediaError

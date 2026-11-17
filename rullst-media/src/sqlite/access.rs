@@ -244,3 +244,29 @@ pub(super) fn bounded_ttl(
         .ok_or(Error::Denied)?;
     Ok(requested.min(u32::try_from(available).unwrap_or(u32::MAX)))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn grant_lifetimes_need_time_left_on_the_permission() {
+        let now = 1_800_000_000;
+        for until in [now, now - 1] {
+            assert_eq!(
+                bounded_ttl(now, until, 60, 900),
+                Err(Error::Denied),
+                "{until}"
+            );
+        }
+        assert_eq!(bounded_ttl(now, now + 1, 60, 900), Ok(1));
+        assert_eq!(bounded_ttl(now, now + 900, 900, 900), Ok(900));
+        for requested in [0, 901] {
+            assert_eq!(
+                bounded_ttl(now, now + 9_000, requested, 900),
+                Err(Error::InvalidInput),
+                "{requested}"
+            );
+        }
+    }
+}

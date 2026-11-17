@@ -5,6 +5,8 @@ mod admin;
 mod broker_tests;
 mod codec;
 mod consume;
+#[cfg(test)]
+mod establish_tests;
 mod publish;
 mod schema;
 mod storage;
@@ -14,9 +16,9 @@ mod webhooks;
 
 use crate::{
     AckToken, BrokerConfig, Clock, DeadLetter, DeadLetterQuery, Delivery, FailureCode,
-    MessageAdmin, MessageBroker, PublishReceipt, PublishRequest, PurgeReceipt, PurgeRequest,
-    ReceiveRequest, Result, RetryDisposition, SubscriptionReceipt, SubscriptionRequest,
-    SystemClock,
+    MessageAdmin, MessageBroker, MessagingError, PublishReceipt, PublishRequest, PurgeReceipt,
+    PurgeRequest, ReceiveRequest, Result, RetryDisposition, SubscriptionReceipt,
+    SubscriptionRequest, SystemClock,
 };
 use sqlx::SqlitePool;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
@@ -91,27 +93,46 @@ impl<C: Clock> SqliteBroker<C> {
         clock: C,
         storage: StorageProfile,
     ) -> Result<Self> {
-        let database_url = database_url.into();
-        if !database_url.starts_with("sqlite:") {
-            return Err(invalid_database_url(
-                "must use the sqlite: URL scheme and identify a file",
-            ));
-        }
-        let options = SqliteConnectOptions::from_str(&database_url)
-            .map_err(|_| invalid_database_url("must be a supported SQLite file URL"))?
-            .create_if_missing(true)
-            .foreign_keys(true)
-            .journal_mode(SqliteJournalMode::Wal)
-            .busy_timeout(Duration::from_secs(30));
-        if is_volatile_database_url(&database_url, options.get_filename()) {
-            return Err(invalid_database_url("must identify a file-backed database"));
-        }
-        if overrides_file_semantics(&database_url) {
-            return Err(invalid_database_url(
-                "must not select a SQLite VFS or immutable mode",
-            ));
-        }
-        reject_existing_unsafe_target(options.get_filename())?;
+        Self::connect_waiting(database_url.into(), config, clock, storage, Waits::BROKER).await
+    }
+
+    /// Opens the broker with `waits`: each attempt ends at its deadline and
+    /// is tried again, three attempts in total (see `crate::establish`).
+    async fn connect_waiting(
+        database_url: String,
+        config: BrokerConfig,
+        clock: C,
+        storage: StorageProfile,
+        waits: Waits,
+    ) -> Result<Self> {
+        let options = file_options(&database_url, waits.lock)?;
+        crate::establish::retry(
+            || async {
+                let attempt = Self::establish(
+                    options.clone(),
+                    config.clone(),
+                    clock.clone(),
+                    storage.clone(),
+                );
+                tokio::time::timeout(waits.attempt, attempt)
+                    .await
+                    .unwrap_or(Err(MessagingError::StorageTimeout {
+                        operation: "connect",
+                    }))
+            },
+            |error| matches!(error, MessagingError::StorageTimeout { .. }),
+        )
+        .await
+    }
+
+    /// One attempt at opening: a new pool, which no other task uses yet, and
+    /// the idempotent schema preparation.
+    async fn establish(
+        options: SqliteConnectOptions,
+        config: BrokerConfig,
+        clock: C,
+        storage: StorageProfile,
+    ) -> Result<Self> {
         let pool = SqlitePoolOptions::new()
             .max_connections(4)
             .connect_with(options)
@@ -139,6 +160,48 @@ impl<C: Clock> SqliteBroker<C> {
     pub async fn close(&self) {
         self.pool.close().await;
     }
+}
+
+/// How long opening a broker waits: for each attempt, and in SQLite's busy
+/// handler for another connection's lock.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Waits {
+    pub(crate) attempt: Duration,
+    pub(crate) lock: Duration,
+}
+
+impl Waits {
+    /// Ten seconds per attempt, shorter than SQLite's 30-second wait for a
+    /// lock (and the pool's for a connection), which every operation keeps.
+    pub(crate) const BROKER: Self = Self {
+        attempt: Duration::from_secs(10),
+        lock: Duration::from_secs(30),
+    };
+}
+
+/// Checks a broker's database URL and returns the options of its file.
+fn file_options(database_url: &str, lock: Duration) -> Result<SqliteConnectOptions> {
+    if !database_url.starts_with("sqlite:") {
+        return Err(invalid_database_url(
+            "must use the sqlite: URL scheme and identify a file",
+        ));
+    }
+    let options = SqliteConnectOptions::from_str(database_url)
+        .map_err(|_| invalid_database_url("must be a supported SQLite file URL"))?
+        .create_if_missing(true)
+        .foreign_keys(true)
+        .journal_mode(SqliteJournalMode::Wal)
+        .busy_timeout(lock);
+    if is_volatile_database_url(database_url, options.get_filename()) {
+        return Err(invalid_database_url("must identify a file-backed database"));
+    }
+    if overrides_file_semantics(database_url) {
+        return Err(invalid_database_url(
+            "must not select a SQLite VFS or immutable mode",
+        ));
+    }
+    reject_existing_unsafe_target(options.get_filename())?;
+    Ok(options)
 }
 
 fn reject_existing_unsafe_target(path: &Path) -> Result<()> {

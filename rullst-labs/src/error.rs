@@ -23,6 +23,11 @@ pub enum LabError {
     Expired,
     #[error("lab storage unavailable")]
     Storage,
+    /// `SqliteLabs::initialize` or `open` (v13): the file stayed locked by
+    /// another connection, or its disk stalled, past every attempt's wait.
+    /// Nothing was changed; try again later.
+    #[error("lab storage stayed locked or stalled while opening")]
+    StorageTimeout,
     #[error("lab content or receipt integrity failed")]
     Integrity,
     #[error("lab execution profile unsupported or unenforced")]

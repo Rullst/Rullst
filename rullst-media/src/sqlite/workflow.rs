@@ -184,10 +184,11 @@ impl<P: VideoProvider, C: Clock> MediaService<P, C> {
         let kind = pending.kind;
         let deadline = pending.until;
         tx.until(Some(deadline))?;
+        // Only `claim` sets a nonce, together with the pending revision, so a
+        // matching nonce also fixes that revision. The asset revision alone is
+        // not enough: an ID purged and created again can reach it.
         if record.asset.revision != previous.revision
-            || pending.revision != previous.revision
             || pending.nonce.as_deref() != Some(&lease.nonce)
-            || deadline <= tx.now
         {
             return Err(Error::Conflict);
         }
@@ -279,3 +280,7 @@ impl<P: VideoProvider, C: Clock> MediaService<P, C> {
         Err(Error::Uncertain)
     }
 }
+
+#[cfg(all(test, feature = "bunny"))]
+#[path = "workflow_tests.rs"]
+mod tests;

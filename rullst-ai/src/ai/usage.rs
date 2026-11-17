@@ -266,6 +266,12 @@ mod tests {
         assert_eq!(usage.output_tokens(), Some(5));
         assert_eq!(usage.total_tokens(), Some(12));
         assert_eq!(usage.cached_input_tokens(), Some(1));
+
+        // Neither output count reported: the output is unknown, not zero.
+        let input_only =
+            TokenUsage::from_gemini(&json!({ "promptTokenCount": 7 })).expect("input usage");
+        assert_eq!(input_only.output_tokens(), None);
+        assert_eq!(input_only.input_tokens(), Some(7));
     }
 
     #[test]

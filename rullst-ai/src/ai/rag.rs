@@ -65,4 +65,108 @@ mod tests {
         assert_ne!(prompt, "xyzzy");
         assert_ne!(prompt, "");
     }
+
+    #[tokio::test]
+    async fn in_memory_retrieval_limit_and_vector_components_are_bounded() {
+        let tenant = rullst_core::security::TenantContext::try_new("tenant:docs").expect("tenant");
+        let retriever = InMemoryRagRetriever::try_new(4, 1).expect("retriever");
+        let document = RagDocument::try_new(&tenant, "doc", "content", 0.0).expect("document");
+        // A component of exactly one million is the largest accepted.
+        retriever
+            .upsert(&tenant, document.clone(), vec![1_000_000.0])
+            .expect("the largest component");
+        assert!(
+            retriever
+                .upsert(&tenant, document, vec![1_000_001.0])
+                .is_err()
+        );
+        let found = retriever
+            .retrieve(&tenant, &[1.0], 32)
+            .await
+            .expect("a limit of 32 is accepted");
+        assert_eq!(found.len(), 1);
+        for limit in [0, 33] {
+            assert!(retriever.retrieve(&tenant, &[1.0], limit).await.is_err());
+        }
+    }
+
+    #[test]
+    fn rag_config_accepts_and_reports_each_ceiling() {
+        let config = RagConfig::try_new(32, 32_768, 131_072).expect("ceilings are inclusive");
+        assert_eq!(
+            (
+                config.max_documents(),
+                config.max_document_chars(),
+                config.max_context_chars()
+            ),
+            (32, 32_768, 131_072)
+        );
+        assert!(RagConfig::try_new(33, 1, 1).is_err());
+        assert!(RagConfig::try_new(1, 32_769, 1).is_err());
+        assert!(RagConfig::try_new(1, 1, 131_073).is_err());
+    }
+
+    fn audit_event(
+        tenant: &str,
+        digest: &str,
+        counts: (usize, usize),
+        context: usize,
+    ) -> RagAuditEvent {
+        RagAuditEvent {
+            tenant_id: tenant.to_string(),
+            query_sha256: digest.to_string(),
+            retrieved_documents: counts.0,
+            included_documents: counts.1,
+            context_chars: context,
+            outcome: RagAuditOutcome::Succeeded,
+        }
+    }
+
+    #[test]
+    fn rag_audit_events_bound_tenant_digest_counts_and_context() {
+        use crate::ai::durable_audit::DurableAuditRecord;
+
+        let digest = "a".repeat(64);
+        let ceiling = audit_event(&"t".repeat(128), &digest, (32, 32), 131_072);
+        assert_eq!(ceiling.validate(), Ok(()));
+        for tenant in [String::new(), "t".repeat(129), "bad tenant".to_string()] {
+            assert_eq!(
+                audit_event(&tenant, &digest, (1, 1), 1).validate(),
+                Err("event has an invalid tenant identifier")
+            );
+        }
+        for bad_digest in ["a".repeat(63), "A".repeat(64)] {
+            assert_eq!(
+                audit_event("tenant", &bad_digest, (1, 1), 1).validate(),
+                Err("event has an invalid query digest")
+            );
+        }
+        for counts in [(2, 3), (40, 33), (33, 33)] {
+            assert_eq!(
+                audit_event("tenant", &digest, counts, 1).validate(),
+                Err("event has invalid document counts")
+            );
+        }
+        assert_eq!(
+            audit_event("tenant", &digest, (1, 1), 131_073).validate(),
+            Err("event exceeds the context character limit")
+        );
+    }
+
+    #[test]
+    fn in_memory_rag_audit_keeps_the_latest_events_up_to_capacity() {
+        let trail = InMemoryRagAuditTrail::new(2).expect("trail");
+        for _ in 0..3 {
+            trail
+                .record(audit_event("tenant", &"a".repeat(64), (1, 1), 1))
+                .expect("record");
+        }
+        let sequences = trail
+            .entries()
+            .expect("entries")
+            .iter()
+            .map(|entry| entry.sequence)
+            .collect::<Vec<_>>();
+        assert_eq!(sequences, [2, 3]);
+    }
 }

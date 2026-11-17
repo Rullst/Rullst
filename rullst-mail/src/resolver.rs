@@ -301,4 +301,31 @@ mod tests {
         assert!(matches!(result, Err(MailError::ConfigError(_))));
         assert!(default_store.lock().expect("default store").is_empty());
     }
+
+    #[tokio::test]
+    async fn arc_and_context_forms_register_select_and_fall_back() {
+        let (default_driver, default_store) = MemoryDriver::isolated();
+        let resolver = TenantMailResolver::with_default_arc(Arc::new(default_driver));
+        let context = TenantContext::try_new("tenant_acme").expect("tenant context");
+        let (tenant, tenant_store) = MemoryDriver::isolated();
+        resolver
+            .register_arc_for_context(&context, Arc::new(tenant))
+            .expect("register");
+        assert!(resolver.has_tenant("tenant_acme").expect("lookup"));
+        assert!(
+            resolver
+                .get_driver_for_context(&context)
+                .expect("lookup")
+                .is_some()
+        );
+        let message = Message::new().to("owner@acme.example").subject("Scoped");
+        for tenant_id in ["tenant_acme", "tenant_other"] {
+            resolver
+                .send_for_tenant(tenant_id, &message)
+                .await
+                .expect("delivery");
+        }
+        assert_eq!(tenant_store.lock().expect("tenant store").len(), 1);
+        assert_eq!(default_store.lock().expect("default store").len(), 1);
+    }
 }

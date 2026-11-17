@@ -1,6 +1,6 @@
 //! Opt-in rebuild of the events table of stores created before
 //! 13.0.0-alpha.5. Opening never changes a store; this method does, once.
-use super::{SqliteSupervision, establish, schema, storage};
+use super::{SqliteSupervision, establish, schema, startup, storage};
 use crate::{Clock, SupervisionError as Error};
 
 /// Rebuild steps, in order: the old table (and its index) is renamed away,
@@ -26,7 +26,7 @@ impl<C: Clock> SqliteSupervision<C> {
     pub async fn upgrade_event_schema(&self) -> Result<bool, Error> {
         let mut tx = establish::retry(|| self.pool.begin_with("BEGIN IMMEDIATE"))
             .await
-            .map_err(storage)?;
+            .map_err(startup)?;
         let definition: Option<String> = sqlx::query_scalar(
             "SELECT substr(sql,1,2049) FROM sqlite_schema WHERE type='table' AND name=?",
         )

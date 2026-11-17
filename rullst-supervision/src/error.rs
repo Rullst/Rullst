@@ -20,6 +20,12 @@ pub enum SupervisionError {
     Configuration,
     #[error("supervision storage unavailable")]
     Storage,
+    /// `SqliteSupervision::initialize`, `open` or `upgrade_event_schema`
+    /// (v13): the file stayed locked by another connection, or its disk
+    /// stalled, past every attempt's wait. Nothing was changed; try again
+    /// later.
+    #[error("supervision storage stayed locked or stalled while opening")]
+    StorageTimeout,
     #[error("supervision commit outcome is uncertain; reload before retrying")]
     UncertainCommit,
     #[error("trusted supervision clock unavailable or moved backwards")]

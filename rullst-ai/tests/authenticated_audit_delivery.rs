@@ -2,7 +2,12 @@ use rullst_ai::{
     AiCancellation, AuditDeliveryClient, AuditDeliveryError, AuditDeliveryMode, AuditRetryPolicy,
 };
 use serde::ser::Error as _;
-use std::{net::TcpListener, thread, time::Duration};
+use std::{
+    future::Future,
+    net::TcpListener,
+    thread,
+    time::{Duration, Instant},
+};
 
 mod audit_delivery_support;
 
@@ -11,6 +16,30 @@ use audit_delivery_support::{
 };
 
 struct FailingEvent;
+
+/// Bounds one delivery, so a retry loop that never ends fails instead of hanging.
+async fn bounded<T>(delivery: impl Future<Output = T>) -> T {
+    tokio::time::timeout(Duration::from_secs(10), delivery)
+        .await
+        .expect("delivery ends within 10 seconds")
+}
+
+/// Accepts one connection within two seconds and holds it open for `hold`.
+fn accept_and_hold(listener: TcpListener, hold: Duration) -> thread::JoinHandle<()> {
+    listener
+        .set_nonblocking(true)
+        .expect("non-blocking fixture");
+    thread::spawn(move || {
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while Instant::now() < deadline {
+            if let Ok((_stream, _)) = listener.accept() {
+                thread::sleep(hold);
+                return;
+            }
+            thread::sleep(Duration::from_millis(5));
+        }
+    })
+}
 
 impl serde::Serialize for FailingEvent {
     fn serialize<S>(&self, _serializer: S) -> Result<S::Ok, S::Error>
@@ -214,15 +243,14 @@ async fn acknowledgement_must_be_bounded_closed_and_bound_to_the_event() {
         let client = AuditDeliveryClient::try_local(endpoint, "academy", "key-2026", TEST_KEY)
             .expect("valid loopback client")
             .with_retry_policy(retry);
-        let error = client
-            .publish(
-                "event-003",
-                EVENT_TIME_MS,
-                &serde_json::json!({"case": index}),
-                &AiCancellation::new(),
-            )
-            .await
-            .expect_err("invalid acknowledgement fails closed");
+        let error = bounded(client.publish(
+            "event-003",
+            EVENT_TIME_MS,
+            &serde_json::json!({"case": index}),
+            &AiCancellation::new(),
+        ))
+        .await
+        .expect_err("invalid acknowledgement fails closed");
         if oversized {
             assert_eq!(error, AuditDeliveryError::AckTooLarge);
         } else {
@@ -237,10 +265,7 @@ async fn acknowledgement_must_be_bounded_closed_and_bound_to_the_event() {
 async fn cancellation_aborts_an_in_flight_delivery() {
     let listener = TcpListener::bind("127.0.0.1:0").expect("loopback fixture binds");
     let address = listener.local_addr().expect("fixture address resolves");
-    let server = thread::spawn(move || {
-        let (_stream, _) = listener.accept().expect("fixture accepts request");
-        thread::sleep(Duration::from_millis(150));
-    });
+    let server = accept_and_hold(listener, Duration::from_millis(150));
     let client = AuditDeliveryClient::try_local(
         format!("http://{address}/audit"),
         "academy",
@@ -250,21 +275,23 @@ async fn cancellation_aborts_an_in_flight_delivery() {
     .expect("valid loopback client");
     let cancellation = AiCancellation::new();
     let trigger = cancellation.clone();
+    let started = Instant::now();
     let task = tokio::spawn(async move {
         tokio::time::sleep(Duration::from_millis(25)).await;
         trigger.cancel();
     });
     assert_eq!(
-        client
-            .publish(
-                "event-004",
-                EVENT_TIME_MS,
-                &serde_json::json!({"kind": "provider.completed"}),
-                &cancellation,
-            )
-            .await,
+        bounded(client.publish(
+            "event-004",
+            EVENT_TIME_MS,
+            &serde_json::json!({"kind": "provider.completed"}),
+            &cancellation,
+        ))
+        .await,
         Err(AuditDeliveryError::Cancelled)
     );
+    // The delivery was in flight until the trigger fired, not refused at once.
+    assert!(started.elapsed() >= Duration::from_millis(25));
     task.await.expect("cancellation task finishes");
     server.join().expect("fixture finishes");
 }
@@ -283,9 +310,7 @@ async fn permanent_and_exhausted_transient_responses_remain_typed() {
             AuditRetryPolicy::try_new(3, Duration::ZERO).expect("valid retry policy"),
         );
     assert_eq!(
-        client
-            .publish("event-400", EVENT_TIME_MS, &(), &AiCancellation::new())
-            .await,
+        bounded(client.publish("event-400", EVENT_TIME_MS, &(), &AiCancellation::new())).await,
         Err(AuditDeliveryError::Rejected { status: 400 })
     );
     requests
@@ -307,9 +332,7 @@ async fn permanent_and_exhausted_transient_responses_remain_typed() {
             AuditRetryPolicy::try_new(2, Duration::ZERO).expect("valid retry policy"),
         );
     assert_eq!(
-        client
-            .publish("event-503", EVENT_TIME_MS, &(), &AiCancellation::new())
-            .await,
+        bounded(client.publish("event-503", EVENT_TIME_MS, &(), &AiCancellation::new())).await,
         Err(AuditDeliveryError::Rejected { status: 503 })
     );
     requests
@@ -325,10 +348,7 @@ async fn permanent_and_exhausted_transient_responses_remain_typed() {
 async fn deadline_and_retry_wait_cancellation_fail_closed() {
     let listener = TcpListener::bind("127.0.0.1:0").expect("loopback fixture binds");
     let address = listener.local_addr().expect("fixture address resolves");
-    let server = thread::spawn(move || {
-        let (_stream, _) = listener.accept().expect("fixture accepts request");
-        thread::sleep(Duration::from_millis(100));
-    });
+    let server = accept_and_hold(listener, Duration::from_millis(100));
     let client = AuditDeliveryClient::try_local(
         format!("http://{address}/audit"),
         "academy",
@@ -340,14 +360,12 @@ async fn deadline_and_retry_wait_cancellation_fail_closed() {
     .expect("valid short deadline")
     .with_retry_policy(AuditRetryPolicy::try_new(1, Duration::ZERO).expect("valid retry policy"));
     assert_eq!(
-        client
-            .publish("event-timeout", EVENT_TIME_MS, &(), &AiCancellation::new())
-            .await,
+        bounded(client.publish("event-timeout", EVENT_TIME_MS, &(), &AiCancellation::new())).await,
         Err(AuditDeliveryError::Deadline)
     );
     server.join().expect("fixture finishes");
 
-    let (endpoint, _, server) = serve(vec![FixtureResponse {
+    let (endpoint, requests, server) = serve(vec![FixtureResponse {
         status: 503,
         body: String::new(),
         declared_length: None,
@@ -365,12 +383,14 @@ async fn deadline_and_retry_wait_cancellation_fail_closed() {
         trigger.cancel();
     });
     assert_eq!(
-        client
-            .publish("event-retry-cancel", EVENT_TIME_MS, &(), &cancellation)
-            .await,
+        bounded(client.publish("event-retry-cancel", EVENT_TIME_MS, &(), &cancellation)).await,
         Err(AuditDeliveryError::Cancelled)
     );
     task.await.expect("cancellation task finishes");
+    // The first attempt reached the fixture; the retry wait was cancelled.
+    requests
+        .recv_timeout(Duration::from_secs(2))
+        .expect("first attempt");
     server.join().expect("fixture finishes");
 }
 

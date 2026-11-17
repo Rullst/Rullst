@@ -314,4 +314,71 @@ mod tests {
         assert!(debug.contains("allowed_root_count"));
         assert!(!debug.contains(std::env::temp_dir().to_string_lossy().as_ref()));
     }
+
+    #[test]
+    fn byte_and_root_limits_accept_their_exact_ceilings() {
+        assert_eq!(MAX_VISION_IMAGE_BYTES, 10_485_760);
+        let temp = std::env::temp_dir();
+        assert!(LocalImagePolicy::with_max_bytes([&temp], 10_485_760).is_ok());
+        assert!(matches!(
+            LocalImagePolicy::with_max_bytes([&temp], 10_485_761),
+            Err(VisionInputError::InvalidByteLimit)
+        ));
+        // Roots are counted as given, before duplicates are merged.
+        assert!(LocalImagePolicy::new(vec![&temp; 32]).is_ok());
+        assert!(matches!(
+            LocalImagePolicy::new(vec![&temp; 33]),
+            Err(VisionInputError::TooManyLocalRoots)
+        ));
+    }
+
+    #[test]
+    fn a_root_must_be_a_directory_below_the_filesystem_root() {
+        let root = test_directory("vision-file-root");
+        std::fs::create_dir_all(&root).expect("create root");
+        let file = root.join("not-a-directory");
+        std::fs::write(&file, b"x").expect("write file");
+        assert!(matches!(
+            LocalImagePolicy::new([&file]),
+            Err(VisionInputError::InvalidLocalRoot)
+        ));
+        #[cfg(unix)]
+        assert!(matches!(
+            LocalImagePolicy::new(["/"]),
+            Err(VisionInputError::InvalidLocalRoot)
+        ));
+        std::fs::remove_dir_all(root).expect("remove root");
+    }
+
+    #[tokio::test]
+    async fn a_file_of_exactly_the_byte_limit_is_read() {
+        let root = test_directory("vision-exact");
+        std::fs::create_dir_all(&root).expect("create root");
+        let image_path = root.join("exact.png");
+        let mut exact = b"\x89PNG\r\n\x1a\n".to_vec();
+        exact.resize(16, 0);
+        std::fs::write(&image_path, &exact).expect("write image");
+        let policy = LocalImagePolicy::with_max_bytes([&root], 16).expect("valid policy");
+        assert_eq!(
+            policy.read(&image_path).await.expect("16-byte image"),
+            exact
+        );
+        std::fs::remove_dir_all(root).expect("remove root");
+    }
+
+    #[test]
+    fn image_validation_distinguishes_empty_from_oversized() {
+        let mut png = b"\x89PNG\r\n\x1a\n".to_vec();
+        png.resize(16, 0);
+        assert!(validate_image(&png, 16, None).is_ok());
+        assert!(matches!(
+            validate_image(&[], 16, None),
+            Err(VisionInputError::UnsupportedImageFormat)
+        ));
+        png.push(0);
+        assert!(matches!(
+            validate_image(&png, 16, None),
+            Err(VisionInputError::ImageTooLarge)
+        ));
+    }
 }

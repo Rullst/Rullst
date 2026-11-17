@@ -252,3 +252,37 @@ async fn ollama_uses_its_v1_api_without_a_credential() {
         "ok"
     );
 }
+
+#[test]
+fn configuration_bounds_accept_their_exact_ceilings() {
+    let config_error = |result: Result<OpenAiCompatibleProvider, AiError>, expected: &str| {
+        assert!(
+            matches!(&result, Err(AiError::ConfigError(message)) if message == expected),
+            "expected {expected:?}"
+        );
+    };
+    let prefix = "https://api.example/";
+    let url = format!("{prefix}{}", "u".repeat(2_048 - prefix.len()));
+    assert!(OpenAiCompatibleProvider::try_cloud(url.clone(), "key", "model").is_ok());
+    let malformed = "OpenAI-compatible base URL is empty, oversized, or malformed";
+    for url in [format!("{url}u"), String::new()] {
+        config_error(
+            OpenAiCompatibleProvider::try_cloud(url, "key", "model"),
+            malformed,
+        );
+    }
+
+    assert!(OpenAiCompatibleProvider::try_cloud(prefix, "key", "m".repeat(256)).is_ok());
+    config_error(
+        OpenAiCompatibleProvider::try_cloud(prefix, "key", "m".repeat(257)),
+        "OpenAI-compatible generation model is invalid",
+    );
+
+    assert!(OpenAiCompatibleProvider::try_cloud(prefix, "k".repeat(8_192), "model").is_ok());
+    for key in ["k".repeat(8_193), "chave-á".to_string()] {
+        config_error(
+            OpenAiCompatibleProvider::try_cloud(prefix, key, "model"),
+            "OpenAI-compatible API key is oversized or malformed",
+        );
+    }
+}

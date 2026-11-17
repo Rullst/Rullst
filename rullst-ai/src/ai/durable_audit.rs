@@ -373,13 +373,11 @@ where
             .iter()
             .position(|byte| *byte == b'\n')
             .ok_or_else(|| corrupt(events.len() + 1, "truncated frame"))?;
-        let end = cursor
-            .checked_add(relative_end)
-            .ok_or_else(|| corrupt(events.len() + 1, "invalid frame offset"))?;
+        // `end` indexes the newline inside `bytes`, so `end + 1` is at most
+        // `bytes.len()` and neither sum can overflow.
+        let end = cursor + relative_end;
         events.push(decode_frame::<E>(&bytes[cursor..end], events.len() + 1)?);
-        cursor = end
-            .checked_add(1)
-            .ok_or_else(|| corrupt(events.len(), "invalid frame offset"))?;
+        cursor = end + 1;
     }
     Ok((length, events))
 }
@@ -436,3 +434,7 @@ fn io_failure(operation: &'static str, error: &io::Error) -> DurableAuditError {
         kind: error.kind(),
     }
 }
+
+#[cfg(test)]
+#[path = "durable_audit_tests.rs"]
+mod tests;
