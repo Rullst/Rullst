@@ -240,6 +240,11 @@ rullst-connect = { version = "=13.0.0-alpha.6", features = ["axum-session"] }
 tower-sessions = "0.15"
 ```
 
+The extractors read the `Session` that your `SessionManagerLayer` puts in the
+request, so your `tower-sessions` must be the 0.15 line that Connect uses; it
+stays on that line for all of 13.x (a
+[public dependency](../compatibility-policy.md#public-dependencies)).
+
 Or manually add it to your `Cargo.toml`:
 ```toml
 [dependencies]

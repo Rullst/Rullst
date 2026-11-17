@@ -19,7 +19,7 @@ pub fn rullst_studio::Studio::new() -> Self
 pub fn rullst_studio::Studio::with_cache(self, cache: rullst_core::cache::Cache) -> Self
 pub fn rullst_studio::Studio::with_distributed_traces(self, store: rullst_studio::distributed_traces::DistributedTraceStore) -> Self
 pub fn rullst_studio::Studio::with_horizon(self, queue: rullst_core::queue::Queue) -> Self
-pub fn rullst_studio::Studio::with_openapi(self, openapi: utoipa::openapi::OpenApi) -> Self
+pub fn rullst_studio::Studio::with_openapi(self, openapi: impl serde_core::ser::Serialize) -> Self
 impl core::default::Default for rullst_studio::Studio
 impl !core::panic::unwind_safe::RefUnwindSafe for rullst_studio::Studio
 impl !core::panic::unwind_safe::UnwindSafe for rullst_studio::Studio
@@ -47,7 +47,7 @@ pub use rullst_studio::access::StudioBuildError = enum rullst_studio::StudioBuil
 pub mod rullst_studio::ai_playground
 pub fn rullst_studio::ai_playground::render_ai_playground_html() -> alloc::string::String
 pub mod rullst_studio::api_playground
-pub fn rullst_studio::api_playground::router(openapi: utoipa::openapi::OpenApi) -> axum::routing::Router
+pub fn rullst_studio::api_playground::router(openapi: impl serde_core::ser::Serialize) -> axum::routing::Router
 pub mod rullst_studio::cache_inspector
 pub mod rullst_studio::data_browser
 pub trait rullst_studio::data_browser::IntoStudioPort

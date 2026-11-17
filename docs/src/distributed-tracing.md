@@ -45,6 +45,14 @@ before `Server` initializes its legacy subscriber. It composes with an ordinary
 `tracing_subscriber` registry and does not replace a global subscriber or provider
 automatically. Other formatting/export layers have independent data policies.
 
+`layer()` returns `impl tracing_subscriber::Layer<S> + Send + Sync + 'static`
+(since 13.0.0-alpha.6; before, the `tracing_opentelemetry::OpenTelemetryLayer`
+it is built from), so that a 13.x release can update the OpenTelemetry crates
+without breaking applications. Use it like any other layer: `.with_filter(..)`
+for a per-layer filter, or `.boxed()` where a type must be written
+(`Box<dyn Layer<S> + Send + Sync>`). `TraceParent` reads and writes the trace
+context of spans recorded through it, also through a box or a filter.
+
 Use stable, non-personal service and operation labels: 1–64 ASCII letters,
 digits, dots, underscores or hyphens, with 1–64 distinct approved operations.
 Operation names must match the actual span names. Do not put an account, email,

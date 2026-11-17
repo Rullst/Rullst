@@ -125,8 +125,8 @@ fn rules_carry_the_release_of_their_change() {
     );
     // The changes of the 13.0 freeze: the health probes' framework version,
     // CSRF static files by path, the removal of the APIs still deprecated,
-    // the explicit ORM save mode, passkeys behind a feature and the
-    // non-exhaustive public types.
+    // the explicit ORM save mode, passkeys behind a feature, the
+    // non-exhaustive public types and the dependencies kept out of the API.
     assert_eq!(
         codes_introduced_in("13.0.0-alpha.6"),
         [
@@ -156,6 +156,9 @@ fn rules_carry_the_release_of_their_change() {
             "V13-ED25519-DALEK-3",
             "V13-SQLITE-WAL-AVAILABLE",
             "V13-AUTH-SESSION-REGISTRY",
+            "V13-TELEMETRY-LAYER-TYPE",
+            "V13-VALIDATION-FIELD-ERRORS",
+            "V13-STUDIO-OPENAPI-INFERRED",
         ]
     );
     assert!(codes_introduced_in("13.0.0-rc.1").is_empty());
@@ -168,7 +171,9 @@ fn rules_carry_the_release_of_their_change() {
         assert!(rule.introduced_after(&alpha4), "{}", rule.code);
         assert!(!rule.introduced_after(&alpha5), "{}", rule.code);
     }
-    assert_eq!(codes_introduced_in("13.0.0-alpha.1").len(), 95);
+    // 95 until 13.0.0-alpha.6 removed `V13-STUDIO-UTOIPA-6`: Studio takes any
+    // utoipa version's document.
+    assert_eq!(codes_introduced_in("13.0.0-alpha.1").len(), 94);
     assert!(codes_introduced_in("13.0.0-alpha.1").contains(&"V13-RENDER-PAGE-LANGUAGE"));
 }
 
@@ -226,7 +231,7 @@ fn a_prerelease_application_sees_only_the_rules_introduced_after_it() {
         RuleSelection {
             current: Some(version("13.0.0-alpha.2")),
             all_rules: false,
-            skipped_rules: 100,
+            skipped_rules: 99,
             hidden_findings: 2,
         }
     );
@@ -238,7 +243,7 @@ fn a_prerelease_application_sees_only_the_rules_introduced_after_it() {
     );
     assert_eq!(
         (selection.skipped_rules, selection.hidden_findings),
-        (95, 1)
+        (94, 1)
     );
 }
 

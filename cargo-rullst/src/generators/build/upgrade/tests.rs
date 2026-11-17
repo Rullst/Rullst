@@ -130,14 +130,14 @@ fn the_plan_says_which_earlier_rules_it_skipped() {
     let scan = selected_scan(Some("13.0.0-alpha.2"), false);
     let text = report::plan_text(root, &target, &[], &scan);
     assert!(
-        text.contains("  Rules: introduced after 13.0.0-alpha.2, the Rullst version this project uses; earlier rules skipped: 100 (findings hidden: 1); --all-rules applies every rule\n"),
+        text.contains("  Rules: introduced after 13.0.0-alpha.2, the Rullst version this project uses; earlier rules skipped: 99 (findings hidden: 1); --all-rules applies every rule\n"),
         "{text}"
     );
     assert!(text.contains("[V13-ORM-TRANSACTION-ERRORS]"), "{text}");
     assert!(!text.contains("[V13-RENDER-PAGE-LANGUAGE]"), "{text}");
     let markdown = report::render_report(root, &target, &[], &scan);
     assert!(
-        markdown.contains("Rules: introduced after 13.0.0-alpha.2, the Rullst version this project uses; earlier rules skipped: 100 (findings hidden: 1); --all-rules applies every rule.\n\n"),
+        markdown.contains("Rules: introduced after 13.0.0-alpha.2, the Rullst version this project uses; earlier rules skipped: 99 (findings hidden: 1); --all-rules applies every rule.\n\n"),
         "{markdown}"
     );
     let json: serde_json::Value =
@@ -148,7 +148,7 @@ fn the_plan_says_which_earlier_rules_it_skipped() {
         serde_json::json!({
             "current_version": "13.0.0-alpha.2",
             "all_rules": false,
-            "skipped_rules": 100,
+            "skipped_rules": 99,
             "hidden_findings": 1,
         })
     );

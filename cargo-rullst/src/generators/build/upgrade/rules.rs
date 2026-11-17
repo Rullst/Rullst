@@ -20,6 +20,7 @@ mod alpha6_gaps;
 mod alpha6_media;
 mod alpha6_non_exhaustive;
 mod alpha6_passkeys;
+mod alpha6_public_deps;
 mod api_cleanups;
 mod catalog;
 mod files;
@@ -298,8 +299,6 @@ impl Collector {
 /// Facts about the whole workspace that some rules depend on.
 #[derive(Debug, Default)]
 pub(super) struct WorkspaceFacts {
-    /// A manifest declares `utoipa` older than 6 (or `utoipa-axum` before 0.3).
-    pub utoipa_below_6: bool,
     /// A manifest enables SQLx's derive or query macros itself: `derive` or
     /// `macros`, or SQLx's default features, which include `macros`.
     pub sqlx_macros: bool,

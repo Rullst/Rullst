@@ -353,6 +353,9 @@ impl Scanner<'_, '_> {
         if let Some(rule) = super::alpha6_deprecated::ident_rule(name, self.context.text) {
             self.hit(rule, at);
         }
+        if let Some(rule) = super::alpha6_public_deps::ident_rule(name, self.context.text) {
+            self.hit(rule, at);
+        }
         match name {
             "health_router"
             | "health_router_with_lifecycle"
@@ -391,6 +394,11 @@ impl Scanner<'_, '_> {
         if let Some(rule) = super::alpha6_gaps::path_rule(segments, self.context) {
             self.hit(rule, at);
         }
+        if let Some(rule) =
+            super::alpha6_public_deps::path_rule(segments, tokens.get(end), self.context.text)
+        {
+            self.hit(rule, at);
+        }
         for pair in segments.windows(2) {
             match (pair[0].as_str(), pair[1].as_str()) {
                 ("FieldKind", "Number") if comparison_macro || compared(tokens, start, end) => {
@@ -418,6 +426,9 @@ impl Scanner<'_, '_> {
         let first_string = string_value(args.first());
         if let [.., ty, "new"] = names.as_slice() {
             self.out.add_constructor(ty, at);
+        }
+        if let Some(rule) = super::alpha6_public_deps::call_rule(&names, &args) {
+            self.hit(rule, at);
         }
         match names.as_slice() {
             [.., "Storage", "r2"] => self.hit(&R2_PUBLIC_URL, at),
@@ -493,6 +504,12 @@ impl Scanner<'_, '_> {
         {
             self.hit(rule, at);
         }
+        let arguments: Vec<TokenTree> = args.clone().into_iter().collect();
+        if let Some(rule) =
+            super::alpha6_public_deps::method_rule(name, chain, &arguments, self.context.text)
+        {
+            self.hit(rule, at);
+        }
         let has = |names: &[&str]| chain.iter().any(|link| names.contains(&link.as_str()));
         match name {
             "remember"
@@ -512,7 +529,6 @@ impl Scanner<'_, '_> {
                 self.hit(&ORM_CHUNK_BOUNDS, at);
             }
             "restore" if args.is_empty() => self.hit(&ORM_MISSING_ROW, at),
-            "with_openapi" if self.context.facts.utoipa_below_6 => self.hit(&UTOIPA_6, at),
             "paginate" if !self.names.max_page => self.hit(&PAGE_BOUNDS, at),
             _ => {}
         }
