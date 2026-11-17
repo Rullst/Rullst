@@ -163,26 +163,22 @@ fn classify(bytes: &[u8]) -> Result<Raw<'_>, BoxDynError> {
     })
 }
 
-/// Year, month and day after the length byte; `None` inside `Ok` for the
-/// zero date, which has no bytes.
-pub(super) fn date_from_binary(fields: &[u8]) -> Result<Option<civil::Date>, BoxDynError> {
-    match fields {
-        [] => Ok(None),
-        [year_low, year_high, month, day, ..] => {
-            let year = i16::try_from(u16::from_le_bytes([*year_low, *year_high]))?;
-            let date = civil::Date::new(year, i8::try_from(*month)?, i8::try_from(*day)?)
-                .map_err(|_| format!("server returned invalid date: {year}/{month}/{day}"))?;
-            Ok(Some(date))
-        }
-        _ => Err(format!("expected at least 4 bytes for date, got {}", fields.len()).into()),
-    }
+/// Year, month and day after the length byte. The zero date has no bytes and
+/// is an error, as a short date is.
+pub(super) fn date_from_binary(fields: &[u8]) -> Result<civil::Date, BoxDynError> {
+    let [year_low, year_high, month, day, ..] = fields else {
+        return Err(format!("expected a date of at least 4 bytes, got {}", fields.len()).into());
+    };
+    let year = i16::try_from(u16::from_le_bytes([*year_low, *year_high]))?;
+    civil::Date::new(year, i8::try_from(*month)?, i8::try_from(*day)?)
+        .map_err(|_| format!("server returned invalid date: {year}/{month}/{day}").into())
 }
 
 /// A binary date-time: its length byte decides whether a time (above 4) and
 /// microseconds (above 7, every remaining byte, little endian) follow.
 pub(super) fn date_time_from_binary(bytes: &[u8]) -> Result<civil::DateTime, BoxDynError> {
     let (&len, fields) = bytes.split_first().ok_or("empty buffer")?;
-    let date = date_from_binary(fields)?.ok_or("unexpected zero date")?;
+    let date = date_from_binary(fields)?;
     if len <= 4 {
         return Ok(date.to_datetime(civil::Time::midnight()));
     }
@@ -239,7 +235,7 @@ pub(super) fn instant_from_value(bytes: &[u8]) -> Result<jiff::Timestamp, BoxDyn
 /// A `DATE` value in either protocol.
 pub(super) fn date_from_value(bytes: &[u8]) -> Result<civil::Date, BoxDynError> {
     match classify(bytes)? {
-        Raw::Binary(bytes) => Ok(date_from_binary(&bytes[1..])?.ok_or("unexpected zero date")?),
+        Raw::Binary(bytes) => date_from_binary(&bytes[1..]),
         Raw::Text(text) => parse::parse(text, parse::DATE_ONLY)
             .and_then(|parsed| parsed.date())
             .ok_or_else(|| format!("invalid MySQL DATE: {text}").into()),
