@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794884130770,
+  "lastUpdate": 1794937614730,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -18452,6 +18452,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "35d84425c23c24a37253b740299319f54be9ba33",
+          "message": "Merge pull request #753 from Rullst/ci/v13-chrono-bridge-exception\n\nci(supply-chain): govern RUSTSEC-2026-0543 while chrono is replaced",
+          "timestamp": "2026-11-17T14:24:38-03:00",
+          "tree_id": "4f831289cb2e030765678243deb59514d6ec39ca",
+          "url": "https://github.com/Rullst/Rullst/commit/35d84425c23c24a37253b740299319f54be9ba33"
+        },
+        "date": 1794937613559,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
             "range": "± 0",
             "unit": "ns/iter"
           }
