@@ -17,14 +17,14 @@ fn verifier(key: &[u8]) -> ResendFeedbackVerifier {
     ResendFeedbackVerifier::new(format!("whsec_{}", STANDARD.encode(key))).unwrap()
 }
 fn body(kind: &str, bounce: &str) -> Vec<u8> {
-    serde_json::to_vec(&json!({"type":kind,"created_at":chrono::Utc::now().to_rfc3339(),
+    serde_json::to_vec(&json!({"type":kind,"created_at":jiff::Timestamp::now().to_string(),
         "data":{"email_id":"email_opaque","to":["member@example.com"],"bounce":{"type":bounce},"subject":"NEVER_LOG_THIS"}})).unwrap()
 }
 
 #[tokio::test]
 async fn authenticated_permanent_feedback_is_replay_bound_and_suppresses() {
     let key: [u8; 32] = rand::random();
-    let now = chrono::Utc::now().timestamp() as u64;
+    let now = jiff::Timestamp::now().as_second() as u64;
     let payload = body("email.bounced", "Permanent");
     let verified = verifier(&key)
         .verify(
@@ -101,7 +101,7 @@ async fn authenticated_permanent_feedback_is_replay_bound_and_suppresses() {
 #[test]
 fn valid_signature_does_not_authorize_malformed_provider_feedback() {
     let key: [u8; 32] = rand::random();
-    let now = chrono::Utc::now().timestamp() as u64;
+    let now = jiff::Timestamp::now().as_second() as u64;
     let original: serde_json::Value =
         serde_json::from_slice(&body("email.bounced", "Permanent")).unwrap();
     for (pointer, invalid) in [
@@ -151,7 +151,7 @@ fn valid_signature_does_not_authorize_malformed_provider_feedback() {
 #[test]
 fn signatures_bind_raw_body_identity_and_freshness() {
     let key: [u8; 32] = rand::random();
-    let now = chrono::Utc::now().timestamp() as u64;
+    let now = jiff::Timestamp::now().as_second() as u64;
     let payload = body("email.complained", "");
     let signature = sign(&key, &payload, "msg_event", now);
     let mut other_key = key;
@@ -212,9 +212,9 @@ fn signatures_bind_raw_body_identity_and_freshness() {
 #[test]
 fn display_name_feedback_recipient_is_reduced_to_the_bare_address() {
     let key: [u8; 32] = rand::random();
-    let now = chrono::Utc::now().timestamp() as u64;
+    let now = jiff::Timestamp::now().as_second() as u64;
     let payload = serde_json::to_vec(&json!({"type":"email.complained",
-        "created_at":chrono::Utc::now().to_rfc3339(),
+        "created_at":jiff::Timestamp::now().to_string(),
         "data":{"email_id":"email_opaque","to":["Member <member@example.com>"]}}))
     .unwrap();
     let verified = verifier(&key)
@@ -234,7 +234,7 @@ fn display_name_feedback_recipient_is_reduced_to_the_bare_address() {
 #[test]
 fn authentic_unhandled_event_types_are_distinguishable_from_malformed_ones() {
     let key: [u8; 32] = rand::random();
-    let now = chrono::Utc::now().timestamp() as u64;
+    let now = jiff::Timestamp::now().as_second() as u64;
     for kind in [
         "email.sent",
         "email.opened",

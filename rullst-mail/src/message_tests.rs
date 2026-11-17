@@ -34,14 +34,17 @@ fn builders_preserve_explicit_text_and_construct_attachments() {
 
 #[test]
 fn scheduling_is_explicit_for_normal_and_unrepresentable_durations() {
-    let exact = Utc::now() + chrono::Duration::minutes(5);
+    let exact = Timestamp::now() + jiff::SignedDuration::from_mins(5);
     assert_eq!(Message::new().send_at(exact).send_at, Some(exact));
 
     let soon = Message::new().send_in(std::time::Duration::from_secs(1));
-    assert!(soon.send_at.is_some_and(|timestamp| timestamp > Utc::now()));
+    assert!(
+        soon.send_at
+            .is_some_and(|timestamp| timestamp > Timestamp::now())
+    );
 
     let overflow = Message::new().send_in(std::time::Duration::MAX);
-    assert_eq!(overflow.send_at, Some(DateTime::<Utc>::MAX_UTC));
+    assert_eq!(overflow.send_at, Some(Timestamp::MAX));
 }
 
 #[test]

@@ -1,13 +1,13 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 use super::*;
-use chrono::Utc;
+use jiff::Timestamp;
 
 #[tokio::test]
 async fn global_trap_preserves_prepared_attachments_inline_media_and_schedule() {
     let _guard = crate::facade::MAIL_ENV_LOCK.lock().await;
     MailTrap::clear();
-    let scheduled_at = Utc::now() + chrono::Duration::minutes(5);
+    let scheduled_at = Timestamp::now() + jiff::SignedDuration::from_mins(5);
     let message = Message::new()
         .to("attachments@example.com")
         .from("sender@example.com")

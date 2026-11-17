@@ -1,7 +1,7 @@
 //! `MailDriver` for Postmark's Email API.
 
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use reqwest::header::{ACCEPT, CONTENT_TYPE, HeaderValue, RETRY_AFTER};
 use rullst_mail::{
     Attachment, DeliveryMode, DeliveryPipeline, MailDriver, MailError, Message, credential_mode,
@@ -89,7 +89,7 @@ impl PostmarkDriver {
 /// The JSON request body for a pipeline-validated message. What Postmark
 /// cannot express is an error, never silently dropped.
 pub fn request_body(message: &Message) -> Result<Vec<u8>, MailError> {
-    let body = serde_json::to_vec(&payload(message, chrono::Utc::now())?)
+    let body = serde_json::to_vec(&payload(message, Timestamp::now())?)
         .map_err(|_| MailError::DriverError("cannot encode the Postmark request".into()))?;
     if body.len() > MAX_REQUEST_BYTES {
         return Err(MailError::ValidationError(
@@ -101,7 +101,7 @@ pub fn request_body(message: &Message) -> Result<Vec<u8>, MailError> {
 
 /// The request object; a `send_at` after `now` is a schedule Postmark
 /// cannot keep.
-fn payload(message: &Message, now: DateTime<Utc>) -> Result<Value, MailError> {
+fn payload(message: &Message, now: Timestamp) -> Result<Value, MailError> {
     let from = message.from.as_deref().ok_or_else(|| {
         MailError::ConfigError(
             "Postmark requires a confirmed sender signature: set `from`, or MAIL_FROM for the \

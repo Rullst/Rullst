@@ -38,7 +38,7 @@ async fn welcome_reset_and_change_notices_complete_the_real_pipeline() {
     )
     .unwrap();
     let driver = Capture::default();
-    let now = chrono::Utc::now().timestamp() as u64;
+    let now = jiff::Timestamp::now().as_second() as u64;
     store
         .register_account(
             "learner",
@@ -83,7 +83,7 @@ async fn welcome_reset_and_change_notices_complete_the_real_pipeline() {
         .complete_password_reset(
             token,
             uuid::Uuid::new_v4().to_string(),
-            chrono::Utc::now().timestamp() as u64,
+            jiff::Timestamp::now().as_second() as u64,
         )
         .await
         .unwrap();
@@ -119,7 +119,7 @@ async fn provider_failure_keeps_the_encrypted_notice_for_retry() {
             "learner",
             "learner@example.com",
             uuid::Uuid::new_v4().to_string(),
-            chrono::Utc::now().timestamp() as u64,
+            jiff::Timestamp::now().as_second() as u64,
         )
         .await
         .unwrap();
@@ -182,7 +182,7 @@ async fn permanent_rejection_is_terminal_and_idle_does_not_call_the_transport() 
             "learner",
             "learner@example.com",
             uuid::Uuid::new_v4().to_string(),
-            chrono::Utc::now().timestamp() as u64,
+            jiff::Timestamp::now().as_second() as u64,
         )
         .await
         .unwrap();

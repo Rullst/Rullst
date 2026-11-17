@@ -2,7 +2,7 @@ use crate::attachment::Attachment;
 use crate::error::MailError;
 pub use crate::security::redact_email_secrets;
 use crate::security::scan_content_security;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 
 mod plain_text;
 pub use plain_text::strip_html_to_plain_text;
@@ -46,8 +46,10 @@ pub struct Message {
     pub unsubscribe_url: Option<String>,
     /// Optional RFC 8058 List-Unsubscribe email address.
     pub unsubscribe_email: Option<String>,
-    /// Optional scheduled delivery timestamp (UTC).
-    pub send_at: Option<DateTime<Utc>>,
+    /// Optional scheduled delivery instant. Serialized as RFC 3339 in UTC
+    /// (`2026-10-22T15:45:30Z`), as before 13.0.0-alpha.6.
+    #[serde(default, with = "rullst_core::rfc3339::serde_utc_option")]
+    pub send_at: Option<Timestamp>,
     /// File attachments and inline Content-ID (`CID`) media assets.
     pub attachments: Vec<Attachment>,
 }
@@ -128,22 +130,22 @@ impl Message {
         self
     }
 
-    /// Schedules delivery for a specific future UTC timestamp.
-    pub fn send_at(mut self, timestamp: DateTime<Utc>) -> Self {
+    /// Schedules delivery for a specific future instant.
+    pub fn send_at(mut self, timestamp: Timestamp) -> Self {
         self.send_at = Some(timestamp);
         self
     }
 
     /// Schedules delivery after the specified duration from now.
     ///
-    /// Durations outside Chrono's representable range are retained as an invalid maximum
+    /// Durations past the last representable instant are retained as an invalid maximum
     /// timestamp so the mandatory delivery pipeline fails closed instead of sending immediately.
     pub fn send_in(mut self, duration: std::time::Duration) -> Self {
-        let Some(timestamp) = chrono::Duration::from_std(duration)
+        let Some(timestamp) = jiff::SignedDuration::try_from(duration)
             .ok()
-            .and_then(|chrono_duration| Utc::now().checked_add_signed(chrono_duration))
+            .and_then(|duration| Timestamp::now().checked_add(duration).ok())
         else {
-            self.send_at = Some(DateTime::<Utc>::MAX_UTC);
+            self.send_at = Some(Timestamp::MAX);
             return self;
         };
         self.send_at = Some(timestamp);
@@ -281,7 +283,7 @@ impl Message {
                 secret,
                 self.tracking_recipient(),
                 campaign_id,
-                chrono::Utc::now().timestamp() as u64,
+                Timestamp::now().as_second() as u64,
             )?;
             let pixel_url = format!(
                 "{}/track/open/{}",
@@ -309,7 +311,7 @@ impl Message {
                 base_tracker_url.as_ref(),
                 secret,
                 self.tracking_recipient(),
-                chrono::Utc::now().timestamp() as u64,
+                Timestamp::now().as_second() as u64,
             )?);
         }
         Ok(self)

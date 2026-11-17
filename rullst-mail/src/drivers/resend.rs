@@ -11,7 +11,7 @@ use async_trait::async_trait;
 /// Furthest ahead Resend accepts `scheduled_at`: "Emails can be scheduled up
 /// to 30 days in advance" (<https://resend.com/docs/dashboard/emails/schedule-email>).
 /// Later schedules need a durable Rullst queue.
-const MAX_PROVIDER_SCHEDULE: chrono::TimeDelta = chrono::TimeDelta::days(30);
+const MAX_PROVIDER_SCHEDULE: jiff::SignedDuration = jiff::SignedDuration::from_hours(30 * 24);
 
 /// A Resend HTTP REST API driver
 #[non_exhaustive]
@@ -62,11 +62,9 @@ impl ResendDriver {
         if self.delivery_mode() == DeliveryMode::OfflineMock {
             return record_offline_delivery("resend", message);
         }
-        if message
-            .send_at
-            .as_ref()
-            .is_some_and(|send_at| *send_at > chrono::Utc::now() + MAX_PROVIDER_SCHEDULE)
-        {
+        if message.send_at.as_ref().is_some_and(|send_at| {
+            send_at.duration_since(jiff::Timestamp::now()) > MAX_PROVIDER_SCHEDULE
+        }) {
             return Err(MailError::ConfigError(
                 "Resend schedules delivery at most 30 days ahead; initialize a durable Rullst queue for later delivery"
                     .to_string(),
@@ -115,7 +113,8 @@ fn payload(message: &Message, from_addr: &str) -> serde_json::Value {
         body["text"] = serde_json::json!(text);
     }
     if let Some(ref send_at) = message.send_at {
-        body["scheduled_at"] = serde_json::json!(send_at.to_rfc3339());
+        body["scheduled_at"] =
+            serde_json::json!(rullst_core::rfc3339::format_with_offset(*send_at, 0));
     }
     if !message.attachments.is_empty() {
         let attachments_json: Vec<_> = message
@@ -176,7 +175,7 @@ mod tests {
         assert_eq!(without["text"], "b");
         assert!(without.get("html").is_none());
 
-        let at = chrono::Utc::now() + chrono::TimeDelta::days(1);
+        let at = jiff::Timestamp::now() + jiff::SignedDuration::from_hours(24);
         let rich = payload(
             &Message::new()
                 .to("user@example.com")
@@ -191,7 +190,10 @@ mod tests {
         assert_eq!(rich["attachments"][0]["content"], "aGk=");
         assert!(rich["attachments"][0].get("content_id").is_none());
         assert_eq!(rich["attachments"][1]["content_id"], "logo");
-        assert_eq!(rich["scheduled_at"], at.to_rfc3339());
+        assert_eq!(
+            rich["scheduled_at"],
+            rullst_core::rfc3339::format_with_offset(at, 0)
+        );
         assert!(
             rich["html"]
                 .as_str()

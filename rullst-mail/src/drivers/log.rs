@@ -12,6 +12,13 @@ use async_trait::async_trait;
 /// read from the process environment first and then from `./.env`.
 pub struct LogDriver;
 
+/// The current time at the system time zone's offset, as `+hh:mm`.
+fn local_now() -> String {
+    let now = jiff::Timestamp::now();
+    let offset = jiff::tz::TimeZone::system().to_offset(now);
+    rullst_core::rfc3339::format_with_offset(now, offset.seconds())
+}
+
 #[async_trait]
 impl MailDriver for LogDriver {
     async fn send(&self, message: &Message) -> Result<(), MailError> {
@@ -34,13 +41,13 @@ impl MailDriver for LogDriver {
         // become plaintext log records. MemoryDriver is the explicit preview.
         let formatted = format!(
             "[MAIL LOGGED] {} attachments={} scheduled={}\n",
-            chrono::Utc::now().to_rfc3339(),
+            rullst_core::rfc3339::format_with_offset(jiff::Timestamp::now(), 0),
             message.attachments.len(),
             message.send_at.is_some(),
         );
         println!(
             "[MAIL LOGGED] {} | Target: {}",
-            chrono::Local::now().to_rfc3339(),
+            local_now(),
             log_path.display()
         );
 

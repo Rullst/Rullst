@@ -55,7 +55,7 @@ async fn test_attachments_and_inline_cid() {
 async fn test_scheduled_delivery_send_at() {
     let (trap, store) = MemoryDriver::isolated();
 
-    let target_time = chrono::Utc::now() + chrono::Duration::hours(24);
+    let target_time = jiff::Timestamp::now() + jiff::SignedDuration::from_hours(24);
     let msg = Message::new()
         .to("future@example.com")
         .subject("Scheduled Update")
