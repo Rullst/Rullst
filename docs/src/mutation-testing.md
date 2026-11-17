@@ -189,7 +189,17 @@ received a test or is listed under
   bounds that only very large projects reach (hundreds of mebibytes, or 10,000
   to 250,000 files): upgrade snapshot 6, upgrade source walk 3, project
   snapshot 13, replacement and verification totals 2 and 2, and the 64 MiB
-  preparation report 4.
+  preparation report 4. In 13.0.0-rc.1, `build/upgrade/rules/alpha6_gaps.rs`
+  ([PR #740](https://github.com/Rullst/Rullst/pull/740), already listed),
+  whose first targeted run (43871101055) stopped at its time limit after 65
+  of its 109 mutants, was measured again on `c22b6bca`
+  ([PR #752](https://github.com/Rullst/Rullst/pull/752)) in eight shards with
+  a 900-second timeout in the maintainer's fork (runs
+  [44077418794](https://github.com/venelouis/rullst-ci/actions/runs/44077418794)
+  to [44077505621](https://github.com/venelouis/rullst-ci/actions/runs/44077505621)):
+  109 mutants, 103 caught, 6 unviable, no survivor. The CLI's library tests
+  now take longer than the default 300-second timeout, which a targeted run
+  also applies to its unmutated baseline.
 - **`green` (now `footprint`), `deploy` and guided update** (13.0.0-alpha.4):
   the nine `green` files, `generators/deploy.rs` and `update/guided.rs` gave 337 mutants, 93
   missed and no timeout. New library tests (a loopback test server, fake app
@@ -207,7 +217,7 @@ received a test or is listed under
   `mutants::skip` on each local Studio module, on the Studio builder, on
   `build_rows_html` and on the logger page kept the rest of the crate out of
   every mutation run and of the pull-request gate until the 13.0.0-rc.1
-  campaign ([PR #NNN](https://github.com/Rullst/Rullst/pull/NNN), runs in the
+  campaign ([PR #752](https://github.com/Rullst/Rullst/pull/752), runs in the
   maintainer's fork
   [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)),
   which removed them (the Kani proofs keep theirs). Measured on `c22b6bca`
@@ -235,7 +245,7 @@ received a test or is listed under
   pre-check, which the 32-byte signature check repeats with the same `400`),
   and the two timeouts listed with the timeouts.
 - **`rullst`** (the facade; 13.0.0-rc.1 campaign on `c22b6bca`,
-  [PR #NNN](https://github.com/Rullst/Rullst/pull/NNN), same fork): targeted
+  [PR #752](https://github.com/Rullst/Rullst/pull/752), same fork): targeted
   runs of the 6 files with mutants (the account-mail worker and the IoT
   ingestion receiver, directory, configuration, token and error files;
   `lib.rs`, `iot_ingest/mod.rs` and the doctest-only `book_doctests.rs` have
