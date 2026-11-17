@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794938946964,
+  "lastUpdate": 1794952914453,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -36637,6 +36637,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1510,
             "range": "± 35",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4b9bb9222b7333ac94e172f7bd05a216e09789f3",
+          "message": "Merge pull request #760 from Rullst/ci/v13-template-pin-sync\n\nci: sync generated workflow action pins from Rullst's own",
+          "timestamp": "2026-11-17T18:55:18-03:00",
+          "tree_id": "dc86ca3b012ffd4cbd49b3add54bfccabb00de66",
+          "url": "https://github.com/Rullst/Rullst/commit/4b9bb9222b7333ac94e172f7bd05a216e09789f3"
+        },
+        "date": 1794952910262,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 542,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 712,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 348,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1489,
+            "range": "± 37",
             "unit": "ns/iter"
           }
         ]
