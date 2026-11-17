@@ -3,6 +3,7 @@ pub mod ai_chat;
 mod assets;
 pub mod audit;
 pub mod crud;
+mod instant;
 mod metadata;
 mod principal;
 pub mod security;

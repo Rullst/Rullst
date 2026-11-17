@@ -1,12 +1,14 @@
 use super::{NexusTimeZone, NexusTimeZoneError};
-use rullst_orm::chrono::{DateTime, NaiveDateTime, Utc};
+use crate::nexus::instant::Instant;
+use jiff::civil::DateTime;
 
-fn local(text: &str) -> NaiveDateTime {
-    NaiveDateTime::parse_from_str(text, "%Y-%m-%dT%H:%M:%S%.f").unwrap()
+fn local(text: &str) -> DateTime {
+    text.parse().unwrap()
 }
 
-fn instant(text: &str) -> DateTime<Utc> {
-    DateTime::parse_from_rfc3339(text).unwrap().to_utc()
+/// The instant of a UTC wall time written `…Z`.
+fn instant(text: &str) -> Instant {
+    Instant::at_offset(local(text.strip_suffix('Z').unwrap()), 0).unwrap()
 }
 
 #[test]
@@ -119,4 +121,39 @@ fn named_zones_follow_their_daylight_saving_rules() {
         }
     );
     assert_eq!(unknown.to_string(), "unknown IANA time zone `Brasilia`");
+}
+
+#[cfg(feature = "tz")]
+#[test]
+fn named_zones_keep_refusing_wall_times_past_the_last_jiff_instant() {
+    let new_york = NexusTimeZone::named("America/New_York").unwrap();
+    assert_eq!(
+        new_york.instant_of(&local("9999-12-30T16:59:59.999")),
+        Ok(instant("9999-12-30T21:59:59.999Z"))
+    );
+    // Read as UTC, these wall times are later than 9999-12-30T22:00Z, which
+    // jiff 0.2 could not represent either: Nexus refused them, and still does.
+    assert_eq!(
+        new_york.instant_of(&local("9999-12-30T22:00:01.5")),
+        Err(NexusTimeZoneError::NonexistentLocalTime {
+            local: "9999-12-30T22:00:01.500".to_string(),
+            zone: "America/New_York".to_string(),
+        })
+    );
+    // An instant past it has no named-zone offset.
+    assert_eq!(new_york.offset_at(&instant("9999-12-30T22:00:01Z")), None);
+    assert_eq!(
+        new_york.offset_at(&instant("9999-12-30T21:00:00Z")),
+        Some(-18_000)
+    );
+    // A fixed offset has neither limit.
+    let fixed = NexusTimeZone::fixed_offset(-300).unwrap();
+    assert_eq!(
+        fixed.offset_at(&instant("9999-12-31T23:00:00Z")),
+        Some(-18_000)
+    );
+    assert_eq!(
+        fixed.instant_of(&local("9999-12-31T23:00:00")),
+        Ok(Instant::at_offset(local("9999-12-31T23:00:00"), -18_000).unwrap())
+    );
 }

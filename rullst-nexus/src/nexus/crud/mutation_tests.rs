@@ -305,12 +305,12 @@ fn fields_bind_their_typed_value_else_their_text_else_null() {
         bound("postgres"),
         [
             "String(\"Ada\")",
-            "Date(2026-10-15)",
-            "DateTime(2026-10-15T09:30:00Z)",
+            "CivilDate(2026-10-15)",
+            "Timestamp(2026-10-15T09:30:00Z)",
             "Null"
         ]
     );
-    assert_eq!(bound("mysql")[2], "NaiveDateTime(2026-10-15T09:30:00)");
+    assert_eq!(bound("mysql")[2], "CivilDateTime(2026-10-15T09:30:00)");
 }
 
 #[tokio::test]

@@ -266,8 +266,9 @@ pub(super) async fn delete_record(
 /// The value bound for a validated field: its typed date or time, else its
 /// text, else SQL NULL.
 pub(super) fn bound_value(value: &ValidatedFieldValue<'_>, driver: &str) -> RullstValue {
-    match (&value.typed, &value.value) {
-        (Some(typed), _) => driver_value(typed.clone(), driver),
+    let typed = value.typed.and_then(|typed| driver_value(typed, driver));
+    match (typed, &value.value) {
+        (Some(typed), _) => typed,
         (None, Some(text)) => RullstValue::String(text.clone()),
         (None, None) => RullstValue::Null,
     }

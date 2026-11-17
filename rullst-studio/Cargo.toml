@@ -68,7 +68,7 @@ utoipa = { version = "6", optional = true }
 # TLS comes with the PostgreSQL and MySQL drivers of `rullst-orm`.
 sqlx = { workspace = true, features = ["runtime-tokio"] }
 urlencoding = { workspace = true }
-chrono = { workspace = true }
+jiff = { workspace = true }
 tokio-stream = { version = "0.1.19", features = ["sync"] }
 futures-util = { workspace = true }
 base64 = { workspace = true }
