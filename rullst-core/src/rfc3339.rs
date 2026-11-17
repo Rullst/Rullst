@@ -51,7 +51,14 @@ pub fn format_utc(timestamp: Timestamp, fraction: Fraction) -> String {
 pub fn format_with_offset(timestamp: Timestamp, offset_seconds: i32) -> String {
     let (seconds, nanos) = unix_parts(timestamp);
     let mut out = String::with_capacity(32);
-    write(&mut out, seconds, nanos, Fraction::Auto, offset_seconds, false);
+    write(
+        &mut out,
+        seconds,
+        nanos,
+        Fraction::Auto,
+        offset_seconds,
+        false,
+    );
     out
 }
 
@@ -63,14 +70,7 @@ pub fn format_unix_millis_utc(millis: i64, fraction: Fraction) -> Option<String>
     }
     let nanos = u32::try_from(millis.rem_euclid(1_000) * 1_000_000).ok()?;
     let mut out = String::with_capacity(32);
-    write(
-        &mut out,
-        millis.div_euclid(1_000),
-        nanos,
-        fraction,
-        0,
-        true,
-    );
+    write(&mut out, millis.div_euclid(1_000), nanos, fraction, 0, true);
     Some(out)
 }
 
@@ -78,7 +78,10 @@ pub fn format_unix_millis_utc(millis: i64, fraction: Fraction) -> Option<String>
 pub fn utc_date(timestamp: Timestamp) -> String {
     let (seconds, _) = unix_parts(timestamp);
     let mut out = String::with_capacity(10);
-    write_date(&mut out, civil_from_days(seconds.div_euclid(SECONDS_PER_DAY)));
+    write_date(
+        &mut out,
+        civil_from_days(seconds.div_euclid(SECONDS_PER_DAY)),
+    );
     out
 }
 
@@ -195,8 +198,8 @@ fn write(
     push_two(out, of_day % 60);
     match fraction {
         Fraction::Auto if nanos == 0 => {}
-        Fraction::Auto if nanos % 1_000_000 == 0 => push_fraction(out, nanos / 1_000_000, 3),
-        Fraction::Auto if nanos % 1_000 == 0 => push_fraction(out, nanos / 1_000, 6),
+        Fraction::Auto if nanos.is_multiple_of(1_000_000) => push_fraction(out, nanos / 1_000_000, 3),
+        Fraction::Auto if nanos.is_multiple_of(1_000) => push_fraction(out, nanos / 1_000, 6),
         Fraction::Auto | Fraction::Nanos => push_fraction(out, nanos, 9),
         Fraction::Millis => push_fraction(out, nanos / 1_000_000, 3),
     }

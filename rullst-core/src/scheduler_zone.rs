@@ -3,14 +3,12 @@
 
 use super::cron_expression::CronSchedule;
 use crate::queue::{DeferralReason, ScheduleDeferral};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 
 #[cfg(feature = "scheduler-tz")]
 use super::{ScheduledHandler, ScheduledTask, Scheduler, SchedulerError};
 #[cfg(feature = "scheduler-tz")]
-use chrono::TimeDelta;
-#[cfg(feature = "scheduler-tz")]
-use jiff::Timestamp;
+use jiff::SignedDuration;
 #[cfg(feature = "scheduler-tz")]
 use jiff::tz::{AmbiguousOffset, Offset, TimeZone};
 #[cfg(feature = "scheduler-tz")]
@@ -37,14 +35,15 @@ impl From<CronSchedule> for TaskSchedule {
 
 impl TaskSchedule {
     /// Returns the first occurrence strictly after `after`.
-    pub(crate) fn next_after(&self, after: &DateTime<Utc>) -> Option<DateTime<Utc>> {
+    pub(crate) fn next_after(&self, after: &Timestamp) -> Option<Timestamp> {
         match self {
             Self::Utc(schedule) => schedule.next_after(after),
             #[cfg(feature = "scheduler-tz")]
             Self::Zoned(schedule) => schedule.next_after(after),
             #[cfg(test)]
-            Self::EverySecond => chrono::Timelike::with_nanosecond(after, 0)?
-                .checked_add_signed(chrono::TimeDelta::seconds(1)),
+            Self::EverySecond => {
+                Timestamp::from_second(crate::rfc3339::unix_parts(*after).0 + 1).ok()
+            }
         }
     }
 }
@@ -86,8 +85,8 @@ fn wall_ms(zone: &TimeZone, instant_ms: i64) -> Option<i64> {
 /// the daylight-saving rule of [`instant_of_wall`].
 #[cfg(feature = "scheduler-tz")]
 fn instant_ms(zone: &TimeZone, wall: i64) -> Option<i64> {
-    let wall = DateTime::from_timestamp_millis(wall)?;
-    Some(instant_of_wall(zone, &wall)?.timestamp_millis())
+    let wall = Timestamp::from_millisecond(wall).ok()?;
+    Some(instant_of_wall(zone, &wall)?.as_millisecond())
 }
 
 /// Upper bound on the wall times one search examines. Only the repeated hour
@@ -112,12 +111,12 @@ impl ZonedCron {
     }
 
     /// Returns the first occurrence strictly after `after`.
-    pub(crate) fn next_after(&self, after: &DateTime<Utc>) -> Option<DateTime<Utc>> {
-        let offset = self.zone.to_offset(timestamp(after)?);
+    pub(crate) fn next_after(&self, after: &Timestamp) -> Option<Timestamp> {
+        let offset = self.zone.to_offset(*after);
         // Wall times are written as UTC values, which is how the cron fields
         // are matched. Start one second before the current wall time, so a
         // match at that very time is examined and rejected below.
-        let mut wall = shift(after, offset.seconds())?.checked_sub_signed(TimeDelta::seconds(1))?;
+        let mut wall = shift(after, offset.seconds() - 1)?;
         for _ in 0..MAX_CANDIDATES {
             wall = self.schedule.next_after(&wall)?;
             let instant = self.instant_of(&wall)?;
@@ -131,7 +130,7 @@ impl ZonedCron {
     }
 
     /// The instant at which the task runs for the wall time `wall`.
-    fn instant_of(&self, wall: &DateTime<Utc>) -> Option<DateTime<Utc>> {
+    fn instant_of(&self, wall: &Timestamp) -> Option<Timestamp> {
         instant_of_wall(&self.zone, wall)
     }
 }
@@ -139,8 +138,8 @@ impl ZonedCron {
 /// The instant of the wall time `wall` (a UTC value holding the wall clock)
 /// in `zone`.
 #[cfg(feature = "scheduler-tz")]
-fn instant_of_wall(zone: &TimeZone, wall: &DateTime<Utc>) -> Option<DateTime<Utc>> {
-    let civil = Offset::UTC.to_datetime(timestamp(wall)?);
+fn instant_of_wall(zone: &TimeZone, wall: &Timestamp) -> Option<Timestamp> {
+    let civil = Offset::UTC.to_datetime(*wall);
     match zone.to_ambiguous_timestamp(civil).offset() {
         AmbiguousOffset::Unambiguous { offset } => shift(wall, -offset.seconds()),
         // A wall time that a fold repeats runs once, at its first instant.
@@ -149,23 +148,19 @@ fn instant_of_wall(zone: &TimeZone, wall: &DateTime<Utc>) -> Option<DateTime<Utc
         // the later offset it lies before the transition, which is
         // therefore the first one following it.
         AmbiguousOffset::Gap { after, .. } => {
-            let inside_gap = timestamp(&shift(wall, -after.seconds())?)?;
+            let inside_gap = shift(wall, -after.seconds())?;
             let transition = zone.following(inside_gap).next()?;
-            DateTime::from_timestamp(transition.timestamp().as_second(), 0)
+            Timestamp::from_second(transition.timestamp().as_second()).ok()
         }
     }
 }
 
 /// `instant` moved by `seconds`, or `None` outside the supported range.
 #[cfg(feature = "scheduler-tz")]
-fn shift(instant: &DateTime<Utc>, seconds: i32) -> Option<DateTime<Utc>> {
-    instant.checked_add_signed(TimeDelta::seconds(i64::from(seconds)))
-}
-
-#[cfg(feature = "scheduler-tz")]
-fn timestamp(instant: &DateTime<Utc>) -> Option<Timestamp> {
-    let nanosecond = i32::try_from(instant.timestamp_subsec_nanos()).ok()?;
-    Timestamp::new(instant.timestamp(), nanosecond).ok()
+fn shift(instant: &Timestamp, seconds: i32) -> Option<Timestamp> {
+    instant
+        .checked_add(SignedDuration::from_secs(i64::from(seconds)))
+        .ok()
 }
 
 #[cfg(feature = "scheduler-tz")]

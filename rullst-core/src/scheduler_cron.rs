@@ -8,14 +8,19 @@
 //! until 13.0.0-alpha.5; this evaluator keeps its accepted syntax, except that
 //! each field must now be valid on its own, and its search bounds.
 
-use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, NaiveTime, TimeDelta, Timelike, Utc};
 use field::{DAY_OF_MONTH, HOUR, MINUTE, MONTH, Values};
+use jiff::Timestamp;
+use jiff::civil::{Date, DateTime, Time};
+use jiff::tz::Offset;
 
 #[path = "scheduler_cron_field.rs"]
 mod field;
 
 /// The last year searched, as the `cron` crate did.
-const LAST_YEAR: i32 = 2100;
+const LAST_YEAR: i16 = 2100;
+
+/// 0000-01-01T00:00:00Z in Unix seconds.
+const YEAR_ZERO: i64 = -62_167_219_200;
 
 /// A validated POSIX five-field schedule.
 pub(crate) struct CronSchedule {
@@ -54,41 +59,39 @@ impl CronSchedule {
     /// matching whole minute after it, from 1970 through 2100. As with the
     /// `cron` crate, there is none when the second after `after` falls
     /// before year 0, and an earlier `after` starts the search in 1970.
-    pub(crate) fn next_after(&self, after: &DateTime<Utc>) -> Option<DateTime<Utc>> {
-        let next_second = after.checked_add_signed(TimeDelta::seconds(1))?;
-        if next_second.year() < 0 {
+    pub(crate) fn next_after(&self, after: &Timestamp) -> Option<Timestamp> {
+        let (second, _) = crate::rfc3339::unix_parts(*after);
+        if second + 1 < YEAR_ZERO {
             return None;
         }
-        let first = after
-            .with_second(0)?
-            .with_nanosecond(0)?
-            .checked_add_signed(TimeDelta::minutes(1))?
-            .max(DateTime::UNIX_EPOCH);
-        self.first_from(first.naive_utc())
+        let first = (second.div_euclid(60) + 1) * 60;
+        self.first_from(Offset::UTC.to_datetime(Timestamp::from_second(first.max(0)).ok()?))
     }
 
     /// The first matching minute at or after `from`, a whole minute.
-    fn first_from(&self, from: NaiveDateTime) -> Option<DateTime<Utc>> {
+    fn first_from(&self, from: DateTime) -> Option<Timestamp> {
         let mut date = from.date();
         let mut earliest = from.time();
         while date.year() <= LAST_YEAR {
-            if self.months.contains(date.month()) && self.runs_on(date) {
+            if self.months.contains(date.month().unsigned_abs().into()) && self.runs_on(date) {
                 if let Some(time) = self.first_time_from(earliest) {
-                    return Some(date.and_time(time).and_utc());
+                    return Offset::UTC.to_timestamp(date.to_datetime(time)).ok();
                 }
             }
-            date = date.succ_opt()?;
-            earliest = NaiveTime::MIN;
+            date = date.tomorrow().ok()?;
+            earliest = Time::midnight();
         }
         None
     }
 
     /// Whether the day fields select `date`.
-    fn runs_on(&self, date: NaiveDate) -> bool {
-        let day_of_month = self.days_of_month.contains(date.day());
+    fn runs_on(&self, date: Date) -> bool {
+        let day_of_month = self
+            .days_of_month
+            .contains(date.day().unsigned_abs().into());
         let day_of_week = self
             .days_of_week
-            .contains(date.weekday().num_days_from_sunday());
+            .contains(date.weekday().to_sunday_zero_offset().unsigned_abs().into());
         if self.either_day {
             day_of_month || day_of_week
         } else {
@@ -97,16 +100,24 @@ impl CronSchedule {
     }
 
     /// The first matching time of day at or after `earliest`.
-    fn first_time_from(&self, earliest: NaiveTime) -> Option<NaiveTime> {
-        let hour = earliest.hour();
+    fn first_time_from(&self, earliest: Time) -> Option<Time> {
+        let hour = u32::from(earliest.hour().unsigned_abs());
         if self.hours.contains(hour) {
-            if let Some(minute) = self.minutes.first_from(earliest.minute()) {
-                return NaiveTime::from_hms_opt(hour, minute, 0);
+            if let Some(minute) = self
+                .minutes
+                .first_from(earliest.minute().unsigned_abs().into())
+            {
+                return time(hour, minute);
             }
         }
         let hour = self.hours.first_from(hour + 1)?;
-        NaiveTime::from_hms_opt(hour, self.minutes.first_from(0)?, 0)
+        time(hour, self.minutes.first_from(0)?)
     }
+}
+
+/// The time of day `hour:minute:00`.
+fn time(hour: u32, minute: u32) -> Option<Time> {
+    Time::new(i8::try_from(hour).ok()?, i8::try_from(minute).ok()?, 0, 0).ok()
 }
 
 /// Parses a POSIX day-of-week field into days 0 (Sunday) to 6.
@@ -205,5 +216,5 @@ fn weekday_set(days: impl Iterator<Item = usize>) -> Values {
 mod tests;
 
 #[cfg(test)]
-#[path = "scheduler_cron_differential_tests.rs"]
-mod differential_tests;
+#[path = "scheduler_cron_golden_tests.rs"]
+mod golden_tests;

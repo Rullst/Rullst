@@ -191,7 +191,8 @@ async fn a_zero_task_timeout_is_rejected_before_any_task_starts() {
 
 #[test]
 fn registered_tasks_use_posix_weekday_numbering() {
-    use chrono::{Datelike, TimeZone};
+    use jiff::civil::Weekday;
+    use jiff::tz::Offset;
 
     assert!(Scheduler::new().task("0 3 * * 0", || async {}).is_ok());
     let task = Scheduler::new()
@@ -200,32 +201,26 @@ fn registered_tasks_use_posix_weekday_numbering() {
         .tasks
         .remove(0);
     // Thursday 2026-10-01 09:00 UTC is followed by Friday, then Monday.
-    let thursday = chrono::Utc
-        .with_ymd_and_hms(2026, 10, 1, 9, 0, 0)
-        .single()
-        .expect("valid instant");
+    let thursday: jiff::Timestamp = "2026-10-01T09:00:00Z".parse().expect("valid instant");
     let friday = task.schedule.next_after(&thursday).expect("next run");
-    assert_eq!(friday.weekday(), chrono::Weekday::Fri);
+    assert_eq!(Offset::UTC.to_datetime(friday).weekday(), Weekday::Friday);
     let monday = task.schedule.next_after(&friday).expect("next run");
-    assert_eq!(monday.weekday(), chrono::Weekday::Mon);
+    assert_eq!(Offset::UTC.to_datetime(monday).weekday(), Weekday::Monday);
 }
 
 #[test]
 fn an_occurrence_never_fires_twice_when_the_wall_clock_lags() {
-    use chrono::TimeZone;
+    use jiff::SignedDuration;
 
     let task = Scheduler::new()
         .task("0 0 * * *", || async {})
         .expect("daily schedule")
         .tasks
         .remove(0);
-    let midnight = chrono::Utc
-        .with_ymd_and_hms(2026, 10, 2, 0, 0, 0)
-        .single()
-        .expect("valid instant");
+    let midnight: jiff::Timestamp = "2026-10-02T00:00:00Z".parse().expect("valid instant");
     // The handler for midnight ran, but the wall clock was stepped back and
     // still reads just before midnight.
-    let lagging_now = midnight - chrono::Duration::milliseconds(300);
+    let lagging_now = midnight - SignedDuration::from_millis(300);
 
     assert_eq!(
         next_occurrence(&task.schedule, lagging_now, None),
@@ -233,12 +228,12 @@ fn an_occurrence_never_fires_twice_when_the_wall_clock_lags() {
     );
     assert_eq!(
         next_occurrence(&task.schedule, lagging_now, Some(midnight)),
-        Some(midnight + chrono::Duration::days(1))
+        Some(midnight + SignedDuration::from_hours(24))
     );
     // A clock that has moved past the last run is used as is.
-    let later = midnight + chrono::Duration::days(3);
+    let later = midnight + SignedDuration::from_hours(72);
     assert_eq!(
         next_occurrence(&task.schedule, later, Some(midnight)),
-        Some(midnight + chrono::Duration::days(4))
+        Some(midnight + SignedDuration::from_hours(96))
     );
 }

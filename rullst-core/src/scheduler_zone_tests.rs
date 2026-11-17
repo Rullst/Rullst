@@ -1,10 +1,11 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::*;
-use chrono::TimeZone as _;
+use jiff::tz::Offset;
 
-fn utc(year: i32, month: u32, day: u32, hour: u32, minute: u32) -> DateTime<Utc> {
-    Utc.with_ymd_and_hms(year, month, day, hour, minute, 0)
+fn utc(year: i16, month: i8, day: i8, hour: i8, minute: i8) -> Timestamp {
+    Offset::UTC
+        .to_timestamp(jiff::civil::date(year, month, day).at(hour, minute, 0, 0))
         .unwrap()
 }
 
@@ -13,7 +14,7 @@ fn zoned(expression: &str, zone: &str) -> ZonedCron {
 }
 
 /// The next `count` runs after `after`, each searched after the previous one.
-fn runs(expression: &str, zone: &str, after: DateTime<Utc>, count: usize) -> Vec<DateTime<Utc>> {
+fn runs(expression: &str, zone: &str, after: Timestamp, count: usize) -> Vec<Timestamp> {
     let schedule = zoned(expression, zone);
     let mut cursor = after;
     let mut runs = Vec::new();
@@ -59,7 +60,7 @@ fn a_run_at_the_search_instant_is_not_repeated() {
         schedule.next_after(&utc(2026, 11, 15, 10, 0)),
         Some(utc(2026, 11, 16, 10, 0))
     );
-    let just_before = utc(2026, 11, 15, 9, 59) + TimeDelta::milliseconds(59_500);
+    let just_before = utc(2026, 11, 15, 9, 59) + jiff::SignedDuration::from_millis(59_500);
     assert_eq!(
         schedule.next_after(&just_before),
         Some(utc(2026, 11, 15, 10, 0))

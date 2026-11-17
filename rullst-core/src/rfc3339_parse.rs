@@ -73,10 +73,8 @@ pub(super) fn parse_parts(text: &str, signed_years: bool) -> Option<(i64, u32)> 
     } else {
         (second, nanos)
     };
-    let local = days_from_civil(year, month, day) * SECONDS_PER_DAY
-        + hour * 3_600
-        + minute * 60
-        + second;
+    let local =
+        days_from_civil(year, month, day) * SECONDS_PER_DAY + hour * 3_600 + minute * 60 + second;
     Some((local - offset, nanos))
 }
 
@@ -96,12 +94,13 @@ fn offset_seconds(text: &str) -> Option<i64> {
     if text == "Z" || text == "z" {
         return Some(0);
     }
-    let (negative, rest) = if let Some(rest) = text.strip_prefix('+') {
-        (false, rest)
-    } else if let Some(rest) = text.strip_prefix('-').or_else(|| text.strip_prefix('\u{2212}')) {
-        (true, rest)
-    } else {
-        return None;
+    let (negative, rest) = match text.strip_prefix('+') {
+        Some(rest) => (false, rest),
+        None => (
+            true,
+            text.strip_prefix('-')
+                .or_else(|| text.strip_prefix('\u{2212}'))?,
+        ),
     };
     let bytes = rest.as_bytes();
     if bytes.len() != 5
