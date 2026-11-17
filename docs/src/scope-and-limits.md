@@ -1,5 +1,7 @@
 # Scope and Limits
 
+> 🇧🇷 [Leia esta página em português](pt-BR/scope-and-limits.md).
+
 This page lists what Rullst does not do by design, and what its own tests
 cannot establish because it depends on external services, hardware or
 upstream releases. It holds for every 13.x release until a release changes

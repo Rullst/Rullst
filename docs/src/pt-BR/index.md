@@ -3,8 +3,9 @@
 > **Tradução** da seção [“Rullst in 30 seconds”](../../../README.md#quickstart) do `README.md` em inglês, feita a partir do commit [`654944c44`](https://github.com/Rullst/Rullst/commit/654944c445e464c2b55d4720e6dd70105a07e44d). Se as duas versões divergirem, vale a versão em inglês.
 
 Estas páginas traduzem para o português do Brasil a trilha da primeira hora:
-instalação, `cargo rullst new`, a primeira página e a primeira API. O restante
-da documentação, incluindo a referência da CLI e os demais tutoriais, está em
+instalação, `cargo rullst new`, a primeira página e a primeira API. A página
+[Escopo e limites](scope-and-limits.md) também está traduzida. O restante da
+documentação, incluindo a referência da CLI e os demais tutoriais, está em
 inglês.
 
 ## ⚡ O Rullst em 30 segundos

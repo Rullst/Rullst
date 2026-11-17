@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check the Brazilian Portuguese translations of the first-hour pages.
+"""Check the Brazilian Portuguese translations of the first-hour pages and Scope and Limits.
 
 Every page under docs/src/pt-BR/ translates an English source named in
 TRANSLATIONS: a whole page, or one section of README.md. The check fails when
@@ -36,6 +36,7 @@ BOOK = "https://rullst.github.io/Rullst/book/"
 TRANSLATIONS: dict[str, tuple[str, str | None, str]] = {
     "docs/src/pt-BR/index.md": ("README.md", "## ⚡ Rullst in 30 seconds", BOOK + "pt-BR/index.html"),
     "docs/src/pt-BR/1-getting-started.md": ("docs/src/1-getting-started.md", None, "pt-BR/1-getting-started.md"),
+    "docs/src/pt-BR/scope-and-limits.md": ("docs/src/scope-and-limits.md", None, "pt-BR/scope-and-limits.md"),
     **{
         f"docs/src/pt-BR/tutorials/{name}.md": (f"docs/src/tutorials/{name}.md", None, f"../pt-BR/tutorials/{name}.md")
         for name in ("01-hello-world", "rest-api-quickstart", "02-cli-generators", "03-active-record-crud",
