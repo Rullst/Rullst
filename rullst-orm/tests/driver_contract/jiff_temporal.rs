@@ -79,12 +79,13 @@ mod native {
         updated_at: Option<ChronoDateTime<Utc>>,
     }
 
+    // `Debug` is chrono's ISO form (`Display` is chrono's, with a space).
     fn naive(value: DateTime) -> NaiveDateTime {
-        NaiveDateTime::parse_from_str(&value.to_string(), "%Y-%m-%dT%H:%M:%S%.f").expect("naive")
+        NaiveDateTime::parse_from_str(&format!("{value:?}"), "%Y-%m-%dT%H:%M:%S%.f").expect("naive")
     }
 
     fn chrono(value: Timestamp) -> ChronoDateTime<Utc> {
-        ChronoDateTime::parse_from_rfc3339(&value.to_string())
+        ChronoDateTime::parse_from_rfc3339(&format!("{value:?}"))
             .expect("instant")
             .with_timezone(&Utc)
     }

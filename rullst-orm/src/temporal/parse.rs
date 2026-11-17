@@ -300,14 +300,12 @@ fn offset(mut text: &str, zulu: bool, colon: Colon, missing_minutes: bool) -> Op
         Colon::Required => text.strip_prefix(':')?,
         Colon::Optional => text.trim_start_matches(|c: char| c == ':' || c.is_whitespace()),
     };
-    let minutes = match text.len() {
-        0 if missing_minutes => 0,
-        0 | 1 => return None,
-        _ => {
-            let minutes = two_digits(text, b'5')?;
-            text = &text[2..];
-            minutes
-        }
+    let minutes = if missing_minutes && text.is_empty() {
+        0
+    } else {
+        let minutes = two_digits(text, b'5')?;
+        text = &text[2..];
+        minutes
     };
     let seconds = hours * 3600 + minutes * 60;
     Some((text, if negative { -seconds } else { seconds }))
@@ -351,8 +349,9 @@ fn rfc3339(text: &str) -> Option<(civil::DateTime, i32)> {
         second: Some(i8::try_from(pair(17)?).ok()?),
         ..Parsed::default()
     };
-    // `NaiveTime::from_hms_nano_opt` range checks; 60 is a leap second.
-    if parsed.hour? > 23 || parsed.minute? > 59 || parsed.second? > 60 {
+    // 60 is a leap second; a later second would be clamped to 59 below, so
+    // it is refused here (an hour or minute out of range fails `Time::new`).
+    if parsed.second? > 60 {
         return None;
     }
     let mut rest = &text[19..];
