@@ -67,8 +67,16 @@ case "${1:-}" in
       echo "usage: $0 run K/N" >&2
       exit 2
     fi
-    # Same per-mutant bounds as a targeted mutants.yml run.
+    # Explicit bounds, as a targeted mutants.yml run sets them. cargo-mutants
+    # applies --timeout to the unmutated baseline too, so it must exceed the
+    # slowest baseline a hosted runner takes; see "Pull-request gate
+    # timeouts" in docs/src/mutation-testing.md for the measurements.
+    # Workspace pass: baselines took up to 77 s of tests.
     bounds=(--in-place --shard "$2" --timeout 300 --build-timeout 300)
+    # CLI pass (`cargo test --lib` of cargo-rullst, every feature): baselines
+    # took 112-309 s and twice exceeded 300 s; 900 s is about three times
+    # the slowest, and still stops a mutant that loops forever in 15 minutes.
+    cli_bounds=(--in-place --shard "$2" --timeout 900 --build-timeout 300)
     # Assigned first, so a failed listing stops the script (set -e) instead
     # of skipping its pass.
     workspace_count=$(count "${workspace[@]}" --shard "$2")
@@ -90,7 +98,7 @@ case "${1:-}" in
       cli_output="$scratch/mutants-pr-cli"
       rm -rf "$cli_output"
       set +e
-      "${cli[@]}" "${bounds[@]}" --output "$cli_output" -- --lib
+      "${cli[@]}" "${cli_bounds[@]}" --output "$cli_output" -- --lib
       statuses+=("$?")
       set -e
       mkdir -p "$root/mutants.out"

@@ -323,8 +323,10 @@ Full measurements run on hosted runners with `mutants.yml`
 -f test_scope=package [-f shard=k/n]`). A dispatch from a branch runs that
 branch's version of the workflow. Download each run's `outcomes.json`, list
 the `MissedMutant` and `Timeout` entries, and kill them with tests as in
-section 4. Measure `cargo-rullst` files with `-f test_scope=lib`, the scope the
-pull-request gate uses for them; a file reaches the gate's
+section 4. Measure `cargo-rullst` files with `-f test_scope=lib` and
+`-f timeout_seconds=900`, the scope and test timeout the pull-request gate
+uses for them (the default 300 s is below some runners' baseline); a file
+reaches the gate's
 `.github/mutants-pr-cli.txt` once that run leaves only accepted equivalents. Record campaign status (what is measured, what remains) in
 [`docs/src/mutation-testing.md`](docs/src/mutation-testing.md#campaign-status);
 mutants that only a live provider response reaches stay with provider sandbox
