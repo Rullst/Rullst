@@ -262,6 +262,13 @@ mod native {
             }
         }
         for (jiff_read, chrono_read) in as_jiff.iter().zip(&as_chrono) {
+            // The same JSON (`to_json()` serializes each field with serde).
+            assert_eq!(jiff_read.to_json(), chrono_read.to_json(), "{driver}");
+            assert_eq!(
+                format!("{} {}", jiff_read.starts_at, jiff_read.local_start),
+                format!("{} {}", chrono_read.starts_at, chrono_read.local_start),
+                "{driver}"
+            );
             assert_eq!(
                 chrono(jiff_read.starts_at),
                 chrono_read.starts_at,

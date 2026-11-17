@@ -12,6 +12,7 @@ use sqlx::sqlite::{SqliteArgumentsBuffer, SqliteTypeInfo, SqliteValueRef};
 use sqlx::types::time as sqlx_time;
 use sqlx::{Decode, Encode, Sqlite, Type, TypeInfo, ValueRef};
 
+use super::calendar;
 use super::parse::{self, Moment};
 use super::{Date, DateTime, Time, Timestamp, text};
 
@@ -99,9 +100,10 @@ fn moment(value: SqliteValueRef<'_>) -> Result<Moment, BoxDynError> {
     moment.ok_or_else(|| "invalid datetime".into())
 }
 
-/// An integer is Unix seconds.
+/// An integer is Unix seconds. The civil value is counted without an instant,
+/// whose range is narrower; the instant comes from it ([`Moment::instant`]).
 pub(super) fn from_unix_seconds(seconds: i64) -> Option<Moment> {
-    utc_moment(jiff::Timestamp::from_second(seconds).ok()?)
+    utc_moment(i128::from(seconds) * 1_000_000_000)
 }
 
 /// A real is a Julian day number. The whole and fractional seconds are
@@ -115,13 +117,13 @@ pub(super) fn from_julian_day(day: f64) -> Option<Moment> {
     // The saturating casts are the decoder's; out-of-range values fail below.
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let (whole, nanos) = (seconds.trunc() as i64, (seconds.fract() * 1E9).abs() as u32);
-    let total = i128::from(whole) * 1_000_000_000 + i128::from(nanos);
-    utc_moment(jiff::Timestamp::from_nanosecond(total).ok()?)
+    utc_moment(i128::from(whole) * 1_000_000_000 + i128::from(nanos))
 }
 
-fn utc_moment(instant: jiff::Timestamp) -> Option<Moment> {
+/// The UTC date-time `nanos` after the Unix epoch.
+fn utc_moment(nanos: i128) -> Option<Moment> {
     Some(Moment {
-        local: text::utc(instant),
+        local: calendar::date_time_from_unix_nanos(nanos)?,
         offset: 0,
     })
 }

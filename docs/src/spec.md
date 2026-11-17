@@ -1835,20 +1835,26 @@ Since 13.0.0-alpha.6 the ORM has its own date/time types for these columns,
 built on `jiff` 1.0 (`rullst_orm::jiff`): `Timestamp` (`timestamp_tz()`),
 `DateTime` (`timestamp()`), `Date` and `Time`, in `rullst_orm::temporal` and at
 the crate root. Each wraps the jiff type of the same name (`Deref`, `From` both
-ways; `Display`, `FromStr` and serde in jiff's ISO 8601 / RFC 3339 forms;
-`Default` as chrono's: the Unix epoch, 1970-01-01 and midnight) and binds and
-decodes with a strict driver feature, as the `chrono` types do: the same
+ways; `Display`, `Debug` and serde write chrono's text, `FromStr` and serde
+read every text chrono read and jiff's forms; `Default` as chrono's: the Unix
+epoch, 1970-01-01 and midnight) and binds and decodes with a strict driver
+feature, as the `chrono` types do: the same
 PostgreSQL and MySQL/MariaDB binary parameters (PostgreSQL microseconds since
 2000 truncated toward 2000; the MySQL/MariaDB length-prefixed date and time
 fields), the same SQLite text, the same `DATETIME` parameter for an instant in
 generated writes, filters and `Orm::raw` on MySQL/MariaDB, and every stored form
 the `chrono` decoders read (on SQLite, RFC 3339 and SQLx's other text forms,
 Unix-second integers and Julian-day reals), so rows written by either type mix
-in one column. Reading differs in four cases: a year outside -9999 to 9999 is a
-decode error; a leap second reads as second 59 with its fraction; PostgreSQL
-`infinity` and other values beyond that range are an error, where `chrono`
-panicked; and a MySQL/MariaDB zero or truncated binary value is an error, where
-SQLx's `chrono` decoder could panic. `RullstValue` gains `Timestamp`,
+in one column. Reading differs at the ends of jiff's range, without clamping:
+`DateTime`, `Date` and `Time` hold years -9999 to 9999 and `Timestamp`
+-9999-01-02T01:59:59Z to 9999-12-30T22:00:00.999999999Z, so a value outside
+(including the sentinel `9999-12-31 23:59:59` in a `timestamptz` or `DATETIME`
+read as a `Timestamp`; `WHERE col > '9999-12-30 22:00:00+00'` finds such rows)
+is a decode or parse error; a leap second reads as second 59 with its
+fraction; PostgreSQL `infinity` is an error, where `chrono` panicked; and a
+MySQL/MariaDB zero or truncated binary value is an error, where SQLx's
+`chrono` decoder could panic. `rullst::db::*` also exports the four names, so
+together with `use chrono::prelude::*` the name `DateTime` is ambiguous. `RullstValue` gains `Timestamp`,
 `CivilDateTime`, `CivilDate` and `CivilTime`, bound as the `chrono` variants
 bind the same value (as text on the `Any` pool, which decodes neither type), and
 Redis query-cache keys are the same for an equal value of either type.

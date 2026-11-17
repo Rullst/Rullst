@@ -22,39 +22,62 @@ pub(crate) fn utc(instant: jiff::Timestamp) -> civil::DateTime {
 }
 
 /// `2026-10-15T09:30:00.5+00:00` becomes `2026-10-15T09:30:00.500+00:00`:
-/// chrono's `to_rfc3339_opts(SecondsFormat::AutoSi, false)`.
+/// chrono's `to_rfc3339_opts(SecondsFormat::AutoSi, false)`, SQLx's SQLite
+/// form.
 pub(crate) fn timestamp(instant: Timestamp) -> String {
-    let wall = utc(instant.0);
-    let mut text = String::with_capacity(32);
-    push_date(&mut text, wall.date());
-    text.push('T');
-    push_clock(&mut text, wall.time());
-    push_auto_fraction(&mut text, wall.subsec_nanosecond());
+    let mut text = date_time_with(utc(instant.0), 'T');
     text.push_str("+00:00");
     text
 }
 
-/// `YYYY-MM-DD HH:MM:SS[.f]`: chrono's `%F %T%.f`.
-pub(crate) fn date_time(value: DateTime) -> String {
-    let mut text = String::with_capacity(29);
-    push_date(&mut text, value.date());
-    text.push(' ');
-    push_clock(&mut text, value.time());
-    push_auto_fraction(&mut text, value.subsec_nanosecond());
+/// `2026-10-15T09:30:00.500Z`: chrono's `Debug` and serde form of a
+/// `DateTime<Utc>` (`to_rfc3339_opts(SecondsFormat::AutoSi, true)`).
+pub(crate) fn timestamp_iso(instant: Timestamp) -> String {
+    let mut text = date_time_with(utc(instant.0), 'T');
+    text.push('Z');
     text
 }
 
-/// `YYYY-MM-DD`: chrono's `%F`.
+/// `2026-10-15 09:30:00.500 UTC`: chrono's `Display` of a `DateTime<Utc>`.
+pub(crate) fn timestamp_display(instant: Timestamp) -> String {
+    let mut text = date_time_with(utc(instant.0), ' ');
+    text.push_str(" UTC");
+    text
+}
+
+/// `YYYY-MM-DD HH:MM:SS[.f]`: chrono's `%F %T%.f`, SQLx's SQLite form and
+/// chrono's `Display` of a `NaiveDateTime`.
+pub(crate) fn date_time(value: DateTime) -> String {
+    date_time_with(value.0, ' ')
+}
+
+/// `YYYY-MM-DDTHH:MM:SS[.f]`: chrono's `Debug` and serde form of a
+/// `NaiveDateTime`.
+pub(crate) fn date_time_iso(value: DateTime) -> String {
+    date_time_with(value.0, 'T')
+}
+
+/// `YYYY-MM-DD`: chrono's `%F` and every chrono form of a `NaiveDate`.
 pub(crate) fn date(value: Date) -> String {
     let mut text = String::with_capacity(10);
     push_date(&mut text, value.0);
     text
 }
 
-/// `HH:MM:SS[.f]`: chrono's `%T%.f`.
+/// `HH:MM:SS[.f]`: chrono's `%T%.f` and every chrono form of a `NaiveTime`.
 pub(crate) fn time(value: Time) -> String {
     let mut text = String::with_capacity(18);
     push_clock(&mut text, value.0);
+    push_auto_fraction(&mut text, value.subsec_nanosecond());
+    text
+}
+
+/// The date, `separator`, the time and its fraction.
+fn date_time_with(value: civil::DateTime, separator: char) -> String {
+    let mut text = String::with_capacity(36);
+    push_date(&mut text, value.date());
+    text.push(separator);
+    push_clock(&mut text, value.time());
     push_auto_fraction(&mut text, value.subsec_nanosecond());
     text
 }

@@ -82,7 +82,7 @@ pub(super) const TIME: &[Item] = &[Hour, Lit(":"), Minute, Lit(":"), Second, Fra
 /// `%F`.
 pub(super) const DATE_ONLY: &[Item] = &DATE;
 
-const fn date_time(separator: Item, time: &'static [Item], suffix: &'static [Item]) -> [Item; 13] {
+const fn date_time(separator: Item, time: &'static [Item], suffix: Option<Item>) -> [Item; 13] {
     let mut items = [Lit(""); 13];
     let mut index = 0;
     while index < 5 {
@@ -97,20 +97,17 @@ const fn date_time(separator: Item, time: &'static [Item], suffix: &'static [Ite
         used += 1;
         part += 1;
     }
-    part = 0;
-    while part < suffix.len() {
-        items[used] = suffix[part];
-        used += 1;
-        part += 1;
+    if let Some(item) = suffix {
+        items[used] = item;
     }
     items
 }
 
 const HM: &[Item] = &[Hour, Lit(":"), Minute];
 const HMS_F: &[Item] = &[Hour, Lit(":"), Minute, Lit(":"), Second, Fraction];
-const NONE: &[Item] = &[];
-const ZULU: &[Item] = &[Lit("Z")];
-const OFFSET: &[Item] = &[Offset];
+const NONE: Option<Item> = None;
+const ZULU: Option<Item> = Some(Lit("Z"));
+const OFFSET: Option<Item> = Some(Offset);
 
 /// The date-time formats SQLx's SQLite decoder tries after RFC 3339, in its
 /// order: `%F %T%.f`, `%F %R`, `%F %RZ`, `%F %R%:z`, `%F %T%.fZ`,
@@ -144,7 +141,7 @@ const SQLITE_TIME: [&[Item]; 7] = [
 ];
 
 /// What a format matched, before the calendar checks.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(super) struct Parsed {
     year: Option<i32>,
     month: Option<i8>,
@@ -182,8 +179,16 @@ impl Parsed {
 
 /// Matches `text` against `items` as chrono's `parse` does: every item in
 /// turn, and nothing may follow the last.
-pub(super) fn parse(mut text: &str, items: &[Item]) -> Option<Parsed> {
+pub(super) fn parse(text: &str, items: &[Item]) -> Option<Parsed> {
     let mut parsed = Parsed::default();
+    parse_prefix(text, items, &mut parsed)?
+        .is_empty()
+        .then_some(parsed)
+}
+
+/// Matches the start of `text` against `items` into `parsed`, as chrono's
+/// `parse_internal`, and returns the rest.
+fn parse_prefix<'t>(mut text: &'t str, items: &[Item], parsed: &mut Parsed) -> Option<&'t str> {
     for item in items {
         match *item {
             Lit(literal) => text = text.strip_prefix(literal)?,
@@ -224,7 +229,7 @@ pub(super) fn parse(mut text: &str, items: &[Item]) -> Option<Parsed> {
             }
         }
     }
-    text.is_empty().then_some(parsed)
+    Some(text)
 }
 
 /// Up to `max` ASCII digits, at least one.
@@ -392,6 +397,96 @@ pub(super) fn sqlite_date_time(text: &str) -> Option<Moment> {
             offset: parsed.valid_offset().unwrap_or(0),
         })
     })
+}
+
+/// chrono's `FromStr` of a `DateTime<Utc>` (its relaxed RFC 3339): a date
+/// whose fields may be unpadded or spaced, `T`, `t` or a space, a time with
+/// seconds and an optional fraction, then `UTC` (any case), `Z`, `z` or a
+/// valid `±HH:MM` (`±HHMM`, `±HH MM`), with whitespace allowed before the
+/// offset and at the end.
+pub(super) fn timestamp_from_str(text: &str) -> Option<jiff::Timestamp> {
+    const DATE_PART: &[Item] = &[Year, Space, Lit("-"), Month, Space, Lit("-"), Day];
+    const TIME_PART: &[Item] = &[
+        Hour,
+        Space,
+        Lit(":"),
+        Minute,
+        Space,
+        Lit(":"),
+        Second,
+        Fraction,
+        Space,
+    ];
+    let mut parsed = Parsed::default();
+    let rest = parse_prefix(text, DATE_PART, &mut parsed)?;
+    let rest = rest.strip_prefix(['T', 't', ' '])?;
+    let rest = parse_prefix(rest, TIME_PART, &mut parsed)?.trim_start();
+    let (rest, offset) = match rest.get(..3) {
+        Some(zone) if zone.eq_ignore_ascii_case("UTC") => (&rest[3..], 0),
+        _ => offset(rest, true, Colon::Optional, false)?,
+    };
+    if !rest.trim_start().is_empty() || offset.abs() >= 86_400 {
+        return None;
+    }
+    Moment {
+        local: parsed.date_time()?,
+        offset,
+    }
+    .instant()
+}
+
+/// chrono's `FromStr` of a `NaiveDateTime`: `YYYY-MM-DDTHH:MM:SS[.f]`, with
+/// unpadded fields and whitespace around them allowed.
+pub(super) fn date_time_from_str(text: &str) -> Option<civil::DateTime> {
+    const ITEMS: &[Item] = &[
+        Year,
+        Space,
+        Lit("-"),
+        Month,
+        Space,
+        Lit("-"),
+        Day,
+        Space,
+        Lit("T"),
+        Hour,
+        Space,
+        Lit(":"),
+        Minute,
+        Space,
+        Lit(":"),
+        Second,
+        Fraction,
+        Space,
+    ];
+    parse(text, ITEMS)?.date_time()
+}
+
+/// chrono's `FromStr` of a `NaiveDate`: `YYYY-MM-DD`, with unpadded fields
+/// and whitespace allowed.
+pub(super) fn date_from_str(text: &str) -> Option<civil::Date> {
+    const ITEMS: &[Item] = &[Year, Space, Lit("-"), Month, Space, Lit("-"), Day, Space];
+    parse(text, ITEMS)?.date()
+}
+
+/// chrono's `FromStr` of a `NaiveTime`: `HH:MM`, then optionally `:SS[.f]`,
+/// with unpadded fields and whitespace allowed.
+pub(super) fn time_from_str(text: &str) -> Option<civil::Time> {
+    const HOUR_AND_MINUTE: &[Item] = &[Hour, Space, Lit(":"), Minute];
+    const SECOND: &[Item] = &[Space, Lit(":"), Second, Fraction, Space];
+    let mut parsed = Parsed::default();
+    let rest = parse_prefix(text, HOUR_AND_MINUTE, &mut parsed)?;
+    let mut with_second = parsed.clone();
+    let rest = match parse_prefix(rest, SECOND, &mut with_second) {
+        Some(after) => {
+            parsed = with_second;
+            after
+        }
+        None => rest,
+    };
+    if !rest.trim_start().is_empty() {
+        return None;
+    }
+    parsed.time()
 }
 
 /// A SQLite text time of day: the first of [`SQLITE_TIME`] that matches; an

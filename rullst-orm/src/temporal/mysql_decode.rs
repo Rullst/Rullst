@@ -1,7 +1,8 @@
 //! `Decode` for MySQL/MariaDB: the value's bytes go to the parent's functions,
-//! which the unit tests cover; the live MySQL and MariaDB matrices
-//! (`matrix_mysql`, `matrix_mariadb`, `tests/driver_contract/jiff_temporal.rs`)
-//! cover these.
+//! which the unit tests cover. The ORM strict-mysql CI job covers these: it
+//! runs `matrix_mysql` and `matrix_mariadb` with the strict MySQL pool, whose
+//! driver contract (`tests/driver_contract/jiff_temporal.rs`) reads binary and
+//! text-protocol values.
 
 use sqlx::error::BoxDynError;
 use sqlx::mysql::MySqlValueRef;

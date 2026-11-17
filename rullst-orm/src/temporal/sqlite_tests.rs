@@ -215,7 +215,7 @@ async fn every_storage_class_reads_as_chrono_reads_it() {
         row.try_get::<Timestamp, _>(1)
             .expect("leap second")
             .to_string(),
-        "2016-12-31T23:59:59.5Z"
+        "2016-12-31 23:59:59.500 UTC"
     );
 
     let row = sqlx::query("SELECT CAST(? AS TEXT)")
@@ -226,4 +226,38 @@ async fn every_storage_class_reads_as_chrono_reads_it() {
         .await
         .expect("bind");
     assert_eq!(row.get::<String, _>(0), "2026-10-15T09:30:00+00:00");
+}
+
+/// Integers and reals near the ends of the civil range read as civil values
+/// even where no `Timestamp` exists, as chrono's `NaiveDateTime` read them.
+#[test]
+fn integers_and_reals_reach_the_civil_edges() {
+    for (moment, local) in [
+        (from_unix_seconds(253_402_300_799), "9999-12-31T23:59:59"),
+        (
+            from_unix_seconds(-377_705_116_800),
+            "-009999-01-01T00:00:00",
+        ),
+        (from_julian_day(5_373_484.0), "9999-12-31T12:00:00"),
+    ] {
+        let moment = moment.expect("a civil value");
+        assert_eq!(moment.local.to_string(), local);
+        assert_eq!(moment.instant(), None, "{local} is no Timestamp");
+    }
+    assert!(from_unix_seconds(253_402_300_800).is_none());
+    assert!(from_unix_seconds(-377_705_116_801).is_none());
+    assert_eq!(
+        from_unix_seconds(253_402_207_200)
+            .and_then(|moment| moment.instant())
+            .map(|at| at.to_string())
+            .as_deref(),
+        Some("9999-12-30T22:00:00Z")
+    );
+    assert_eq!(
+        from_julian_day(2_440_587.5)
+            .and_then(|moment| moment.instant())
+            .map(|at| at.to_string())
+            .as_deref(),
+        Some("1970-01-01T00:00:00Z")
+    );
 }

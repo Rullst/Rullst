@@ -45,7 +45,7 @@ serde_json = { workspace = true }
 chrono = { workspace = true, features = ["std", "clock", "serde"] }
 # The date/time types of model fields and `RullstValue` (`Timestamp`,
 # `DateTime`, `Date`, `Time`) wrap jiff's; re-exported as `rullst_orm::jiff`.
-jiff = { workspace = true, features = ["serde"] }
+jiff = { workspace = true }
 redis = { workspace = true, features = ["tokio-rustls-comp", "connection-manager"], optional = true }
 # Installs aws-lc-rs as the rustls process default before a Redis TLS connection.
 rustls = { workspace = true, features = ["aws-lc-rs", "std"], optional = true }

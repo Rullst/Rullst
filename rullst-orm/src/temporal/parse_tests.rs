@@ -7,7 +7,9 @@ use chrono::{DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime};
 use chrono::{Offset as _, TimeZone, Utc};
 use proptest::prelude::*;
 
-use super::super::test_support::{jiff_date, jiff_date_time, jiff_instant, jiff_time};
+use super::super::test_support::{
+    date_time_text, jiff_date, jiff_date_time, jiff_instant, jiff_time, time_text,
+};
 use super::{DATE_ONLY, DATE_TIME, DATE_TIME_OFFSET, TIME, parse, sqlite_date_time, sqlite_time};
 
 /// sqlx-sqlite 0.9 `decode_datetime_from_text`.
@@ -247,89 +249,6 @@ fn server_text_golden_values() {
             .to_string(),
         "2026-10-15T09:30:00.000001"
     );
-}
-
-/// Near-valid date-times: every part varies in width, range and spelling.
-fn date_time_text() -> impl Strategy<Value = String> {
-    let year = prop_oneof![
-        (0_i32..=9999).prop_map(|year| format!("{year:04}")),
-        (-12_000_i32..=12_000).prop_map(|year| format!("{year:+05}")),
-        (0_i32..100_000).prop_map(|year| year.to_string()),
-        Just("-0".to_string()),
-    ];
-    let two = |max: u32| {
-        prop_oneof![
-            (0..=max).prop_map(|value| format!("{value:02}")),
-            (0..=max).prop_map(|value| value.to_string()),
-            Just(" 7".to_string()),
-            Just("123".to_string()),
-        ]
-    };
-    let fraction = prop_oneof![
-        Just(String::new()),
-        "\\.[0-9]{0,12}",
-        Just(".f".to_string()),
-    ];
-    let separator = prop_oneof![
-        Just("T"),
-        Just(" "),
-        Just("t"),
-        Just("  "),
-        Just("\t"),
-        Just(""),
-    ];
-    let offset = prop_oneof![
-        Just(String::new()),
-        Just("Z".to_string()),
-        Just("z".to_string()),
-        "[ ]?[+\\-\u{2212}][0-9]{2}(:?[0-9]{2})?",
-        "[+-][0-9]{1,2}(:| |::)?[0-9]{0,3}",
-    ];
-    (
-        year,
-        two(14),
-        two(33),
-        separator,
-        two(25),
-        two(62),
-        prop::option::of(two(62)),
-        fraction,
-        offset,
-        prop_oneof![Just(""), Just(" "), Just("x")],
-    )
-        .prop_map(
-            |(year, month, day, separator, hour, minute, second, fraction, offset, tail)| {
-                let seconds = match second {
-                    Some(second) => format!(":{second}{fraction}"),
-                    None => String::new(),
-                };
-                format!("{year}-{month}-{day}{separator}{hour}:{minute}{seconds}{offset}{tail}")
-            },
-        )
-}
-
-fn time_text() -> impl Strategy<Value = String> {
-    (
-        0_u32..=25,
-        0_u32..=61,
-        prop::option::of(0_u32..=61),
-        prop_oneof![
-            Just(String::new()),
-            "\\.[0-9]{0,12}",
-            Just(".f".to_string())
-        ],
-        prop_oneof![
-            Just(String::new()),
-            Just("Z".to_string()),
-            "[ ]?[+-][0-9]{2}(:?[0-9]{2})?"
-        ],
-    )
-        .prop_map(|(hour, minute, second, fraction, offset)| {
-            let seconds = second
-                .map(|second| format!(":{second:02}{fraction}"))
-                .unwrap_or_default();
-            format!("{hour:02}:{minute:02}{seconds}{offset}")
-        })
 }
 
 proptest! {
