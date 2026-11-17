@@ -192,6 +192,22 @@ and fails on any surviving mutant.
   (`.github/check-public-dependencies.py`). A crate newly exposed in the API
   gets a row there and in the policy table. A security exception changes both in
   the same pull request, and the CHANGELOG marks it.
+- **Public dependency health** (`dependency-health.yml`, monthly and manual;
+  informational). `.github/public-dependency-health.py` reads crates.io, the
+  rustsec/advisory-db repository and the GitHub API for every crate in
+  `.github/public-dependencies.json`, and flags one with no release for 12
+  months, a newer incompatible line (a newer major, or a newer 0.x minor), an
+  advisory (unmaintained, unsound and notice ones included) that the newest
+  release of its 13.x line does not escape, or an archived repository. A run
+  from `main` opens the "Public dependency health needs review" issue
+  (`dependency-health` label), or updates its description with the new
+  report, and comments only when the set of flags changed; a clean run closes
+  it. A flag is a reason to plan, not a failure: an abandoned public
+  dependency forces a breaking change (as chrono did in November 2026), so
+  plan its replacement before a release freezes the line, or record why it
+  stays. Locally, `python3 .github/public-dependency-health.py` prints the
+  same report (`GITHUB_TOKEN` is optional; the offline tests are
+  `.github/test-public-dependency-health.py`).
 - **Feature matrix** (`.github/check-feature-matrix.py`) and feature
   boundaries (`.github/check-feature-boundaries.sh`) must list every facade
   feature.

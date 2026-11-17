@@ -89,6 +89,8 @@ jobs:
           python3 .github/test-check-package-reproducibility.py
           python3 .github/test-crates-ownership-policy.py
           python3 .github/test-filter-codeql-test-fixtures.py
+          # Offline; dependency-health.yml reads the live sources monthly.
+          python3 .github/test-public-dependency-health.py
 
       - name: Enforce canonical Action reference syntax
         run: |

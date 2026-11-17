@@ -374,7 +374,7 @@ These results are evidence for their stated scope, not a security certification
 of every application built with Rullst.
 
 <details>
-<summary><strong>🛡️ Open the verification dashboard (35 workflows)</strong></summary>
+<summary><strong>🛡️ Open the verification dashboard (36 workflows)</strong></summary>
 
 <p align="center">
   Badges are pinned to the <code>main</code> branch; they report the latest matching run, not a certification or deployment guarantee.
@@ -419,6 +419,7 @@ green main gates:
 | [OWASP ZAP](https://github.com/Rullst/Rullst/actions/workflows/dast-zap.yml) | Manual baseline over four release surfaces: the generated REST API, the generated SaaS starter (public pages, then signed-in pages with a disposable account) and the LMS example are blocking with no ignored alerts; the deliberately CDN-backed blog showcase remains an explicitly informational boundary. |
 | [Kani](https://github.com/Rullst/Rullst/actions/workflows/kani.yml), [Miri](https://github.com/Rullst/Rullst/actions/workflows/miri.yml) | Weekly on `main` and dispatched for release admission: the selected Kani harnesses and Miri scopes are strict. Only the dispatched run on the exact candidate commit counts as release evidence. The Miri run also has informational `cargo careful test` jobs. |
 | [Mutation testing](https://github.com/Rullst/Rullst/actions/workflows/mutants.yml), [cargo-udeps](https://github.com/Rullst/Rullst/actions/workflows/udeps.yml) | Manual mutation campaigns and weekly unused-dependency scans; their findings remain explicitly informational. |
+| [Public dependency health](https://github.com/Rullst/Rullst/actions/workflows/dependency-health.yml) | Monthly/manual informational report on the crates the public API exposes: stale releases, newer incompatible lines, RustSec advisories (unmaintained ones included) and archived repositories; a flagged crate opens or updates an issue. |
 | [v13 Verus pilot](https://github.com/Rullst/Rullst/blob/main/.github/workflows/verus.yml) | Optional production-linked age-policy proof with pinned tooling and three negative controls. Hosted registration/acceptance remains pending; no framework-wide correctness claim. |
 | [GitHub Pages](https://github.com/Rullst/Rullst/actions/workflows/pages.yml) | Deploys development documentation and the benchmark dashboards from `main` under `/Rullst/`; the [rullst.win](https://rullst.win/) landing page is built from the same `docs/` sources by `Rullst/Rullst.github.io`. It is not a code-quality gate. |
 | [Release and provenance](https://github.com/Rullst/Rullst/actions/workflows/release.yml) | Exact version tags only: exact-SHA admission of the full CI matrix, package-all, evidence bundle, checksums, GitHub build-provenance attestation, changelog-derived release notes, and ordered crates.io publication. This does **not** claim a project-wide SLSA level or independent certification. |
@@ -426,13 +427,13 @@ green main gates:
 Scheduled events use the repository's default branch, so scheduled and
 continuous development evidence refer to `main`; the frozen v12 line has its own branch.
 The branch-protection profiles and the exact scope of all
-35 workflow definitions in this source branch are documented in
+36 workflow definitions in this source branch are documented in
 [WORKFLOWS.md](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md).
 
 </details>
 
 - 📖 **[CI/CD and security workflows](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md)**:
-  the exact scope of all 35 workflow definitions and the branch-protection profiles.
+  the exact scope of all 36 workflow definitions and the branch-protection profiles.
 - 🧰 **[How the repository is maintained](https://github.com/Rullst/Rullst/blob/main/MAINTAINING.md)**:
   workstation rules, CI gates, fuzzing evidence and release admission.
 - 📋 [Capability status](https://rullst.github.io/Rullst/book/capability-status.html)
