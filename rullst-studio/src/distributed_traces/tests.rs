@@ -318,3 +318,66 @@ fn source_names_and_the_clock_window_are_bounded_inclusively() {
         Err(TraceIngestionError::TimestampOutsideWindow)
     );
 }
+
+#[test]
+fn debug_output_is_fixed_and_random_nonces_fill_both_halves() {
+    let key = TraceIngestionKey::new(KEY).expect("trace key");
+    assert_eq!(format!("{key:?}"), "TraceIngestionKey([REDACTED])");
+
+    let now = unix_time().expect("test clock");
+    let signer = TraceBatchSigner::new("api-1", key).expect("trace signer");
+    let batch = TraceBatchV1::new(vec![span(now, 1, "users.fetch", 50)]);
+    let first = signer.sign(&batch).expect("first signed trace");
+    let second = signer.sign(&batch).expect("second signed trace");
+    assert_eq!(
+        format!("{first:?}"),
+        format!(
+            "SignedTraceBatch {{ body_bytes: {}, source: \"api-1\", timestamp: \"{}\", .. }}",
+            first.body().len(),
+            first.timestamp()
+        )
+    );
+    let decode = |signed: &SignedTraceBatch| {
+        use base64::Engine as _;
+        base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .decode(signed.nonce())
+            .expect("base64url nonce")
+    };
+    let (first, second) = (decode(&first), decode(&second));
+    assert_eq!(first.len(), 16);
+    assert_ne!(first, second);
+    // Each half comes from its own 64-bit draw; both being zero has a
+    // probability of 2^-64.
+    for nonce in [&first, &second] {
+        assert!(nonce[..8].iter().any(|byte| *byte != 0), "{nonce:?}");
+        assert!(nonce[8..].iter().any(|byte| *byte != 0), "{nonce:?}");
+    }
+}
+
+#[test]
+fn a_body_of_exactly_the_limit_is_signed() {
+    let now = 1_800_000_000;
+    let signer = TraceBatchSigner::new("api-1", TraceIngestionKey::new(KEY).expect("trace key"))
+        .expect("trace signer");
+    let sized = |operation_bytes: usize| {
+        TraceBatchV1::new(vec![span(now, 1, &"o".repeat(operation_bytes), 50)])
+    };
+    let base = serde_json::to_vec(&sized(0)).expect("encoded batch").len();
+    let exact = sized(131_072 - base);
+    assert_eq!(
+        serde_json::to_vec(&exact).expect("encoded batch").len(),
+        131_072
+    );
+    assert_eq!(
+        signer
+            .sign_at(&exact, now, [4; 16])
+            .expect("signed")
+            .body()
+            .len(),
+        131_072
+    );
+    assert!(matches!(
+        signer.sign_at(&sized(131_073 - base), now, [5; 16]),
+        Err(TraceIngestionError::InvalidBatch)
+    ));
+}
