@@ -105,7 +105,6 @@ pub fn router(state: Arc<LoggerState>) -> Router {
         .with_state(state)
 }
 
-#[cfg_attr(mutants, mutants::skip)]
 async fn logger_dashboard() -> Html<String> {
     Html(r#"<!DOCTYPE html>
 <html lang="en" class="h-full bg-slate-950 text-slate-100">
@@ -263,5 +262,61 @@ mod tests {
         assert!(html.contains("&lt;img src=x onerror=alert(1)&gt;"));
         assert!(!html.contains("<script>"));
         assert!(!html.contains("<img"));
+    }
+
+    #[tokio::test]
+    async fn the_dashboard_loads_its_script_and_the_stream_colors_each_status_class() {
+        let state = Arc::new(LoggerState::new());
+        let page = router(state.clone())
+            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let page = axum::body::to_bytes(page.into_body(), 64 * 1024)
+            .await
+            .unwrap();
+        let page = String::from_utf8(page.to_vec()).unwrap();
+        assert!(page.contains(
+            "<h1 class=\"text-3xl font-bold mb-4 text-emerald-400\">Request Logger</h1>"
+        ));
+        assert!(page.contains("<script src=\"/studio/assets/logger.js\" defer></script>"));
+
+        let stream = router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .uri("/stream")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let mut events = stream.into_body().into_data_stream();
+        for (status, color) in [
+            (204, "text-green-400"),
+            (302, "text-yellow-400"),
+            (404, "text-orange-400"),
+            (503, "text-red-400"),
+            (101, "text-slate-400"),
+        ] {
+            state
+                .tx
+                .send(RequestLog {
+                    method: "GET".to_string(),
+                    uri: format!("/status/{status}"),
+                    status,
+                    latency_ms: 1,
+                    timestamp: "2026-11-17T00:00:00Z".to_string(),
+                })
+                .expect("a subscribed stream");
+            let frame = tokio::time::timeout(std::time::Duration::from_secs(10), events.next())
+                .await
+                .expect("an event before the deadline")
+                .expect("an open stream")
+                .expect("a data frame");
+            let frame = String::from_utf8(frame.to_vec()).unwrap();
+            assert!(
+                frame.contains(&format!("<span class=\"font-bold {color}\">GET</span>")),
+                "{status}: {frame}"
+            );
+        }
     }
 }

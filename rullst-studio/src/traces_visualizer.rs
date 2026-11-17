@@ -267,4 +267,18 @@ mod tests {
         assert!(html.contains("users.&lt;script&gt;"));
         assert!(!html.contains("users.<script>"));
     }
+
+    #[test]
+    fn empty_and_unavailable_distributed_stores_render_one_message_row() {
+        assert_eq!(
+            render_distributed_rows(Ok(&[])),
+            "<tr><td colspan=\"6\" class=\"px-6 py-10 text-center text-xs text-slate-500\">No authenticated distributed spans have been ingested</td></tr>"
+        );
+        assert_eq!(
+            render_distributed_rows(Err(
+                &crate::distributed_traces::TraceIngestionError::StoreUnavailable
+            )),
+            "<tr><td colspan=\"6\" class=\"px-6 py-10 text-center text-xs text-slate-500\">Distributed trace store unavailable</td></tr>"
+        );
+    }
 }
