@@ -133,6 +133,31 @@ async fn date_and_time_fields_round_trip_on_sqlite() {
     assert_eq!(opens_at, text("18:45:10.500"));
     assert_eq!(paid_at, text("2026-10-15T12:30:00.250+00:00"));
 
+    // Instants a `jiff::Timestamp` cannot hold keep their earlier text,
+    // including year 10000, which an offset reaches from 9999-12-31.
+    for (submitted, stored_text) in [
+        (
+            "9999-12-31T23%3A30%3A00.5Z",
+            "9999-12-31T23:30:00.500+00:00",
+        ),
+        ("9999-12-31T23%3A00-05%3A00", "+10000-01-01T04:00:00+00:00"),
+    ] {
+        let (status, body) = send(
+            &app,
+            "PUT",
+            "/table/appointments/record/1",
+            &format!("paid_at={submitted}"),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+        assert_eq!(stored(pool).await.3, text(stored_text));
+    }
+    let (_, form) = send(&app, "GET", "/table/appointments/record/1/edit", "").await;
+    assert!(
+        form.contains("type=\"text\" name=\"paid_at\" value=\"+10000-01-01T04:00:00+00:00\""),
+        "{form}"
+    );
+
     for (body, field) in [
         ("due_on=2026-02-30", "due_on"),
         ("opens_at=25%3A00", "opens_at"),
