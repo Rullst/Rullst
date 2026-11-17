@@ -425,3 +425,14 @@ fn the_store_counts_accepted_and_duplicate_spans_and_flags_only_slow_ones() {
     assert_eq!(slow[0].operation, "orders.fetch");
     assert_eq!(slow[0].maximum_duration_us, 100_000);
 }
+
+#[test]
+fn the_ingestor_debug_output_shows_only_its_store() {
+    let store = DistributedTraceStore::new(8).expect("trace store");
+    let key = TraceIngestionKey::new(KEY).expect("trace key");
+    let ingestor = TraceIngestor::new(store, "api-1", key).expect("trace ingestor");
+    assert_eq!(
+        format!("{ingestor:?}"),
+        "TraceIngestor { store: DistributedTraceStore { capacity: 8, .. }, .. }"
+    );
+}
