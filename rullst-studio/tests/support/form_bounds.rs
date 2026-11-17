@@ -33,11 +33,13 @@ pub(super) async fn exercise_form_bounds(
     // sent as `%25`, three bytes.
     let budget = 65_536 - 12 - (16 + forms_table.len());
     let wide = "%".repeat(16_384);
+    let fitting = "x".repeat(budget - 49_152);
+    let oversized = "x".repeat(budget - 49_152 + 1);
     let rows = [
         // Exactly 64 KiB: the delete form is offered, the edit form is not.
-        (wide.clone(), "x".repeat(budget - 49_152)),
+        (wide.clone(), fitting.clone()),
         // One byte more: the row is read-only.
-        (wide, "x".repeat(budget - 49_152 + 1)),
+        (wide, oversized.clone()),
         // A key of exactly 16 KiB is addressable.
         ("y".repeat(16_384), "z".to_string()),
         // One byte more is not.
@@ -86,6 +88,9 @@ pub(super) async fn exercise_form_bounds(
         2
     );
     assert_eq!(html.matches(">Delete row</button>").count(), 3);
+    // The row of exactly 64 KiB is the one that keeps its forms.
+    assert!(html.contains(&format!("name=\"pk_b\" value=\"{fitting}\"")));
+    assert!(!html.contains(&format!("name=\"pk_b\" value=\"{oversized}\"")));
     assert_eq!(html.matches(">Apply</button>").count(), 1);
     assert!(html.contains("<option value=\"note\">note (nullable)</option>"));
     assert!(!html.contains("<option value=\"a\">"));
