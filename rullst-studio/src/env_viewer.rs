@@ -1,4 +1,3 @@
-#![cfg_attr(mutants, mutants::skip)]
 use axum::{Router, response::Html, routing::get};
 use std::ffi::OsString;
 
@@ -335,6 +334,14 @@ mod tests {
         assert!(rows.contains("https://example.test/docs?page=2"));
         assert!(rows.contains("monkey=george"));
         assert!(rows.contains("pt_BR.UTF-8"));
+    }
+
+    #[test]
+    fn user_information_is_found_right_after_a_short_scheme() {
+        // The authority starts three bytes after `://`, wherever the scheme ends.
+        assert!(value_may_hold_credentials("s://ana:pw@db/x"));
+        assert!(value_may_hold_credentials("db://ana:pw@db"));
+        assert!(!value_may_hold_credentials("s://db.internal/x@y"));
     }
 
     #[test]

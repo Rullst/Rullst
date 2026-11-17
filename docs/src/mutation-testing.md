@@ -189,7 +189,17 @@ received a test or is listed under
   bounds that only very large projects reach (hundreds of mebibytes, or 10,000
   to 250,000 files): upgrade snapshot 6, upgrade source walk 3, project
   snapshot 13, replacement and verification totals 2 and 2, and the 64 MiB
-  preparation report 4.
+  preparation report 4. In 13.0.0-rc.1, `build/upgrade/rules/alpha6_gaps.rs`
+  ([PR #740](https://github.com/Rullst/Rullst/pull/740), already listed),
+  whose first targeted run (43871101055) stopped at its time limit after 65
+  of its 109 mutants, was measured again on `c22b6bca`
+  ([PR #752](https://github.com/Rullst/Rullst/pull/752)) in eight shards with
+  a 900-second timeout in the maintainer's fork (runs
+  [44077418794](https://github.com/venelouis/rullst-ci/actions/runs/44077418794)
+  to [44077505621](https://github.com/venelouis/rullst-ci/actions/runs/44077505621)):
+  109 mutants, 103 caught, 6 unviable, no survivor. The CLI's library tests
+  now take longer than the default 300-second timeout, which a targeted run
+  also applies to its unmutated baseline.
 - **`green` (now `footprint`), `deploy` and guided update** (13.0.0-alpha.4):
   the nine `green` files, `generators/deploy.rs` and `update/guided.rs` gave 337 mutants, 93
   missed and no timeout. New library tests (a loopback test server, fake app
@@ -202,8 +212,45 @@ received a test or is listed under
   not listed yet. In 13.0.0-alpha.6 `startup.rs` (the start-up time) was
   measured with a targeted run on the library tests (run 43809422834): 34
   mutants, 30 caught and 4 unviable, no survivor, so it is listed too.
-- **Studio remote mode** (20 files, measured with the `cargo-rullst` campaign):
-  no survivor left.
+- **`rullst-studio`**: the remote mode (20 files) was measured with the
+  `cargo-rullst` campaign in 13.0.0-alpha.3 and left no survivor. A
+  `mutants::skip` on each local Studio module, on the Studio builder, on
+  `build_rows_html` and on the logger page kept the rest of the crate out of
+  every mutation run and of the pull-request gate until the 13.0.0-rc.1
+  campaign ([PR #752](https://github.com/Rullst/Rullst/pull/752), runs in the
+  maintainer's fork
+  [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)),
+  which removed them (the Kani proofs keep theirs). Measured on `c22b6bca`
+  (`main` at `e911dcb9` without those skips), targeted runs of the 41 local
+  Studio files and the 8 remote files added after 13.0.0-alpha.3 (5 have no
+  mutants) gave 949 mutants: 557 caught, 111 unviable, 2 timeouts and 279
+  missed. Most misses were data-browser paths that need a database: the
+  all-feature build selects the PostgreSQL pool, and the PostgreSQL
+  data-browser matrix (`tests/data_browser_mutation_postgres.rs`) did not
+  compile in it; it now runs there, as the Nexus one does. With it, new matrix
+  checks (the 16 KiB key and 64 KiB form bounds of the row actions, search
+  filtering and row counts, NULL cells, an empty database, feature flags, the
+  engine label and the ER key marks) and new unit and integration tests (the
+  trace ingestion bounds, signatures, store counts and errors, the API
+  reference, the security page and its provider detection, the logger stream,
+  the cache inspector, the jobs monitor, the radar's threat level,
+  `run_studio` and the legacy `resolve_db_url`) killed 256 of the misses, and
+  the SQLite test-pool helper became plain test code. Reruns of the 28 changed
+  files leave 19 of 697 mutants missed and 1 timeout. The crate's 948 mutants
+  now leave 22 missed and 2 timeouts: 18 accepted equivalents listed below
+  (most are SQLite and MySQL branches that the all-feature PostgreSQL pool
+  never takes), 4 mutants of two redundant conditions left for a follow-up
+  (the ban count in the radar's threat level, since every ban is also
+  recorded as an event and a counter, and the forget token's empty and length
+  pre-check, which the 32-byte signature check repeats with the same `400`),
+  and the two timeouts listed with the timeouts.
+- **`rullst`** (the facade; 13.0.0-rc.1 campaign on `c22b6bca`,
+  [PR #752](https://github.com/Rullst/Rullst/pull/752), same fork): targeted
+  runs of the 6 files with mutants (the account-mail worker and the IoT
+  ingestion receiver, directory, configuration, token and error files;
+  `lib.rs`, `iot_ingest/mod.rs` and the doctest-only `book_doctests.rs` have
+  none) gave 150 mutants: 125 caught, 25 unviable, no timeout and no
+  survivor.
 - **`rullst-labs`** (13.0.0-rc.1 campaign on `cdb68d3b`,
   [PR #744](https://github.com/Rullst/Rullst/pull/744), runs in the
   maintainer's fork
@@ -286,7 +333,10 @@ package's tests), the `rullst-macros` campaign (targeted runs of every
 file with the package's unit and stand-in integration tests) and the 13.0
 `rullst-mail`, `rullst-media` and `rullst-ai` campaigns (targeted runs of every
 file with the package's tests, and the `mail-postgres` contract run for the
-mail PostgreSQL adapter) gave every missed mutant in their files a test, except these.
+mail PostgreSQL adapter) and the 13.0 `rullst-studio` campaign (targeted runs of
+every local Studio file and of the remote files added after 13.0.0-alpha.3,
+with the package's tests and the PostgreSQL data-browser matrix) gave every
+missed mutant in their files a test, except these.
 Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
 entry needs the same one-line justification. The pull-request gate (`mutants-pr.yml`) skips an
@@ -325,6 +375,12 @@ entry only when its exact cargo-mutants name is also listed in
 | `cargo-rullst/src/generators/deploy_doctor/input.rs`: `linked` with `false` and its Windows reparse-point test; in `read`, the ancestor `linked(..) \|\| !is_dir()`, the file `!is_file() \|\| linked(..) \|\| len > MAX_FILE` and the opened-file re-check with `&&`, `NOFOLLOW \| NONBLOCK` with `&` or `^`, and `MAX_FILE + 1` with `*` | On Linux `lstat` never reports a symlink as a file or directory, and the Windows test is not compiled. A non-directory ancestor fails the final lookup with `NotADirectory`, and a directory, FIFO or oversized file that passes a weakened check is refused after opening or reading with the same `File` error. The open flags, the re-check and the extra byte matter only when the file is replaced or grows between `lstat`, `open` and the read, which a test cannot arrange. |
 | `cargo-rullst/src/update/project/snapshot.rs`: the non-Windows `linked` with `false`; in `read`, `NOFOLLOW \| NONBLOCK` with `&` or `^`, the opened-file re-check `!opened.is_file() \|\| linked(..) \|\| len != ...` with `&&`, and `MAX_FILE + 1` with `*` | `lstat` never reports a symlink as a file or directory, so the type checks refuse links either way. `read` has already refused links, special files and files over 64 MiB, so the open flags, the re-check after opening and the extra byte matter only when the file is replaced or grows between `lstat`, `open` and the read, which a test cannot arrange. |
 | `rullst-studio/src/remote/history.rs`: `Sample::from_outcome`, `window.requests > 0` with `>=` | With no request the rate is `0 / 0`, which `finite` drops, so the sample stores no rate either way. |
+| `rullst-studio/src/data_browser/db.rs`: `fetch_table_schema`, delete the `"mysql"` arm, and the SQLite nullability `!row_flag(&row, "notnull") && !primary_key` with `\|\|` or without either `!`; `row_flag`, the `i64` reading's `!= 0` with `==`; `rullst-studio/src/er_diagram.rs`: `get_sqlite_schema` and `get_mysql_schema` with `Ok(String::new())` or `Ok("xyzzy".into())`, delete the `"mysql" \| "mariadb"` or `"sqlite" \| "libsql" \| "turso"` arm of `schema_for_driver`, and `row_is_primary_key`, the `i64` reading's `!= 0` with `==` | The all-feature build selects the PostgreSQL pool, so the driver is always `postgres`, whose key and nullability flags are `int4` values that the `i32` reading decodes. The SQLite matrix of default-feature builds and the MySQL and MariaDB matrices of `strict-mysql` builds run these branches. |
+| `rullst-studio/src/data_browser/portable.rs`: `build_for_driver`, `driver != "postgres"` with `==` | With `strict-postgres` the `QueryBuilder` already writes `$n` markers, which `replace_placeholders` leaves unchanged, so both branches build the same statement; the PostgreSQL matrix of default-feature builds (`sqlx::Any`) checks the renumbering. |
+| `rullst-studio/src/data_browser/handlers/telemetry.rs`: `capital_not_enabled_page` with `""` or `"xyzzy"` | It exists only without the `capital` feature; `the_capital_page_explains_how_to_enable_the_revenue_dashboard` checks it in such builds. |
+| `rullst-studio/src/feature_flags.rs`: `render_flag_rows`, the integer `enabled` reading `v != 0` with `==` | Only an integer `enabled` column reaches it. The PostgreSQL matrix of the all-feature build creates the documented `BOOLEAN` column, which decodes as `bool`, and cannot read the table again with another column type on the same connection (PostgreSQL refuses a cached plan whose result type changed); the SQLite matrix of default-feature builds reads an integer column and checks `DISABLED` and `ENABLED`. |
+| `rullst-studio/src/data_browser/handlers/table.rs`: `handle_table`, `supports_mutations && column.primary_key` with `\|\|` | It only lets the database return up to 16,385 instead of 257 characters of a non-key cell (or of a key cell of a read-only table), which `display_cell` cuts to the same 256 characters. |
+| `rullst-studio/src/distributed_traces/auth.rs`: `TraceBatchSigner::sign`, `(u128::from(high) << 64) \| u128::from(low)` with `^` | The two halves occupy disjoint bits, so OR and XOR build the same nonce. |
 | `rullst-iot/src/coap.rs` (`CoapRequest::write_to` twice, `write_option`), `rullst-iot/src/mqtt.rs` (`MqttPublish::encode`) and `rullst-iot/src/i2c.rs` (`I2cHelper::try_build_read_frame`): `\|` with `^` | The operands occupy disjoint bits, so OR and XOR build the same byte. |
 | `rullst-iot/src/coap.rs`: `CoapRequest::encode`, `payload.len() > MAX_COAP_DATAGRAM_BYTES` with `==` or `>=` | `CoapRequest::payload` already bounds the payload, and the measured datagram length, which adds at least the header and the payload marker, rejects the same lengths with the same error. |
 | `rullst-iot/src/mqtt.rs`: `MqttPublish::encode`, `remaining_length > MQTT_MAX_VARIABLE_BYTE_INTEGER` with `==` or `>=` | The builders keep topic and payload far below that limit, and `variable_byte_integer` repeats the check with the same error. |
@@ -472,6 +528,12 @@ every test of the file reaches, so no single test can fail first:
 - `rullst-core/src/server/dev_telemetry/recorder.rs`: `push_bounded` with
   `entries.len() >= capacity` replaced by `<` pops an empty queue forever, in
   code every recorded request or query reaches.
+- `rullst-studio/src/remote/notify.rs`: `Inner::push` with
+  `queue.len() > MAX_QUEUED` replaced by `<`, and
+  `rullst-studio/src/distributed_traces/store.rs`:
+  `DistributedTraceStore::insert_batch` with `spans.len() >= capacity`
+  replaced by `<`, pop an empty queue forever, in code every notification or
+  trace-ingestion test reaches.
 - `rullst-core/src/scheduler.rs`: `shutdown_requested` returning `true` or
   `false`, and `wait_for_shutdown` returning at once or without its `!`, so a
   task loop never runs or never sees shutdown, and the scheduler, server and

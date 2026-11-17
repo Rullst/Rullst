@@ -273,3 +273,214 @@ fn secret_debug_is_redacted_and_policy_rejects_weak_inputs() {
         Err(TraceIngestionError::InvalidCapacity)
     ));
 }
+
+#[test]
+fn source_names_and_the_clock_window_are_bounded_inclusively() {
+    let key = || TraceIngestionKey::new(KEY).expect("trace key");
+    for accepted in ["a", "api_1.eu-west", &"s".repeat(64)] {
+        assert!(TraceBatchSigner::new(accepted, key()).is_ok(), "{accepted}");
+    }
+    for rejected in ["", "api 1", "api/1", "fonte-ç", &"s".repeat(65)] {
+        assert!(
+            matches!(
+                TraceBatchSigner::new(rejected, key()),
+                Err(TraceIngestionError::AuthenticationFailed)
+            ),
+            "{rejected}"
+        );
+    }
+
+    let now = 1_800_000_000;
+    let signer = TraceBatchSigner::new("api-1", key()).expect("trace signer");
+    let batch = TraceBatchV1::new(vec![span(now, 1, "users.fetch", 50)]);
+    let verify = |timestamp: u64| {
+        let signed = signer
+            .sign_at(&batch, timestamp, [3; 16])
+            .expect("signed trace");
+        auth::authenticate(
+            &key(),
+            signed.source(),
+            signed.timestamp(),
+            signed.nonce(),
+            signed.signature(),
+            signed.body(),
+            now,
+        )
+    };
+    assert_eq!(verify(now - 60), Ok(now - 60));
+    assert_eq!(verify(now + 60), Ok(now + 60));
+    assert_eq!(
+        verify(now - 61),
+        Err(TraceIngestionError::TimestampOutsideWindow)
+    );
+    assert_eq!(
+        verify(now + 61),
+        Err(TraceIngestionError::TimestampOutsideWindow)
+    );
+}
+
+#[test]
+fn debug_output_is_fixed_and_random_nonces_fill_both_halves() {
+    let key = TraceIngestionKey::new(KEY).expect("trace key");
+    assert_eq!(format!("{key:?}"), "TraceIngestionKey([REDACTED])");
+
+    let now = unix_time().expect("test clock");
+    let signer = TraceBatchSigner::new("api-1", key).expect("trace signer");
+    let batch = TraceBatchV1::new(vec![span(now, 1, "users.fetch", 50)]);
+    let first = signer.sign(&batch).expect("first signed trace");
+    let second = signer.sign(&batch).expect("second signed trace");
+    assert_eq!(
+        format!("{first:?}"),
+        format!(
+            "SignedTraceBatch {{ body_bytes: {}, source: \"api-1\", timestamp: \"{}\", .. }}",
+            first.body().len(),
+            first.timestamp()
+        )
+    );
+    let decode = |signed: &SignedTraceBatch| {
+        use base64::Engine as _;
+        base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .decode(signed.nonce())
+            .expect("base64url nonce")
+    };
+    let (first, second) = (decode(&first), decode(&second));
+    assert_eq!(first.len(), 16);
+    assert_ne!(first, second);
+    // Each half comes from its own 64-bit draw; both being zero has a
+    // probability of 2^-64.
+    for nonce in [&first, &second] {
+        assert!(nonce[..8].iter().any(|byte| *byte != 0), "{nonce:?}");
+        assert!(nonce[8..].iter().any(|byte| *byte != 0), "{nonce:?}");
+    }
+}
+
+#[test]
+fn a_body_of_exactly_the_limit_is_signed() {
+    let now = 1_800_000_000;
+    let signer = TraceBatchSigner::new("api-1", TraceIngestionKey::new(KEY).expect("trace key"))
+        .expect("trace signer");
+    let sized = |operation_bytes: usize| {
+        TraceBatchV1::new(vec![span(now, 1, &"o".repeat(operation_bytes), 50)])
+    };
+    let base = serde_json::to_vec(&sized(0)).expect("encoded batch").len();
+    let exact = sized(131_072 - base);
+    assert_eq!(
+        serde_json::to_vec(&exact).expect("encoded batch").len(),
+        131_072
+    );
+    assert_eq!(
+        signer
+            .sign_at(&exact, now, [4; 16])
+            .expect("signed")
+            .body()
+            .len(),
+        131_072
+    );
+    assert!(matches!(
+        signer.sign_at(&sized(131_073 - base), now, [5; 16]),
+        Err(TraceIngestionError::InvalidBatch)
+    ));
+}
+
+#[test]
+fn the_store_counts_accepted_and_duplicate_spans_and_flags_only_slow_ones() {
+    let now = 1_800_000_000;
+    let store = DistributedTraceStore::new(8).expect("trace store");
+    assert_eq!(
+        format!("{store:?}"),
+        "DistributedTraceStore { capacity: 8, .. }"
+    );
+
+    let first = store
+        .insert_batch(
+            "api-1",
+            now,
+            vec![
+                span(now, 1, "users.fetch", 99_999),
+                span(now, 2, "orders.fetch", 100_000),
+            ],
+        )
+        .expect("stored spans");
+    assert_eq!((first.accepted, first.duplicates), (2, 0));
+    let second = store
+        .insert_batch(
+            "api-1",
+            now,
+            vec![
+                span(now, 1, "users.fetch", 99_999),
+                span(now, 2, "orders.fetch", 100_000),
+                span(now, 3, "carts.fetch", 5),
+            ],
+        )
+        .expect("stored spans");
+    assert_eq!((second.accepted, second.duplicates), (1, 2));
+
+    let slow = store
+        .query_findings()
+        .expect("query findings")
+        .into_iter()
+        .filter(|finding| finding.kind == QueryFindingKind::SlowOperation)
+        .collect::<Vec<_>>();
+    assert_eq!(slow.len(), 1);
+    assert_eq!(slow[0].operation, "orders.fetch");
+    assert_eq!(slow[0].maximum_duration_us, 100_000);
+}
+
+#[test]
+fn the_ingestor_debug_output_shows_only_its_store() {
+    let store = DistributedTraceStore::new(8).expect("trace store");
+    let key = TraceIngestionKey::new(KEY).expect("trace key");
+    let ingestor = TraceIngestor::new(store, "api-1", key).expect("trace ingestor");
+    assert_eq!(
+        format!("{ingestor:?}"),
+        "TraceIngestor { store: DistributedTraceStore { capacity: 8, .. }, .. }"
+    );
+}
+
+#[test]
+fn ingestion_errors_explain_themselves() {
+    for (error, message) in [
+        (
+            TraceIngestionError::InvalidKey,
+            "trace ingestion HMAC key must contain 32 to 128 bytes",
+        ),
+        (
+            TraceIngestionError::InvalidCapacity,
+            "trace store capacity is outside the supported range",
+        ),
+        (
+            TraceIngestionError::AuthenticationFailed,
+            "trace ingestion authentication failed",
+        ),
+        (
+            TraceIngestionError::TimestampOutsideWindow,
+            "trace ingestion timestamp is outside the accepted window",
+        ),
+        (
+            TraceIngestionError::ReplayDetected,
+            "trace ingestion request was already consumed",
+        ),
+        (
+            TraceIngestionError::StoreUnavailable,
+            "trace ingestion state is unavailable or at capacity",
+        ),
+        (
+            TraceIngestionError::InvalidEncoding,
+            "trace ingestion payload encoding is invalid",
+        ),
+        (
+            TraceIngestionError::InvalidBatch,
+            "trace ingestion batch violates the v1 contract",
+        ),
+        (
+            TraceIngestionError::ClockUnavailable,
+            "system clock cannot produce a Unix timestamp",
+        ),
+        (
+            TraceIngestionError::RandomnessUnavailable,
+            "operating-system randomness is unavailable for trace ingestion",
+        ),
+    ] {
+        assert_eq!(error.to_string(), message);
+    }
+}
