@@ -381,3 +381,47 @@ fn a_body_of_exactly_the_limit_is_signed() {
         Err(TraceIngestionError::InvalidBatch)
     ));
 }
+
+#[test]
+fn the_store_counts_accepted_and_duplicate_spans_and_flags_only_slow_ones() {
+    let now = 1_800_000_000;
+    let store = DistributedTraceStore::new(8).expect("trace store");
+    assert_eq!(
+        format!("{store:?}"),
+        "DistributedTraceStore { capacity: 8, .. }"
+    );
+
+    let first = store
+        .insert_batch(
+            "api-1",
+            now,
+            vec![
+                span(now, 1, "users.fetch", 99_999),
+                span(now, 2, "orders.fetch", 100_000),
+            ],
+        )
+        .expect("stored spans");
+    assert_eq!((first.accepted, first.duplicates), (2, 0));
+    let second = store
+        .insert_batch(
+            "api-1",
+            now,
+            vec![
+                span(now, 1, "users.fetch", 99_999),
+                span(now, 2, "orders.fetch", 100_000),
+                span(now, 3, "carts.fetch", 5),
+            ],
+        )
+        .expect("stored spans");
+    assert_eq!((second.accepted, second.duplicates), (1, 2));
+
+    let slow = store
+        .query_findings()
+        .expect("query findings")
+        .into_iter()
+        .filter(|finding| finding.kind == QueryFindingKind::SlowOperation)
+        .collect::<Vec<_>>();
+    assert_eq!(slow.len(), 1);
+    assert_eq!(slow[0].operation, "orders.fetch");
+    assert_eq!(slow[0].maximum_duration_us, 100_000);
+}
