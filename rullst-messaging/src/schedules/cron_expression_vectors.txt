@@ -1,4 +1,20 @@
-# Golden vectors of cron 0.17.0 (header written by hand)
+# Golden vectors of the `cron` crate 0.17.0, which evaluated recurring
+# schedules (`0 <expression> *`) until 13.0.0-alpha.5.
+#
+# The `generate_golden_vectors` test of commit dce362f0d
+# (src/schedules/cron_expression_differential_tests.rs) wrote them with
+# `cargo test -p rullst-messaging --features schedules-postgres --lib --
+# --ignored generate_golden_vectors`, after a 100,000-case differential of
+# this evaluator against the crate passed. It recorded the documented and
+# quirk corpus from 12 edge instants (6 occurrences each), then expressions
+# drawn with the ChaCha seed [13; 32]: five tokens, each a valid field three
+# times in four, otherwise a token that joins or splits, until 1,500 parsed,
+# with 3 starts each (4 occurrences) and one rejected expression in four.
+#
+# `<expression>	ok|reject`, then for each start `	<after ms>	<results>`:
+# the next occurrences in Unix milliseconds, each searched after the
+# previous one, `end` when none followed and `error` when the crate could not
+# convert the instant.
 0 6 * * *	ok
 	0	21600000 108000000 194400000 280800000 367200000 453600000
 	1763374440000	1763445600000 1763532000000 1763618400000 1763704800000 1763791200000 1763877600000

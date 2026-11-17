@@ -22,7 +22,9 @@ fn civil_days_round_trip_and_match_known_dates() {
     assert_eq!(days_from_civil(2000, 3, 1), 11_017);
     assert_eq!(days_from_civil(2100, 12, 31), 47_846);
     assert_eq!(days_from_civil(-1, 12, 31), -719_529);
-    for days in [-800_000, -719_529, -1, 0, 59, 60, 11_016, 11_017, 47_846, 3_000_000] {
+    for days in [
+        -800_000, -719_529, -1, 0, 59, 60, 11_016, 11_017, 47_846, 3_000_000,
+    ] {
         let (year, month, day) = civil_from_days(days);
         assert_eq!(days_from_civil(year, month, day), days, "{days}");
     }
@@ -39,7 +41,10 @@ fn fields_follow_the_crate_semantics() {
     assert_eq!(next("0 0 * * sat", start), Some(at(2026, 11, 21, 0, 0, 0)));
     assert_eq!(next("0 0 29 feb ?", start), Some(at(2028, 2, 29, 0, 0, 0)));
     assert_eq!(next("0 0 31 * *", start), Some(at(2026, 12, 31, 0, 0, 0)));
-    assert_eq!(next("5/20 * * * *", start), Some(at(2026, 11, 17, 10, 25, 0)));
+    assert_eq!(
+        next("5/20 * * * *", start),
+        Some(at(2026, 11, 17, 10, 25, 0))
+    );
     assert_eq!(next("0 0 30 2 *", start), None);
     assert!(Schedule::parse_five_fields("0 0 * * 0").is_none());
     assert!(Schedule::parse_five_fields("0 0 * * 8").is_none());
@@ -58,7 +63,10 @@ fn tokens_join_and_shift_as_the_crate_parsed_them() {
     assert_eq!(next("1, 2 * * *", start), Some(at(2026, 11, 17, 11, 1, 0)));
     assert_eq!(next("1 -2 * * *", start), Some(at(2026, 11, 17, 11, 1, 0)));
     // A leading slash steps the fixed seconds field.
-    assert_eq!(next("/20 * * * *", start), Some(at(2026, 11, 17, 10, 14, 40)));
+    assert_eq!(
+        next("/20 * * * *", start),
+        Some(at(2026, 11, 17, 10, 14, 40))
+    );
     // `1jan` splits into a day of the month and a month, one field too many
     // unless a comma joins two tokens.
     assert_eq!(next("0 0, 1 1jan *", start), Some(at(2027, 1, 1, 0, 0, 0)));
@@ -71,14 +79,29 @@ fn search_runs_from_1970_through_2100() {
     assert_eq!(next("0 0 1 1 *", -1), Some(at(1970, 1, 1, 0, 0, 0)));
     assert_eq!(next("0 0 1 1 *", at(1950, 6, 1, 0, 0, 0)), Some(0));
     assert_eq!(next("0 0 1 1 *", at(-1, 12, 31, 23, 59, 58)), None);
-    assert_eq!(next("59 23 31 12 *", at(2100, 12, 31, 23, 58, 59)), Some(at(2100, 12, 31, 23, 59, 0)));
+    assert_eq!(
+        next("59 23 31 12 *", at(2100, 12, 31, 23, 58, 59)),
+        Some(at(2100, 12, 31, 23, 59, 0))
+    );
     assert_eq!(next("* * * * *", at(2100, 12, 31, 23, 59, 0)), None);
     // Strictly after, at whole seconds.
-    assert_eq!(next("* * * * *", at(2026, 1, 1, 0, 0, 0)), Some(at(2026, 1, 1, 0, 1, 0)));
-    assert_eq!(next("* * * * *", at(2026, 1, 1, 0, 0, 59) + 999), Some(at(2026, 1, 1, 0, 1, 0)));
+    assert_eq!(
+        next("* * * * *", at(2026, 1, 1, 0, 0, 0)),
+        Some(at(2026, 1, 1, 0, 1, 0))
+    );
+    assert_eq!(
+        next("* * * * *", at(2026, 1, 1, 0, 0, 59) + 999),
+        Some(at(2026, 1, 1, 0, 1, 0))
+    );
     let schedule = Schedule::parse_five_fields("* * * * *").unwrap();
-    assert_eq!(schedule.next_after(MIN_MILLIS - 1), Err(OutOfRange::Instant));
-    assert_eq!(schedule.next_after(MAX_MILLIS + 1), Err(OutOfRange::Instant));
+    assert_eq!(
+        schedule.next_after(MIN_MILLIS - 1),
+        Err(OutOfRange::Instant)
+    );
+    assert_eq!(
+        schedule.next_after(MAX_MILLIS + 1),
+        Err(OutOfRange::Instant)
+    );
     assert_eq!(schedule.next_after(MAX_MILLIS), Ok(None));
     assert_eq!(schedule.next_after(MIN_MILLIS), Ok(None));
 }
@@ -115,7 +138,9 @@ fn vectors() -> Vec<Vector<'static>> {
     vectors
 }
 
-/// The golden vectors that cron 0.17.0 produced; see the file's header.
+/// The golden vectors that cron 0.17.0 produced (see the file's header for
+/// how they were generated); this test replaced the differential test
+/// against the crate when the crate left Rullst.
 #[test]
 fn expressions_parse_and_occur_as_the_cron_crate_computed() {
     let vectors = vectors();
@@ -123,7 +148,11 @@ fn expressions_parse_and_occur_as_the_cron_crate_computed() {
     for vector in &vectors {
         let schedule = Schedule::parse_five_fields(vector.expression);
         let Some(runs) = &vector.runs else {
-            assert!(schedule.is_none(), "`{}` must be rejected", vector.expression);
+            assert!(
+                schedule.is_none(),
+                "`{}` must be rejected",
+                vector.expression
+            );
             continue;
         };
         let schedule = schedule.unwrap_or_else(|| panic!("`{}` must parse", vector.expression));
@@ -145,6 +174,3 @@ fn expressions_parse_and_occur_as_the_cron_crate_computed() {
         }
     }
 }
-
-#[path = "cron_expression_differential_tests.rs"]
-mod differential;

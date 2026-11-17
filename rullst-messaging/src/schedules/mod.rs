@@ -2,7 +2,6 @@
 //! Hosts own tenant authorization and consumer-side effect deduplication.
 mod config;
 mod connection;
-#[cfg(test)]
 mod cron_expression;
 mod crypto;
 mod delivery;
@@ -10,12 +9,15 @@ mod error;
 mod inspection;
 mod management;
 mod model;
+mod posix_cron;
 mod relay;
 mod schema;
 mod storage;
 mod tick;
 
-pub use config::{MissedRunPolicy, RecurringConfig, RecurringDefinition, ScheduledMessage};
+pub use config::{
+    CronSyntax, MissedRunPolicy, RecurringConfig, RecurringDefinition, ScheduledMessage,
+};
 pub use error::{RecurringError, RecurringRelayError};
 pub use model::{
     OccurrenceLease, OccurrenceMetadata, OccurrenceState, RecurringMetadata, RecurringRelayReceipt,

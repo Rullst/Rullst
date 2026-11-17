@@ -484,6 +484,24 @@ impl<T> Drop for AbortOnDrop<T> {
     }
 }
 
+/// Hooks for Rullst's own test suites (feature `test-util`), outside the
+/// 13.x stability promise; not part of the public API.
+#[cfg(feature = "test-util")]
+#[doc(hidden)]
+pub mod __test_hooks {
+    /// The first occurrence of the POSIX cron `expression` strictly after
+    /// `after_ms`, in Unix milliseconds, as [`super::Scheduler::task`]
+    /// computes it, or why the expression or instant is invalid.
+    pub fn cron_next_after(expression: &str, after_ms: i64) -> Result<Option<i64>, String> {
+        let schedule = super::CronSchedule::parse(expression)?;
+        let after =
+            jiff::Timestamp::from_millisecond(after_ms).map_err(|error| error.to_string())?;
+        Ok(schedule
+            .next_after(&after)
+            .map(jiff::Timestamp::as_millisecond))
+    }
+}
+
 #[cfg(test)]
 #[path = "scheduler_tests.rs"]
 mod tests;

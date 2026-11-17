@@ -151,8 +151,14 @@ impl Values {
     /// The smallest allowed value that is at least `value`.
     fn first_from(&self, value: i64) -> Option<i64> {
         let from = usize::try_from(value.saturating_sub(self.min)).unwrap_or(0);
-        let offset = self.allowed.get(from..)?.iter().position(|allowed| *allowed)?;
-        i64::try_from(from + offset).ok().map(|index| self.min + index)
+        let offset = self
+            .allowed
+            .get(from..)?
+            .iter()
+            .position(|allowed| *allowed)?;
+        i64::try_from(from + offset)
+            .ok()
+            .map(|index| self.min + index)
     }
 }
 
@@ -314,10 +320,8 @@ fn parse(expression: &str) -> Option<Schedule> {
     let (months, rest) = unit_field(rest, false, &MONTHS)?;
     let (days_of_week, rest) = unit_field(rest, true, &DAYS_OF_WEEK)?;
     // An invalid year field is skipped, which leaves its text before the end.
-    let (years, rest) = unit_field(rest, false, &YEARS).unwrap_or((
-        YEARS.values(&[Root::Specifier(Specifier::All)])?,
-        rest,
-    ));
+    let (years, rest) = unit_field(rest, false, &YEARS)
+        .unwrap_or((YEARS.values(&[Root::Specifier(Specifier::All)])?, rest));
     rest.is_empty().then_some(Schedule {
         seconds,
         minutes,
@@ -370,12 +374,10 @@ fn specifier(input: &str, any: bool) -> Option<(Specifier<'_>, &str)> {
         return Some((Specifier::All, rest));
     }
     if let Some((start, rest)) = ordinal(input) {
-        return Some(
-            match rest.strip_prefix('-').and_then(ordinal) {
-                Some((end, after)) => (Specifier::Range(start, end), after),
-                None => (Specifier::Point(start), rest),
-            },
-        );
+        return Some(match rest.strip_prefix('-').and_then(ordinal) {
+            Some((end, after)) => (Specifier::Range(start, end), after),
+            None => (Specifier::Point(start), rest),
+        });
     }
     let (start, rest) = name(input)?;
     let (end, rest) = name(rest.strip_prefix('-')?)?;
@@ -407,7 +409,7 @@ fn skip_space(input: &str) -> &str {
 }
 
 /// Days since 1970-01-01 of a proleptic Gregorian date.
-fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
+pub(super) fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
     let year = if month <= 2 { year - 1 } else { year };
     let era = year.div_euclid(400);
     let year_of_era = year - era * 400;
@@ -417,7 +419,7 @@ fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
 }
 
 /// The proleptic Gregorian date `days` after 1970-01-01.
-fn civil_from_days(days: i64) -> (i64, i64, i64) {
+pub(super) fn civil_from_days(days: i64) -> (i64, i64, i64) {
     let days = days + 719_468;
     let era = days.div_euclid(146_097);
     let day_of_era = days - era * 146_097;
