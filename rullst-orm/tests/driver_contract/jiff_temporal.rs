@@ -262,6 +262,13 @@ mod native {
             }
         }
         for (jiff_read, chrono_read) in as_jiff.iter().zip(&as_chrono) {
+            // The same JSON (`to_json()` serializes each field with serde).
+            assert_eq!(jiff_read.to_json(), chrono_read.to_json(), "{driver}");
+            assert_eq!(
+                format!("{} {}", jiff_read.starts_at, jiff_read.local_start),
+                format!("{} {}", chrono_read.starts_at, chrono_read.local_start),
+                "{driver}"
+            );
             assert_eq!(
                 chrono(jiff_read.starts_at),
                 chrono_read.starts_at,
@@ -369,12 +376,16 @@ mod native {
             ["ordinary", "ordinary (chrono)"],
             "{driver}"
         );
-        let ended =
-            Orm::raw("SELECT title FROM contract_jiff_calendar WHERE ends_at = ? ORDER BY id")
-                .bind(ordinary.ends_at)
-                .map_to::<(String,)>()
-                .await
-                .expect("raw filter by an instant");
+        // `Orm::raw` passes its SQL through, so PostgreSQL numbers the
+        // placeholder.
+        let placeholder = if driver == "postgres" { "$1" } else { "?" };
+        let ended = Orm::raw(format!(
+            "SELECT title FROM contract_jiff_calendar WHERE ends_at = {placeholder} ORDER BY id"
+        ))
+        .bind(ordinary.ends_at)
+        .map_to::<(String,)>()
+        .await
+        .expect("raw filter by an instant");
         assert_eq!(
             ended,
             [

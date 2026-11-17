@@ -149,7 +149,11 @@ fn bound(value: &RullstValue) -> String {
 
     let mut query = sqlx::query::<crate::RullstDatabase>(sqlx::AssertSqlSafe("SELECT 1"))
         .bind_rullst_value(value);
-    let arguments = query.take_arguments().unwrap().unwrap();
+    // MySQL/MariaDB refuse a negative year, whichever type holds it.
+    let Ok(arguments) = query.take_arguments() else {
+        return "refused".to_string();
+    };
+    let arguments = arguments.unwrap();
     #[cfg(any(
         feature = "strict-postgres",
         feature = "strict-mysql",

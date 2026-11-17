@@ -69,7 +69,8 @@ Notes:
 The live tests start the database in a container (Testcontainers) in the
 **Run provider matrices** step of the Rust CI workflow's Linux workspace
 shard. `matrix_postgres`, `matrix_mysql` and `matrix_sqlite` also run in the
-**ORM strict-postgres**, **ORM strict-mysql** and **ORM strict-sqlite** jobs.
+**ORM strict-postgres**, **ORM strict-mysql** and **ORM strict-sqlite** jobs, and
+`matrix_mariadb` in the **ORM strict-mysql** job too.
 The tests live in `rullst-orm/tests/`, `rullst-studio/tests/` and
 `rullst-nexus/tests/`, and each pins its container image. A live test proves
 the adapter's contract against that server version; it does not certify a

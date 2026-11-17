@@ -225,6 +225,14 @@ fn values_in_either_protocol() {
         instant_from_value(&binary).unwrap().to_string(),
         "2026-10-15T09:30:00.000001Z"
     );
+    // chrono's text parser allows whitespace before a number; a space is
+    // never a binary length.
+    assert_eq!(
+        date_time_from_value(b" 2026-10-15 09:30:00")
+            .unwrap()
+            .to_string(),
+        "2026-10-15T09:30:00"
+    );
     assert_eq!(
         instant_from_value(b"2040-02-29 23:59:59")
             .unwrap()

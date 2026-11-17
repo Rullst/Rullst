@@ -659,7 +659,7 @@ mutant, compiled incrementally without sccache.
 | `orm-polyglot` | the same files; select the optional-backend modules (`polyglot`, `scout`, `redis_data`, `query_cache`) with `mutants_regex` | every `rullst-orm` test target, built with `drivers-all` and the Redis, SurrealDB, Turso and Scout HTTP features, with an owned Redis server for the `RULLST_TEST_REDIS_URL` contracts |
 | `orm-sql-servers` | the same files; select the PostgreSQL and MySQL/MariaDB branches with `mutants_regex` | `matrix_postgres`, `matrix_mysql` and `matrix_mariadb`, built with `drivers-all`; their testcontainers start a disposable server per test binary, and a server that cannot start fails the run |
 | `orm-strict-postgres` | the same files | `matrix_postgres`, built with `strict-postgres` only, which also exercises the native enum types and typed binds of that pool |
-| `orm-strict-mysql` | the same files | `matrix_mysql`, built with `strict-mysql` only |
+| `orm-strict-mysql` | the same files | `matrix_mysql` and `matrix_mariadb`, built with `strict-mysql` only |
 | `orm-polyglot-servers` | the same files; select the optional backends' live paths with `mutants_regex` | the SurrealDB, document-recovery (SurrealDB), Meilisearch, Redis data and Turso testcontainers matrices, built like `orm-polyglot` |
 
 `orm-sqlite` owns no server. The all-feature build selects the strict
