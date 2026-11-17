@@ -101,9 +101,10 @@ async fn resolve_studio_database_url(
 ///
 /// A file outlives the per-test runtimes, whereas an in-memory database
 /// disappears with the connection that owns it. Each test drops and recreates
-/// its own tables, so the file is reused across runs.
+/// its own tables, so the file is reused across runs. (A separate `cfg(test)`
+/// keeps this test helper out of mutation testing.)
+#[cfg(test)]
 #[cfg(all(
-    test,
     not(miri),
     not(any(feature = "strict-postgres", feature = "strict-mysql"))
 ))]

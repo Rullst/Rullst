@@ -541,3 +541,12 @@ async fn engine_label_describes_the_active_pool() {
     super::pool::test_sqlite_pool().await;
     assert_eq!(resolve_driver_display_name(), "SQLITE");
 }
+
+#[tokio::test]
+async fn run_studio_reports_a_port_already_in_use() {
+    let holder = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("an ephemeral loopback port");
+    let port = holder.local_addr().expect("bound address").port();
+    assert!(super::run_studio(port).await.is_err());
+}
