@@ -291,6 +291,19 @@ pub async fn exercise_mutations(database_url: &str, driver: &str, table: &str) {
         .expect("Studio unsafe-table response");
     assert_eq!(unsafe_table.status(), StatusCode::NOT_FOUND);
 
+    // A name that only sanitizes to an existing table is not that table.
+    let near_table = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/studio/tables/{table}%3B"))
+                .body(Body::empty())
+                .expect("valid near-table request"),
+        )
+        .await
+        .expect("Studio near-table response");
+    assert_eq!(near_table.status(), StatusCode::NOT_FOUND);
+
     let update = app
         .clone()
         .oneshot(form_request("update", "column=name&value=after&pk_id=7"))
