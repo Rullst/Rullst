@@ -158,3 +158,7 @@ impl Timestamp {
 #[cfg(test)]
 #[path = "mod_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "support_tests.rs"]
+pub(crate) mod test_support;

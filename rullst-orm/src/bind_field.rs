@@ -138,6 +138,34 @@ mod tests {
         assert_eq!((&Field(&number)).__rullst_encode(), 7);
     }
 
+    #[allow(clippy::needless_borrow)]
+    #[test]
+    fn jiff_instants_take_the_pool_encoding_too() {
+        use super::timestamp_wire;
+
+        let instant: crate::Timestamp = "2040-02-29T23:59:59Z".parse().expect("valid instant");
+        let wall: crate::DateTime = "2040-02-29T23:59:59".parse().expect("valid date-time");
+        let present = Some(instant);
+        let missing: Option<crate::Timestamp> = None;
+        let expected = if cfg!(all(
+            feature = "strict-mysql",
+            not(feature = "strict-postgres")
+        )) {
+            format!("{wall:?}")
+        } else {
+            format!("{instant:?}")
+        };
+        assert_eq!(format!("{:?}", timestamp_wire(instant)), expected);
+        assert_eq!(format!("{:?}", (&Field(&instant)).__rullst_encode()), expected);
+        assert_eq!(
+            format!("{:?}", (&Field(&present)).__rullst_encode()),
+            format!("Some({expected})")
+        );
+        assert_eq!(format!("{:?}", (&Field(&missing)).__rullst_encode()), "None");
+        // The civil types are bound unchanged.
+        assert_eq!((&Field(&wall)).__rullst_encode(), wall);
+    }
+
     /// The MySQL/MariaDB pool sends the UTC wall time (a `DATETIME`
     /// parameter); every other pool sends the instant itself.
     #[test]
