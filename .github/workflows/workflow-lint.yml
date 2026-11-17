@@ -97,6 +97,10 @@ jobs:
           # Workflows that `cargo rullst new` and `add browser-tests` write.
           python3 .github/validate-action-pins.py cargo-rullst/src/generators/project/ci/.github/workflows/ci.yml
           python3 .github/validate-action-pins.py cargo-rullst/src/generators/browser_tests/assets/browser-tests.yml
+          # They pin the same SHAs as this repository's workflows, which
+          # Dependabot updates alone; the failure names the command to run.
+          python3 .github/test-sync-template-action-pins.py
+          python3 .github/sync-template-action-pins.py --check
 
       - name: Keep cached Rust targets restorable
         run: |

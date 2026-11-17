@@ -116,6 +116,19 @@ rules come from real failures; follow them on any similar machine.
   apply the same `cargo update -p <crate>@<version>` in the root and the
   affected `*/fuzz` directories on a fresh branch, run
   `.github/check-fuzz-locks.sh`, and close the old pull request with a link.
+- **Dependabot action updates** change only `.github/workflows`. The
+  workflows that `cargo rullst new` and `cargo rullst add browser-tests`
+  write (`cargo-rullst/src/generators/project/ci/.github/workflows/ci.yml`,
+  `cargo-rullst/src/generators/browser_tests/assets/browser-tests.yml`) must
+  pin the same SHAs with the same `# vX.Y.Z` comments, so such a pull request
+  fails `workflow-lint.yml` and the cargo-rullst pin tests until someone runs
+  `python3 .github/sync-template-action-pins.py` on its branch and pushes the
+  result (`--check` only reports). It stays manual on purpose: a
+  Dependabot-triggered workflow gets a read-only token, and pushing back
+  would need either `pull_request_target` or `workflow_run` with a write
+  token, or a stored credential, in a job that handles the pull request's
+  files; a commit pushed with the workflow token would not run CI again
+  either.
 - **Dogfooding reports.** Applications built on a prerelease are read-only
   inputs: read their reports, reproduce in this repository and add the items
   to the next prerelease plan in `ROADMAP.md`; never edit those applications.
