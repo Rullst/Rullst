@@ -94,6 +94,28 @@ pub async fn exercise_mutations(database_url: &str, driver: &str, table: &str) {
             .expect("Studio matrix ORM initialization");
     }
     let pool = rullst_core::db::safe_pool().expect("Studio matrix pool");
+    if driver != "mysql" {
+        // A fresh database has no application table to list.
+        let empty = Studio::new()
+            .into_router(LocalStudioAccess::loopback_only())
+            .expect("debug Studio router")
+            .layer(axum::middleware::from_fn(inject_loopback))
+            .oneshot(
+                Request::builder()
+                    .uri("/studio/migrations")
+                    .header("hx-request", "true")
+                    .body(Body::empty())
+                    .expect("valid empty migrations request"),
+            )
+            .await
+            .expect("Studio empty migrations response");
+        assert_eq!(empty.status(), StatusCode::OK);
+        assert!(
+            response_text(empty)
+                .await
+                .contains("No application tables are currently visible.")
+        );
+    }
     let quoted_table = if driver == "mysql" {
         format!("`{table}`")
     } else {
