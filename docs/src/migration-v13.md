@@ -1342,7 +1342,7 @@ Work through the steps in order.
     Code that keeps chrono for its own work declares `chrono` itself and
     converts where it meets Rullst; its own SQLx queries that bind or read
     chrono values need the `chrono` feature on its own `sqlx` dependency.
-21. **Rewrite messaging schedules in POSIX cron** (Messaging schedules use
+21. **Review messaging schedules for POSIX cron** (Messaging schedules use
     the scheduler's cron syntax row, `V13-MESSAGING-CRON-POSIX`;
     [messaging schedules and POSIX cron](#messaging-schedules-and-posix-cron)).
     `RecurringDefinition::new` now reads a new definition's expression as
