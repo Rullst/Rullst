@@ -4,9 +4,11 @@
 /// bindings and tenant IDs.
 ///
 /// An integer literal stays `Int` (`i32`); `i64` and `u32` become `I64`, and
-/// `Option<T>` becomes `T`'s value or `Null`. The `chrono` date/time types
-/// become their own variants. The enum is `#[non_exhaustive]` since v13:
-/// match it with a wildcard arm.
+/// `Option<T>` becomes `T`'s value or `Null`. The date/time types
+/// ([`crate::Timestamp`], [`crate::DateTime`], [`crate::Date`],
+/// [`crate::Time`]) and the `chrono` ones become their own variants, which
+/// bind the same parameter for the same value. The enum is
+/// `#[non_exhaustive]` since v13: match it with a wildcard arm.
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub enum RullstValue {
@@ -40,6 +42,20 @@ pub enum RullstValue {
     /// A time of day, for `time()` columns; text `HH:MM:SS[.f]` on the `Any`
     /// pool. Added in v13.
     Time(chrono::NaiveTime),
+    /// A UTC instant, for `timestamp_tz()` columns: bound exactly as
+    /// [`RullstValue::DateTime`] binds the same instant (a `DATETIME`
+    /// parameter on MySQL/MariaDB, RFC 3339 text on the `Any` pool). Added in
+    /// 13.0.0-alpha.6.
+    Timestamp(crate::Timestamp),
+    /// A date and time without a zone, for `timestamp()` columns: bound as
+    /// [`RullstValue::NaiveDateTime`]. Added in 13.0.0-alpha.6.
+    CivilDateTime(crate::DateTime),
+    /// A calendar date, for `date()` columns: bound as [`RullstValue::Date`].
+    /// Added in 13.0.0-alpha.6.
+    CivilDate(crate::Date),
+    /// A time of day, for `time()` columns: bound as [`RullstValue::Time`].
+    /// Added in 13.0.0-alpha.6.
+    CivilTime(crate::Time),
 }
 
 type QueryArguments = <crate::RullstDatabase as sqlx::Database>::Arguments;
@@ -65,6 +81,10 @@ macro_rules! bind_rullst_value {
             RullstValue::NaiveDateTime(value) => $query.bind(temporal::naive_date_time(value)),
             RullstValue::Date(value) => $query.bind(temporal::date(value)),
             RullstValue::Time(value) => $query.bind(temporal::time(value)),
+            RullstValue::Timestamp(value) => $query.bind(temporal::timestamp(*value)),
+            RullstValue::CivilDateTime(value) => $query.bind(temporal::civil_date_time(*value)),
+            RullstValue::CivilDate(value) => $query.bind(temporal::civil_date(*value)),
+            RullstValue::CivilTime(value) => $query.bind(temporal::civil_time(*value)),
         }
     };
 }
@@ -95,6 +115,10 @@ mod temporal {
     pub(super) fn time(value: &NaiveTime) -> String {
         value.format("%T%.f").to_string()
     }
+
+    pub(super) use crate::temporal::text::{
+        date as civil_date, date_time as civil_date_time, time as civil_time, timestamp,
+    };
 }
 
 /// Date/time parameters with a strict driver: SQLx's own `chrono` codecs. A
@@ -123,6 +147,22 @@ mod temporal {
 
     pub(super) fn time(value: &NaiveTime) -> NaiveTime {
         *value
+    }
+
+    pub(super) fn timestamp(value: crate::Timestamp) -> crate::__bind_field::TimestampWire {
+        crate::__bind_field::timestamp_wire(value)
+    }
+
+    pub(super) fn civil_date_time(value: crate::DateTime) -> crate::DateTime {
+        value
+    }
+
+    pub(super) fn civil_date(value: crate::Date) -> crate::Date {
+        value
+    }
+
+    pub(super) fn civil_time(value: crate::Time) -> crate::Time {
+        value
     }
 }
 

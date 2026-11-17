@@ -6,6 +6,7 @@
 
 use sha2::{Digest, Sha256};
 
+use crate::temporal::text;
 use crate::{Error, Orm, RullstValue};
 
 mod model_hash;
@@ -357,6 +358,18 @@ fn update_value(digest: &mut Sha256, value: &RullstValue) {
         }
         RullstValue::Time(value) => {
             update_field(digest, 19, value.format("%T%.9f").to_string().as_bytes())
+        }
+        // The same tags and text as the `chrono` variants, so an equal value
+        // keys the same cache entry whichever type holds it.
+        RullstValue::Timestamp(value) => {
+            update_field(digest, 16, text::timestamp_nanos(*value).as_bytes())
+        }
+        RullstValue::CivilDateTime(value) => {
+            update_field(digest, 17, text::date_time_nanos(*value).as_bytes())
+        }
+        RullstValue::CivilDate(value) => update_field(digest, 18, text::date(*value).as_bytes()),
+        RullstValue::CivilTime(value) => {
+            update_field(digest, 19, text::time_nanos(*value).as_bytes())
         }
     }
 }

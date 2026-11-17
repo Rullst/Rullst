@@ -25,7 +25,11 @@ targets = ["x86_64-unknown-linux-gnu"]
 rullst-orm-macros = { workspace = true, features = ["runtime-driver-codecs", "runtime-feature-gates"] }
 # TLS (`tls-rustls-aws-lc-rs`) comes with the PostgreSQL and MySQL drivers
 # below: SQLite needs none, so a SQLite-only build compiles no TLS stack.
-sqlx = { workspace = true, features = ["any", "runtime-tokio", "json", "chrono"] }
+# `time` is private: the Rullst date/time types (`rullst_orm::Timestamp`, …)
+# take their MySQL/MariaDB and SQLite type descriptors from SQLx's `time`
+# codecs, the only public source of those descriptors besides `chrono`; their
+# values are encoded and decoded by Rullst's own code.
+sqlx = { workspace = true, features = ["any", "runtime-tokio", "json", "chrono", "time"] }
 # `TransactionManager` lets a nested `Orm::transaction` open, release and roll
 # back a savepoint on the task-scoped transaction with SQLx's own depth
 # tracking. The `sqlx` facade does not re-export that trait; sqlx pins this
@@ -39,6 +43,9 @@ serde_json = { workspace = true }
 # Date/time model fields and `RullstValue` variants; re-exported as
 # `rullst_orm::chrono`. `serde` lets generated `to_json()` serialize them.
 chrono = { workspace = true, features = ["std", "clock", "serde"] }
+# The date/time types of model fields and `RullstValue` (`Timestamp`,
+# `DateTime`, `Date`, `Time`) wrap jiff's; re-exported as `rullst_orm::jiff`.
+jiff = { workspace = true, features = ["serde"] }
 redis = { workspace = true, features = ["tokio-rustls-comp", "connection-manager"], optional = true }
 # Installs aws-lc-rs as the rustls process default before a Redis TLS connection.
 rustls = { workspace = true, features = ["aws-lc-rs", "std"], optional = true }
