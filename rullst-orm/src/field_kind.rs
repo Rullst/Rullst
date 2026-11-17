@@ -125,9 +125,18 @@ mod tests {
         // An application type named like one of them, a jiff type and a
         // chrono type have none.
         assert_eq!((&Probe::<Date>::new()).__rullst_temporal_kind(), None);
-        assert_eq!((&Probe::<jiff::civil::Date>::new()).__rullst_temporal_kind(), None);
-        assert_eq!((&Probe::<chrono::NaiveDate>::new()).__rullst_temporal_kind(), None);
-        assert_eq!((&Probe::<Option<String>>::new()).__rullst_temporal_kind(), None);
+        assert_eq!(
+            (&Probe::<jiff::civil::Date>::new()).__rullst_temporal_kind(),
+            None
+        );
+        assert_eq!(
+            (&Probe::<chrono::NaiveDate>::new()).__rullst_temporal_kind(),
+            None
+        );
+        assert_eq!(
+            (&Probe::<Option<String>>::new()).__rullst_temporal_kind(),
+            None
+        );
         let _ = Probe::<String>::default();
     }
 }

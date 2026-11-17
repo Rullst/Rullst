@@ -19,10 +19,10 @@
 use jiff::civil;
 use sqlx::encode::IsNull;
 use sqlx::error::BoxDynError;
-use sqlx::mysql::types::MySqlTime;
-use sqlx::mysql::{MySqlTypeInfo, MySqlValueRef};
+use sqlx::mysql::MySqlTypeInfo;
+use sqlx::mysql::types::{MySqlTime, MySqlTimeSign};
 use sqlx::types::time as sqlx_time;
-use sqlx::{Decode, Encode, MySql, Type, TypeInfo};
+use sqlx::{Encode, MySql, Type, TypeInfo};
 
 use super::parse;
 use super::{Date, DateTime, Time, Timestamp, text};
@@ -58,8 +58,8 @@ impl Type<MySql> for Time {
 /// The year (MySQL's range is 1000 to 9999; a negative year cannot be sent),
 /// month and day.
 fn push_date(date: civil::Date, buf: &mut Vec<u8>) -> Result<(), BoxDynError> {
-    let year = u16::try_from(date.year())
-        .map_err(|_| format!("date out of range for MySQL: {date}"))?;
+    let year =
+        u16::try_from(date.year()).map_err(|_| format!("date out of range for MySQL: {date}"))?;
     buf.extend_from_slice(&year.to_le_bytes());
     buf.extend_from_slice(&[date.month().unsigned_abs(), date.day().unsigned_abs()]);
     Ok(())
@@ -138,7 +138,11 @@ impl Encode<'_, MySql> for Time {
     }
 
     fn size_hint(&self) -> usize {
-        if self.0.subsec_nanosecond() != 0 { 13 } else { 9 }
+        if self.0.subsec_nanosecond() != 0 {
+            13
+        } else {
+            9
+        }
     }
 }
 
@@ -150,8 +154,9 @@ enum Raw<'r> {
     Text(&'r str),
 }
 
-fn raw(value: MySqlValueRef<'_>) -> Result<Raw<'_>, BoxDynError> {
-    let bytes = <&[u8] as Decode<MySql>>::decode(value)?;
+/// The binary row format starts a date/time value with its length (at most
+/// 12); the text format is printable.
+fn classify(bytes: &[u8]) -> Result<Raw<'_>, BoxDynError> {
     Ok(match bytes.first() {
         Some(length) if *length < b' ' => Raw::Binary(bytes),
         _ => Raw::Text(std::str::from_utf8(bytes)?),
@@ -216,8 +221,9 @@ fn clock(hour: u8, minute: u8, second: u8, micros: u32) -> Option<civil::Time> {
     .ok()
 }
 
-fn date_time(value: MySqlValueRef<'_>) -> Result<civil::DateTime, BoxDynError> {
-    match raw(value)? {
+/// A `DATETIME` or `TIMESTAMP` value in either protocol.
+pub(super) fn date_time_from_value(bytes: &[u8]) -> Result<civil::DateTime, BoxDynError> {
+    match classify(bytes)? {
         Raw::Binary(bytes) => date_time_from_binary(bytes),
         Raw::Text(text) => parse::parse(text, parse::DATE_TIME)
             .and_then(|parsed| parsed.date_time())
@@ -225,33 +231,87 @@ fn date_time(value: MySqlValueRef<'_>) -> Result<civil::DateTime, BoxDynError> {
     }
 }
 
-impl<'r> Decode<'r, MySql> for Timestamp {
-    fn decode(value: MySqlValueRef<'r>) -> Result<Self, BoxDynError> {
-        let instant = jiff::tz::Offset::UTC.to_timestamp(date_time(value)?)?;
-        Ok(Self(instant))
+/// An instant: the UTC wall time of [`date_time_from_value`].
+pub(super) fn instant_from_value(bytes: &[u8]) -> Result<jiff::Timestamp, BoxDynError> {
+    Ok(jiff::tz::Offset::UTC.to_timestamp(date_time_from_value(bytes)?)?)
+}
+
+/// A `DATE` value in either protocol.
+pub(super) fn date_from_value(bytes: &[u8]) -> Result<civil::Date, BoxDynError> {
+    match classify(bytes)? {
+        Raw::Binary(bytes) => Ok(date_from_binary(&bytes[1..])?.ok_or("unexpected zero date")?),
+        Raw::Text(text) => parse::parse(text, parse::DATE_ONLY)
+            .and_then(|parsed| parsed.date())
+            .ok_or_else(|| format!("invalid MySQL DATE: {text}").into()),
     }
 }
 
-impl<'r> Decode<'r, MySql> for DateTime {
-    fn decode(value: MySqlValueRef<'r>) -> Result<Self, BoxDynError> {
-        date_time(value).map(Self)
+/// A binary `TIME` as SQLx's `MySqlTime` decoder reads it: no fields for
+/// zero, else a sign byte, four day bytes, hour, minute, second and optional
+/// microseconds, validated by `MySqlTime::new`.
+pub(super) fn mysql_time_from_binary(bytes: &[u8]) -> Result<MySqlTime, BoxDynError> {
+    let (&length, fields) = bytes.split_first().ok_or("empty buffer")?;
+    if length == 0 {
+        return Ok(MySqlTime::ZERO);
     }
+    let (sign, days, hours, minutes, seconds, micros) = match fields {
+        [sign, d0, d1, d2, d3, hours, minutes, seconds] => (
+            *sign,
+            [*d0, *d1, *d2, *d3],
+            *hours,
+            *minutes,
+            *seconds,
+            [0; 4],
+        ),
+        [
+            sign,
+            d0,
+            d1,
+            d2,
+            d3,
+            hours,
+            minutes,
+            seconds,
+            m0,
+            m1,
+            m2,
+            m3,
+        ] => (
+            *sign,
+            [*d0, *d1, *d2, *d3],
+            *hours,
+            *minutes,
+            *seconds,
+            [*m0, *m1, *m2, *m3],
+        ),
+        _ => {
+            return Err(format!(
+                "expected 8 or 12 bytes for TIME value, got {}",
+                fields.len()
+            )
+            .into());
+        }
+    };
+    let sign = match sign {
+        0 => MySqlTimeSign::Positive,
+        1 => MySqlTimeSign::Negative,
+        other => return Err(format!("expected 0 or 1 for TIME sign byte, got {other}").into()),
+    };
+    let whole_hours = u32::from_le_bytes(days)
+        .checked_mul(24)
+        .and_then(|hours_of_days| hours_of_days.checked_add(u32::from(hours)))
+        .ok_or("overflow calculating whole hours from `days * 24 + hours`")?;
+    Ok(MySqlTime::new(
+        sign,
+        whole_hours,
+        minutes,
+        seconds,
+        u32::from_le_bytes(micros),
+    )?)
 }
 
-impl<'r> Decode<'r, MySql> for Date {
-    fn decode(value: MySqlValueRef<'r>) -> Result<Self, BoxDynError> {
-        let date = match raw(value)? {
-            Raw::Binary(bytes) => date_from_binary(&bytes[1..])?.ok_or("unexpected zero date")?,
-            Raw::Text(text) => parse::parse(text, parse::DATE_ONLY)
-                .and_then(|parsed| parsed.date())
-                .ok_or_else(|| format!("invalid MySQL DATE: {text}"))?,
-        };
-        Ok(Self(date))
-    }
-}
-
-/// A binary `TIME` is read by SQLx's `MySqlTime` and must be a time of day;
-/// its sign is ignored, as `chrono` ignored it.
+/// A `MySqlTime` must be a time of day; its sign is ignored, as `chrono`
+/// ignored it.
 pub(super) fn time_from_mysql_time(time: &MySqlTime) -> Option<civil::Time> {
     clock(
         u8::try_from(time.hours()).ok()?,
@@ -261,21 +321,24 @@ pub(super) fn time_from_mysql_time(time: &MySqlTime) -> Option<civil::Time> {
     )
 }
 
-impl<'r> Decode<'r, MySql> for Time {
-    fn decode(value: MySqlValueRef<'r>) -> Result<Self, BoxDynError> {
-        let time = match raw(value.clone())? {
-            Raw::Binary(_) => {
-                let time = MySqlTime::decode(value)?;
-                time_from_mysql_time(&time)
-                    .ok_or_else(|| format!("Cannot convert `MySqlTime` value to a time: {time}"))?
-            }
-            Raw::Text(text) => parse::parse(text, parse::TIME)
-                .and_then(|parsed| parsed.time())
-                .ok_or_else(|| format!("invalid MySQL TIME: {text}"))?,
-        };
-        Ok(Self(time))
+/// A `TIME` value in either protocol.
+pub(super) fn time_from_value(bytes: &[u8]) -> Result<civil::Time, BoxDynError> {
+    match classify(bytes)? {
+        Raw::Binary(bytes) => {
+            let time = mysql_time_from_binary(bytes)?;
+            time_from_mysql_time(&time)
+                .ok_or_else(|| format!("Cannot convert `MySqlTime` value to a time: {time}").into())
+        }
+        Raw::Text(text) => parse::parse(text, parse::TIME)
+            .and_then(|parsed| parsed.time())
+            .ok_or_else(|| format!("invalid MySQL TIME: {text}").into()),
     }
 }
+
+// The `Decode` implementations only hand the value's bytes to the functions
+// above; they need a live server.
+#[path = "mysql_decode.rs"]
+mod decode;
 
 #[cfg(test)]
 #[path = "mysql_tests.rs"]

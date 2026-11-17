@@ -58,5 +58,12 @@ rullst-auth/src/auth/session_registry/mysql.rs
 rullst-ai/src/ai/memory/sql/mysql.rs
 rullst-capital/src/quota/sql/mysql.rs
 
+# The ORM date/time types' PostgreSQL and MySQL/MariaDB `Decode` glue, which
+# only hands a live server's value to the unit-tested functions of
+# temporal/postgres.rs and temporal/mysql.rs: the strict-postgres and
+# strict-mysql matrices in ci.yml (driver_contract/jiff_temporal.rs).
+rullst-orm/src/temporal/postgres_decode.rs
+rullst-orm/src/temporal/mysql_decode.rs
+
 # Authenticated, TLS and restart Redis contracts: .github/check-messaging-redis.py.
 rullst-messaging/src/redis_streams/**

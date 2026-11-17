@@ -18,9 +18,12 @@
 //! existing rows and new ones mix in one column. Three limits come from jiff:
 //! years run from -9999 to 9999 (a `Timestamp` from -9999-01-02T01:59:59Z to
 //! 9999-12-30T22:00:00.999999999Z), so a stored value outside that range is a
-//! decode error; a leap second (`:60`) reads as second 59 with the same
-//! fraction, as jiff parses it; and `Default` is jiff's (the Unix epoch for
-//! `Timestamp`, midnight for `Time`, 0000-01-01 for `Date` and `DateTime`).
+//! decode error (never a panic) where `chrono` read years up to ±262,142; and
+//! jiff has no leap seconds, so a stored leap second, which `chrono` kept as a
+//! value of its own, reads as second 59 with the same fraction, as jiff's own
+//! parser reads it (`23:59:60.5` reads as `23:59:59.5`). `Default` is
+//! chrono's: the Unix epoch (1970-01-01T00:00:00Z), 1970-01-01T00:00:00,
+//! 1970-01-01 and midnight.
 //!
 //! `Display`, `FromStr` and serde use jiff's ISO 8601 / RFC 3339 forms
 //! (`2026-10-15T09:30:00.5Z` for a `Timestamp`), which are not the database
@@ -60,7 +63,6 @@ macro_rules! temporal_type {
         #[derive(
             Clone,
             Copy,
-            Default,
             PartialEq,
             Eq,
             PartialOrd,
@@ -155,6 +157,41 @@ impl Timestamp {
     }
 }
 
+// The defaults are chrono's (the Unix epoch), not jiff's 0000-01-01, so a
+// model that derives `Default` stores what it stored with the chrono types.
+
+/// The Unix epoch, 1970-01-01T00:00:00Z.
+impl Default for Timestamp {
+    fn default() -> Self {
+        Self(jiff::Timestamp::UNIX_EPOCH)
+    }
+}
+
+/// 1970-01-01T00:00:00.
+impl Default for DateTime {
+    fn default() -> Self {
+        Self(jiff::civil::DateTime::constant(1970, 1, 1, 0, 0, 0, 0))
+    }
+}
+
+/// 1970-01-01.
+impl Default for Date {
+    fn default() -> Self {
+        Self(jiff::civil::Date::constant(1970, 1, 1))
+    }
+}
+
+/// Midnight, 00:00:00.
+impl Default for Time {
+    fn default() -> Self {
+        Self(jiff::civil::Time::midnight())
+    }
+}
+
 #[cfg(test)]
 #[path = "mod_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "support_tests.rs"]
+pub(crate) mod test_support;

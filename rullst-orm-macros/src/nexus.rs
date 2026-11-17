@@ -209,8 +209,38 @@ fn inferred_field_kind(field_type: &Type) -> TokenStream2 {
     match unwrapped_type_name(field_type).as_str() {
         "bool" => quote!(::rullst::nexus::FieldKind::Boolean),
         "f32" | "f64" => quote!(::rullst::nexus::FieldKind::Number),
-        _ => quote!(::rullst::nexus::FieldKind::Text),
+        "String" => quote!(::rullst::nexus::FieldKind::Text),
+        _ => temporal_or_text(field_type),
     }
+}
+
+/// The widget of a field whose spelling names none: by type, the ORM's
+/// `Timestamp`, `DateTime`, `Date` and `Time` (or an `Option` of one, under
+/// any path, import or alias) are `DateTimeUtc`, `DateTime`, `Date` and
+/// `Time`; every other type, such as an application type spelled `Date`, is
+/// `Text`. The compiler decides through `rullst_orm::__field_kind`, which
+/// Nexus re-exports, because the derive only sees the type's tokens.
+fn temporal_or_text(field_type: &Type) -> TokenStream2 {
+    quote! {{
+        use ::rullst::nexus::__orm_field_kind::{Other as _, Temporal as _};
+        match (&::rullst::nexus::__orm_field_kind::Probe::<#field_type>::new())
+            .__rullst_temporal_kind()
+        {
+            ::core::option::Option::Some(::rullst::nexus::__orm_field_kind::TemporalKind::Timestamp) => {
+                ::rullst::nexus::FieldKind::DateTimeUtc
+            }
+            ::core::option::Option::Some(::rullst::nexus::__orm_field_kind::TemporalKind::DateTime) => {
+                ::rullst::nexus::FieldKind::DateTime
+            }
+            ::core::option::Option::Some(::rullst::nexus::__orm_field_kind::TemporalKind::Date) => {
+                ::rullst::nexus::FieldKind::Date
+            }
+            ::core::option::Option::Some(::rullst::nexus::__orm_field_kind::TemporalKind::Time) => {
+                ::rullst::nexus::FieldKind::Time
+            }
+            ::core::option::Option::None => ::rullst::nexus::FieldKind::Text,
+        }
+    }}
 }
 
 /// How the ORM's confidentiality markers constrain a field in Nexus.

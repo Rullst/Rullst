@@ -784,6 +784,9 @@ indexes and constraints to an existing table; SQLite changes it cannot make
 `Error::UnsupportedSchemaChange` before any statement runs.
 
 `date()`, `time()`, `timestamp()` and `timestamp_tz()` hold
+`rullst_orm::Date`, `Time`, `DateTime` and `Timestamp` fields (since
+13.0.0-alpha.6; they wrap the `jiff` 1.0 types re-exported as
+`rullst_orm::jiff` and store what the `chrono` types store), or
 `chrono::NaiveDate`, `NaiveTime`, `NaiveDateTime` and `DateTime<Utc>` fields
 (`rullst_orm::chrono`): native `DATE`/`TIME`/`TIMESTAMP`/`TIMESTAMPTZ` on
 PostgreSQL, `DATE`/`TIME(6)`/`DATETIME(6)` (UTC) on MySQL/MariaDB and ISO-8601

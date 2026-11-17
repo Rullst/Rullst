@@ -751,6 +751,17 @@ the earlier statements applied.
 | `timestamp` | `NaiveDateTime` | `TIMESTAMP` | `DATETIME(6)` | `2026-10-15 09:30:00.500` |
 | `timestamp_tz` | `DateTime<Utc>` | `TIMESTAMPTZ` | `DATETIME(6)` (UTC) | `2026-10-15T09:30:00.500+00:00` |
 
+Since 13.0.0-alpha.6 the same columns also hold the ORM's own jiff-based
+types, `rullst_orm::Date`, `Time`, `DateTime` and `Timestamp` (in the facade
+`rullst::orm::Date` and so on; `rullst_orm::jiff` is the jiff 1.0 crate they
+wrap). They dereference to and convert from `jiff::civil::{Date, Time,
+DateTime}` and `jiff::Timestamp`, write the same bytes and text as the `chrono`
+types in the table and read everything those read, so a column may hold rows
+written by either. They read a year outside -9999 to 9999 as a decode error and
+a leap second as second 59, and `RullstValue` has a variant for each
+(`Timestamp`, `CivilDateTime`, `CivilDate`, `CivilTime`). The `chrono` types
+are removed before 13.0.0-alpha.6 is published.
+
 MySQL/MariaDB store a UTC instant in `DATETIME(6)` because their `TIMESTAMP`
 ends in 2038; SQLx sets the session time zone to `+00:00`, so values and
 `CURRENT_TIMESTAMP` defaults are UTC (other clients see the same UTC wall
