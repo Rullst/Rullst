@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794880290351,
+  "lastUpdate": 1794883750409,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Core Primitives Benchmark": [
@@ -38061,6 +38061,78 @@ window.BENCHMARK_DATA = {
             "name": "generate_csrf_token_32_chars",
             "value": 131,
             "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e911dcb96ac7fb961f15e9d1b8fe93cb5f0225f1",
+          "message": "Merge pull request #741 from Rullst/feat/v13-alpha6-public-deps\n\nfeat(api)!: keep high-churn dependencies out of the public API",
+          "timestamp": "2026-11-16T23:36:29-03:00",
+          "tree_id": "31137b9143989a4639e5359986c612da7564e96e",
+          "url": "https://github.com/Rullst/Rullst/commit/e911dcb96ac7fb961f15e9d1b8fe93cb5f0225f1"
+        },
+        "date": 1794883749637,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_escape/clean_input_no_escape",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/malicious_input_full_escape",
+            "value": 90,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/realistic_partial_escape",
+            "value": 28,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/email_field",
+            "value": 125,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/credit_card_field",
+            "value": 103,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/phone_field",
+            "value": 89,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/safe_field_no_pii",
+            "value": 97,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "generate_csrf_token_32_chars",
+            "value": 102,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
