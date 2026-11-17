@@ -1,6 +1,6 @@
 # Escopo e limites
 
-> **Tradução** da página em inglês [`scope-and-limits.md`](../scope-and-limits.md), feita a partir do commit [`5ca42939f`](https://github.com/Rullst/Rullst/commit/5ca42939f41d2d41257219c1c5c34f1ad49ac123). Se as duas versões divergirem, vale a versão em inglês.
+> **Tradução** da página em inglês [`scope-and-limits.md`](../scope-and-limits.md), feita a partir do commit [`7657317db`](https://github.com/Rullst/Rullst/commit/7657317db68ae5dfc6f66a9550f2fa04ba406fa1). Se as duas versões divergirem, vale a versão em inglês.
 
 Esta página lista o que o Rullst não faz por decisão de projeto e o que os
 testes do próprio Rullst não conseguem comprovar, porque depende de serviços
@@ -33,6 +33,15 @@ próxima) estão nas "Known limitations" dessa versão no
   Não abra arquivos SQLite que alguém menos confiável possa gravar. O workflow
   de CI que o `cargo rullst new` escreve ignora o `RUSTSEC-2026-0459` no passo
   `cargo audit` até a mesma data.
+
+- Durante toda a 13.x, as 25 dependências públicas listadas na
+  [política de compatibilidade](../compatibility-policy.md#public-dependencies)
+  ficam nas suas linhas de versão. Uma atualização incompatível de uma delas
+  só sai na 14.0, como exceção de segurança, ou atrás de uma nova feature
+  opcional ao lado da linha da 13.x. As que ainda estão antes da 1.0, como
+  `axum` 0.8, `sqlx` 0.9, `tower` 0.5, `tower-http` 0.7, `tower-sessions`
+  0.15 (o `axum-session` do Connect), `validator` 0.21, `pgvector` 0.4 e
+  `secrecy` 0.10, podem ficar atrás das versões mais novas durante a 13.x.
 
 ## Atualizações
 
