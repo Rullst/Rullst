@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794880655233,
+  "lastUpdate": 1794884130770,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -18410,6 +18410,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e911dcb96ac7fb961f15e9d1b8fe93cb5f0225f1",
+          "message": "Merge pull request #741 from Rullst/feat/v13-alpha6-public-deps\n\nfeat(api)!: keep high-churn dependencies out of the public API",
+          "timestamp": "2026-11-16T23:36:29-03:00",
+          "tree_id": "31137b9143989a4639e5359986c612da7564e96e",
+          "url": "https://github.com/Rullst/Rullst/commit/e911dcb96ac7fb961f15e9d1b8fe93cb5f0225f1"
+        },
+        "date": 1794884129972,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 9,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 3,
             "range": "± 0",
             "unit": "ns/iter"
           }
