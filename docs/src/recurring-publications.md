@@ -78,13 +78,17 @@ prerelease has no such record and keeps the legacy `cron`-crate meaning:
 weekdays 1=Sunday through 7=Saturday, day-of-month and weekday restrictions
 intersect, and a field starting or ending with `,`, `-` or `/` is joined with
 its neighbour. The legacy syntax is deprecated, and reading it is planned for
-removal in 14.0; an accessor on `RecurringDefinition` reports which syntax a
-definition uses. To move a schedule, cancel it and create a new name with the
-rewritten expression. A 13.0 prerelease before alpha.6 cannot read definitions
-that record their syntax, so a rollback past alpha.6 is a database restore.
-See [Messaging schedules and POSIX cron](migration-v13.md#messaging-schedules-and-posix-cron).
-<!-- TODO(jiff-docs): name the RecurringDefinition syntax accessor once the
-messaging pull request settles it. -->
+removal in 14.0. `RecurringDefinition::syntax()` and
+`RecurringMetadata::syntax()` return `CronSyntax::Posix` or
+`CronSyntax::Legacy`. `RecurringDefinition::new` refuses an expression that
+only the legacy syntax accepted (`1, 2 * * *`), while a stored definition with
+it keeps running. Creating the same name and expression as a stored legacy
+definition replays it, with a logged warning and its legacy meaning; any other
+definition under that name fails with `RecurringError::LegacyDefinition`. To
+move a schedule, cancel it and create the rewritten expression under a new
+name. A 13.0 prerelease before alpha.6 cannot read definitions that record
+their syntax, so a rollback past alpha.6 is a database restore. See
+[Messaging schedules and POSIX cron](migration-v13.md#messaging-schedules-and-posix-cron).
 
 `CatchUp` preserves every missed due time; a tick emits the oldest due times
 first, up to its 1–100 occurrence budget. `Coalesce` emits the oldest outstanding

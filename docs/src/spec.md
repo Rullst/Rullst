@@ -1198,9 +1198,16 @@ Each stored definition records its syntax. A definition created before
 13.0.0-alpha.6 has no such record and keeps the legacy `cron`-crate projection
 (weekday 1=Sun through 7=Sat, calendar-day and weekday restrictions
 intersect, a field starting or ending with `,`, `-` or `/` joined with its
-neighbour); the legacy syntax is deprecated, its reading is planned for
-removal in 14.0, and a public accessor reports a definition's syntax. A 13.0
-prerelease before alpha.6 cannot read definitions that record their syntax.
+neighbour); the legacy syntax is deprecated and its reading is planned for
+removal in 14.0. `RecurringDefinition::syntax()` and
+`RecurringMetadata::syntax()` return the `#[non_exhaustive]`
+`CronSyntax::Posix` or `CronSyntax::Legacy`. `RecurringDefinition::new`
+rejects legacy-only expressions with a distinct `InvalidInput` message;
+stored legacy rows keep running. Creating a definition equal to a stored
+legacy one except for its syntax replays the stored metadata (`Legacy`, with a
+logged warning); any other definition under a legacy name fails with
+`RecurringError::LegacyDefinition`. A 13.0 prerelease before alpha.6 cannot
+read definitions that record their syntax.
 Bounded catch-up emits the oldest due occurrences within the caller's tick budget;
 coalescing emits one oldest outstanding occurrence and advances after the observed
 current time. Advancing the schedule and persisting frozen occurrence content
@@ -1826,7 +1833,8 @@ jiff's types. Each wraps the `jiff` 1 type of the same role
 (`jiff::civil::Date`, `civil::Time`, `civil::DateTime`, `jiff::Timestamp`),
 converts to and from it with `From`, dereferences to it, and implements
 `Display`/`FromStr` (jiff's ISO 8601 and RFC 3339 forms, `Err =
-jiff::Error`), transparent serde in jiff's format, `Default` (jiff's),
+jiff::Error`), transparent serde in jiff's format, `Default` (the values
+`chrono` gave: 1970-01-01, 1970-01-01T00:00:00, the Unix epoch, midnight),
 `Copy`, `Ord` and `Hash`; `Timestamp::now()` reads the system clock.
 `rullst_orm::jiff` (`rullst::orm::jiff`) re-exports the crate, and
 `rullst_orm::chrono` no longer exists. They write exactly the bytes the

@@ -448,14 +448,13 @@ longer enables it.
 **Stored data needs no migration.** On SQLite, PostgreSQL, MySQL and MariaDB
 the new types write exactly the bytes that the `chrono` types wrote, and they
 read every form those types read. Existing rows need no data migration, and
-old and new rows can share a column. jiff sets three limits:
+old and new rows can share a column. `Default` gives the same values as
+before: 1970-01-01 for `Date`, 1970-01-01T00:00:00 for `DateTime`, the Unix
+epoch for `Timestamp` and midnight for `Time`. jiff sets two limits:
 
 - years run from -9999 to 9999, so a stored value outside that range no
   longer decodes (`chrono` accepted a far wider range);
-- a leap second (`:60`) reads as second 59;
-- `Default` is jiff's value: `Date` and `DateTime` default to 0000-01-01
-  (`chrono` used 1970-01-01), while `Timestamp` still defaults to the Unix
-  epoch and `Time` to midnight.
+- a leap second (`:60`) reads as second 59.
 
 **APIs outside the database take jiff's own types:**
 
@@ -555,34 +554,44 @@ text can change meaning, as these examples show:
 | `0 9 * * 7` | Saturdays | Sundays |
 | `0 9 * * 0` | rejected | Sundays |
 | `0 0 1 * Mon` | the 1st, when it is a Monday | the 1st of every month, and every Monday |
-| `1, 2 * * *` | accepted, with `1,` and `2` joined into one field | rejected |
+| `1, 2 * * *` | accepted, with `1,` and `2` joined into one field | rejected by `RecurringDefinition::new` |
 
 Definitions stored before the upgrade keep their meaning. Each definition
 records the syntax it was created with, and a definition stored without that
 record is read with the earlier `cron`-crate rules, now called the legacy
-syntax. The legacy syntax is deprecated: reading such definitions is planned
-for removal in 14.0. A `RecurringDefinition` accessor reports which syntax a
-definition uses.
-<!-- TODO(jiff-docs): name the RecurringDefinition syntax accessor once the
-messaging pull request settles it. -->
+syntax. `RecurringDefinition::syntax()` and `RecurringMetadata::syntax()`
+return `CronSyntax::Posix` or `CronSyntax::Legacy`
+(`rullst::messaging::schedules::CronSyntax`, `#[non_exhaustive]`), and
+`create` and `schedules()` return the metadata, so inspection lists show
+which definitions are legacy. The legacy syntax is deprecated: reading such
+definitions is planned for removal in 14.0. An expression that only the
+legacy syntax accepted, such as `1, 2 * * *`, is refused by
+`RecurringDefinition::new` with its own `InvalidInput` message, while a stored
+definition with it keeps running.
 
-To move a schedule to the new syntax:
+`cargo rullst upgrade` reports `V13-MESSAGING-CRON-POSIX` where your code
+builds a definition. What to do depends on whether that schedule is already
+stored:
 
-1. Rewrite each expression your code passes to `RecurringDefinition::new`.
-   Subtract one from each weekday number, or use weekday names. Where an
-   expression restricts both the day of the month and the weekday, decide
-   whether you mean "both" or "either". `cargo rullst upgrade` reports
-   `V13-MESSAGING-CRON-POSIX` where your code builds a definition. Check
-   expressions read from configuration or a database yourself.
-2. Definitions are immutable. Replace a stored legacy definition the usual
-   way: cancel it, then create a definition under a new name with the
-   rewritten expression.
-   <!-- TODO(jiff-docs): say what `create` does with the name and expression of
-   a stored legacy definition (identical replay or conflict) once the
-   messaging pull request settles it. -->
-3. Plan a rollback as a database restore. A 13.0 prerelease before alpha.6
-   cannot read definitions that record their syntax, so take a backup before
-   alpha.6 creates its first definition.
+- **A schedule already stored** (created before the upgrade). Calling
+  `create` again at startup with the same name and the same expression
+  replays: it returns the stored metadata with `syntax() ==
+  CronSyntax::Legacy`, logs a warning and keeps the old meaning (`0 9 * * 1`
+  stays Sundays), so startup does not fail. Leave the code as it is to keep
+  the legacy schedule until 14.0. To move it to POSIX, cancel it and create
+  the rewritten expression under a new name: any other definition under a
+  legacy name, the rewritten expression included (`0 9 * * 0`), fails with
+  `RecurringError::LegacyDefinition`, and a cancelled name can never be
+  reused.
+- **A new schedule.** Write the expression in the POSIX syntax: subtract one
+  from each weekday number, or use weekday names, and where an expression
+  restricts both the day of the month and the weekday, decide whether you
+  mean "both" or "either".
+
+Check expressions read from configuration or a database yourself. Plan a
+rollback as a database restore: a 13.0 prerelease before alpha.6 cannot read
+definitions that record their syntax, so take a backup before alpha.6 creates
+its first definition.
 
 ## Upgrading an alpha.2 application to alpha.3
 
