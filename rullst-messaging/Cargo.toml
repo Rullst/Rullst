@@ -22,7 +22,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [features]
 default = []
-sqlite = ["sqlx/sqlite", "dep:aes-gcm", "dep:serde_json", "dep:sqlx", "dep:url", "dep:zeroize"]
+sqlite = ["sqlx/sqlite", "dep:aes-gcm", "dep:serde_json", "dep:sqlx", "dep:url", "dep:zeroize", "tokio/time"]
 orm-outbox = ["dep:rullst-orm", "dep:serde_json"]
 redis-streams = ["dep:redis", "dep:rustls", "dep:url", "tokio/time"]
 

@@ -533,12 +533,42 @@ for you to fix.
   when it opens.
 - The standalone Studio can reach monitored projects and webhooks through a
   proxy. The **Proxy** section of its Settings page selects direct
-  connections (the default, as before), the `HTTPS_PROXY` and `NO_PROXY`
-  variables of its environment, or an explicit `http://` or `https://` proxy
-  URL with a `NO_PROXY`-style exception list. Only `https://` connections use
-  the proxy, as a `CONNECT` tunnel, so it never sees a token; loopback hosts
-  and plain `http://` (loopback only) stay direct, and a proxy that cannot be
-  used blocks every connection instead of connecting directly.
+  connections (the default, as before), the proxy variables of its
+  environment, or an explicit `http://` or `https://` proxy URL with a
+  `NO_PROXY`-style exception list. The variables are chosen by the target's
+  scheme, as curl and reqwest choose them: `HTTPS_PROXY` (else `ALL_PROXY`)
+  for `https://` and `HTTP_PROXY` (else `ALL_PROXY`) for `http://`, upper case
+  before lower case, except for the hosts of `NO_PROXY`; a proxy that needs a
+  password comes from them and is never stored. Loopback hosts are always
+  direct and Studio sends `http://` only to loopback, so only `https://`
+  connections use the proxy, as a `CONNECT` tunnel that never sees a token.
+  SOCKS proxies are not supported: a `socks5://` or `socks5h://` value, like
+  a malformed one, blocks every connection instead of connecting directly,
+  and the Settings page names the variable or setting.
+- `cargo rullst upgrade` reports more of the 13.0.0-alpha.6 changes that
+  earlier only the alpha.5 to alpha.6 checklist named, each as a review
+  finding: `V13-SCHEDULER-CRON-FIELDS`, a string literal passed to
+  `Scheduler::task`, `task_in_tz`, `deferrable_task` or
+  `deferrable_task_in_tz` that Core's new cron evaluator refuses because a
+  field starts or ends with `,`, `-` or `/` (the rule runs the evaluator, so
+  only refused expressions are reported); `V13-CSRF-TOKEN-COMPARED`, code and
+  tests that compare a CSRF token with the `rullst_csrf` cookie's value
+  (`==`, `assert_eq!`, `.eq`, `.ct_eq`, or a page body that `.contains` the
+  cookie), which fails now that the embedded token is masked per response;
+  `V13-JSONWEBTOKEN-12`, `EncodingKey::from_secret` and
+  `DecodingKey::from_secret` calls, such as those of `make:cors-jwt`
+  middleware, while a manifest declares `jsonwebtoken` 11 or earlier;
+  `V13-ED25519-DALEK-3`, an `ed25519-dalek` 2 requirement in a workspace that
+  builds Rullst's `ed25519-dalek` 3 through `rullst-iot` or
+  `rullst-connect`; `V13-SQLITE-WAL-AVAILABLE`, once per SQLite project
+  whose `Rullst.toml` has no `sqlite_journal_mode`, for information (WAL
+  stays opt-in); and `V13-AUTH-SESSION-REGISTRY`, the session-epoch cookie
+  calls of the files `cargo rullst auth`, the SaaS starter, `make:mfa` and
+  `make:oauth` generated before alpha.6, while no manifest enables a session
+  registry feature. The checklist's session step now lists the files to
+  change and how to compare them with a project the alpha.6 CLI generates.
+  `V13-CONNECT-INFALLIBLE-NEW-REMOVED` also reports the `new` of a provider
+  that the package defines with `define_provider!`, in any of its files.
 
 ### Changed
 
@@ -552,6 +582,13 @@ for you to fix.
   of slowing the server, and the next batch writes `[HTTP] access log: N lines
   dropped because stdout did not keep up`. A graceful shutdown waits up to one
   second for the queued lines; a killed process loses them.
+- `rullst-ai`'s `InMemoryToolAuditTrail` now validates each event as
+  `DurableToolAuditTrail` does. An event with an empty or oversized principal,
+  an invalid tool identifier, incomplete or oversized approval evidence, or no
+  risk outside a denial is not recorded, and `record` returns
+  `ToolExecutionError::AuditUnavailable` with the durable trail's message.
+  Events built by `ToolRegistry::execute` always pass; only an event that an
+  application builds or deserializes itself can be refused.
 - `rullst-iot` (signed OTA verification), `rullst-connect` (the mock identity
   provider of its `axum` feature) and `cargo-rullst` (`iot:keygen`,
   `iot:sign`) use `ed25519-dalek` 3 instead of 2. Keys, signatures and the
@@ -948,6 +985,22 @@ for you to fix.
   volume, and the VM guide's backup section adds the restore command
   (`sqlite3 ".restore"` with the app stopped). Existing projects are not
   changed; see the "SQLite WAL journal" row of the migration guide to opt in.
+- The standalone Studio's project list (`projects.json`) is forward
+  compatible. A Studio keeps the fields it does not know in every object and
+  writes them back unchanged when it saves, so an older 13.x Studio no longer
+  drops what a newer one stored; they are bounded to 32 fields per object,
+  names of 64 bytes and 16 KiB of JSON per object. Names, base URLs, alert
+  thresholds and notification settings are still validated as when they are
+  saved. The proxy setting is checked when it is used: a proxy mode of a
+  newer Studio is kept and blocks every connection until another is chosen.
+  `version` now counts incompatible changes only: a later 13.x adds fields
+  and never raises it, and a file with a higher version is refused without
+  being changed, with the new `ProjectError::NewerFormat`, whose message
+  names the Studio that reads it (from the file's `min_studio_version`).
+  `AlertRules` deserialization ignores unknown fields. A Studio older than
+  this release still refuses the file once a setting new in this release is
+  saved (desktop notifications, a proxy, a p99 or security-events alert
+  rule); update every Studio that shares the file first.
 
 ### Removed
 
@@ -1081,6 +1134,28 @@ for you to fix.
   console error.
   `render_scalar_html` returns the page without a nonce, loading the same
   pinned file with its integrity.
+- When another process kept the file locked past the 5-second wait, the
+  `initialize` and `open` of the Labs, Media, Supervision and Privacy SQLite
+  stores could end with SQLite's busy result instead of a retry: on Linux
+  SQLite's lock wait can run out before the equal pool wait, and only a pool
+  timeout was tried again. Both are now tried again, three attempts in total,
+  on every platform, and a step whose wait runs out at every attempt fails with
+  a new typed error that only these calls return:
+  `LabError::StorageTimeout`, `MediaError::StorageTimeout`,
+  `SupervisionError::StorageTimeout` (also from `upgrade_event_schema`),
+  `ConsentError::StoreTimeout` or `AgeError::StoreTimeout`, instead of
+  `Storage`, `Busy` or `StoreUnavailable`. Nothing was changed, so startup can
+  be tried again later.
+- `SqliteBroker::connect` and its variants had no outer deadline and no retry:
+  a locked file or a stalled disk kept them waiting on SQLite's 30-second
+  waits. Each opening attempt now has a 10-second deadline and is tried again,
+  three attempts in total, through the same helper as `WebhookOutbox::open`;
+  when every attempt expires they fail with the new
+  `MessagingError::StorageTimeout { operation: "connect" }`.
+- The start-up retry tests of these stores and of `WebhookOutbox::open` ran on
+  Windows only. They now run on every platform with the waits shortened to
+  fractions of a second, holding the file under SQLite's exclusive lock past
+  the wait.
 - **Turso/libSQL:** saving a model whose text primary key a database
   `DEFAULT` fills now works on a multi-instance server (such as Turso Cloud)
   that answers the insert's interactive Hrana stream with a `base_url`: the

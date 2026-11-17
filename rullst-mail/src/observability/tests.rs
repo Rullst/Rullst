@@ -97,3 +97,72 @@ fn observer_configuration_is_bounded_and_provider_labels_are_low_cardinality() {
     let observer = BoundedMailObserver::new(4).expect("observer");
     assert!(ObservedMailDriver::try_new("bad/provider", driver, observer).is_err());
 }
+
+struct SlowDriver;
+
+#[async_trait]
+impl MailDriver for SlowDriver {
+    async fn send(&self, _message: &Message) -> Result<(), MailError> {
+        tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+        Ok(())
+    }
+}
+
+#[tokio::test]
+async fn observations_report_elapsed_time_attachments_schedule_and_tenant() {
+    let observer = BoundedMailObserver::new(4).expect("observer");
+    let observed = ObservedMailDriver::try_new("slow", SlowDriver, observer.clone()).expect("slow");
+    let attached = message("first@example.com")
+        .attach_bytes("a.txt", b"a".to_vec(), "text/plain")
+        .attach_bytes("b.txt", b"b".to_vec(), "text/plain");
+    observed.send(&attached).await.expect("attached delivery");
+    observed
+        .send(&message("second@example.com").send_in(std::time::Duration::from_secs(60)))
+        .await
+        .expect("scheduled delivery");
+
+    let snapshot = observer.snapshot().expect("snapshot");
+    let [first, second] = snapshot.observations() else {
+        panic!("two observations expected");
+    };
+    // The driver sleeps 5 ms, so at least 5,000 microseconds elapse.
+    assert!(first.elapsed_microseconds() >= 5_000);
+    assert_eq!(first.attachment_count(), 2);
+    assert!(!first.scheduled());
+    assert!(!first.tenant_scoped());
+    assert_eq!(second.attachment_count(), 0);
+    assert!(second.scheduled());
+    assert_eq!(snapshot.capacity(), 4);
+    assert_eq!(snapshot.evicted(), 0);
+}
+
+#[tokio::test]
+async fn eviction_counts_every_record_dropped_at_capacity() {
+    let observer = BoundedMailObserver::new(1).expect("observer");
+    let (driver, _) = MemoryDriver::isolated();
+    let observed = ObservedMailDriver::try_new("memory", driver, observer.clone()).expect("memory");
+    for recipient in ["a@example.com", "b@example.com", "c@example.com"] {
+        observed.send(&message(recipient)).await.expect("delivery");
+    }
+    assert_eq!(observer.snapshot().expect("snapshot").evicted(), 2);
+}
+
+#[test]
+fn provider_labels_hold_one_to_64_bytes_and_errors_have_fixed_text() {
+    let label = |provider: String| {
+        let (driver, _) = MemoryDriver::isolated();
+        let observer = BoundedMailObserver::new(1).expect("observer");
+        ObservedMailDriver::try_new(provider, driver, observer).map(|_| ())
+    };
+    assert!(label("p".repeat(64)).is_ok());
+    assert!(label("p".repeat(65)).is_err());
+    assert!(label(String::new()).is_err());
+    assert_eq!(
+        MailObservationError::InvalidCapacity.to_string(),
+        "invalid mail observation capacity"
+    );
+    assert_eq!(
+        MailObservationError::StateUnavailable.to_string(),
+        "mail observation state unavailable"
+    );
+}

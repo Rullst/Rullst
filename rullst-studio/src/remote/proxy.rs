@@ -1,12 +1,19 @@
 //! How the standalone Studio reaches monitored projects and webhooks:
-//! directly (the default), through the proxy of `HTTPS_PROXY` with the
-//! exceptions of `NO_PROXY`, or through a proxy set on the Settings page.
+//! directly (the default), through the proxy variables of its environment,
+//! or through a proxy set on the Settings page.
 //!
-//! Only `https://` requests go through a proxy, as an HTTP `CONNECT` tunnel,
-//! so the proxy relays TLS and never sees a token; plain `http://` requests
-//! (which Studio sends only to loopback) and requests to a loopback host are
-//! always direct. A proxy setting that cannot be used blocks every request
-//! instead of falling back to a direct connection.
+//! The environment's proxy is chosen by the target's scheme, as curl and
+//! reqwest choose it: `HTTPS_PROXY` (else `ALL_PROXY`) for `https://`,
+//! `HTTP_PROXY` (else `ALL_PROXY`) for `http://`, each upper case first, then
+//! lower case, except for the hosts of `NO_PROXY`. Studio sends `http://` only
+//! to loopback, and a loopback host is always reached directly, so in
+//! practice only `https://` requests use a proxy, as an HTTP `CONNECT`
+//! tunnel: the proxy relays TLS and never sees a token.
+//!
+//! Only `http://` and `https://` proxies are supported. A SOCKS proxy, a
+//! malformed URL or an over-long exception list blocks every request, with a
+//! status that names the variable or setting, instead of falling back to a
+//! direct connection.
 
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
@@ -17,22 +24,24 @@ const MAX_NO_PROXY_CHARS: usize = 4_096;
 const MAX_NO_PROXY_ENTRIES: usize = 256;
 
 /// Which proxy Studio uses.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum ProxyMode {
     /// Connect directly; proxy variables are ignored.
     #[default]
     Direct,
-    /// `HTTPS_PROXY` (or `https_proxy`) and `NO_PROXY` (or `no_proxy`) of
-    /// Studio's environment.
+    /// The proxy variables of Studio's environment.
     Environment,
     /// The proxy URL and exceptions stored in the settings.
     Explicit,
+    /// A mode saved by a newer Studio, kept as written. This Studio cannot
+    /// apply it, so every request is refused until a mode it knows is saved.
+    #[serde(untagged)]
+    Newer(String),
 }
 
 /// The proxy settings, kept in the project list.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub(crate) struct ProxySettings {
     #[serde(default)]
     pub(crate) mode: ProxyMode,
@@ -56,11 +65,26 @@ enum Bypass {
     Network(IpAddr, u8),
 }
 
-/// A usable proxy and the hosts reached without it.
+/// The proxy of each target scheme and the hosts reached without one.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ProxyRoute {
-    proxy: Url,
+    https: Option<Url>,
+    http: Option<Url>,
     bypass: Vec<Bypass>,
+}
+
+/// Why the chosen proxy cannot be used. Each names the environment variable
+/// or the setting it comes from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Unusable {
+    /// Not an `http://` or `https://` URL with a host and nothing else.
+    Malformed(&'static str),
+    /// A SOCKS proxy, which Studio does not support.
+    Socks(&'static str),
+    /// Exceptions longer than 4,096 characters.
+    LongExceptions(&'static str),
+    /// A mode saved by a newer Studio.
+    NewerMode,
 }
 
 /// What Studio's HTTP clients do.
@@ -70,26 +94,56 @@ pub(crate) enum ProxyPlan {
     Direct,
     /// Use a proxy.
     Through(ProxyRoute),
-    /// The configured proxy cannot be used; every request is refused.
-    Invalid,
+    /// The chosen proxy cannot be used; every request is refused.
+    Invalid(Unusable),
 }
 
-/// Validates a proxy URL: `http` or `https`, a host, no path, query or
-/// fragment, and user information only when `credentials` allows it (the
-/// environment's; a stored proxy has none).
-pub(crate) fn parse_proxy_url(value: &str, credentials: bool) -> Option<Url> {
+/// Why a proxy URL was refused.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Refusal {
+    Malformed,
+    Socks,
+}
+
+impl Refusal {
+    fn of(self, source: &'static str) -> Unusable {
+        match self {
+            Self::Malformed => Unusable::Malformed(source),
+            Self::Socks => Unusable::Socks(source),
+        }
+    }
+}
+
+/// Validates a proxy URL: `http` or `https` (`http` when no scheme is given,
+/// as curl assumes), a host, no path, query or fragment, and user
+/// information only when `credentials` allows it (the environment's; a
+/// stored proxy has none). A SOCKS URL is refused as such.
+fn check_proxy_url(value: &str, credentials: bool) -> Result<Url, Refusal> {
     let value = value.trim();
     if value.len() > MAX_URL_CHARS {
-        return None;
+        return Err(Refusal::Malformed);
     }
-    let url = Url::parse(value).ok()?;
+    let url = if value.contains("://") {
+        Url::parse(value)
+    } else {
+        Url::parse(&format!("http://{value}"))
+    }
+    .map_err(|_| Refusal::Malformed)?;
+    if url.scheme().starts_with("socks") {
+        return Err(Refusal::Socks);
+    }
     let valid = matches!(url.scheme(), "http" | "https")
         && url.host_str().is_some_and(|host| !host.is_empty())
         && matches!(url.path(), "" | "/")
         && url.query().is_none()
         && url.fragment().is_none()
         && (credentials || (url.username().is_empty() && url.password().is_none()));
-    valid.then_some(url)
+    valid.then_some(url).ok_or(Refusal::Malformed)
+}
+
+/// [`check_proxy_url`] without the reason.
+pub(crate) fn parse_proxy_url(value: &str, credentials: bool) -> Option<Url> {
+    check_proxy_url(value, credentials).ok()
 }
 
 /// The `NO_PROXY` entries of `value`, separated by commas or whitespace.
@@ -141,20 +195,38 @@ fn host_address(host: &str) -> Option<IpAddr> {
         .ok()
 }
 
+/// A proxy's scheme, host and port, for display (never its user
+/// information).
+fn shown(proxy: &Url) -> String {
+    let host = proxy.host_str().unwrap_or_default();
+    match proxy.port() {
+        Some(port) => format!("{}://{host}:{port}", proxy.scheme()),
+        None => format!("{}://{host}", proxy.scheme()),
+    }
+}
+
 impl ProxyRoute {
-    /// A route through `proxy`, except for the hosts of `no_proxy`.
+    /// A route through `proxy` for both schemes, except for the hosts of
+    /// `no_proxy`.
     pub(crate) fn new(proxy: Url, no_proxy: &str) -> Self {
+        Self::by_scheme(Some(proxy.clone()), Some(proxy), no_proxy)
+    }
+
+    fn by_scheme(https: Option<Url>, http: Option<Url>, no_proxy: &str) -> Self {
         Self {
-            proxy,
+            https,
+            http,
             bypass: parse_no_proxy(no_proxy),
         }
     }
 
     /// The proxy for a request to `target`, or `None` to connect directly.
     pub(crate) fn proxy_for(&self, target: &Url) -> Option<Url> {
-        if target.scheme() != "https" {
-            return None;
-        }
+        let proxy = match target.scheme() {
+            "https" => self.https.as_ref(),
+            "http" => self.http.as_ref(),
+            _ => None,
+        }?;
         let host = target.host_str()?.to_ascii_lowercase();
         let address = host_address(&host);
         let loopback = host == "localhost"
@@ -172,58 +244,84 @@ impl ProxyRoute {
                 address.is_some_and(|address| same_prefix(address, *network, *bits))
             }
         });
-        (!loopback && !bypassed).then(|| self.proxy.clone())
-    }
-
-    /// The proxy's scheme, host and port, for display (never its user
-    /// information).
-    pub(crate) fn display(&self) -> String {
-        let host = self.proxy.host_str().unwrap_or_default();
-        match self.proxy.port() {
-            Some(port) => format!("{}://{host}:{port}", self.proxy.scheme()),
-            None => format!("{}://{host}", self.proxy.scheme()),
-        }
+        (!loopback && !bypassed).then(|| proxy.clone())
     }
 }
 
 impl ProxyPlan {
     /// The plan for `settings`, reading the environment through `var`.
     pub(crate) fn resolve(settings: &ProxySettings, var: impl Fn(&str) -> Option<String>) -> Self {
-        let first = |names: [&str; 2]| {
-            names
-                .into_iter()
-                .find_map(|name| var(name).filter(|value| !value.trim().is_empty()))
-        };
-        let (proxy, no_proxy, credentials) = match settings.mode {
-            ProxyMode::Direct => return Self::Direct,
-            ProxyMode::Environment => {
-                let Some(proxy) = first(["HTTPS_PROXY", "https_proxy"]) else {
-                    return Self::Direct;
-                };
-                (
-                    proxy,
-                    first(["NO_PROXY", "no_proxy"]).unwrap_or_default(),
-                    true,
-                )
+        match &settings.mode {
+            ProxyMode::Direct => Self::Direct,
+            ProxyMode::Newer(_) => Self::Invalid(Unusable::NewerMode),
+            ProxyMode::Environment => Self::from_environment(var),
+            ProxyMode::Explicit => {
+                let proxy = settings.url.as_deref().unwrap_or_default();
+                match check_proxy_url(proxy, false) {
+                    Ok(proxy) => Self::through(
+                        ProxyRoute::new(proxy, &settings.no_proxy),
+                        &settings.no_proxy,
+                        "The saved exception list",
+                    ),
+                    Err(refusal) => Self::Invalid(refusal.of("The saved proxy URL")),
+                }
             }
-            ProxyMode::Explicit => (
-                settings.url.clone().unwrap_or_default(),
-                settings.no_proxy.clone(),
-                false,
-            ),
+        }
+    }
+
+    /// The plan of the proxy variables read through `var`.
+    fn from_environment(var: impl Fn(&str) -> Option<String>) -> Self {
+        // The first of `names` that is set and not blank, with its name.
+        let first = |names: [&'static str; 2]| {
+            names.into_iter().find_map(|name| {
+                var(name)
+                    .filter(|value| !value.trim().is_empty())
+                    .map(|value| (name, value))
+            })
         };
+        let all = first(["ALL_PROXY", "all_proxy"]);
+        let https = first(["HTTPS_PROXY", "https_proxy"]).or_else(|| all.clone());
+        let http = first(["HTTP_PROXY", "http_proxy"]).or(all);
+        if https.is_none() && http.is_none() {
+            return Self::Direct;
+        }
+        let parse = |selected: Option<(&'static str, String)>| {
+            selected
+                .map(|(name, value)| {
+                    check_proxy_url(&value, true).map_err(|refusal| refusal.of(name))
+                })
+                .transpose()
+        };
+        let (https, http) = match (parse(https), parse(http)) {
+            (Ok(https), Ok(http)) => (https, http),
+            (Err(unusable), _) | (_, Err(unusable)) => return Self::Invalid(unusable),
+        };
+        let (source, no_proxy) =
+            first(["NO_PROXY", "no_proxy"]).unwrap_or(("NO_PROXY", String::new()));
+        Self::through(
+            ProxyRoute::by_scheme(https, http, &no_proxy),
+            &no_proxy,
+            source,
+        )
+    }
+
+    /// `route`, unless its exceptions (`no_proxy`, from `source`) are too
+    /// long.
+    fn through(route: ProxyRoute, no_proxy: &str, source: &'static str) -> Self {
         if no_proxy.len() > MAX_NO_PROXY_CHARS {
-            return Self::Invalid;
+            return Self::Invalid(Unusable::LongExceptions(source));
         }
-        match parse_proxy_url(&proxy, credentials) {
-            Some(url) => Self::Through(ProxyRoute::new(url, &no_proxy)),
-            None => Self::Invalid,
-        }
+        Self::Through(route)
     }
 
     /// The plan for `settings` and Studio's own environment.
     pub(crate) fn from_settings(settings: &ProxySettings) -> Self {
         Self::resolve(settings, |name| std::env::var(name).ok())
+    }
+
+    /// Whether every request is refused.
+    pub(crate) fn blocks(&self) -> bool {
+        matches!(self, Self::Invalid(_))
     }
 
     /// `builder` with this plan's proxy; never the reqwest defaults.
@@ -236,7 +334,7 @@ impl ProxyPlan {
                     route.proxy_for(target)
                 }))
             }
-            Self::Direct | Self::Invalid => builder,
+            Self::Direct | Self::Invalid(_) => builder,
         }
     }
 
@@ -244,27 +342,39 @@ impl ProxyPlan {
     pub(crate) fn describe(&self) -> String {
         match self {
             Self::Direct => "Connections are direct.".to_string(),
-            Self::Through(route) => format!(
-                "https:// connections go through {} as a CONNECT tunnel, except to loopback and the listed exceptions.",
-                route.display()
+            Self::Through(route) => match &route.https {
+                Some(proxy) => format!(
+                    "https:// connections go through {} as a CONNECT tunnel, except to loopback and the listed exceptions.",
+                    shown(proxy)
+                ),
+                None => "https:// connections are direct: only HTTP_PROXY is set, and Studio's http:// connections go to loopback, which is always direct.".to_string(),
+            },
+            Self::Invalid(Unusable::Malformed(source)) => format!(
+                "{source} is not a usable proxy URL (http:// or https:// with a host and port only), so Studio connects to nothing: fix it or choose another option."
             ),
-            Self::Invalid => {
-                "The proxy cannot be used, so Studio connects to nothing: fix the setting or the environment.".to_string()
-            }
+            Self::Invalid(Unusable::Socks(source)) => format!(
+                "{source} names a SOCKS proxy, which Studio does not support, so it connects to nothing: use an http:// or https:// proxy, or choose another option."
+            ),
+            Self::Invalid(Unusable::LongExceptions(source)) => format!(
+                "{source} is longer than 4096 characters, so Studio connects to nothing: shorten it or choose another option."
+            ),
+            Self::Invalid(Unusable::NewerMode) => "A newer Studio saved a proxy choice this Studio does not know, so it connects to nothing: choose one here and save.".to_string(),
         }
     }
 }
 
 impl ProxySettings {
     /// Validates the settings of the Settings page: an explicit proxy needs
-    /// a valid URL without user information, and the exceptions are bounded.
+    /// an `http://` or `https://` URL without user information, the
+    /// exceptions are bounded, and a mode of a newer Studio cannot be saved.
     pub(crate) fn valid(&self) -> bool {
-        let url = match self.mode {
+        let url = match &self.mode {
             ProxyMode::Explicit => self
                 .url
                 .as_deref()
                 .is_some_and(|url| parse_proxy_url(url, false).is_some()),
             ProxyMode::Direct | ProxyMode::Environment => true,
+            ProxyMode::Newer(_) => false,
         };
         url && self.no_proxy.len() <= MAX_NO_PROXY_CHARS
     }

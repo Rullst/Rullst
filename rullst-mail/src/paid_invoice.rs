@@ -347,4 +347,28 @@ mod tests {
         assert_eq!(messages[0].attachments.len(), 1);
         assert!(messages[0].attachments[0].content.starts_with(b"%PDF-"));
     }
+
+    #[tokio::test]
+    async fn facade_sends_reach_the_configured_driver_and_debug_is_minimized() {
+        let paid = paid_invoice(ChargeStatus::Succeeded).expect("paid invoice");
+        let delivery = PaidInvoiceDelivery::prepare(&paid).expect("prepared delivery");
+        assert_eq!(
+            format!("{delivery:?}"),
+            format!(
+                "PaidInvoiceDelivery {{ delivery_key: {:?}, recipient: \"[REDACTED]\", \
+                 subject: \"Invoice INV-2026-42\", attachment_count: 1 }}",
+                paid.delivery_key()
+            )
+        );
+
+        let _lock = crate::facade::MAIL_ENV_LOCK.lock().await;
+        let (driver, messages) = MemoryDriver::isolated();
+        Mail::set_driver(Box::new(driver));
+        let plain = delivery.send().await;
+        let tenant = delivery.send_for_tenant("tenant_acme").await;
+        Mail::reset_driver();
+        plain.expect("facade delivery");
+        tenant.expect("tenant facade delivery");
+        assert_eq!(messages.lock().expect("message store").len(), 2);
+    }
 }

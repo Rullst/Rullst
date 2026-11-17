@@ -13,6 +13,18 @@ rullst-iot/src/coap.rs:206:18: replace | with ^ in CoapRequest::write_to
 rullst-iot/src/coap.rs:206:52: replace | with ^ in CoapRequest::write_to
 rullst-iot/src/coap.rs:261:35: replace | with ^ in write_option
 
+# rullst-ai: each name below has a row in docs/src/mutation-testing.md
+# "Accepted equivalent mutants".
+rullst-ai/src/ai/evaluation/types.rs:298:9: replace AiEvaluationReport::schema_version -> u8 with 1
+rullst-ai/src/ai/egress.rs:95:9: replace EgressPolicy::strict -> Self with Default::default()
+rullst-ai/src/ai/egress.rs:323:9: replace || with && in is_public_ipv6
+rullst-ai/src/ai/guardrails/markdown_code.rs:39:34: replace - with + in indentation
+rullst-ai/src/ai/guardrails/markdown_images.rs:339:61: replace + with * in definition_destination
+rullst-ai/src/ai/guardrails/markdown_inline.rs:83:82: replace + with - in open_tag_end
+rullst-ai/src/ai/guardrails/markdown_inline.rs:83:82: replace + with * in open_tag_end
+rullst-ai/src/ai/guardrails/tax_ids.rs:71:28: replace + with - in token_end
+rullst-ai/src/ai/guardrails/tax_ids.rs:97:20: replace && with || in is_valid_tax_id
+
 # rullst-orm: compiled only without a strict driver feature (SQLx Any pool), so
 # absent from the gate's --all-features build; default-feature tests cover them.
 rullst-orm/src/schema/schema_builder.rs:78:8: delete ! in prepare_postgres_enums
@@ -222,3 +234,37 @@ rullst-connect/src/mock_idp/handlers.rs:290:59: replace > with >= in userinfo_ha
 rullst-connect/src/mock_idp/handlers.rs:294:43: replace > with >= in userinfo_handler
 rullst-connect/src/mock_idp/handlers.rs:463:5: replace server_error -> Response with Default::default()
 rullst-connect/src/provider/id_token.rs:121:13: replace || with && in validate_claims_with_presenters
+
+# rullst-mail (13.0 campaign, targeted runs with the package's tests): each
+# name below has a row in docs/src/mutation-testing.md "Accepted equivalent
+# mutants".
+rullst-mail/src/pipeline.rs:96:44: replace > with >= in DeliveryPipeline::require_due
+rullst-mail/src/pipeline.rs:160:21: replace > with >= in DeliveryPipeline::prepare_with_context
+rullst-mail/src/suppression/mod.rs:419:24: replace && with || in ascii_domain
+rullst-mail/src/suppression/mod.rs:419:48: replace && with || in ascii_domain
+rullst-mail/src/drivers/failover.rs:89:68: replace < with <= in FailoverDriver::is_tripped
+rullst-mail/src/inspection/sniff.rs:283:36: replace < with <= in root_element
+rullst-mail/src/drivers/memory.rs:130:9: replace MailTrap::driver -> MemoryDriver with Default::default()
+rullst-mail/src/error.rs:213:24: replace > with >= in bounded_message
+rullst-mail/src/worker.rs:61:41: replace > with >= in prepare_claimed_message
+rullst-mail/src/facade/driver.rs:67:9: replace <impl Hasher for DigestHasher>::finish -> u64 with 1
+rullst-mail/src/facade/driver.rs:215:9: delete match arm (Some(_), Some(_)) in ses_credentials
+rullst-mail/src/drivers/resend.rs:68:45: replace > with >= in ResendDriver::send_request
+rullst-mail/src/security.rs:128:39: replace + with * in redact_labelled_private_keys
+rullst-mail/src/security.rs:214:52: replace + with - in href_values
+rullst-mail/src/security.rs:214:52: replace + with * in href_values
+
+# rullst-media (13.0 campaign, targeted runs with the package's tests): each
+# name below has a row in docs/src/mutation-testing.md "Accepted equivalent
+# mutants".
+rullst-media/src/bunny/signatures.rs:182:51: replace | with ^ in BunnyStream::verify_notification
+rullst-media/src/s3/signing.rs:66:5: replace settings -> SigningSettings with Default::default()
+rullst-media/src/sqlite/access.rs:106:46: replace || with && in MediaService<P, C>::set_publication
+rullst-media/src/sqlite/access.rs:187:17: replace || with && in MediaService<P, C>::upload_with
+rullst-media/src/sqlite/access.rs:188:17: replace || with && in MediaService<P, C>::upload_with
+rullst-media/src/sqlite/failure.rs:125:44: replace > with >= in stopped
+rullst-media/src/sqlite/retention.rs:53:21: replace || with && in MediaService<P, C>::purge_deleted
+rullst-media/src/sqlite/retention.rs:54:21: replace || with && in MediaService<P, C>::purge_deleted
+rullst-media/src/sqlite/transaction.rs:104:23: replace > with == in Operation<'a, C>::save
+rullst-media/src/sqlite/transaction.rs:104:23: replace > with >= in Operation<'a, C>::save
+rullst-media/src/sqlite/workflow.rs:209:37: replace || with && in MediaService<P, C>::finish

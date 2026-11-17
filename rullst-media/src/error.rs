@@ -30,6 +30,11 @@ pub enum MediaError {
     Uncertain,
     #[error("media storage unavailable")]
     Storage,
+    /// `SqliteMedia::initialize` or `open` (v13): the file stayed locked by
+    /// another connection, or its disk stalled, past every attempt's wait.
+    /// Nothing was changed; try again later.
+    #[error("media storage stayed locked or stalled while opening")]
+    StorageTimeout,
     #[error("media signature invalid")]
     Signature,
     #[error("media capability unsupported")]

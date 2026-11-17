@@ -195,4 +195,19 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn an_empty_content_delta_is_not_a_text_chunk() {
+        assert_eq!(
+            interpret_test(&frame(
+                r#"{"choices":[{"delta":{"content":""},"finish_reason":"stop"}]}"#
+            ))
+            .expect("final delta"),
+            Some(Chunk {
+                text: None,
+                usage: None
+            })
+        );
+        assert!(interpret_test(&frame(r#"{"choices":[{"delta":{"content":""}}]}"#)).is_err());
+    }
 }

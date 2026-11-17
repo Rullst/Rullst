@@ -260,3 +260,85 @@ fn authentic_unhandled_event_types_are_distinguishable_from_malformed_ones() {
         );
     }
 }
+
+/// Signs an exact timestamp text, which may carry leading zeros.
+fn sign_text(key: &[u8], payload: &[u8], id: &str, timestamp: &str) -> String {
+    let mut mac = Hmac::<Sha256>::new_from_slice(key).unwrap();
+    mac.update(format!("{id}.{timestamp}.").as_bytes());
+    mac.update(payload);
+    format!("v1,{}", STANDARD.encode(mac.finalize().into_bytes()))
+}
+
+/// 2026-01-01T00:00:00Z.
+const BASE: u64 = 1_767_225_600;
+
+fn complaint(created_at: &str, recipient: &str) -> Vec<u8> {
+    serde_json::to_vec(&json!({"type":"email.complained","created_at":created_at,
+        "data":{"email_id":"email_opaque","to":[recipient]}}))
+    .unwrap()
+}
+
+#[test]
+fn verification_bounds_are_inclusive_and_errors_have_fixed_text() {
+    let key: [u8; 32] = rand::random();
+    let verifier = verifier(&key);
+    let verify = |payload: &[u8], id: &str, timestamp: &str, now: u64| {
+        let signature = sign_text(&key, payload, id, timestamp);
+        verifier.verify(payload, id, timestamp, &signature, now)
+    };
+    let invalid = Err(MailFeedbackError::InvalidPayload);
+    let payload = complaint("2026-01-01T00:00:00Z", "member@example.com");
+
+    let verified = verify(&payload, "msg_bounds", "1767225600", BASE).unwrap();
+    assert_eq!(
+        format!("{verified:?}"),
+        "VerifiedMailFeedback { kind: Complaint, observed_at: 1767225600, .. }"
+    );
+    assert_eq!(
+        MailFeedbackError::Stale.to_string(),
+        "mail feedback rejected: Stale"
+    );
+
+    // The raw body holds at most 1 MiB; trailing JSON whitespace pads it.
+    let padded = |length: usize| {
+        let mut body = payload.clone();
+        body.resize(length, b' ');
+        body
+    };
+    assert!(verify(&padded(1_048_576), "msg_bounds", "1767225600", BASE).is_ok());
+    let oversized = verify(&padded(1_048_577), "msg_bounds", "1767225600", BASE);
+    assert_eq!(oversized.map(|_| ()), invalid);
+
+    // Identifiers are checked even when the signature covers them.
+    let dotted = verify(&payload, "msg.bounds", "1767225600", BASE);
+    assert_eq!(dotted.map(|_| ()), invalid);
+
+    // The timestamp text holds at most 20 bytes.
+    assert!(verify(&payload, "msg_bounds", "00000000001767225600", BASE).is_ok());
+    let long_time = verify(&payload, "msg_bounds", "000000000001767225600", BASE);
+    assert_eq!(long_time.map(|_| ()), invalid);
+
+    // The signature header holds at most 1024 bytes.
+    let signature = sign_text(&key, &payload, "msg_bounds", "1767225600");
+    let header = |length: usize| {
+        let filler = "x".repeat(length - 1 - signature.len());
+        format!("{filler} {signature}")
+    };
+    for (length, accepted) in [(1_024, true), (1_025, false)] {
+        let result = verifier.verify(&payload, "msg_bounds", "1767225600", &header(length), BASE);
+        assert_eq!(result.is_ok(), accepted, "{length}");
+    }
+
+    // Signatures 300 s old and events created 300 s ahead are still accepted.
+    assert!(verify(&payload, "msg_bounds", "1767225300", BASE).is_ok());
+    let ahead = complaint("2026-01-01T00:05:00Z", "member@example.com");
+    assert!(verify(&ahead, "msg_bounds", "1767225600", BASE).is_ok());
+
+    // The bare recipient address holds at most 254 bytes.
+    let recipient = |local: usize| format!("{}@example.com", "a".repeat(local));
+    let longest = complaint("2026-01-01T00:00:00Z", &recipient(242));
+    assert!(verify(&longest, "msg_bounds", "1767225600", BASE).is_ok());
+    let too_long = complaint("2026-01-01T00:00:00Z", &recipient(243));
+    let result = verify(&too_long, "msg_bounds", "1767225600", BASE);
+    assert_eq!(result.map(|_| ()), invalid);
+}

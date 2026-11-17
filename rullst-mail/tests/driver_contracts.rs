@@ -1,8 +1,8 @@
 //! Driver regressions that need only the public API.
 
 use rullst_mail::{
-    AwsSesDriver, FailoverDriver, MailDriver, MailError, MemoryDriver, Message, ResendDriver,
-    SendPulseDriver,
+    AwsSesDriver, FailoverDriver, MailDriver, MailError, MemoryDriver, Message, OfflineMailMock,
+    ResendDriver, SendPulseDriver,
 };
 
 /// Always returns the configured error.
@@ -81,4 +81,48 @@ async fn resend_rejects_schedules_beyond_its_window_before_network() {
         .send(&message)
         .await
         .unwrap();
+}
+
+#[tokio::test]
+async fn the_offline_mock_retains_64_mib_and_clear_removes_every_delivery() {
+    // The only test in this binary that reads or clears the offline store.
+    let driver = ResendDriver::try_new("mock_resend").unwrap();
+    let body = "x".repeat(600_000);
+    let subjects = ["offline bound first", "offline bound second"];
+    for subject in subjects {
+        let message = Message::new()
+            .to("user@example.com")
+            .from("team@example.com")
+            .subject(subject)
+            .text(body.clone());
+        driver.send(&message).await.unwrap();
+    }
+    let retained = |subject: &str| {
+        OfflineMailMock::deliveries()
+            .unwrap()
+            .iter()
+            .any(|delivery| delivery.message.subject == subject)
+    };
+    // 1.2 MB of bodies stays well inside the 64 MiB retention bound.
+    assert!(subjects.iter().all(|subject| retained(subject)));
+    OfflineMailMock::clear().unwrap();
+    assert!(!subjects.iter().any(|subject| retained(subject)));
+}
+
+#[tokio::test]
+async fn resend_accepts_schedules_inside_its_window() {
+    // Without a sender the request stops before network, after the window check.
+    let message = Message::new()
+        .to("user@example.com")
+        .subject("Soon")
+        .text("body")
+        .send_in(std::time::Duration::from_secs(86_400));
+    let outcome = ResendDriver::try_new("re_live_fixture")
+        .unwrap()
+        .send(&message)
+        .await;
+    assert!(
+        matches!(&outcome, Err(MailError::ConfigError(text)) if text.contains("MAIL_FROM")),
+        "{outcome:?}"
+    );
 }

@@ -193,24 +193,50 @@ mod tests {
 
     #[test]
     fn single_scan_url_search_matches_the_two_scheme_search() {
-        let alphabet = [
-            "http", "https://", "http://", "httpx", "s://", "://", "x", "h", " ",
-        ];
-        let mut seed = 0x0123_4567_89ab_cdef_u64;
-        for round in 0..20_000 {
-            let mut input = String::new();
-            for _ in 0..round % 10 {
-                seed ^= seed << 13;
-                seed ^= seed >> 7;
-                seed ^= seed << 17;
-                input.push_str(alphabet[(seed % alphabet.len() as u64) as usize]);
+        // Runs against a deadline, so a scan that stops advancing fails
+        // instead of hanging the test binary.
+        let (done, finished) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let alphabet = [
+                "http", "https://", "http://", "httpx", "s://", "://", "x", "h", " ",
+            ];
+            let mut seed = 0x0123_4567_89ab_cdef_u64;
+            for round in 0..20_000 {
+                let mut input = String::new();
+                for _ in 0..round % 10 {
+                    seed ^= seed << 13;
+                    seed ^= seed >> 7;
+                    seed ^= seed << 17;
+                    input.push_str(alphabet[(seed % alphabet.len() as u64) as usize]);
+                }
+                let previous = input
+                    .find("https://")
+                    .into_iter()
+                    .chain(input.find("http://"))
+                    .min();
+                assert_eq!(next_http_url(&input), previous, "{input:?}");
             }
-            let previous = input
-                .find("https://")
-                .into_iter()
-                .chain(input.find("http://"))
-                .min();
-            assert_eq!(next_http_url(&input), previous, "{input:?}");
+            let _ = done.send(());
+        });
+        finished
+            .recv_timeout(std::time::Duration::from_secs(60))
+            .expect("the URL search finishes and matches the two-scheme search");
+    }
+
+    #[test]
+    fn action_urls_are_bounded_carry_no_credentials_and_debug_redacted() {
+        // `https://app.example/` is 20 bytes, so these URLs hold 4096 and 4097.
+        let at_limit = format!("https://app.example/{}", "a".repeat(4_076));
+        assert!(safe_url(&at_limit).is_some());
+        assert!(safe_url(&format!("{at_limit}a")).is_none());
+        for credentialed in ["https://user@app.example/", "https://:secret@app.example/"] {
+            assert!(safe_url(credentialed).is_none(), "{credentialed}");
         }
+        let link = ActionLink::new(
+            "https://app.example/reset?token=opaque",
+            "https://app.example",
+        )
+        .unwrap();
+        assert_eq!(format!("{link:?}"), "ActionLink([REDACTED])");
     }
 }

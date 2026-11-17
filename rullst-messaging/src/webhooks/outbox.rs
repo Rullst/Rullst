@@ -31,21 +31,38 @@ impl<C: Clock> WebhookOutbox<C> {
         storage: MessagingKeyring,
         clock: C,
     ) -> Result<Self> {
+        Self::open_within(database_url.into(), config, key, storage, clock, DEADLINE).await
+    }
+    /// [`open`](Self::open) with `deadline` for each attempt, so that a test
+    /// can hold a lock past it quickly.
+    pub(super) async fn open_within(
+        database_url: String,
+        config: WebhookConfig,
+        key: WebhookSigningKey,
+        storage: MessagingKeyring,
+        clock: C,
+        deadline: Duration,
+    ) -> Result<Self> {
         if config.production && key.offline {
             return Err(WebhookError::Configuration);
         }
         now(&clock)?;
-        let database_url = database_url.into();
         let storage = Arc::new(storage);
-        super::establish::retry(|| {
-            bounded(Self::establish(
-                database_url.clone(),
-                config.clone(),
-                key.clone(),
-                Arc::clone(&storage),
-                clock.clone(),
-            ))
-        })
+        crate::establish::retry(
+            || {
+                bounded_by(
+                    deadline,
+                    Self::establish(
+                        database_url.clone(),
+                        config.clone(),
+                        key.clone(),
+                        Arc::clone(&storage),
+                        clock.clone(),
+                    ),
+                )
+            },
+            |error| *error == WebhookError::Timeout,
+        )
         .await
     }
     /// One attempt of `open`: a new pool that no other task uses yet, and

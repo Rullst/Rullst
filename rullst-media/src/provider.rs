@@ -110,3 +110,41 @@ pub(crate) fn validate_remote(
     }
     Ok(())
 }
+
+#[cfg(all(test, any(feature = "bunny", feature = "s3", feature = "sqlite")))]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::*;
+    use crate::{LibraryId, Processing};
+
+    fn video(title: usize, description: usize, length_seconds: u32) -> RemoteVideo {
+        RemoteVideo::new(
+            VideoId::new("12345678-1234-4234-8234-123456789abc").unwrap(),
+            LibraryId::new(7).unwrap(),
+            "t".repeat(title),
+            "d".repeat(description),
+            Processing::Ready,
+            length_seconds,
+            false,
+        )
+    }
+
+    #[test]
+    fn remote_videos_are_bounded_one_field_at_a_time() {
+        let library = LibraryId::new(7).unwrap();
+        assert_eq!(validate_remote(&video(256, 4096, 604_800), library), Ok(()));
+        for (title, description, length_seconds) in
+            [(0, 0, 0), (257, 0, 0), (1, 4097, 0), (1, 0, 604_801)]
+        {
+            assert_eq!(
+                validate_remote(&video(title, description, length_seconds), library),
+                Err(MediaError::Protocol),
+                "{title} {description} {length_seconds}"
+            );
+        }
+        assert_eq!(
+            validate_remote(&video(1, 0, 0), LibraryId::new(8).unwrap()),
+            Err(MediaError::Protocol)
+        );
+    }
+}

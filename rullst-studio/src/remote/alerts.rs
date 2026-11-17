@@ -15,8 +15,10 @@ const MAX_LATENCY_MS: f64 = 600_000.0;
 const MAX_QUEUE_THRESHOLD: u64 = 1_000_000_000;
 
 /// The thresholds of one project; `None` disables a rule.
+///
+/// Deserializing ignores unknown fields (since 13.0.0-alpha.6): the project
+/// list keeps the rules of a newer Studio next to these and writes them back.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
 #[non_exhaustive]
 pub struct AlertRules {
     /// Fire when the project cannot be read.

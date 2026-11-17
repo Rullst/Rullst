@@ -3,7 +3,8 @@
 mod config;
 mod dispatch;
 mod error;
-mod establish;
+#[cfg(test)]
+mod establish_tests;
 mod outbox;
 mod signature;
 mod transport;
@@ -26,8 +27,16 @@ fn now(clock: &impl Clock) -> Result<i64> {
     }
     Ok(value)
 }
+/// Every outbox storage call's deadline, `open` included.
+const DEADLINE: Duration = Duration::from_secs(10);
 async fn bounded<T>(operation: impl std::future::Future<Output = Result<T>>) -> Result<T> {
-    tokio::time::timeout(Duration::from_secs(10), operation)
+    bounded_by(DEADLINE, operation).await
+}
+async fn bounded_by<T>(
+    deadline: Duration,
+    operation: impl std::future::Future<Output = Result<T>>,
+) -> Result<T> {
+    tokio::time::timeout(deadline, operation)
         .await
         .map_err(|_| WebhookError::Timeout)?
 }

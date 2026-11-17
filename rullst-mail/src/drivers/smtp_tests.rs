@@ -257,7 +257,10 @@ fn message_builder_covers_text_html_unsubscribe_and_attachment_shapes() {
 
     let mut html_only = base_message().html("<strong>HTML</strong>");
     html_only.body_text = None;
-    assert!(formatted(&html_only).contains("Content-Type: text/html"));
+    let html_only = formatted(&html_only);
+    assert!(html_only.contains("Content-Type: text/html"));
+    // Without inline media the HTML is not wrapped in multipart/related.
+    assert!(!html_only.contains("multipart"));
 
     let alternative = formatted(
         &base_message()
@@ -267,6 +270,7 @@ fn message_builder_covers_text_html_unsubscribe_and_attachment_shapes() {
             .unsubscribe_url("https://example.com/leave"),
     );
     assert!(alternative.contains("multipart/alternative"));
+    assert!(!alternative.contains("multipart/related"));
     assert!(alternative.contains("List-Unsubscribe:"));
     assert!(alternative.contains("List-Unsubscribe-Post: List-Unsubscribe=One-Click"));
 

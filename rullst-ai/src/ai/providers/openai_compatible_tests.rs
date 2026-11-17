@@ -327,9 +327,19 @@ async fn streaming_requires_capability_and_sse_content_type() {
 async fn explicit_cancellation_aborts_an_in_flight_stream_request() {
     let listener = TcpListener::bind("127.0.0.1:0").expect("loopback fixture binds");
     let address = listener.local_addr().expect("fixture address resolves");
+    // The accept is bounded: a client that never connects cannot hang the test.
+    listener
+        .set_nonblocking(true)
+        .expect("non-blocking fixture");
     let server = thread::spawn(move || {
-        let (_stream, _) = listener.accept().expect("fixture accepts request");
-        thread::sleep(Duration::from_millis(150));
+        let deadline = std::time::Instant::now() + Duration::from_secs(2);
+        while std::time::Instant::now() < deadline {
+            if let Ok((_stream, _)) = listener.accept() {
+                thread::sleep(Duration::from_millis(150));
+                return;
+            }
+            thread::sleep(Duration::from_millis(5));
+        }
     });
     let provider =
         OpenAiCompatibleProvider::try_local(format!("http://{address}/v1"), "local-model")
@@ -338,17 +348,21 @@ async fn explicit_cancellation_aborts_an_in_flight_stream_request() {
     let client = StreamingAiClient::new(provider);
     let cancellation = AiCancellation::new();
     let cancellation_trigger = cancellation.clone();
+    let started = std::time::Instant::now();
     let trigger = tokio::spawn(async move {
         tokio::time::sleep(Duration::from_millis(25)).await;
         cancellation_trigger.cancel();
     });
     let mut sink = |_: &str| -> Result<(), AiError> { Ok(()) };
-    assert!(matches!(
-        client
-            .stream_prompt("hello", &cancellation, &mut sink)
-            .await,
-        Err(AiError::Cancelled)
-    ));
+    let result = tokio::time::timeout(
+        Duration::from_secs(2),
+        client.stream_prompt("hello", &cancellation, &mut sink),
+    )
+    .await
+    .expect("cancellation ends the stream promptly");
+    assert!(matches!(result, Err(AiError::Cancelled)));
+    // The request was in flight until the trigger fired, not refused at once.
+    assert!(started.elapsed() >= Duration::from_millis(25));
     trigger.await.expect("cancellation task completes");
     server.join().expect("fixture finishes");
 }
@@ -429,4 +443,26 @@ async fn transport_errors_never_expose_the_configured_endpoint() {
         };
         assert_endpoint_redacted(error, &base_url);
     }
+}
+
+#[tokio::test]
+async fn vision_input_of_exactly_ten_mebibytes_is_accepted() {
+    let provider = OpenAiCompatibleProvider::mock("local-model")
+        .expect("valid mock provider")
+        .with_capabilities(OpenAiCompatibleCapabilities::chat_only().with_vision());
+    let image = vec![0_u8; 10_485_760];
+    let answer = provider
+        .prompt_with_image("describe", &image)
+        .await
+        .expect("a 10 MiB image is within the bound");
+    assert!(answer.contains("image_bytes: 10485760"), "{answer}");
+
+    let error = provider
+        .prompt_with_image("describe", &vec![0_u8; 10_485_761])
+        .await
+        .expect_err("one byte over 10 MiB is refused");
+    assert!(
+        matches!(&error, AiError::ConfigError(message) if message == "OpenAI-compatible vision input exceeds 10 MiB"),
+        "unexpected error: {error:?}"
+    );
 }

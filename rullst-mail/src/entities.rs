@@ -125,6 +125,8 @@ mod tests {
             "Paid \u{2022} Billing OK"
         );
         assert_eq!(decode("&amp;lt;b&amp;gt;"), "&lt;b&gt;");
+        // The longest names hold 7 and 6 bytes before their `;`.
+        assert_eq!(decode("a&NewLine;b&hellip;"), "a\nb\u{2026}");
         assert_eq!(
             decode("&#0;&#xD800;&#99999999;"),
             "\u{fffd}\u{fffd}\u{fffd}"

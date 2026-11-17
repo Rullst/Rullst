@@ -137,8 +137,10 @@ struct InMemoryAuditState {
 
 /// Bounded process-local audit sink for development and single-process tests.
 ///
-/// Single-process services can use [`DurableToolAuditTrail`]. Multi-instance
-/// deployments should implement an append-only shared sink.
+/// It refuses the events [`DurableToolAuditTrail`] refuses, with the same
+/// `AuditUnavailable` error. Single-process services can use
+/// [`DurableToolAuditTrail`]. Multi-instance deployments should implement an
+/// append-only shared sink.
 #[derive(Debug)]
 pub struct InMemoryToolAuditTrail {
     capacity: usize,
@@ -170,6 +172,11 @@ impl InMemoryToolAuditTrail {
 
 impl ToolAuditSink for InMemoryToolAuditTrail {
     fn record(&self, event: ToolAuditEvent) -> Result<(), ToolExecutionError> {
+        event.validate().map_err(|reason| {
+            ToolExecutionError::AuditUnavailable(
+                DurableAuditError::InvalidEvent { reason }.to_string(),
+            )
+        })?;
         let mut state = self.state.lock().map_err(|_| {
             ToolExecutionError::AuditUnavailable("audit lock was poisoned".to_string())
         })?;

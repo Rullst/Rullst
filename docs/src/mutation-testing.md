@@ -37,6 +37,33 @@ received a test or is listed under
   plural-variant map was removed. The final runs gave 432 mutants: 314 caught,
   117 unviable, 1 timeout (listed below) and no survivor; a mutant whose
   expansion no longer compiles in an integration test counts as unviable.
+- **`rullst-ai`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+  [PR #749](https://github.com/Rullst/Rullst/pull/749), runs in the
+  maintainer's fork
+  [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)):
+  targeted runs of the 52 files (3 have no mutants, among them the MySQL
+  statement file) gave 2,173 mutants: 1,652 caught, 205 unviable, 35
+  timeouts and 281 missed. New tests killed 265 of the misses and 5 timeouts
+  (tests without deadlines now have one): provider capabilities and trait
+  defaults, the fallback chain, image and response size bounds, streaming,
+  SSE and provider stream parsing, audit delivery and durable audit frames,
+  tool approval and validation, RAG, conversation memory, the mock provider,
+  presets and evaluation bounds. Reruns of the 33 changed files leave 4 of
+  1,318 mutants missed and 3 timeouts. The 16 missed mutants left are 13
+  accepted equivalents listed below and the three peer-address, status and
+  content-type checks of `EgressFetcher::fetch_bytes`, left to live
+  integration testing; the 30 timeouts are listed with the timeouts. A
+  follow-up ([PR #750](https://github.com/Rullst/Rullst/pull/750)) removed the redundant code behind four of those
+  equivalents (the end-offset overflow checks of `decode_file`, the
+  `append_exchange` drain guard and the zero-norm check of
+  `cosine_similarity`) and made `InMemoryToolAuditTrail` validate events.
+  Reruns of the four changed files ([43949255885](https://github.com/venelouis/rullst-ci/actions/runs/43949255885), [43949275446](https://github.com/venelouis/rullst-ci/actions/runs/43949275446),
+  [43949290366](https://github.com/venelouis/rullst-ci/actions/runs/43949290366), [43949305052](https://github.com/venelouis/rullst-ci/actions/runs/43949305052)) gave 261 mutants: 234 caught, 27
+  unviable and none missed.
+- **`rullst-iot`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+  [PR #749](https://github.com/Rullst/Rullst/pull/749), same fork): targeted
+  runs of the 19 files (1 has no mutants) gave 371 mutants: 321 caught, 41
+  unviable, no timeout and 9 missed, all accepted equivalents listed below.
 - **`rullst-core`**: the files the first pass left
   ([PR #465](https://github.com/Rullst/Rullst/pull/465)) were finished in
   [PR #532](https://github.com/Rullst/Rullst/pull/532): 78 files and 2,435
@@ -45,6 +72,29 @@ received a test or is listed under
   pool: since 13.0.0-alpha.3 `rullst-core/tests/artisan_open_pool.rs` opens one
   in a PostgreSQL testcontainer, so a run with Docker, such as one on the
   hosted runners, kills it; a run without Docker skips that test (see below).
+- **`rullst-mail`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+  [PR #748](https://github.com/Rullst/Rullst/pull/748), runs in the
+  maintainer's fork
+  [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml);
+  four files unchanged since `5e6b65c5` keep their runs in this repository):
+  targeted runs of the 53 files, the five PostgreSQL adapter files included
+  (3 have no mutants), gave 1,761 mutants: 1,323 caught, 184 unviable, 13
+  timeouts and 241 missed. 55 of the misses are PostgreSQL adapter branches
+  that the `mail-postgres` contract run
+  ([43910450330](https://github.com/venelouis/rullst-ci/actions/runs/43910450330),
+  136 mutants: 84 caught, 26 unviable, 26 missed, all caught by the targeted
+  runs) catches. New tests killed 170 of the others and two timeouts (a
+  fixture wait and a fuzz loop now have deadlines): delivery observations,
+  account action links, native SES headers, size limits and error codes,
+  failover recovery, the mock, REST, log and memory drivers, plain-text
+  conversion, action links, feedback verification, the suppression stores,
+  attachment decoding and the provider error text. Reruns of the 27 changed
+  files leave 9 of 950 mutants missed and 3 timeouts; the remaining 16 missed
+  mutants are accepted equivalents listed below and the 11 timeouts are
+  listed with the timeouts. A follow-up ([PR #750](https://github.com/Rullst/Rullst/pull/750)) removed the dead newline
+  check of `strip_html_to_plain_text` behind one of those equivalents; the
+  rerun of `message/plain_text.rs` ([43949242171](https://github.com/venelouis/rullst-ci/actions/runs/43949242171)) caught all 70
+  mutants.
 - **`rullst-messaging`** (re-measured for 13.0.0-alpha.6,
   [PR #711](https://github.com/Rullst/Rullst/pull/711)): targeted
   runs of the 48 files outside `redis_streams/` (7 have no mutants) gave 1,377
@@ -60,6 +110,23 @@ received a test or is listed under
   `redis_streams/` (excluded from the gate) was measured with targeted runs
   and the `messaging-redis` contract run: 202 mutants, of which only the
   accepted `Remote::decode` arm survives both.
+- **`rullst-media`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+  [PR #747](https://github.com/Rullst/Rullst/pull/747), runs in the
+  maintainer's fork
+  [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)):
+  targeted runs of the 32 files (5 have no mutants) gave 1,194 mutants: 877
+  caught, 127 unviable, no timeout and 190 missed. New tests killed 173: the
+  Bunny response, grant, webhook and meta-tag bounds, the S3 configuration
+  and protocol checks, the stored-record validation and the SQLite workflow,
+  playback and retention guards. The other 17 are accepted equivalents listed
+  below. Reruns of the 17 changed files leave 16 of 814 mutants, all accepted
+  equivalents (the seventeenth is the existing `s3/signing.rs` one). A
+  follow-up ([PR #750](https://github.com/Rullst/Rullst/pull/750)) removed the redundant conditions behind six of them (the
+  item bound of `find_created` and the pending-revision and deadline
+  re-checks of `finish` and `stop_intent`) and tested the lease-nonce fence
+  that stays. Reruns of the three files ([43949195438](https://github.com/venelouis/rullst-ci/actions/runs/43949195438),
+  [43949210926](https://github.com/venelouis/rullst-ci/actions/runs/43949210926), [43949227696](https://github.com/venelouis/rullst-ci/actions/runs/43949227696)) gave 128 mutants: 105 caught, 21
+  unviable and 2 missed, the accepted `stopped` and `finish` equivalents.
 - **`rullst-connect`** (13.0.0-alpha.6,
   [PR #718](https://github.com/Rullst/Rullst/pull/718)): targeted runs of the 61
   files outside the PostgreSQL and MySQL login-challenge stores (11 have no
@@ -74,9 +141,45 @@ received a test or is listed under
   crate-private clock that its tests set (the public `mock_router` keeps the
   system clock), and a test that exchanges a code 299 and 300 seconds after
   issuing it kills that mutant, which leaves the eight accepted equivalents.
+- **`rullst-auth`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+  [PR #743](https://github.com/Rullst/Rullst/pull/743), runs in the
+  maintainer's fork
+  [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)):
+  targeted runs of the 63 files outside the PostgreSQL and MySQL passkey and
+  session-registry stores (8 have no mutants) gave 1,890 mutants: 1,613
+  caught, 262 unviable, no timeout and 15 missed. Six of the misses are the
+  PostgreSQL durability checks of the email-login and API-token services,
+  which the `auth-recovery-postgres` contract run catches; the other nine are
+  accepted equivalents listed below. The contract runs:
+  `passkey-postgres`
+  ([43886790700](https://github.com/venelouis/rullst-ci/actions/runs/43886790700)),
+  150 mutants: 100 caught, 14 unviable and 36 missed, 35 of them in
+  `manager.rs`, which its targeted run catches except the accepted
+  `start_authenticate` one; the last, the cross-host skew bound of
+  `advance_clock` in `postgres/operations.rs` with `<` as `<=`, is killed by a
+  contract step that adopts a time exactly five seconds behind (rerun
+  [43906357870](https://github.com/venelouis/rullst-ci/actions/runs/43906357870));
+  `auth-recovery-postgres`
+  ([43886805895](https://github.com/venelouis/rullst-ci/actions/runs/43886805895)),
+  255 mutants: 123 caught, 43 unviable and 89 missed, all caught by the
+  targeted runs except the three accepted equivalents of `connection.rs` and
+  `store.rs`; `auth-session-registry`
+  ([43886821193](https://github.com/venelouis/rullst-ci/actions/runs/43886821193)):
+  4 mutants, all caught.
 - **`rullst-nexus`**: first measured in PR #532 (26 files, 876 mutants). New
   tests killed 170 of the 171 first misses, one is an accepted equivalent, and
   one real defect was fixed.
+- **`rullst-security`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+  [PR #746](https://github.com/Rullst/Rullst/pull/746), runs in the
+  maintainer's fork
+  [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)):
+  targeted runs of the 47 files (6 have no mutants, and the Redis rate
+  limiter ran with the Redis service) gave 1,752 mutants: 1,548 caught, 155
+  unviable, 20 missed and 29 timeouts. The 20 missed mutants are accepted
+  equivalents listed below and the 29 timeouts are the non-allocating loops
+  of `log_redactor.rs`, the DLP masking and byte-range readers, the login
+  guard index and the user-agent scan listed under the timeouts, and the
+  jitter of `TimingScope::finish`.
 - **`cargo-rullst`** ([PR #557](https://github.com/Rullst/Rullst/pull/557),
   13.0.0-alpha.4): targeted runs with the CLI's library tests measured 83 CLI
   files and 3,189 mutants of the self-update, audit and IDOR scanner, `add`
@@ -104,8 +207,33 @@ received a test or is listed under
   mutants, 30 caught and 4 unviable, no survivor, so it is listed too.
 - **Studio remote mode** (20 files, measured with the `cargo-rullst` campaign):
   no survivor left.
+- **`rullst-labs`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+  [PR #744](https://github.com/Rullst/Rullst/pull/744), runs in the
+  maintainer's fork
+  [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)):
+  targeted runs of the 27 files (4 have no mutants) gave 558 mutants: 459
+  caught, 88 unviable, no timeout and 11 missed, all accepted equivalents
+  listed below.
 - **`rullst-capital`**: 29 mutants that only a live Stripe response reaches
   stay with provider sandbox testing.
+- **`rullst-privacy`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+  [PR #745](https://github.com/Rullst/Rullst/pull/745), runs in the
+  maintainer's fork
+  [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)):
+  targeted runs of the 19 files outside the two PostgreSQL adapters (2 have
+  no mutants) gave 483 mutants: 410 caught, 62 unviable, no timeout and 11
+  missed, all accepted equivalents listed below. The `privacy-postgres`
+  contract run
+  ([43900834362](https://github.com/venelouis/rullst-ci/actions/runs/43900834362))
+  caught the 58 viable mutants of those adapters (79 mutants, 21 unviable).
+- **`rullst-supervision`** (13.0.0-rc.1 campaign on `cdb68d3b`,
+  [PR #745](https://github.com/Rullst/Rullst/pull/745), runs in the
+  maintainer's fork
+  [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)):
+  targeted runs of the 23 files (3 have no mutants) gave 639 mutants: 524
+  caught, 105 unviable, no timeout and 10 missed, all accepted equivalents
+  listed below (the clock check of the SQLite transaction moved from
+  `Operation::begin` to `Operation::started`).
 - **v12 baseline**: the complete v12 campaign classified 14,391 of 14,391
   mutants in run `34761010296`, with a conservative 70.57% caught.
 
@@ -179,7 +307,10 @@ covers the files `.github/mutants-pr-cli.txt` lists, and the campaign status abo
 survivors left in the others) and the Studio remote-mode campaign (targeted runs of every
 `rullst-studio/src/remote` file and of the `rullst-studio` binary with the
 package's tests), the `rullst-macros` campaign (targeted runs of every
-file with the package's unit and stand-in integration tests) gave every missed mutant in their files a test, except these.
+file with the package's unit and stand-in integration tests) and the 13.0
+`rullst-mail`, `rullst-media` and `rullst-ai` campaigns (targeted runs of every
+file with the package's tests, and the `mail-postgres` contract run for the
+mail PostgreSQL adapter) gave every missed mutant in their files a test, except these.
 Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
 entry needs the same one-line justification. The pull-request gate (`mutants-pr.yml`) skips an
@@ -192,6 +323,13 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-core/src/queue/deferral/window.rs`: `TimeWindow::intervals`, `day < until_ms` with `<=` | The extra day starts at or after `until_ms`, so it never yields an interval. |
 | `rullst-core/src/testing/html_normalize.rs`: `mask_csrf_headers`, `found < copied` with `<=` | `copied` indexes the closing quote of a masked value, so no `x-csrf-token` key can start there. |
 | `rullst-media/src/s3/signing.rs`: `settings` with `Default::default()` | Adapter URLs hold only unreserved characters, `%XX` and `/` without empty or dot segments, so single or double encoding and path normalisation give the same canonical URI. |
+| `rullst-media/src/bunny/signatures.rs`: `BunnyStream::verify_notification`, `(nibble(..) << 4) \| nibble(..)` with `^` | The two nibbles occupy disjoint bits, so OR and XOR build the same byte. |
+| `rullst-media/src/sqlite/access.rs`: `MediaService::set_publication`, `record.asset.revision != revision \|\| revision <= 0` with `&&` | `Operation::save` updates only the row at the expected revision, so a stale revision still returns `Conflict`, and a stored revision is always positive. |
+| `rullst-media/src/sqlite/access.rs`: `MediaService::upload_with`, the `\|\|` before `asset.pending` and before `asset.published` with `&&` | The asset comes from a finished refresh lease, so it is active and not pending, and a published asset is playable, which the processing test refuses too. |
+| `rullst-media/src/sqlite/failure.rs`: `stopped`, `expected_revision > 0` with `>=` | Only a record at revision 0 would then pass, and `Record::validate` and the column's `CHECK(revision>0)` never let one load. |
+| `rullst-media/src/sqlite/workflow.rs`: `MediaService::finish`, `kind == Kind::Create \|\| kind == Kind::Update` with `&&` | `finish` only receives the result of `execute`, which always returns a video for a create or an update. |
+| `rullst-media/src/sqlite/transaction.rs`: `Operation::save`, `body.len() > 32768` with `==` or `>=` | `Record::validate` and the validated field types bound every field, so a valid record serializes far below 32 KiB. |
+| `rullst-media/src/sqlite/retention.rs`: `MediaService::purge_deleted`, either `\|\|` with `&&` | The SQL selects only deleted bodies updated at or before the cutoff, which `tx.get` decodes from the same row, and `Record::validate` refuses a deleted record with a pending intent, so no operand is ever true. |
 | `rullst-mail/src/facade/driver.rs`: `DigestHasher::finish` with `1` | `finish` is never called; the digest is read from the SHA-256 state. |
 | `rullst-mail/src/facade/driver.rs`: delete the `(Some(_), Some(_))` arm of `ses_credentials` | That arm exists only without the `aws-ses` feature, which the all-feature build does not compile. |
 | `cargo-rullst/src/generators/audit_report/a11y.rs`: `attributes`, the end `index + 1` after `>` with `index - 1` or `index * 1` | The tag scanner resumes at the next `<`; the byte before a closing `>` cannot open a tag, because a tag name never starts with `>`. |
@@ -220,12 +358,12 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-labs/src/sqlite/completion.rs`: `finish`, `lease.until <= tx.now \|\| record.view.expires_at <= tx.now` with `&&` | `narrow_deadline` with the earlier of the two returns the same `Expired`. |
 | `rullst-labs/src/sqlite/jobs.rs`: `cancel`, `revision <= 0 \|\| record.view.revision != revision` with `&&` | `save_job` updates only the row at that revision, so a stale revision still returns `Conflict`. |
 | `rullst-labs/src/sqlite/jobs.rs`: `load_job`, `body.len() > 32796`, and `seal_record`, `body.len() > 32768`, each with `==` or `>=` | Bounded record fields serialize far below 32 KiB, and a longer stored body fails authentication with the same `Integrity`. |
-| `rullst-labs/src/sqlite/jobs.rs`: `payload`, the `\|\|` before the scope and id comparisons with `&&` | The exercise digest covers scope, id and revision, so none of them can differ alone. |
+| `rullst-labs/src/sqlite/jobs.rs`: `payload`, the `\|\|` before the id comparison and the one before the revision comparison, each with `&&` | The exercise digest covers scope, id and revision, so none of them can differ alone. |
 | `rullst-labs/src/sqlite/retention.rs`: `expire_queued`, either `\|\|` with `&&`, and `purge_terminal`, the `\|\|` after the state match with `&&` | The SQL selection, `load_job`'s column checks and `Record::validate` already guarantee a queued, expired, unleased record, or an unleased one that is neither queued, running nor `Uncertain` (which always holds its lease). |
 | `rullst-supervision/src/exam/observation.rs`: `Observation::from_code`, `(code - 10) % 4` with `+` | `(code + 10) % 4` equals `(code - 10) % 4`, because 20 is a multiple of 4. |
 | `rullst-supervision/src/sqlite/events.rs`: `events`, and `rullst-supervision/src/sqlite/observations.rs`: `observations`, `expires_at > MAX_TIME` with `==` or `>=` | An event is received before its session expires, at least an hour before the session's retention ends at or before `MAX_TIME`, so with its fixed retention it always expires before `MAX_TIME`. |
 | `rullst-supervision/src/sqlite/observations.rs`: `record_observation`, both source match guards with `true` | `record_browser` and `record_capture` pass only browser or capture observations with the browser source, and `analyze` only presence or audio findings with an adapter source. |
-| `rullst-supervision/src/sqlite/transaction.rs`: `Operation::begin`, `now < before \|\| now < previous_time` with `&&` | `finish` checks the time against the same high-water mark and returns the same `Clock`. |
+| `rullst-supervision/src/sqlite/transaction.rs`: `Operation::started`, `now < before \|\| now < previous_time` with `&&` | `finish` checks the time against the same high-water mark and returns the same `Clock`. |
 | `rullst-supervision/src/sqlite/mod.rs`: `resolved_path`, both metadata match guards with `false` | `open` checks for a regular file again, `initialize` creates the file exclusively and fails on any existing entry, and every other metadata error also fails the open with the same `Storage`. |
 | `rullst-auth/src/auth/app_key.rs`: `parse_dotenv`, delete the `dotenvy::Error::Io` arm | The parser reads an in-memory `&str`, and valid UTF-8 read line by line cannot raise an I/O error. |
 | `rullst-auth/src/auth/passkey/ceremony.rs`: `ChallengeStore::issue`, `challenge.expires_at > now` with `>=` | It keeps only a challenge whose expiry equals a later `Instant::now()` reading to the nanosecond, which `consume` already rejects as expired. |
@@ -299,6 +437,12 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-mail/src/security.rs`: `redact_labelled_private_keys`, `MAX_PEM_LABEL_BYTES + 1` with `*` | Reading at most 64 label bytes cuts a longer label inside its run of label bytes, so the `-----` check that follows fails as the length check would. |
 | `rullst-mail/src/security.rs`: `href_values`, `value_start + length + 1` with `-` or `*` | The scan resumes on the closing quote or the byte before it (the opening quote for an empty value), and no `href` match can contain a quote. |
 | `rullst-mail/src/inspection/sniff.rs`: `root_element`, `open < close` with `<=` | Both are positions just after one byte, a `[` and a `>`, so they are never equal. |
+| `rullst-mail/src/pipeline.rs`: `DeliveryPipeline::require_due`, `send_at > now`, and `DeliveryPipeline::prepare_with_context`, the 366-day bound `send_at > now + 366 days`, each with `>=` | They differ only when the schedule equals a `Utc::now()` reading taken inside the call to the nanosecond, which a caller cannot arrange. |
+| `rullst-mail/src/suppression/mod.rs`: `ascii_domain`, either `&&` with `\|\|` | `recipient_address` rejects `:` and `ascii_domain` refuses `/`, `?`, `#`, `%` and `\` before parsing, so `http://{domain}/` never parses with a port or a path other than `/`, and the URL parser refuses an empty host: all three tests always hold. |
+| `rullst-mail/src/drivers/failover.rs`: `FailoverDriver::is_tripped`, `elapsed() < self.cooldown` with `<=` | An `Instant` reading would have to equal the last failure plus the cooldown to the nanosecond. |
+| `rullst-mail/src/drivers/memory.rs`: `MailTrap::driver` with `Default::default()` | `MemoryDriver::default()` is `MemoryDriver::new()`, the driver connected to the global trap. |
+| `rullst-mail/src/error.rs`: `bounded_message`, `boundary > 0` with `>=` | `is_char_boundary(0)` is always true, so the loop stops at 0 either way. |
+| `rullst-mail/src/worker.rs`: `prepare_claimed_message`, `send_at > now + CLAIM_CLOCK_SKEW`, and `rullst-mail/src/drivers/resend.rs`: `ResendDriver::send_request`, `send_at > now + MAX_PROVIDER_SCHEDULE`, each with `>=` | They differ only when the schedule equals a `Utc::now()` reading taken inside the call, plus 300 s or 30 days, to the nanosecond. |
 | `rullst-ai/src/ai/egress.rs`: `EgressPolicy::strict` with `Default::default()` | `strict` already returns `Self::default()`. |
 | `rullst-ai/src/ai/egress.rs`: `is_public_ipv6`, `is_unspecified() \|\| is_loopback()` with `&&` | `::` and `::1` lie outside `2000::/3`, which the next clause rejects. |
 | `rullst-ai/src/ai/guardrails/markdown_inline.rs`: `open_tag_end`, the self-closing `then_some(index + 1)` with `-` or `*` | The tag then ends on or just before its `/`; the byte before that `/` is whitespace, a quote or a name byte, never a bracket. |
@@ -306,6 +450,7 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-ai/src/ai/guardrails/markdown_code.rs`: `indentation`, the tab step `4 - column % 4` with `4 + column % 4` | Indentation is only compared with 4, and either step takes a tab to at least four columns. |
 | `rullst-ai/src/ai/guardrails/tax_ids.rs`: `token_end`, `bytes.get(index + 1)` with `index - 1` | A separator then joins when a digit precedes it instead of follows it, but the end moves only on digits and a second separator stops both scans, so every token ends at the same digit. |
 | `rullst-ai/src/ai/guardrails/tax_ids.rs`: `is_valid_tax_id`, the CNPJ `all_digits && token.len() == 14` with `\|\|` | `digit_values` still requires exactly 14 digits, which only a 14-digit token or the CNPJ layout holds. |
+| `rullst-ai/src/ai/evaluation/types.rs`: `AiEvaluationReport::schema_version` with `1` | Its fields are private to the evaluation module, whose only constructor, `build_report`, sets `schema_version: 1`; the report has no `Deserialize`. |
 
 Timed-out mutants are not counted as caught, and cargo-mutants reports them
 separately. The campaign rewrote the scanning loops of the WAF detector, the
@@ -332,8 +477,8 @@ every test of the file reaches, so no single test can fail first:
 - `rullst-security/src/log_redactor.rs`: the bearer, identifier, separator
   and escaped-quote scans, where an index step (`+= 1`, `+= 2`) becomes `-`
   or `*`, a key offset (`cursor + offset`, `key_start +
-  key.len()`) becomes `-` or `*`, or `identifier_continuation` returns `0` or
-  `1`, and the scan finds the same key or byte again forever.
+  key.len()`) becomes `-` or `*`, or `identifier_continuation` returns an end
+  of `0` or `1`, and the scan finds the same key or byte again forever.
 - `rullst-security/src/dlp/byteranges.rs`: `Lines::next`, where the
   non-empty filter is negated or the next-line offset (`start + offset + 1`)
   becomes `-` or `*`, and the reader returns the same line forever;
@@ -365,11 +510,21 @@ every test of the file reaches, so no single test can fail first:
   opener forever in every test with an HTML comment.
 - `rullst-mail/src/security.rs`: the redaction scans, where
   `start + relative_end` in `redact_values_after` becomes `-`, `offset +
-  relative` in `redact_aws_access_keys` or `redact_labelled_private_keys`
-  becomes `*`, or `start + prefix.len()` becomes `-` or `*`, and the
+  relative` in `redact_aws_access_keys` or `start + BEGIN.len()` in
+  `redact_labelled_private_keys` becomes `*`, or `start + prefix.len()`
+  becomes `-` or `*`, and the
   `href_values` scan, where `index += 1` in `skip_whitespace` or the
   non-match `pos += 1` becomes `*=`, or the `pos += 4` after an `href` without
   `=` becomes `-=`; each scan restarts before the same match.
+  `rullst-mail/src/action.rs`: `next_http_url` returning `Some(0)` makes
+  `redact_body_secrets` stop advancing once the remaining text is empty or
+  starts with a delimiter, in every test that sanitizes a message body or
+  builds an action link.
+  `rullst-mail/src/entities.rs`: `decode` with the `index + 1` after `&`
+  replaced by `-` or `*` restarts on the same `&` forever; the output grows
+  by one `&` per turn, so the 8 GiB limit below is reached only after the
+  timeout, and the factory, inspection and entity tests all decode a
+  reference.
 - `rullst-ai/src/ai/guardrails/tax_ids.rs`: `mask_tax_ids` without the `!`
   of its digit test or with `start += 1` as `-=` or `*=`, `token_end`
   returning `0` or `1`, and its `index += 1` steps as `-=` or `*=`;
@@ -382,6 +537,11 @@ every test of the file reaches, so no single test can fail first:
   `mark_fenced` and `span_contents` as `*=`, and `blank_code` with
   `code[group_start] || is_blank(...)` as `&&`, which stops on a blank line.
   The guardrail tests reach these scans, which then never finish.
+- `rullst-ai/src/ai/providers/sse.rs`: `SseDecoder::push` with
+  `boundary + delimiter_bytes` as `-`, and `event_boundary` returning
+  `Some((0, 0))` or `Some((1, 0))`, so the decoder parses the same event
+  again forever in every streaming test (a data event adds one frame per
+  turn, which reaches the address-space limit only after the timeout).
 
 `rullst-security/src/timing_guard.rs`: `TimingScope::finish` with the jitter
 `%` replaced by `+` does not loop: it sleeps for up to 72 minutes in the

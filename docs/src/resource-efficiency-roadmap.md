@@ -163,6 +163,16 @@ the passkey, `ring` and `cron` changes) with and without this change:
   MiB, binary 10,274,864 → 7,494,928 bytes (rustc's default linker: the
   generated `.cargo/config.toml` selected neither mold nor lld).
 
+- **First development build on a hosted runner:** measured on 2026-11-16
+  with `main` at `fc8c05016` on GitHub's `ubuntu-latest` runner (Intel Xeon
+  Platinum 8573C, 4 logical CPUs, Rust 1.100.0), `cargo build --offline` with
+  the generated development profile into a new empty target directory,
+  `CARGO_BUILD_JOBS=2` and no compiler cache, two runs each: Blank with
+  SQLite 53.3 s and 54.0 s (266 units, no `aws-lc-sys`), SaaS with SQLite
+  80.9 s and 81.0 s (307 units, of which the `aws-lc-sys` 0.47 build script
+  took 22.4 s). See
+  [build times](build-times.md#first-build-with-the-1300-alpha6-source).
+
 The 22 packages a SQLite starter no longer compiles are rustls,
 rustls-webpki, rustls-pki-types, webpki-roots, rustls-native-certs,
 rustls-platform-verifier, openssl-probe, untrusted, tokio-rustls,

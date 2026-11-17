@@ -128,3 +128,44 @@ async fn unsupported_database_urls_fail_before_network_io() {
             if message == "SQL chat memory requires a PostgreSQL, MySQL/MariaDB, or SQLite URL"
     ));
 }
+
+#[tokio::test]
+async fn an_odd_or_negative_revision_is_refused_before_any_update() {
+    let memory = SqlChatMemory::connect("sqlite::memory:", ChatMemoryConfig::default())
+        .await
+        .expect("SQLite memory");
+    // A sessions table that existed before `prepare_schema`, without its
+    // revision CHECK, keeps whatever revision it holds.
+    sqlx::query(
+        "CREATE TABLE rullst_ai_chat_sessions (tenant_id TEXT NOT NULL, conversation_id TEXT NOT NULL, conversation_revision INTEGER NOT NULL DEFAULT 0, created_at_epoch INTEGER NOT NULL, PRIMARY KEY (tenant_id, conversation_id))",
+    )
+    .execute(&memory.pool)
+    .await
+    .expect("pre-existing sessions table");
+    memory.prepare_schema().await.expect("chat schema");
+    let debug = format!("{memory:?}");
+    assert!(
+        debug.starts_with("SqlChatMemory") && debug.contains("Sqlite"),
+        "{debug}"
+    );
+
+    let tenant = TenantContext::try_new("tenant-sql").expect("tenant");
+    let conversation = ConversationId::try_new("chat-odd").expect("conversation");
+    memory
+        .ensure_conversation(&tenant, &conversation)
+        .await
+        .expect("conversation");
+    for stored in [1_i64, -2] {
+        sqlx::query("UPDATE rullst_ai_chat_sessions SET conversation_revision = ?")
+            .bind(stored)
+            .execute(&memory.pool)
+            .await
+            .expect("store a revision outside the contract");
+        assert_eq!(
+            memory
+                .append_exchange(&tenant, &conversation, stored, "hello", "answer")
+                .await,
+            Err(ChatMemoryError::RevisionConflict)
+        );
+    }
+}

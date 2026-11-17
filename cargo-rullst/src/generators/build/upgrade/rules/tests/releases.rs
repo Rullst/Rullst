@@ -150,6 +150,12 @@ fn rules_carry_the_release_of_their_change() {
             "V13-MEDIA-PROCESSING-MATCH",
             "V13-NON-EXHAUSTIVE-MATCH",
             "V13-NON-EXHAUSTIVE-LITERAL",
+            "V13-SCHEDULER-CRON-FIELDS",
+            "V13-CSRF-TOKEN-COMPARED",
+            "V13-JSONWEBTOKEN-12",
+            "V13-ED25519-DALEK-3",
+            "V13-SQLITE-WAL-AVAILABLE",
+            "V13-AUTH-SESSION-REGISTRY",
         ]
     );
     assert!(codes_introduced_in("13.0.0-rc.1").is_empty());

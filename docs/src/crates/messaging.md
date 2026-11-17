@@ -54,7 +54,10 @@ Delivery is at least once. A valid acknowledgement consumes its lease exactly
 once, but no local ACK can make an arbitrary remote side effect atomic. Use the
 stable envelope ID at the side-effect boundary.
 
-`SqliteBroker::connect` keeps the compatible plaintext profile.
+`SqliteBroker::connect` keeps the compatible plaintext profile. Every
+constructor opens the file within a 10-second deadline, three attempts in
+total, and fails with `MessagingError::StorageTimeout` when another process
+keeps it locked or its disk stalls past every attempt.
 `connect_encrypted` uses randomized AES-256-GCM and authenticates immutable row
 metadata. Raw-storage, restart, wrong-key, tamper, row-swap, rotation, symlink
 and two-instance regressions are executable. It protects header values and

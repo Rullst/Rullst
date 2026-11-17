@@ -1298,31 +1298,48 @@ store, `open`, which also creates a missing file) are tried again when their
 connection times out, three attempts in total (about 15 seconds): no other task
 can use the new pool yet, so the timeout means a slow establishment, not
 contention. Another connection or process that keeps the file locked also
-delays establishment: SQLite's busy timeout for that lock is also 5 seconds,
-and on hosted Windows runners it ended about half a second after the pool wait,
-so the step is tried again. A Windows-only test per store holds the file under
-SQLite's exclusive lock while `open` connects, releases it after the retry and
-checks that `open` succeeds. On Linux the busy timeout ends only milliseconds
-after the pool wait, so the same lock can instead end `open` with SQLite's busy
-result, which is not retried. Every other operation keeps the single 5-second
-bound and its `Busy` or `Storage` result. Labs keeps the SQLite result code,
-I/O error kind or pool condition behind the last `Storage` error of a thread
-for its test fixtures, never a message, SQL text or path.
+delays a step, and SQLite's busy handler waits 5 seconds for that lock, as long
+as the pool: on hosted Windows runners the pool's wait ended first, on Linux
+SQLite's, milliseconds later, could, and its busy result was not tried again.
+Since 13.0.0-alpha.6 a step is tried again when either wait runs out (the
+pool's `PoolTimedOut`, or `SQLITE_BUSY` with any extended code), so a lock held
+past the wait behaves the same on every platform, and a step whose wait runs
+out at all three attempts fails with a typed error that only these calls
+return: `LabError::StorageTimeout`, `MediaError::StorageTimeout`,
+`SupervisionError::StorageTimeout` (also from `upgrade_event_schema`, whose
+transaction starts the same way), `ConsentError::StoreTimeout` and
+`AgeError::StoreTimeout`. Nothing was changed, so the caller may try again
+later. Every other operation keeps the single 5-second bound and its `Busy` or
+`Storage` result. Tests on every platform hold the file under SQLite's
+exclusive lock while `open` connects, with the waits shortened to fractions of
+a second and one of them much shorter than the other, so that which one runs
+out is decided rather than raced: each store tries again after a busy result
+and after a pool timeout, opens once the lock is released, and returns its
+timeout error when the lock outlives the three attempts. Labs keeps the SQLite
+result code, I/O error kind or pool condition behind the last `Storage` or
+`StorageTimeout` error of a thread for its test fixtures, never a message, SQL
+text or path.
 
 `rullst-messaging`'s SQLite constructors (`SqliteBroker::connect` and its
-variants) wait up to 30 seconds for a pooled connection (SQLx's default) and for
-SQLite's lock, with no outer bound, so such a stall only delays them; they are
-not retried. `WebhookOutbox::open`, however, runs inside the outbox's 10-second
-storage deadline, and on a hosted Windows runner a stall made it fail with
-`Timeout` (13.0.0-alpha.4 and earlier). Since 13.0.0-alpha.5, `open` tries again
-when that deadline expires, three attempts in total (about 30 seconds): each
-attempt opens its own pool, which no other task uses yet, and every opening
-step is idempotent, so an expired attempt either rolled back or left committed
-state that the next attempt verifies. Every other outbox call keeps the single
-10-second deadline and its `Timeout` result. A test holds the file under
-SQLite's exclusive lock while `open` connects, releases it after the retry and
-checks that `open` succeeds; with 10 seconds against SQLite's 30 no race
-decides it, and it runs on Windows (`--ignored` runs it elsewhere).
+variants) and `WebhookOutbox::open` wait up to 30 seconds for a pooled
+connection (SQLx's default) and for SQLite's lock. Until 13.0.0-alpha.5 the
+constructors had no outer bound and no retry, while `WebhookOutbox::open`, which
+runs inside the outbox's 10-second storage deadline, failed with `Timeout` when
+a stall on a hosted Windows runner outlasted it (13.0.0-alpha.4 and earlier).
+Since 13.0.0-alpha.5 `open` tries again when that deadline expires, and since
+13.0.0-alpha.6 the constructors do the same through the same helper: each
+attempt opens its own pool, which no other task uses yet, within a 10-second
+deadline, three attempts in total (about 30 seconds). Every opening step is
+idempotent, so an expired attempt either rolled back or left committed state
+that the next attempt verifies. The deadline is shorter than SQLite's waits, so
+it is what ends an attempt on every platform. When all three attempts expire,
+the constructors fail with `MessagingError::StorageTimeout { operation:
+"connect" }` and `open` with `WebhookError::Timeout`. Every other broker
+operation keeps SQLite's 30-second waits, and every other outbox call the single
+10-second deadline and its `Timeout` result. Tests on every platform hold the
+file under SQLite's exclusive lock with the deadline shortened to fractions of a
+second: opening succeeds once the lock is released after the first retry, and
+fails with the timeout error when the lock outlives every attempt.
 
 ### v12 audit correction invariants
 
@@ -4771,7 +4788,19 @@ Phase 2 of the production monitor; threat model `TM-STUDIO-3`; guide:
   under `rullst/studio`, and `projects.key` (32 random bytes) under the data
   directory (`$XDG_DATA_HOME`/`~/.local/share`/`%LOCALAPPDATA%`). Files are
   written atomically, owner-only (`0600` in `0700` directories on Unix), read
-  with a size bound, never through a symlink; unknown fields are rejected. At
+  with a size bound (256 KiB), never through a symlink. Since 13.0.0-alpha.6
+  the format is forward compatible: `version` (1) changes only with an
+  incompatible format, which only a major release may introduce, and a file
+  with a higher version is refused unchanged with a message naming the
+  oldest Studio that reads it (its `min_studio_version`); fields this Studio
+  does not know are kept and written back unchanged, at most 32 per object,
+  with names of at most 64 bytes and 16 KiB of JSON per object; known fields
+  keep their types and bounds (names, base URLs, alert thresholds,
+  notification settings), while the proxy setting is checked when used and
+  one this Studio cannot apply (an unknown mode, a SOCKS URL) blocks every
+  request. New settings are written only when they differ from their
+  defaults, so a Studio before 13.0.0-alpha.6, which refuses unknown fields,
+  reads the file until one is set. At
   most 32 projects; names are 1–48 of `[A-Za-z0-9._-]` starting with a letter
   or digit. Tokens are sealed with AES-256-GCM (random 96-bit nonce) with
   the project name and normalized base URL as associated data; a token that
@@ -4784,14 +4813,19 @@ Phase 2 of the production monitor; threat model `TM-STUDIO-3`; guide:
   2 failure is reported, not downgraded. It follows no redirect, validates
   certificates, and bounds each read to 1 MiB, 5 s total and 3 s to connect.
   Since 13.0.0-alpha.6 the Settings page's proxy choice (`settings.proxy` in
-  the project list: `direct` by default, `environment` for
-  `HTTPS_PROXY`/`https_proxy` and `NO_PROXY`/`no_proxy`, or `explicit` with an
-  `http`/`https` URL without user information, path, query or fragment and a
-  `NO_PROXY`-syntax exception list of at most 4,096 characters) applies to
-  project reads and webhooks through reqwest's own proxy support: only
-  `https` requests to non-loopback hosts outside the exceptions go through
-  the proxy, as a `CONNECT` tunnel; an unusable proxy makes every request
-  fail with a fixed status instead of connecting directly. Saving rebuilds
+  the project list: `direct` by default, `environment` for the variables by
+  target scheme, `HTTPS_PROXY` else `ALL_PROXY` for `https` and `HTTP_PROXY`
+  else `ALL_PROXY` for `http`, each upper case before lower case, with
+  `NO_PROXY`/`no_proxy`, or `explicit` with an `http`/`https` URL without
+  user information, path, query or fragment and a `NO_PROXY`-syntax
+  exception list of at most 4,096 characters) applies to project reads and
+  webhooks through reqwest's own proxy support. A scheme-less value means
+  `http://`. Loopback hosts and the exceptions are always direct, and Studio
+  sends `http` only to loopback, so only `https` requests go through the
+  proxy, as a `CONNECT` tunnel. SOCKS is not supported: a `socks*://` value,
+  like a malformed one or over-long exceptions, makes every request fail with
+  a fixed status, and the Settings page names the variable or setting,
+  instead of connecting directly. Saving rebuilds
   both HTTP clients.
   It accepts only `200`, a JSON content type and the schema of the path read
   (`rullst.monitor.v2` needs its `traces` and `security` sections) with

@@ -26,10 +26,8 @@ impl<P: VideoProvider, C: Clock> MediaService<P, C> {
         let revision = record.asset.revision;
         let pending = record.pending.as_mut().ok_or(Error::Conflict)?;
         tx.until(Some(pending.until))?;
-        if revision != previous.revision
-            || pending.revision != previous.revision
-            || pending.nonce.as_deref() != Some(&lease.nonce)
-        {
+        // The same fence as `finish`: the nonce also fixes the pending revision.
+        if revision != previous.revision || pending.nonce.as_deref() != Some(&lease.nonce) {
             return Err(Error::Conflict);
         }
         pending.nonce = None;
@@ -128,5 +126,41 @@ fn stopped(record: Record, expected_revision: i64) -> Result<(Record, OperationF
             Ok((record, failure))
         }
         _ => Err(Error::Conflict),
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::super::record::{Pending, tests::record};
+    use super::*;
+
+    #[test]
+    fn a_stopped_intent_is_taken_only_at_its_current_revision() {
+        // A metadata update the provider refused, stopped at revision 5.
+        let mut current = record();
+        current.asset.pending = true;
+        current.asset.failure = Some(OperationFailure::Rejected);
+        current.pending = Some(Pending {
+            kind: Kind::Update,
+            dispatched: true,
+            nonce: None,
+            until: 0,
+            revision: 4,
+        });
+        assert_eq!(current.validate(), Ok(()));
+        let Ok((taken, failure)) = stopped(current.clone(), 5) else {
+            panic!("the current revision is accepted");
+        };
+        assert_eq!(taken.asset.revision, 5);
+        assert_eq!(failure, OperationFailure::Rejected);
+        for expected in [4, 6, 0, -5] {
+            assert_eq!(
+                stopped(current.clone(), expected).err(),
+                Some(Error::Conflict),
+                "{expected}"
+            );
+        }
+        assert_eq!(stopped(record(), 5).err(), Some(Error::Conflict));
     }
 }

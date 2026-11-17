@@ -174,6 +174,8 @@ driver = "resend" # comment
 from = "Acme Billing <billing@acme.example>"
 [other]
 from = "ignored@example.com"
+driver = "ignored"
+env = "ignored"
 "#;
         let mut from_file = MailSettings::default();
         from_file.fill_from_rullst_toml(toml);
