@@ -144,6 +144,29 @@ mod tests {
     }
 
     #[test]
+    fn without_a_date_nothing_animates_and_today_is_an_iso_date() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join(DIRECTORY).join(FILE);
+        assert!(!claim_daily_animation(&path, ""));
+        assert!(!path.exists());
+
+        let today = today();
+        let digits: Vec<bool> = today.bytes().map(|byte| byte.is_ascii_digit()).collect();
+        assert_eq!(today.len(), 10, "{today}");
+        assert!(today.as_str() >= "2026-01-01", "{today}");
+        assert_eq!(&today[4..5], "-", "{today}");
+        assert_eq!(&today[7..8], "-", "{today}");
+        assert!(
+            digits[..4]
+                .iter()
+                .chain(&digits[5..7])
+                .chain(&digits[8..])
+                .all(|digit| *digit),
+            "{today}"
+        );
+    }
+
+    #[test]
     fn unusable_stamps_never_animate_and_never_fail() {
         let directory = tempfile::tempdir().unwrap();
         // The stamp's parent is a file, so it cannot be created.
