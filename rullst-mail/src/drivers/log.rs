@@ -75,3 +75,16 @@ impl MailDriver for LogDriver {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn the_console_time_is_rfc3339_with_an_offset() {
+        let text = super::local_now();
+        assert!(
+            rullst_core::rfc3339::parse_unix_seconds(&text).is_some(),
+            "{text}"
+        );
+        assert!(!text.ends_with('Z'), "{text}");
+    }
+}
