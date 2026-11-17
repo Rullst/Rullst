@@ -1050,8 +1050,11 @@ differences remain, it lists them and writes no migration. Column types follow
 the field's Rust type: `i8`/`i16`/`i32` use `integer`, `i64` `big_integer`,
 `f32`/`f64` `float`, `bool` `boolean`, `String`, `SecretString` and `Json`
 use `string`, and the ORM's date/time types `Timestamp`, `DateTime`, `Date`
-and `Time` use `timestamp_tz`, `timestamp`, `date` and `time`. A new table
-declares non-`Option`
+and `Time` (matched by the last path segment, also inside `Option`) use
+`timestamp_tz`, `timestamp`, `date` and `time`. A `DateTime` with generic
+arguments, such as a `chrono` `DateTime<Utc>` left in a model, is declared as
+`timestamp_tz` with a warning that points to `V13-ORM-CHRONO-TYPES`. A new
+table declares non-`Option`
 fields `NOT NULL`. A required field added to an existing table is declared
 `NOT NULL DEFAULT 0`, `0.0` or `''` (a commented backfill to review); a
 required date, encrypted or JSON field added to an existing table has no
