@@ -58,9 +58,11 @@ updates:
   - package-ecosystem: "github-actions"
     # Outside the root, Dependabot reads only composite actions (action.yml),
     # so it does not bump the CI workflow that `cargo rullst new` writes
-    # (cargo-rullst/src/generators/project/ci/.github/workflows/ci.yml). That
-    # file pins the same action SHAs as Rullst's own workflows, and a
-    # cargo-rullst test fails until it is updated in the same pull request.
+    # (cargo-rullst/src/generators/project/ci/.github/workflows/ci.yml) or the
+    # one `cargo rullst add browser-tests` writes. They pin the same action
+    # SHAs as Rullst's own workflows, and workflow-lint.yml and a cargo-rullst
+    # test fail until `python3 .github/sync-template-action-pins.py` updates
+    # them in the same pull request (MAINTAINING.md, section 3).
     directories:
       - "/"
     target-branch: "main"
