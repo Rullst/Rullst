@@ -21,8 +21,8 @@
   scheduler's POSIX syntax, except a string literal that means the same
   under both syntaxes. A literal's finding gives its POSIX form for a
   schedule not yet stored (weekday numbers moved down by one) or why there is
-  none (both day fields restricted, a field joined with its neighbour, a form
-  the new syntax refuses).
+  none (both day fields restricted, a field the old syntax joined with its
+  neighbour or split, a form the new syntax refuses).
 - A finding can carry a note for its location: the plan prints it as
   `line N: …` under the finding, the Markdown report as a sub-item, and the
   `rullst.upgrade-plan.v1` JSON adds a `note` key to each source finding

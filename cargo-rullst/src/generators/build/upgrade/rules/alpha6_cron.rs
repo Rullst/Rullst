@@ -2,8 +2,9 @@
 //! `RecurringDefinition::new` (`rullst-messaging`, feature
 //! `schedules-postgres`) read its five fields with the `cron` crate until
 //! alpha.5: weekdays 1 (Sunday) to 7 (Saturday), both day fields
-//! intersecting, and a field that starts or ends with `,`, `-` or `/` joined
-//! with its neighbour. It now reads them as Core's `Scheduler` does:
+//! intersecting, a field that starts or ends with `,`, `-` or `/` joined
+//! with its neighbour, and one where a number and a name touch (`1jan`)
+//! split in two. It now reads them as Core's `Scheduler` does:
 //! weekdays 0 to 7 (0 and 7 are Sunday), a day matching either day field
 //! when both are restricted, and each field valid on its own. Stored
 //! definitions keep their meaning; code that creates one gets the new one.
@@ -56,12 +57,9 @@ fn names_messaging(text: &str) -> bool {
 /// restricted, and accepted by Core's evaluator.
 pub(super) fn advice(expression: &str) -> Option<String> {
     let fields: Vec<&str> = expression.split_whitespace().collect();
-    if fields
-        .iter()
-        .any(|field| field.starts_with([',', '-', '/']) || field.ends_with([',', '-', '/']))
-    {
+    if fields.iter().any(|field| shifted(field)) {
         return Some(format!(
-            "`RecurringDefinition::new` now refuses `{expression}`: a field starts or ends with `,`, `-` or `/`, which the `cron` crate joined with the next one, shifting the fields after it. A schedule already stored with it keeps running, but this call fails: stop creating it here, or cancel it and create a POSIX expression under a new name"
+            "`RecurringDefinition::new` now refuses `{expression}`: a field starts or ends with `,`, `-` or `/`, or runs a number into a name (`1jan`), so the `cron` crate joined or split fields and read the others shifted. A schedule already stored with it keeps running, but this call fails: stop creating it here, or cancel it and create a POSIX expression under a new name"
         ));
     }
     let [minute, hour, day, month, weekday] = fields[..] else {
@@ -101,6 +99,17 @@ pub(super) fn advice(expression: &str) -> Option<String> {
         ));
     }
     (!notes.is_empty()).then(|| notes.join("; "))
+}
+
+/// Whether the `cron` crate read `field` across a field boundary: it joined
+/// a field that starts or ends with `,`, `-` or `/` with its neighbour
+/// (`1, 2`, `/5`), and split one where a number and a name touch (`1jan`).
+fn shifted(field: &str) -> bool {
+    let touching = field.as_bytes().windows(2).any(|pair| {
+        (pair[0].is_ascii_digit() && pair[1].is_ascii_alphabetic())
+            || (pair[0].is_ascii_alphabetic() && pair[1].is_ascii_digit())
+    });
+    touching || field.starts_with([',', '-', '/']) || field.ends_with([',', '-', '/'])
 }
 
 /// The weekday field with each number moved from the `cron` crate's 1

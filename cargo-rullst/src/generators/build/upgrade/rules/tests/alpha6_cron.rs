@@ -40,6 +40,7 @@ fn the_rule_is_an_alpha6_must_change_rule() {
             .contains("`2-6`, Monday to Friday, becomes `1-5`")
     );
     assert!(rule.guidance.contains("`RecurringError::LegacyDefinition`"));
+    assert!(rule.guidance.contains("`CronSyntax::Legacy`"));
     assert!(
         rule.message
             .ends_with("Review the schedule this call creates")
@@ -102,15 +103,30 @@ fn both_day_fields_joined_fields_and_bad_weekdays_are_explained() {
     let joined = advice("1, 2 * * *").unwrap();
     assert!(
         joined.starts_with(
-            "`RecurringDefinition::new` now refuses `1, 2 * * *`: a field starts or ends with `,`, `-` or `/`"
+            "`RecurringDefinition::new` now refuses `1, 2 * * *`: a field starts or ends with `,`, `-` or `/`, or runs a number into a name (`1jan`)"
         ) && joined.ends_with("cancel it and create a POSIX expression under a new name"),
         "{joined}"
     );
-    assert!(
-        advice("0 9 * * 1 -5")
-            .unwrap()
-            .contains("joined with the next one")
-    );
+    // Joined with a neighbour (seconds steps through `/5`, `-5`, `,30`) or
+    // split where a number and a name touch.
+    for shifted in [
+        "0 9 * * 1 -5",
+        "/5 * * * *",
+        "-5 * * * *",
+        ",30 * * * *",
+        "0 9 1jan * *",
+        "0 9 * jan1 *",
+        "0 9 * * 1- 5",
+    ] {
+        assert!(
+            advice(shifted)
+                .unwrap()
+                .contains("so the `cron` crate joined or split fields"),
+            "{shifted}"
+        );
+    }
+    // Names next to separators are not split.
+    assert_eq!(advice("0 9 * jan-jun/2 MON-FRI"), None);
 
     assert_eq!(
         advice("0 9 * * 8").unwrap(),
