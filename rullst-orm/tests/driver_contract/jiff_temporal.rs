@@ -369,12 +369,16 @@ mod native {
             ["ordinary", "ordinary (chrono)"],
             "{driver}"
         );
-        let ended =
-            Orm::raw("SELECT title FROM contract_jiff_calendar WHERE ends_at = ? ORDER BY id")
-                .bind(ordinary.ends_at)
-                .map_to::<(String,)>()
-                .await
-                .expect("raw filter by an instant");
+        // `Orm::raw` passes its SQL through, so PostgreSQL numbers the
+        // placeholder.
+        let placeholder = if driver == "postgres" { "$1" } else { "?" };
+        let ended = Orm::raw(format!(
+            "SELECT title FROM contract_jiff_calendar WHERE ends_at = {placeholder} ORDER BY id"
+        ))
+        .bind(ordinary.ends_at)
+        .map_to::<(String,)>()
+        .await
+        .expect("raw filter by an instant");
         assert_eq!(
             ended,
             [
