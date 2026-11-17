@@ -65,7 +65,7 @@ rullst-orm = { workspace = true, features = ["drivers-all"] }
 # `security_event_flow` records through a `rullst-security` layer.
 rullst-security = { workspace = true }
 testcontainers = { version = "0.27.3", default-features = false, features = ["aws-lc-rs"] }
-testcontainers-modules = { version = "0.15.0", default-features = false, features = ["aws-lc-rs", "postgres", "mysql"] }
+testcontainers-modules = { version = "0.15.0", default-features = false, features = ["aws-lc-rs", "postgres", "mysql", "mariadb"] }
 tower = { workspace = true, features = ["util"] }
 
 [package.metadata.cargo-machete]
