@@ -436,3 +436,51 @@ fn the_ingestor_debug_output_shows_only_its_store() {
         "TraceIngestor { store: DistributedTraceStore { capacity: 8, .. }, .. }"
     );
 }
+
+#[test]
+fn ingestion_errors_explain_themselves() {
+    for (error, message) in [
+        (
+            TraceIngestionError::InvalidKey,
+            "trace ingestion HMAC key must contain 32 to 128 bytes",
+        ),
+        (
+            TraceIngestionError::InvalidCapacity,
+            "trace store capacity is outside the supported range",
+        ),
+        (
+            TraceIngestionError::AuthenticationFailed,
+            "trace ingestion authentication failed",
+        ),
+        (
+            TraceIngestionError::TimestampOutsideWindow,
+            "trace ingestion timestamp is outside the accepted window",
+        ),
+        (
+            TraceIngestionError::ReplayDetected,
+            "trace ingestion request was already consumed",
+        ),
+        (
+            TraceIngestionError::StoreUnavailable,
+            "trace ingestion state is unavailable or at capacity",
+        ),
+        (
+            TraceIngestionError::InvalidEncoding,
+            "trace ingestion payload encoding is invalid",
+        ),
+        (
+            TraceIngestionError::InvalidBatch,
+            "trace ingestion batch violates the v1 contract",
+        ),
+        (
+            TraceIngestionError::ClockUnavailable,
+            "system clock cannot produce a Unix timestamp",
+        ),
+        (
+            TraceIngestionError::RandomnessUnavailable,
+            "operating-system randomness is unavailable for trace ingestion",
+        ),
+    ] {
+        assert_eq!(error.to_string(), message);
+    }
+}
