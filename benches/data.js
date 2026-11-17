@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794864224910,
+  "lastUpdate": 1794877739987,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -36367,6 +36367,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1348,
             "range": "± 26",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "602bf170861af5bcea7827f224af8a6a96d6e8b8",
+          "message": "Merge pull request #740 from Rullst/feat/v13-upgrade-alpha6-gaps\n\nfeat(cli): report the alpha.6 checklist items that upgrade rules can locate",
+          "timestamp": "2026-11-16T22:04:19-03:00",
+          "tree_id": "b712ad6b059c96cd9e1fb89fcf69b72ba394d29f",
+          "url": "https://github.com/Rullst/Rullst/commit/602bf170861af5bcea7827f224af8a6a96d6e8b8"
+        },
+        "date": 1794877736719,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 428,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 625,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 289,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1008,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
