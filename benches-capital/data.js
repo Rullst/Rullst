@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794980942207,
+  "lastUpdate": 1794982579084,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -18729,6 +18729,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/65d6e6082d95f31ca6a1b3a5034c26edc8cfb2f8"
         },
         "date": 1794980941571,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8fa4e300f0e881402f85d328b30a8ee8c5e7b556",
+          "message": "Merge pull request #761 from Rullst/feat/v13-messaging-cron-posix\n\nfeat(messaging)!: POSIX cron for new recurring schedules, legacy rows kept",
+          "timestamp": "2026-11-18T02:55:43-03:00",
+          "tree_id": "21d69fb858cf092de0acef1fa711cc4cce124917",
+          "url": "https://github.com/Rullst/Rullst/commit/8fa4e300f0e881402f85d328b30a8ee8c5e7b556"
+        },
+        "date": 1794982578271,
         "tool": "cargo",
         "benches": [
           {
