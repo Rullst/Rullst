@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794963491191,
+  "lastUpdate": 1794967348138,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -24261,6 +24261,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4225,
             "range": "± 20",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1010a51e4f2d7014ddfe8a410d21c68bc8ea5b5c",
+          "message": "Merge pull request #764 from Rullst/ci/v13-dependency-health-reviews\n\nci(deps): let reviewed health flags stay out of the issue",
+          "timestamp": "2026-11-17T22:38:46-03:00",
+          "tree_id": "0e17ed91a23257034635839a253be8a2330adb3a",
+          "url": "https://github.com/Rullst/Rullst/commit/1010a51e4f2d7014ddfe8a410d21c68bc8ea5b5c"
+        },
+        "date": 1794967347183,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 977,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 733,
+            "range": "± 28",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1741,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4664,
+            "range": "± 49",
             "unit": "ns/iter"
           }
         ]
