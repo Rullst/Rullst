@@ -221,7 +221,7 @@ fn each_type_becomes_its_value_variant() {
 }
 
 /// Near-valid dates.
-fn date_text() -> impl Strategy<Value = String> {
+pub(super) fn date_text() -> impl Strategy<Value = String> {
     (
         prop_oneof![
             (0_i32..=9999).prop_map(|year| format!("{year:04}")),

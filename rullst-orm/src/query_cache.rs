@@ -390,6 +390,12 @@ fn hex_digest(bytes: &[u8]) -> String {
     encoded
 }
 
+/// A query-cache key for one bound value, as the golden corpora record it.
+#[cfg(test)]
+pub(crate) fn golden_key(value: RullstValue) -> String {
+    build_key("academy", None, "users", "SELECT *", &[value]).unwrap_or_default()
+}
+
 #[cfg(test)]
 mod tests {
     use super::{build_key, drain_indexes, entry_index_key, index_key, store_entry, text};
