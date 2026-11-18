@@ -379,3 +379,56 @@ fn a_failed_rollback_marks_the_writer_unhealthy() {
     drop(state);
     std::fs::remove_file(path).expect("remove test spool");
 }
+
+#[test]
+fn a_partial_write_on_the_opened_spool_is_rolled_back_and_the_next_frame_follows() {
+    // Through the real open path, so the handle has the access the writer
+    // gets on this platform (Windows needs write access to truncate).
+    let path = temporary_spool("rollback-open");
+    let spool = DurableSiemSpool::try_open(&path).expect("create spool");
+    spool
+        .append_local(LiveSecurityEvent::local(
+            "RBAC_DENIAL",
+            "first",
+            "192.0.2.1",
+        ))
+        .expect("first append");
+    {
+        let mut state = spool.state.lock().expect("spool state");
+        let previous_bytes = state.bytes;
+        // What a write that failed half-way through a frame leaves behind.
+        state
+            .file
+            .write_all(b"0000002a:partial")
+            .expect("partial write");
+        assert_eq!(
+            recover_partial_write(&mut state, previous_bytes, &io::Error::other("disk full")),
+            Err(SiemSpoolError::Io {
+                operation: "append",
+                kind: io::ErrorKind::Other,
+            })
+        );
+        assert!(state.healthy);
+        let length = std::fs::metadata(&path).expect("spool metadata").len();
+        assert_eq!(length, previous_bytes);
+    }
+    // The next frame starts where the rolled-back one did, without a gap.
+    let receipt = spool
+        .append_local(LiveSecurityEvent::local(
+            "RASP_PAYLOAD_INTERCEPTED",
+            "second",
+            "192.0.2.1",
+        ))
+        .expect("append after the rollback");
+    assert_eq!(receipt.sequence(), 2);
+    drop(spool);
+    let reopened = DurableSiemSpool::try_open(&path).expect("reopen spool");
+    let events = reopened.read_local().expect("read events");
+    let types: Vec<_> = events
+        .iter()
+        .map(|event| event.event_type.as_str())
+        .collect();
+    assert_eq!(types, ["RBAC_DENIAL", "RASP_PAYLOAD_INTERCEPTED"]);
+    drop(reopened);
+    std::fs::remove_file(path).expect("remove test spool");
+}

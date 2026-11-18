@@ -1,7 +1,5 @@
 //! Studio Control Center & Data Browser Module
 
-#![cfg_attr(mutants, mutants::skip)]
-
 mod cells;
 pub mod db;
 pub mod handlers;

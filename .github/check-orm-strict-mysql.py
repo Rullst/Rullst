@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mutate the ORM against `matrix_mysql` with the strict MySQL pool.
+"""Mutate the ORM against `matrix_mysql` and `matrix_mariadb` with the strict MySQL pool.
 
 `orm-sql-servers` builds the SQLx `Any` pool; code compiled only with
 `strict-mysql` (native enum types, typed codecs and binds) runs here, in the
@@ -21,5 +21,5 @@ SPEC.loader.exec_module(SERVERS)
 
 
 if __name__ == "__main__":
-    sys.exit(SERVERS.main(features=["strict-mysql"], targets=["--test=matrix_mysql"],
+    sys.exit(SERVERS.main(features=["strict-mysql"], targets=["--test=matrix_mysql", "--test=matrix_mariadb"],
                           description=__doc__))

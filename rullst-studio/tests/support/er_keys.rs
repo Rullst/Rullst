@@ -75,4 +75,7 @@ pub(super) async fn exercise_composite_keys(
     assert!(diagram.contains("link_b_to_ref_y"));
     assert!(!diagram.contains("link_a_to_ref_y"));
     assert!(!diagram.contains("link_b_to_ref_x"));
+    // The matrix table's `score` column is not a key column.
+    assert!(lines.iter().any(|line| line.ends_with(" score")));
+    assert!(!lines.iter().any(|line| line.ends_with(" score PK")));
 }

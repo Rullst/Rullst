@@ -48,7 +48,11 @@ fn mutation_values_are_typed_and_bounded() {
     }
     assert!(parse_bound_value(StudioColumnKind::Boolean, "yes".to_string()).is_err());
     assert!(parse_bound_value(StudioColumnKind::Unsupported, "x".to_string()).is_err());
-    assert!(parse_bound_value(StudioColumnKind::Text, "x".repeat(MAX_CELL_BYTES + 1)).is_err());
+    assert!(matches!(
+        parse_bound_value(StudioColumnKind::Text, "x".repeat(16 * 1024)),
+        Ok(BoundValue::Text(value)) if value.len() == 16 * 1024
+    ));
+    assert!(parse_bound_value(StudioColumnKind::Text, "x".repeat(16 * 1024 + 1)).is_err());
     assert!(parse_bound_value(StudioColumnKind::Text, "a\0b".to_string()).is_err());
 }
 
@@ -79,10 +83,25 @@ fn form_fields_and_composite_keys_are_unique_bounded_and_typed() {
         .is_err()
     );
     assert!(unique_fields(vec![("x".repeat(81), String::new())]).is_err());
-    let excessive = (0..=MAX_FORM_FIELDS)
-        .map(|index| (format!("f{index}"), String::new()))
-        .collect();
-    assert!(unique_fields(excessive).is_err());
+    assert_eq!(
+        unique_fields(vec![("x".repeat(80), "v".to_string())])
+            .expect("an 80-byte field name is accepted")
+            .len(),
+        1
+    );
+    let fields = |count: usize| {
+        (0..count)
+            .map(|index| (format!("f{index}"), String::new()))
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        unique_fields(fields(260))
+            .expect("260 fields are accepted")
+            .len(),
+        260
+    );
+    assert!(unique_fields(fields(261)).is_err());
+    assert_eq!(MUTATION_BODY_LIMIT, 65_536);
 
     let mut missing = BTreeMap::new();
     assert!(take_required(&mut missing, "column").is_err());
