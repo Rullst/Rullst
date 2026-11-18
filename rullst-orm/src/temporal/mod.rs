@@ -237,6 +237,14 @@ temporal_type! {
 }
 
 /// The decode error for a stored date-time that no [`Timestamp`] holds.
+#[cfg(any(
+    feature = "drivers-all",
+    feature = "strict-sqlite",
+    feature = "turso",
+    feature = "strict-postgres",
+    feature = "pgvector",
+    feature = "strict-mysql"
+))]
 pub(crate) fn instant_out_of_range(
     stored: impl fmt::Display,
 ) -> Box<dyn std::error::Error + Send + Sync> {
