@@ -236,6 +236,20 @@ temporal_type! {
     chrono_rules: parse::time_from_str,
 }
 
+/// The decode error for a stored date-time that no [`Timestamp`] holds.
+pub(crate) fn instant_out_of_range(
+    stored: impl fmt::Display,
+) -> Box<dyn std::error::Error + Send + Sync> {
+    format!(
+        "{stored} is outside the range of rullst_orm::Timestamp, \
+         -9999-01-02T01:59:59Z..=9999-12-30T22:00:00.999999999Z (an end-of-time \
+         sentinel such as 9999-12-31 23:59:59 is too): store NULL in an \
+         Option<Timestamp> field for \"no end\", store a value within the range, \
+         or read the column as a civil rullst_orm::DateTime"
+    )
+    .into()
+}
+
 impl Timestamp {
     /// The current time from the system clock ([`jiff::Timestamp::now`]).
     pub fn now() -> Self {

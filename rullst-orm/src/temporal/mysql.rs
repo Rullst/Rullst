@@ -229,7 +229,10 @@ pub(super) fn date_time_from_value(bytes: &[u8]) -> Result<civil::DateTime, BoxD
 
 /// An instant: the UTC wall time of [`date_time_from_value`].
 pub(super) fn instant_from_value(bytes: &[u8]) -> Result<jiff::Timestamp, BoxDynError> {
-    Ok(jiff::tz::Offset::UTC.to_timestamp(date_time_from_value(bytes)?)?)
+    let wall = date_time_from_value(bytes)?;
+    jiff::tz::Offset::UTC
+        .to_timestamp(wall)
+        .map_err(|_| super::instant_out_of_range(wall))
 }
 
 /// A `DATE` value in either protocol.

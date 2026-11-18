@@ -130,10 +130,11 @@ fn utc_moment(nanos: i128) -> Option<Moment> {
 
 impl<'r> Decode<'r, Sqlite> for Timestamp {
     fn decode(value: SqliteValueRef<'r>) -> Result<Self, BoxDynError> {
-        let instant = moment(value)?.instant();
+        let moment = moment(value)?;
+        let instant = moment.instant();
         instant
             .map(Self)
-            .ok_or_else(|| "datetime out of range".into())
+            .ok_or_else(|| super::instant_out_of_range(moment.local))
     }
 }
 
