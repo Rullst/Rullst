@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794971220955,
+  "lastUpdate": 1794980578721,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -24357,6 +24357,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4147,
             "range": "± 46",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "65d6e6082d95f31ca6a1b3a5034c26edc8cfb2f8",
+          "message": "Merge pull request #757 from Rullst/feat/v13-jiff-core-mail-capital\n\nfeat(core,mail,capital)!: replace chrono with jiff 1.0 outside the database",
+          "timestamp": "2026-11-18T02:25:25-03:00",
+          "tree_id": "791b9dd52012edbaa20d724f54f46f172cdccabf",
+          "url": "https://github.com/Rullst/Rullst/commit/65d6e6082d95f31ca6a1b3a5034c26edc8cfb2f8"
+        },
+        "date": 1794980578067,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1001,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 713,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1719,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4229,
+            "range": "± 15",
             "unit": "ns/iter"
           }
         ]
