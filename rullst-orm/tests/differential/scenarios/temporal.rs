@@ -1,8 +1,8 @@
-//! `timestamp_tz()`, `date()` and `timestamps()` with `chrono` fields:
+//! `timestamp_tz()`, `date()` and `timestamps()` with date/time fields:
 //! round trips, sub-microsecond precision, instants outside the 1970–2038
 //! `TIMESTAMP` range, ordering and filters.
 
-use rullst_orm::chrono::{DateTime, NaiveDate, SecondsFormat, TimeZone, Utc};
+use rullst_orm::{Date, Timestamp};
 use rullst_orm::{Error, Orm};
 
 use super::{create_table, in_order, sorted};
@@ -13,13 +13,13 @@ use crate::transcript::Scenario;
 struct Event {
     id: i32,
     title: String,
-    starts_at: DateTime<Utc>,
-    ends_at: Option<DateTime<Utc>>,
-    day: NaiveDate,
+    starts_at: Timestamp,
+    ends_at: Option<Timestamp>,
+    day: Date,
     #[orm(db_default)]
-    created_at: Option<DateTime<Utc>>,
+    created_at: Option<Timestamp>,
     #[orm(db_default)]
-    updated_at: Option<DateTime<Utc>>,
+    updated_at: Option<Timestamp>,
 }
 
 impl Event {
@@ -28,26 +28,25 @@ impl Event {
     }
 }
 
-fn instant(text: &str) -> DateTime<Utc> {
-    DateTime::parse_from_rfc3339(text)
-        .expect("valid RFC 3339 fixture")
-        .with_timezone(&Utc)
+fn instant(text: &str) -> Timestamp {
+    text.parse().expect("valid RFC 3339 fixture")
 }
 
-fn date(year: i32, month: u32, day: u32) -> NaiveDate {
-    NaiveDate::from_ymd_opt(year, month, day).expect("valid date fixture")
+fn date(year: i16, month: i8, day: i8) -> Date {
+    Date::from(rullst_orm::jiff::civil::Date::new(year, month, day).expect("valid date fixture"))
 }
 
-fn nanos(value: &DateTime<Utc>) -> String {
-    value.to_rfc3339_opts(SecondsFormat::Nanos, true)
+/// RFC 3339 with nine fraction digits and `Z`.
+fn nanos(value: &Timestamp) -> String {
+    format!("{:.9}", **value)
 }
 
 /// Saves an event and reads it back.
 async fn save(
     title: &str,
-    starts_at: DateTime<Utc>,
-    ends_at: Option<DateTime<Utc>>,
-    day: NaiveDate,
+    starts_at: Timestamp,
+    ends_at: Option<Timestamp>,
+    day: Date,
 ) -> Result<Event, Error> {
     let mut event = Event {
         id: 0,
@@ -99,14 +98,26 @@ pub async fn run(s: &mut Scenario<'_>) {
     }
     for (title, text) in BOUNDARY {
         let at = instant(text);
-        let saved = save(title, at, Some(at), at.date_naive()).await;
+        let saved = save(
+            title,
+            at,
+            Some(at),
+            Date::from(rullst_orm::jiff::tz::Offset::UTC.to_datetime(*at).date()),
+        )
+        .await;
         s.outcome(
             &format!("round_trip.{title}"),
             saved.map(|event| nanos(&event.starts_at)),
         );
         let _ = Event::query().where_eq("title", title).delete_all().await;
         // The same instant in a nullable column, next to an in-range one.
-        let saved = save(title, instant(KEPT[0].1), Some(at), at.date_naive()).await;
+        let saved = save(
+            title,
+            instant(KEPT[0].1),
+            Some(at),
+            Date::from(rullst_orm::jiff::tz::Offset::UTC.to_datetime(*at).date()),
+        )
+        .await;
         s.outcome(
             &format!("nullable_round_trip.{title}"),
             saved.map(|event| event.ends_at.as_ref().map(nanos)),
@@ -122,10 +133,7 @@ async fn run_queries(s: &mut Scenario<'_>) {
         "order_by_instant",
         in_order(query().order_by("starts_at").get().await, Event::title),
     );
-    let noon = Utc
-        .with_ymd_and_hms(2026, 10, 15, 9, 30, 0)
-        .single()
-        .expect("valid instant");
+    let noon = instant("2026-10-15T09:30:00Z");
     let since_epoch = instant("1970-01-01T00:00:00Z");
     let cases = [
         ("instant_gt", query().where_gt("starts_at", noon)),

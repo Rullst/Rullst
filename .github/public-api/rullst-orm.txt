@@ -823,10 +823,6 @@ pub rullst_orm::RullstValue::Float(f64)
 pub rullst_orm::RullstValue::Bool(bool)
 pub rullst_orm::RullstValue::I64(i64)
 pub rullst_orm::RullstValue::Null
-pub rullst_orm::RullstValue::DateTime(chrono::datetime::DateTime<chrono::offset::utc::Utc>)
-pub rullst_orm::RullstValue::NaiveDateTime(chrono::naive::datetime::NaiveDateTime)
-pub rullst_orm::RullstValue::Date(chrono::naive::date::NaiveDate)
-pub rullst_orm::RullstValue::Time(chrono::naive::time::NaiveTime)
 pub rullst_orm::RullstValue::Timestamp(rullst_orm::Timestamp)
 pub rullst_orm::RullstValue::CivilDateTime(rullst_orm::DateTime)
 pub rullst_orm::RullstValue::CivilDate(rullst_orm::Date)
@@ -835,10 +831,6 @@ impl core::clone::Clone for rullst_orm::RullstValue
 impl core::convert::From<&str> for rullst_orm::RullstValue
 impl core::convert::From<alloc::string::String> for rullst_orm::RullstValue
 impl core::convert::From<bool> for rullst_orm::RullstValue
-impl core::convert::From<chrono::datetime::DateTime<chrono::offset::utc::Utc>> for rullst_orm::RullstValue
-impl core::convert::From<chrono::naive::date::NaiveDate> for rullst_orm::RullstValue
-impl core::convert::From<chrono::naive::datetime::NaiveDateTime> for rullst_orm::RullstValue
-impl core::convert::From<chrono::naive::time::NaiveTime> for rullst_orm::RullstValue
 impl core::convert::From<f64> for rullst_orm::RullstValue
 impl core::convert::From<i32> for rullst_orm::RullstValue
 impl core::convert::From<i64> for rullst_orm::RullstValue
@@ -1085,7 +1077,6 @@ impl core::marker::Sync for rullst_orm::auto_healing::SuggestedMigration
 impl core::marker::Unpin for rullst_orm::auto_healing::SuggestedMigration
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::auto_healing::SuggestedMigration
 impl core::panic::unwind_safe::UnwindSafe for rullst_orm::auto_healing::SuggestedMigration
-pub use rullst_orm::chrono = module chrono
 pub mod rullst_orm::collection
 pub use rullst_orm::collection::RullstCollection = trait rullst_orm::RullstCollection
 pub fn rullst_orm::dashboard_html() -> &'static str

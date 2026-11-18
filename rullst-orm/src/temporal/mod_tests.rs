@@ -205,22 +205,6 @@ fn each_type_becomes_its_value_variant() {
     ));
 }
 
-/// Near-valid dates.
-pub(super) fn date_text() -> impl Strategy<Value = String> {
-    (
-        prop_oneof![
-            (0_i32..=9999).prop_map(|year| format!("{year:04}")),
-            (-12_000_i32..=12_000).prop_map(|year| format!("{year:+05}")),
-            (0_i32..100_000).prop_map(|year| year.to_string()),
-        ],
-        0_u32..=13,
-        0_u32..=32,
-        prop_oneof![Just(""), Just(" "), Just(" -"), Just("x"), Just("T")],
-        prop_oneof![Just(""), Just(" "), Just("\t")],
-    )
-        .prop_map(|(year, month, day, tail, lead)| format!("{lead}{year}-{month}-{day:02}{tail}"))
-}
-
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(2048))]
 

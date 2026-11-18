@@ -29,11 +29,6 @@
 
 pub use sqlx;
 
-/// The `chrono` crate whose `DateTime<Utc>`, `NaiveDateTime`, `NaiveDate` and
-/// `NaiveTime` model fields and [`RullstValue`] variants the ORM binds and
-/// decodes (with a strict driver feature; see `Blueprint::timestamp_tz`).
-pub use chrono;
-
 /// The `jiff` crate that the date/time types ([`Timestamp`], [`DateTime`],
 /// [`Date`], [`Time`]) wrap, so an application uses the same version.
 pub use jiff;

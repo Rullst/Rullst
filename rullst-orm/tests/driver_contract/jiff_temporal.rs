@@ -1,7 +1,9 @@
-//! The jiff-based date/time types (`rullst_orm::Timestamp`, `DateTime`, `Date`,
-//! `Time`) against the `chrono` ones on a live database: each reads what the
-//! other wrote, filters and orders over rows written by both, and the
-//! database stores the same value either way (on SQLite, the same text).
+//! The date/time types (`rullst_orm::Timestamp`, `DateTime`, `Date`, `Time`)
+//! on a live database: rows written by a model and by `Orm::raw` bindings read
+//! back as the same values, filter and order together, and the database
+//! stores what it stored for the `chrono` types they replaced (a golden list
+//! of each server's text, checked against chrono-written rows before chrono
+//! left the ORM).
 
 use rullst_orm::Orm;
 
@@ -27,12 +29,9 @@ pub(super) async fn exercise() {
     feature = "strict-sqlite"
 ))]
 mod native {
-    use rullst_orm::chrono::{
-        DateTime as ChronoDateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc,
-    };
     use rullst_orm::jiff::{self, SignedDuration, civil};
     use rullst_orm::schema::{Blueprint, Schema};
-    use rullst_orm::{Date, DateTime, Orm, Time, Timestamp};
+    use rullst_orm::{Date, DateTime, Orm, RullstValue, Time, Timestamp};
 
     const TABLE: &str = "contract_jiff_calendar";
 
@@ -61,33 +60,6 @@ mod native {
         created_at: Option<Timestamp>,
         #[orm(db_default)]
         updated_at: Option<Timestamp>,
-    }
-
-    #[derive(Debug, Clone, PartialEq, rullst_orm::Orm)]
-    #[orm(table = "contract_jiff_calendar", full_row_save)]
-    struct ChronoEntry {
-        id: i32,
-        title: String,
-        starts_at: ChronoDateTime<Utc>,
-        local_start: NaiveDateTime,
-        day: NaiveDate,
-        opens: NaiveTime,
-        ends_at: Option<ChronoDateTime<Utc>>,
-        #[orm(db_default)]
-        created_at: Option<ChronoDateTime<Utc>>,
-        #[orm(db_default)]
-        updated_at: Option<ChronoDateTime<Utc>>,
-    }
-
-    // `Debug` is chrono's ISO form (`Display` is chrono's, with a space).
-    fn naive(value: DateTime) -> NaiveDateTime {
-        NaiveDateTime::parse_from_str(&format!("{value:?}"), "%Y-%m-%dT%H:%M:%S%.f").expect("naive")
-    }
-
-    fn chrono(value: Timestamp) -> ChronoDateTime<Utc> {
-        ChronoDateTime::parse_from_rfc3339(&format!("{value:?}"))
-            .expect("instant")
-            .with_timezone(&Utc)
     }
 
     /// What the database keeps of a date-time: SQLite's text keeps it all;
@@ -143,19 +115,26 @@ mod native {
         }
     }
 
-    fn chrono_entry(entry: &JiffEntry) -> ChronoEntry {
-        ChronoEntry {
-            id: 0,
-            title: format!("{} (chrono)", entry.title),
-            starts_at: chrono(entry.starts_at),
-            local_start: naive(entry.local_start),
-            day: NaiveDate::parse_from_str(&entry.day.to_string(), "%Y-%m-%d").expect("date"),
-            opens: NaiveTime::parse_from_str(&entry.opens.to_string(), "%H:%M:%S%.f")
-                .expect("time"),
-            ends_at: entry.ends_at.map(chrono),
-            created_at: None,
-            updated_at: None,
-        }
+    /// Writes `entry` again through `Orm::raw`, binding each value as a
+    /// `RullstValue` (on MySQL/MariaDB an instant goes as a `DATETIME`).
+    async fn insert_raw(driver: &str, entry: &JiffEntry) {
+        let placeholders = if driver == "postgres" {
+            "$1, $2, $3, $4, $5, $6"
+        } else {
+            "?, ?, ?, ?, ?, ?"
+        };
+        Orm::raw(format!(
+            "INSERT INTO contract_jiff_calendar (title, starts_at, local_start, day, opens, ends_at) VALUES ({placeholders})"
+        ))
+        .bind(format!("{} (raw)", entry.title))
+        .bind(RullstValue::from(entry.starts_at))
+        .bind(entry.local_start)
+        .bind(entry.day)
+        .bind(entry.opens)
+        .bind(entry.ends_at)
+        .execute()
+        .await
+        .unwrap_or_else(|error| panic!("{driver} {} (raw): {error}", entry.title));
     }
 
     /// The text each server keeps for the rows of `exercise`, in order:
@@ -292,25 +271,16 @@ mod native {
             row.save()
                 .await
                 .unwrap_or_else(|error| panic!("{driver} {}: {error}", row.title));
-            let mut twin = chrono_entry(row);
-            twin.save()
-                .await
-                .unwrap_or_else(|error| panic!("{driver} {}: {error}", twin.title));
+            insert_raw(driver, row).await;
         }
         let after = jiff::Timestamp::now();
 
-        // Each type reads every row, whichever type wrote it, as the same
-        // value.
+        // Every row reads back as the value written, whichever path wrote it.
         let as_jiff = JiffEntry::query()
             .order_by("id")
             .get()
             .await
             .expect("read as jiff");
-        let as_chrono = ChronoEntry::query()
-            .order_by("id")
-            .get()
-            .await
-            .expect("read as chrono");
         assert_eq!(as_jiff.len(), rows.len() * 2, "{driver}");
         for (index, row) in rows.iter().enumerate() {
             for read in &as_jiff[index * 2..index * 2 + 2] {
@@ -341,35 +311,28 @@ mod native {
                 );
             }
         }
-        for (jiff_read, chrono_read) in as_jiff.iter().zip(&as_chrono) {
-            // The same JSON (`to_json()` serializes each field with serde).
-            assert_eq!(jiff_read.to_json(), chrono_read.to_json(), "{driver}");
-            assert_eq!(
-                format!("{} {}", jiff_read.starts_at, jiff_read.local_start),
-                format!("{} {}", chrono_read.starts_at, chrono_read.local_start),
-                "{driver}"
-            );
-            assert_eq!(
-                chrono(jiff_read.starts_at),
-                chrono_read.starts_at,
-                "{driver}"
-            );
-            assert_eq!(
-                naive(jiff_read.local_start),
-                chrono_read.local_start,
-                "{driver}"
-            );
-            assert_eq!(
-                jiff_read.day.to_string(),
-                chrono_read.day.to_string(),
-                "{driver}"
-            );
-            assert_eq!(
-                jiff_read.created_at.map(chrono),
-                chrono_read.created_at,
-                "{driver}"
+        // chrono's text: serde (`to_json()`), `Display` and `Debug`.
+        let first = &as_jiff[0];
+        for field in [
+            "\"starts_at\":\"2026-10-15T09:30:00.123456Z\"",
+            "\"local_start\":\"2026-02-28T06:30:00.250\"",
+            "\"day\":\"2026-02-28\"",
+            "\"opens\":\"08:15:30.500\"",
+        ] {
+            assert!(
+                first.to_json().contains(field),
+                "{driver}: {}",
+                first.to_json()
             );
         }
+        assert_eq!(
+            format!(
+                "{} | {:?} | {}",
+                first.starts_at, first.starts_at, first.local_start
+            ),
+            "2026-10-15 09:30:00.123456 UTC | 2026-10-15T09:30:00.123456Z | 2026-02-28 06:30:00.250",
+            "{driver}"
+        );
 
         // Text-protocol results (`raw_sql`, PostgreSQL's and MySQL's simple
         // queries) read as the binary ones, by either type.
@@ -384,8 +347,6 @@ mod native {
             use rullst_orm::sqlx::Row;
             let starts_at: Timestamp = row.try_get(0).expect("text instant");
             assert_eq!(starts_at, read.starts_at, "{driver} {}", read.title);
-            let chrono_starts_at: ChronoDateTime<Utc> = row.try_get(0).expect("chrono instant");
-            assert_eq!(chrono_starts_at, chrono(read.starts_at), "{driver}");
             let local_start: DateTime = row.try_get(1).expect("text date-time");
             assert_eq!(local_start, read.local_start, "{driver} {}", read.title);
             let day: Date = row.try_get(2).expect("text date");
@@ -405,7 +366,7 @@ mod native {
             .expect("filter by an instant");
         assert_eq!(
             titles(&by_jiff, |entry| &entry.title),
-            ["ordinary", "ordinary (chrono)"],
+            ["ordinary", "ordinary (raw)"],
             "{driver}"
         );
         let later = JiffEntry::query()
@@ -416,11 +377,11 @@ mod native {
             .expect("order by an instant");
         assert_eq!(
             titles(&later, |entry| &entry.title),
-            ["after-2038", "after-2038 (chrono)"],
+            ["after-2038", "after-2038 (raw)"],
             "{driver}"
         );
         // Ascending instants, each pair (one row per type) adjacent.
-        let ascending = ChronoEntry::query()
+        let ascending = JiffEntry::query()
             .order_by("starts_at")
             .get()
             .await
@@ -431,11 +392,11 @@ mod native {
         }
         let mut order: Vec<String> = ascending
             .iter()
-            .map(|entry| entry.title.trim_end_matches(" (chrono)").to_string())
+            .map(|entry| entry.title.trim_end_matches(" (raw)").to_string())
             .collect();
         order.dedup();
         assert_eq!(order, expected, "{driver}");
-        let on_day = ChronoEntry::query()
+        let on_day = JiffEntry::query()
             .where_eq("day", ordinary.day)
             .where_eq("opens", ordinary.opens)
             .where_lt(
@@ -453,7 +414,7 @@ mod native {
             .expect("filter by date, time and date-time");
         assert_eq!(
             titles(&on_day, |entry| &entry.title),
-            ["ordinary", "ordinary (chrono)"],
+            ["ordinary", "ordinary (raw)"],
             "{driver}"
         );
         // `Orm::raw` passes its SQL through, so PostgreSQL numbers the
@@ -468,15 +429,12 @@ mod native {
         .expect("raw filter by an instant");
         assert_eq!(
             ended,
-            [
-                ("ordinary".to_string(),),
-                ("ordinary (chrono)".to_string(),)
-            ],
+            [("ordinary".to_string(),), ("ordinary (raw)".to_string(),)],
             "{driver}"
         );
 
-        // What each server stores, as its own text: the golden corpus of the
-        // rows (one written per type), the same for both.
+        // What each server stores, as its own text: the golden list, which
+        // the chrono-written rows matched before chrono left the ORM.
         let cast = |column: &str| match driver {
             "postgres" => format!("{column}::text"),
             "mysql" => format!("CAST({column} AS CHAR)"),
@@ -510,18 +468,14 @@ mod native {
             }
         }
 
-        // Updates through either type.
+        // A full-row save keeps the database default and writes the change.
         let mut first = as_jiff[0].clone();
         first.ends_at = Some("2026-10-15T12:00:00Z".parse().expect("instant"));
         first.save().await.expect("full-row save");
-        let reread = ChronoEntry::find(first.id)
-            .await
-            .expect("find")
-            .expect("row");
-        assert_eq!(reread.ends_at, first.ends_at.map(chrono), "{driver}");
+        let reread = JiffEntry::find(first.id).await.expect("find").expect("row");
+        assert_eq!(reread.ends_at, first.ends_at, "{driver}");
         assert_eq!(
-            reread.created_at,
-            first.created_at.map(chrono),
+            reread.created_at, first.created_at,
             "{driver} keeps created_at"
         );
 
@@ -535,11 +489,10 @@ mod native {
     feature = "strict-sqlite"
 )))]
 mod any_pool {
-    use rullst_orm::chrono::{TimeZone, Utc};
     use rullst_orm::{Orm, RullstValue, Timestamp};
 
-    /// The `Any` pool binds the jiff-based values as the same text as the
-    /// `chrono` ones, so they filter SQLite text columns the same way.
+    /// The `Any` pool binds the values as RFC 3339 text, the form a SQLite
+    /// `timestamp_tz()` column stores, so they filter SQLite text columns.
     pub(super) async fn exercise(driver: &str) {
         if driver != "sqlite" {
             return;
@@ -549,13 +502,9 @@ mod any_pool {
             .await
             .expect("create table");
         let at: Timestamp = "2026-10-15T09:30:00.5Z".parse().expect("instant");
-        let chrono_at = Utc
-            .timestamp_opt(1_792_056_600, 500_000_000)
-            .single()
-            .expect("instant");
         Orm::raw("INSERT INTO contract_jiff_text (starts_at) VALUES (?), (?)")
             .bind(at)
-            .bind(RullstValue::DateTime(chrono_at))
+            .bind(RullstValue::Timestamp(at))
             .execute()
             .await
             .expect("insert text");

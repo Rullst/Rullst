@@ -122,15 +122,11 @@ mod tests {
             (&Probe::<Option<crate::Time>>::new()).__rullst_temporal_kind(),
             Some(TemporalKind::Time)
         );
-        // An application type named like one of them, a jiff type and a
-        // chrono type have none.
+        // An application type named like one of them and a jiff type have
+        // none.
         assert_eq!((&Probe::<Date>::new()).__rullst_temporal_kind(), None);
         assert_eq!(
             (&Probe::<jiff::civil::Date>::new()).__rullst_temporal_kind(),
-            None
-        );
-        assert_eq!(
-            (&Probe::<chrono::NaiveDate>::new()).__rullst_temporal_kind(),
             None
         );
         assert_eq!(
