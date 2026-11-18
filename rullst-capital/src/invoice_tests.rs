@@ -303,3 +303,13 @@ fn the_date_prints_and_serializes_as_before_jiff() {
     let read: Invoice = serde_json::from_value(json).unwrap();
     assert_eq!(read.date, date);
 }
+
+/// An ORM `Timestamp` column converts without a call (`quota-sql` brings the ORM).
+#[cfg(feature = "quota-sql")]
+#[test]
+fn an_orm_timestamp_is_an_invoice_date() {
+    let at = jiff::Timestamp::from_second(1_792_712_730).unwrap();
+    let column = rullst_orm::Timestamp::from(at);
+    let invoice = Invoice::new("INV-1", "owner@example.com", column, "BRL");
+    assert_eq!(invoice.date, at);
+}
