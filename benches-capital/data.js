@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794971439583,
+  "lastUpdate": 1794980942207,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -18692,6 +18692,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_active",
             "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "65d6e6082d95f31ca6a1b3a5034c26edc8cfb2f8",
+          "message": "Merge pull request #757 from Rullst/feat/v13-jiff-core-mail-capital\n\nfeat(core,mail,capital)!: replace chrono with jiff 1.0 outside the database",
+          "timestamp": "2026-11-18T02:25:25-03:00",
+          "tree_id": "791b9dd52012edbaa20d724f54f46f172cdccabf",
+          "url": "https://github.com/Rullst/Rullst/commit/65d6e6082d95f31ca6a1b3a5034c26edc8cfb2f8"
+        },
+        "date": 1794980941571,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 16,
             "range": "± 0",
             "unit": "ns/iter"
           },
