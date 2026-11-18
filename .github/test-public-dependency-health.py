@@ -250,7 +250,7 @@ class Report(unittest.TestCase):
 class Main(unittest.TestCase):
     """main() with the network replaced by fixtures."""
 
-    def run_main(self, responses: dict[str, object]) -> tuple[int, str, list[str]]:
+    def run_main(self, responses: dict[str, object], reviews: object = None) -> tuple[int, str, list[str]]:
         requested: list[str] = []
 
         def fake_fetch(url: str, *, token: str | None = None, accept: str = "application/json") -> bytes:
@@ -263,9 +263,12 @@ class Main(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             policy = Path(directory, "policy.json")
             policy.write_text(json.dumps({"dependencies": {"chrono": "0.4", "tokio": "1"}}))
+            reviews_file = Path(directory, "reviews.json")
+            reviews_file.write_text(json.dumps(reviews or {"schema_version": 1, "reviews": []}))
             output = io.StringIO()
             with mock.patch.object(MODULE, "fetch", fake_fetch), mock.patch.object(MODULE.time, "sleep"), \
                     mock.patch.object(MODULE, "POLICY_FILE", policy), \
+                    mock.patch.object(MODULE, "REVIEWS_FILE", reviews_file), \
                     mock.patch.dict(MODULE.os.environ, {"GITHUB_TOKEN": ""}), \
                     contextlib.redirect_stdout(output), contextlib.redirect_stderr(io.StringIO()):
                 status = MODULE.main([])
@@ -307,6 +310,150 @@ class Main(unittest.TestCase):
         self.assertEqual(status, 2)
         self.assertIn("- crates.io `tokio`: <urlopen error timed out>", report)
         self.assertIn("repository chronotope/chrono was not found on GitHub", report)
+
+
+    def test_a_current_review_keeps_a_stale_crate_out_of_the_issue(self) -> None:
+        responses = self.responses()
+        responses["https://api.github.com/repos/rustsec/advisory-db/tarball/main"] = tarball(
+            {"crates/other/RUSTSEC-2026-0001.md": UNMAINTAINED})
+        responses["https://crates.io/api/v1/crates/tokio"] = crate(
+            ("1.54.1", "2020-10-21"), repository="https://github.com/tokio-rs/tokio")
+        today = dt.datetime.now(dt.timezone.utc).date()
+        review = review_entry("tokio", ["stale"], str(today - dt.timedelta(days=10)),
+                              str(today + dt.timedelta(days=100)))
+        status, report, _ = self.run_main(responses, {"schema_version": 1, "reviews": [review]})
+        self.assertEqual(status, 0)
+        self.assertIn("Nothing is flagged.", report)
+        self.assertIn("## Reviewed, staying (1)", report)
+        self.assertTrue(report.endswith("<!-- flags: none -->\n"))
+        # The same crate without its review is flagged.
+        status, report, _ = self.run_main(responses)
+        self.assertEqual(status, 1)
+        self.assertTrue(report.endswith("<!-- flags: tokio:stale -->\n"))
+
+    def test_an_invalid_reviews_file_exits_2_before_any_request(self) -> None:
+        review = review_entry("chrono", ["advisory"], "2026-11-17", "2027-05-17")
+        status, report, requested = self.run_main(self.responses(), {"schema_version": 1, "reviews": [review]})
+        self.assertEqual((status, report, requested), (2, "", []))
+
+
+def review_entry(crate_name: str, kinds: list[str], reviewed: str, expires: str) -> dict:
+    return {
+        "crate": crate_name,
+        "flags": kinds,
+        "reason": "Stable and finished.",
+        "reviewer": "maintainer",
+        "reviewed": reviewed,
+        "expires": expires,
+    }
+
+
+class Reviews(unittest.TestCase):
+    DEPENDENCIES = {"secrecy", "tokio", "chrono"}
+
+    def parse(self, *entries: dict) -> dict:
+        return MODULE.parse_reviews({"schema_version": 1, "reviews": list(entries)}, self.DEPENDENCIES)
+
+    def stale(self) -> object:
+        return MODULE.evaluate("secrecy", "0.10", crate(("0.10.3", "2024-10-09")), [], repository(), TODAY)
+
+    def test_the_committed_reviews_are_valid_for_the_committed_dependencies(self) -> None:
+        dependencies = json.loads(MODULE.POLICY_FILE.read_text())["dependencies"]
+        reviews = MODULE.parse_reviews(json.loads(MODULE.REVIEWS_FILE.read_text()), set(dependencies))
+        for review in reviews.values():
+            self.assertNotIn("advisory", review.kinds)
+            self.assertLessEqual(review.expires, MODULE.one_year_after(review.reviewed))
+
+    def test_a_review_is_parsed_with_its_kinds_and_dates(self) -> None:
+        review = self.parse(review_entry("secrecy", ["stale"], "2026-11-17", "2027-05-17"))["secrecy"]
+        self.assertEqual(review.kinds, frozenset({"stale"}))
+        self.assertEqual((review.reviewed, review.expires), (dt.date(2026, 11, 17), dt.date(2027, 5, 17)))
+        self.assertEqual((review.reason, review.reviewer), ("Stable and finished.", "maintainer"))
+
+    def test_invalid_reviews_are_rejected(self) -> None:
+        cases = {
+            "an advisory can never be marked reviewed": review_entry("chrono", ["advisory"], "2026-11-17", "2027-05-17"),
+            "an advisory can never be marked reviewed ": review_entry("chrono", ["stale", "RUSTSEC-2026-0543"], "2026-11-17", "2027-05-17"),
+            "unknown flag kinds line-0.5": review_entry("tokio", ["line-0.5"], "2026-11-17", "2027-05-17"),
+            "not a public dependency": review_entry("serde", ["stale"], "2026-11-17", "2027-05-17"),
+            "at most 12 months": review_entry("tokio", ["stale"], "2026-11-17", "2027-11-18"),
+            "at most 12 months ": review_entry("tokio", ["stale"], "2026-11-17", "2026-11-17"),
+            "must be a YYYY-MM-DD date": review_entry("tokio", ["stale"], "17/11/2026", "2027-05-17"),
+            "`flags` must list flag kinds": review_entry("tokio", [], "2026-11-17", "2027-05-17"),
+            "`reason` must be a non-empty string": {**review_entry("tokio", ["stale"], "2026-11-17", "2027-05-17"), "reason": " "},
+        }
+        for message, entry in cases.items():
+            with self.subTest(message=message):
+                with self.assertRaises(ValueError) as raised:
+                    self.parse(entry)
+                self.assertIn(message.strip(), str(raised.exception))
+        entry = review_entry("tokio", ["stale"], "2026-11-17", "2027-05-17")
+        with self.assertRaisesRegex(ValueError, "listed twice"):
+            self.parse(entry, entry)
+        with self.assertRaisesRegex(ValueError, "schema_version 1"):
+            MODULE.parse_reviews({"reviews": []}, self.DEPENDENCIES)
+        # Twelve months to the day is the limit; 29 February maps to 28 February.
+        self.assertIn("tokio", self.parse(review_entry("tokio", ["stale"], "2026-11-17", "2027-11-17")))
+        self.assertEqual(MODULE.one_year_after(dt.date(2028, 2, 29)), dt.date(2029, 2, 28))
+
+    def test_a_current_review_covering_every_flag_stops_it_counting(self) -> None:
+        health = self.stale()
+        review = self.parse(review_entry("secrecy", ["stale"], "2026-11-17", "2027-05-17"))["secrecy"]
+        MODULE.apply_review(health, review, TODAY)
+        self.assertIs(health.review, review)
+        self.assertFalse(health.counted)
+        # On its expiry date it still applies; the day after, the flag counts again.
+        later = self.stale()
+        MODULE.apply_review(later, review, dt.date(2027, 5, 17))
+        self.assertFalse(later.counted)
+        expired = self.stale()
+        MODULE.apply_review(expired, review, dt.date(2027, 5, 18))
+        self.assertTrue(expired.counted)
+        self.assertEqual(expired.review_lapsed, "the review of 2027-05-17 has expired")
+
+    def test_a_new_kind_of_flag_makes_every_flag_of_the_crate_count_again(self) -> None:
+        review = self.parse(review_entry("secrecy", ["stale"], "2026-11-17", "2027-05-17"))["secrecy"]
+        archived = MODULE.evaluate("secrecy", "0.10", crate(("0.10.3", "2024-10-09")), [],
+                                   repository(archived=True), TODAY)
+        MODULE.apply_review(archived, review, TODAY)
+        self.assertTrue(archived.counted)
+        self.assertEqual(archived.review_lapsed, "the review until 2027-05-17 does not cover archived")
+        advisory = MODULE.parse_advisory(UNMAINTAINED)
+        newer = MODULE.evaluate("secrecy", "0.10", crate(("0.11.0", "2024-10-09"), ("0.10.3", "2024-10-09")),
+                                [advisory], repository(), TODAY)
+        MODULE.apply_review(newer, review, TODAY)
+        self.assertTrue(newer.counted)
+        self.assertEqual(newer.review_lapsed,
+                         "the review until 2027-05-17 does not cover advisory, newer-line")
+        # A crate without flags is unaffected by its review.
+        fresh = MODULE.evaluate("tokio", "1", crate(("1.54.1", "2026-10-21")), [], repository(), TODAY)
+        MODULE.apply_review(fresh, review, TODAY)
+        self.assertEqual((fresh.review, fresh.review_lapsed, fresh.counted), (None, None, False))
+
+    def test_the_report_shows_reviewed_flags_apart_and_leaves_them_out_of_the_fingerprint(self) -> None:
+        review = self.parse(review_entry("secrecy", ["stale"], "2026-11-17", "2027-05-17"))["secrecy"]
+        reviewed = self.stale()
+        MODULE.apply_review(reviewed, review, TODAY)
+        report = MODULE.render([reviewed], TODAY, "233155b4025b", [])
+        self.assertIn("Nothing is flagged.", report)
+        self.assertIn(
+            "## Reviewed, staying (1)\n\n- `secrecy` (Rullst line `0.10`), reviewed until 2027-05-17 "
+            "by maintainer: Stable and finished.\n  - no release for 25 months (last on 2024-10-09)\n",
+            report,
+        )
+        self.assertTrue(report.endswith("<!-- flags: none -->\n"))
+        lapsed = self.stale()
+        MODULE.apply_review(lapsed, review, dt.date(2027, 6, 1))
+        report = MODULE.render([lapsed], TODAY, "233155b4025b", [])
+        self.assertIn("## Flagged (1)", report)
+        self.assertIn("  - counted again: the review of 2027-05-17 has expired\n", report)
+        self.assertNotIn("## Reviewed, staying", report)
+        self.assertTrue(report.endswith("<!-- flags: secrecy:stale -->\n"))
+
+    def test_flag_kinds(self) -> None:
+        kinds = [MODULE.flag_kind(MODULE.Flag(key, "")) for key in
+                 ("RUSTSEC-2026-0543", "line-0.9", "stale", "archived", "no-repository")]
+        self.assertEqual(kinds, ["advisory", "newer-line", "stale", "archived", "no-repository"])
 
 
 class Redirects(unittest.TestCase):
