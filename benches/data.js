@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794966600442,
+  "lastUpdate": 1794970517185,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -36799,6 +36799,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2005,
             "range": "± 168",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2961e734606fc72ed7a19416e6cd9985c6fb39d1",
+          "message": "Merge pull request #754 from Rullst/feat/v13-jiff-orm-types\n\nfeat(orm): add jiff-based Timestamp, DateTime, Date and Time column types",
+          "timestamp": "2026-11-17T23:52:12-03:00",
+          "tree_id": "91cb086dfa248c1698856d7be54bb86190a70f54",
+          "url": "https://github.com/Rullst/Rullst/commit/2961e734606fc72ed7a19416e6cd9985c6fb39d1"
+        },
+        "date": 1794970512996,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 681,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 913,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 419,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1932,
+            "range": "± 19",
             "unit": "ns/iter"
           }
         ]
