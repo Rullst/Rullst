@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794952914453,
+  "lastUpdate": 1794962733937,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -36691,6 +36691,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1489,
             "range": "± 37",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ad761a9ca00857b7ee2bc8e4d8f98be7302eb97c",
+          "message": "Merge pull request #763 from Rullst/fix/v13-windows-file-target-tests\n\nfix(ai,security): roll back partial writes on Windows; fix Unix-only file-target tests",
+          "timestamp": "2026-11-17T21:33:54-03:00",
+          "tree_id": "b9b9b2e646e2baabe65fd17ec950dec9e38baae5",
+          "url": "https://github.com/Rullst/Rullst/commit/ad761a9ca00857b7ee2bc8e4d8f98be7302eb97c"
+        },
+        "date": 1794962729522,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 712,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 901,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 434,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1961,
+            "range": "± 24",
             "unit": "ns/iter"
           }
         ]
