@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794971300733,
+  "lastUpdate": 1794980792133,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -24644,6 +24644,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "rbac_guard/authorize_owner_or_role",
             "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "65d6e6082d95f31ca6a1b3a5034c26edc8cfb2f8",
+          "message": "Merge pull request #757 from Rullst/feat/v13-jiff-core-mail-capital\n\nfeat(core,mail,capital)!: replace chrono with jiff 1.0 outside the database",
+          "timestamp": "2026-11-18T02:25:25-03:00",
+          "tree_id": "791b9dd52012edbaa20d724f54f46f172cdccabf",
+          "url": "https://github.com/Rullst/Rullst/commit/65d6e6082d95f31ca6a1b3a5034c26edc8cfb2f8"
+        },
+        "date": 1794980791477,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5763,
+            "range": "± 242",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 593,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 12,
             "range": "± 0",
             "unit": "ns/iter"
           },
