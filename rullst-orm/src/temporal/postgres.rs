@@ -123,16 +123,15 @@ pub(super) fn time_from_micros(micros: i64) -> civil::Time {
 }
 
 /// `TIMESTAMPTZ` text has an offset (`+00`); `chrono` required a valid one.
-pub(super) fn instant_from_text(text: &str) -> Option<jiff::Timestamp> {
+pub(super) fn moment_from_text(text: &str) -> Option<Moment> {
     if !text.contains(['+', '-']) {
         return None;
     }
     let parsed = parse::parse(text, parse::DATE_TIME_OFFSET)?;
-    let moment = Moment {
+    Some(Moment {
         local: parsed.date_time()?,
         offset: parsed.valid_offset()?,
-    };
-    moment.instant()
+    })
 }
 
 /// `TIMESTAMP` text; an offset after a `+` is read and dropped.
@@ -159,11 +158,26 @@ pub(super) fn instant_from_value(
     format: PgValueFormat,
     bytes: &[u8],
 ) -> Result<jiff::Timestamp, BoxDynError> {
-    let instant = match format {
-        PgValueFormat::Binary => instant_from_micros(i64::from_be_bytes(big_endian(bytes)?)),
-        PgValueFormat::Text => instant_from_text(std::str::from_utf8(bytes)?),
+    let stored = match format {
+        PgValueFormat::Binary => {
+            let micros = i64::from_be_bytes(big_endian(bytes)?);
+            if let Some(instant) = instant_from_micros(micros) {
+                return Ok(instant);
+            }
+            match date_time_from_micros(micros) {
+                Some(wall) => wall.to_string(),
+                None => format!("{micros} microseconds after 2000-01-01T00:00:00Z"),
+            }
+        }
+        PgValueFormat::Text => {
+            let moment = decoded(moment_from_text(std::str::from_utf8(bytes)?), "TIMESTAMPTZ")?;
+            if let Some(instant) = moment.instant() {
+                return Ok(instant);
+            }
+            moment.local.to_string()
+        }
     };
-    decoded(instant, "TIMESTAMPTZ")
+    Err(super::instant_out_of_range(stored))
 }
 
 /// A `TIMESTAMP` value in either result format.

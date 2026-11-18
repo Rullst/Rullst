@@ -18,6 +18,12 @@ that has a newer incompatible line (a newer major, or a newer minor of a 0.x
 crate), whose newest release in Rullst's line an advisory affects, or whose
 GitHub repository is archived or gone.
 
+A flag the maintainer reviewed and decided to keep, listed in
+`.github/public-dependency-reviews.json`, is reported as "reviewed until
+<date>" and does not count as flagged. A review applies only while it covers
+every flag of its crate and has not expired; advisories can never be
+reviewed, and a review lasts at most 12 months.
+
     python3 .github/public-dependency-health.py [--stale-days N] > report.md
 
 The Markdown report goes to stdout, problems to stderr. Its last line is an
@@ -50,12 +56,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 POLICY_FILE = ROOT / ".github/public-dependencies.json"
+REVIEWS_FILE = ROOT / ".github/public-dependency-reviews.json"
 USER_AGENT = "rullst-ci"
 CRATES_API = "https://crates.io/api/v1/crates/"
 GITHUB_API = "https://api.github.com"
 ADVISORY_DB = "rustsec/advisory-db"
 ADVISORY_URL = "https://rustsec.org/advisories/{}.html"
 STALE_DAYS = 365
+# Flag kinds a review may cover. Advisories ("advisory") never can.
+REVIEWABLE_KINDS = frozenset(
+    {"stale", "no-release", "no-line-release", "newer-line", "archived", "no-repository"}
+)
 CRATES_IO_INTERVAL = 1.0
 
 VERSION = re.compile(r"(\d+)\.(\d+)\.(\d+)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?")
@@ -112,6 +123,18 @@ class Flag:
     text: str
 
 
+@dataclass(frozen=True)
+class Review:
+    """A maintainer's decision to keep a crate despite some kinds of flag."""
+
+    crate: str
+    kinds: frozenset[str]
+    reason: str
+    reviewer: str
+    reviewed: dt.date
+    expires: dt.date
+
+
 @dataclass
 class Health:
     name: str
@@ -122,6 +145,14 @@ class Health:
     advisories: list[Advisory]
     repository: Repository
     flags: list[Flag] = field(default_factory=list)
+    # The review that covers every flag, or why the crate's review does not.
+    review: Review | None = None
+    review_lapsed: str | None = None
+
+    @property
+    def counted(self) -> bool:
+        """Whether the crate's flags count toward the health issue."""
+        return bool(self.flags) and self.review is None
 
 
 # --- Versions and requirements -------------------------------------------------
@@ -360,10 +391,99 @@ def release_flags(
     return flags
 
 
+def flag_kind(flag: Flag) -> str:
+    """The kind a review names: `newer-line` for any `line-…` key, `advisory`
+    for a RustSec ID, else the key itself."""
+    if flag.key.startswith("RUSTSEC-"):
+        return "advisory"
+    if flag.key.startswith("line-"):
+        return "newer-line"
+    return flag.key
+
+
+def one_year_after(date: dt.date) -> dt.date:
+    try:
+        return date.replace(year=date.year + 1)
+    except ValueError:  # 29 February
+        return date.replace(year=date.year + 1, day=28)
+
+
+def review_field(entry: dict, name: str, crate: str) -> str:
+    value = entry.get(name)
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"review of `{crate}`: `{name}` must be a non-empty string")
+    return value.strip()
+
+
+def review_date(entry: dict, name: str, crate: str) -> dt.date:
+    try:
+        return dt.date.fromisoformat(review_field(entry, name, crate))
+    except ValueError as error:
+        raise ValueError(f"review of `{crate}`: `{name}` must be a YYYY-MM-DD date") from error
+
+
+def parse_reviews(data: dict, dependencies: set[str]) -> dict[str, Review]:
+    """The reviews file, validated: known crates, reviewable kinds only, a
+    reason and reviewer, and an expiry within 12 months of the review."""
+    if data.get("schema_version") != 1 or not isinstance(data.get("reviews"), list):
+        raise ValueError("reviews file needs schema_version 1 and a `reviews` list")
+    reviews: dict[str, Review] = {}
+    for entry in data["reviews"]:
+        if not isinstance(entry, dict):
+            raise ValueError("each review must be an object")
+        crate = review_field(entry, "crate", "?")
+        if crate not in dependencies:
+            raise ValueError(f"review of `{crate}`: not a public dependency")
+        if crate in reviews:
+            raise ValueError(f"review of `{crate}`: listed twice")
+        kinds = entry.get("flags")
+        if not isinstance(kinds, list) or not kinds or not all(isinstance(kind, str) for kind in kinds):
+            raise ValueError(f"review of `{crate}`: `flags` must list flag kinds")
+        if "advisory" in kinds or any(kind.startswith("RUSTSEC-") for kind in kinds):
+            raise ValueError(f"review of `{crate}`: an advisory can never be marked reviewed")
+        unknown = sorted(set(kinds) - REVIEWABLE_KINDS)
+        if unknown:
+            raise ValueError(f"review of `{crate}`: unknown flag kinds {', '.join(unknown)}")
+        reviewed = review_date(entry, "reviewed", crate)
+        expires = review_date(entry, "expires", crate)
+        if not reviewed < expires <= one_year_after(reviewed):
+            raise ValueError(
+                f"review of `{crate}`: the expiry must follow the review by at most 12 months"
+            )
+        reviews[crate] = Review(
+            crate,
+            frozenset(kinds),
+            review_field(entry, "reason", crate),
+            review_field(entry, "reviewer", crate),
+            reviewed,
+            expires,
+        )
+    return reviews
+
+
+def apply_review(health: Health, review: Review | None, today: dt.date) -> None:
+    """Marks the crate reviewed when its review is current and covers every
+    flag; otherwise records why the review no longer applies."""
+    if review is None or not health.flags:
+        return
+    uncovered = sorted({flag_kind(flag) for flag in health.flags} - review.kinds)
+    if today > review.expires:
+        health.review_lapsed = f"the review of {review.expires.isoformat()} has expired"
+    elif uncovered:
+        health.review_lapsed = (
+            f"the review until {review.expires.isoformat()} does not cover "
+            + ", ".join(uncovered)
+        )
+    else:
+        health.review = review
+
+
 def fingerprint(results: list[Health]) -> str:
-    """The flags without their changing details (ages, dates), so a workflow
-    can tell a new finding from the same one a month older."""
-    keys = sorted(f"{health.name}:{flag.key}" for health in results for flag in health.flags)
+    """The counted flags without their changing details (ages, dates), so a
+    workflow can tell a new finding from the same one a month older."""
+    keys = sorted(
+        f"{health.name}:{flag.key}" for health in results if health.counted for flag in health.flags
+    )
     return "<!-- flags: " + (" ".join(keys) or "none") + " -->"
 
 
@@ -388,7 +508,8 @@ def repository_cell(repository: Repository) -> str:
 
 
 def render(results: list[Health], today: dt.date, revision: str, errors: list[str]) -> str:
-    flagged = [health for health in results if health.flags]
+    flagged = [health for health in results if health.counted]
+    reviewed = [health for health in results if health.flags and health.review is not None]
     lines = [
         "# Public dependency health",
         "",
@@ -406,6 +527,8 @@ def render(results: list[Health], today: dt.date, revision: str, errors: list[st
         for health in flagged:
             lines.append(f"- `{health.name}` (Rullst line `{health.line}`):")
             lines += [f"  - {cell(flag.text)}" for flag in health.flags]
+            if health.review_lapsed:
+                lines.append(f"  - counted again: {health.review_lapsed}")
         lines += [
             "",
             "A flag is a reason to review the dependency, not a defect: see "
@@ -415,6 +538,18 @@ def render(results: list[Health], today: dt.date, revision: str, errors: list[st
         ]
     else:
         lines += ["Nothing is flagged.", ""]
+    if reviewed:
+        lines += [f"## Reviewed, staying ({len(reviewed)})", ""]
+        for health in reviewed:
+            review = health.review
+            if review is None:
+                continue
+            lines.append(
+                f"- `{health.name}` (Rullst line `{health.line}`), reviewed until "
+                f"{review.expires.isoformat()} by {cell(review.reviewer)}: {cell(review.reason)}"
+            )
+            lines += [f"  - {cell(flag.text)}" for flag in health.flags]
+        lines.append("")
     lines += [
         "## All public dependencies",
         "",
@@ -499,6 +634,13 @@ def main(argv: list[str] | None = None) -> int:
 
     policy = json.loads(POLICY_FILE.read_text(encoding="utf-8"))
     dependencies: dict[str, str] = policy["dependencies"]
+    try:
+        reviews = parse_reviews(
+            json.loads(REVIEWS_FILE.read_text(encoding="utf-8")), set(dependencies)
+        )
+    except (OSError, ValueError) as error:
+        print(f"{REVIEWS_FILE.name}: {error}", file=sys.stderr)
+        return 2
     token = os.environ.get("GITHUB_TOKEN") or None
     today = dt.datetime.now(dt.timezone.utc).date()
     errors: list[str] = []
@@ -531,15 +673,17 @@ def main(argv: list[str] | None = None) -> int:
         except (SourceError, urllib.error.URLError, TimeoutError, ValueError) as error:
             errors.append(str(error))
             repository = Repository(github_slug(url), url)
-        results.append(
-            evaluate(name, line, crate, advisories.get(name, []), repository, today, args.stale_days)
+        health = evaluate(
+            name, line, crate, advisories.get(name, []), repository, today, args.stale_days
         )
+        apply_review(health, reviews.get(name), today)
+        results.append(health)
 
     sys.stdout.write(render(results, today, revision, errors))
     if errors:
         print("\n".join(errors), file=sys.stderr)
         return 2
-    return 1 if any(health.flags for health in results) else 0
+    return 1 if any(health.counted for health in results) else 0
 
 
 if __name__ == "__main__":

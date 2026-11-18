@@ -165,10 +165,15 @@ impl DurableSiemSpool {
         }
         let path = path.into();
         validate_target(&path)?;
-        let mut file = OpenOptions::new()
-            .read(true)
-            .append(true)
-            .create(true)
+        let mut options = OpenOptions::new();
+        #[cfg(not(windows))]
+        options.read(true).append(true).create(true);
+        // A Windows append handle lacks the write-data access that `set_len`
+        // needs, so a partial write could never be rolled back there. Open for
+        // writing instead; `position_at_end` places every frame at the end.
+        #[cfg(windows)]
+        options.read(true).write(true).create(true);
+        let mut file = options
             .open(&path)
             .map_err(|error| io_failure("open", &error))?;
         let metadata = file
@@ -219,6 +224,8 @@ impl DurableSiemSpool {
         ensure_writer_state(&state, self.max_bytes, frame.len())?;
 
         let previous_bytes = state.bytes;
+        #[cfg(windows)]
+        position_at_end(&mut state.file, previous_bytes)?;
         if let Err(write_error) = state.file.write_all(&frame) {
             return recover_partial_write(&mut state, previous_bytes, &write_error);
         }
@@ -270,6 +277,24 @@ impl DurableSiemSpool {
             max_bytes: self.max_bytes,
         })
     }
+}
+
+/// Moves the Windows write handle to the end before a frame is written, where
+/// O_APPEND puts it on Unix. Same single-process, single-writer assumption as
+/// on Unix: one `DurableSiemSpool` owns the file, its mutex serializes this
+/// seek with the write, and growth by any other writer is
+/// `ExternalModification`.
+#[cfg(windows)]
+// Compiled only on Windows; the Linux mutation gate cannot run it.
+#[cfg_attr(mutants, mutants::skip)]
+fn position_at_end(file: &mut File, expected_bytes: u64) -> Result<(), SiemSpoolError> {
+    let end = file
+        .seek(SeekFrom::End(0))
+        .map_err(|error| io_failure("seek", &error))?;
+    if end != expected_bytes {
+        return Err(SiemSpoolError::ExternalModification);
+    }
+    Ok(())
 }
 
 fn validate_target(path: &Path) -> Result<(), SiemSpoolError> {

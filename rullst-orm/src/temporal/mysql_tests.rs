@@ -292,7 +292,19 @@ fn values_in_either_protocol() {
         assert!(date_time_from_value(bytes).is_err(), "{bytes:?}");
         assert!(instant_from_value(bytes).is_err(), "{bytes:?}");
     }
-    assert!(instant_from_value(b"9999-12-31 23:00:00").is_err());
+    // An instant no `Timestamp` holds names the range and the ways out.
+    for bytes in [
+        &b"9999-12-31 23:59:59"[..],
+        &[7, 0x0f, 0x27, 12, 31, 23, 59, 59][..],
+    ] {
+        let message = instant_from_value(bytes).unwrap_err().to_string();
+        assert!(
+            message
+                .starts_with("9999-12-31T23:59:59 is outside the range of rullst_orm::Timestamp"),
+            "{message}"
+        );
+        assert!(message.contains("rullst_orm::DateTime"), "{message}");
+    }
     assert!(date_from_value(&[0]).is_err());
     assert!(date_from_value(b"0000-00-00").is_err());
     for bytes in [

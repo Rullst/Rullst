@@ -13,7 +13,7 @@ use super::super::test_support::{
 };
 use super::{
     Date, DateTime, Time, Timestamp, date_from_days, date_time_from_micros, date_time_from_text,
-    instant_from_micros, instant_from_text, time_from_micros,
+    instant_from_micros, moment_from_text, time_from_micros,
 };
 
 fn encoded<'q, T: Encode<'q, Postgres>>(value: T) -> (Vec<u8>, usize) {
@@ -89,7 +89,8 @@ fn golden_reads() {
     assert_eq!(time_from_micros(86_400_000_000).to_string(), "00:00:00");
     assert_eq!(time_from_micros(-1).to_string(), "23:59:59.999999");
     assert_eq!(
-        instant_from_text("2026-10-15 09:30:00+00")
+        moment_from_text("2026-10-15 09:30:00+00")
+            .and_then(|moment| moment.instant())
             .unwrap()
             .to_string(),
         "2026-10-15T09:30:00Z"
@@ -168,6 +169,26 @@ fn values_in_either_format() {
     assert_eq!(time.to_string(), "01:00:00.000001");
     assert_eq!(time_from_value(Text, b"01:00:00.000001").unwrap(), time);
 
+    // An instant no `Timestamp` holds names the range and the ways out.
+    let sentinel = 252_455_615_999_000_000_i64; // 9999-12-31T23:59:59Z
+    for error in [
+        instant_from_value(Binary, &sentinel.to_be_bytes()).unwrap_err(),
+        instant_from_value(Text, b"9999-12-31 23:59:59+00").unwrap_err(),
+    ] {
+        let message = error.to_string();
+        assert!(
+            message.starts_with("9999-12-31T23:59:59 is outside the range of rullst_orm::Timestamp, -9999-01-02T01:59:59Z..=9999-12-30T22:00:00.999999999Z"),
+            "{message}"
+        );
+        assert!(message.contains("Option<Timestamp>"), "{message}");
+    }
+    let infinity = instant_from_value(Binary, &i64::MAX.to_be_bytes()).unwrap_err();
+    assert!(
+        infinity
+            .to_string()
+            .starts_with("9223372036854775807 microseconds after 2000-01-01T00:00:00Z is outside"),
+        "{infinity}"
+    );
     // Wrong lengths, bad text, out-of-range values and `infinity` are errors.
     assert!(instant_from_value(Binary, &[0; 4]).is_err());
     assert!(instant_from_value(Binary, &i64::MAX.to_be_bytes()).is_err());

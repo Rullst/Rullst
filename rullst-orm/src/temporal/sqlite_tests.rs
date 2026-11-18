@@ -204,6 +204,17 @@ async fn every_storage_class_reads_as_chrono_reads_it() {
         assert!(row.try_get::<Timestamp, _>(0).is_err(), "{sql}");
         assert!(row.try_get::<DateTime, _>(0).is_err(), "{sql}");
     }
+    // The end-of-time sentinel names the range and the ways out.
+    let row = sqlx::query("SELECT '9999-12-31 23:59:59'")
+        .fetch_one(&mut connection)
+        .await
+        .expect("select");
+    let message = row.try_get::<Timestamp, _>(0).unwrap_err().to_string();
+    assert!(
+        message.contains("9999-12-31T23:59:59 is outside the range of rullst_orm::Timestamp"),
+        "{message}"
+    );
+    assert!(message.contains("Option<Timestamp>"), "{message}");
     let row = sqlx::query("SELECT '+10000-01-01', '2016-12-31T23:59:60.5Z'")
         .fetch_one(&mut connection)
         .await
