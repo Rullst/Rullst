@@ -315,8 +315,8 @@ class OrmSqlServersTests(Fixture):
         self.tool("cargo", f"os.makedirs({str(log)!r}, exist_ok=True)\n"
                            f"open({str(log / 'baseline.log')!r}, 'w').write('ok')\n"
                            "sys.exit(0)\n")
-        for name, feature, target in (("postgres", "strict-postgres", "matrix_postgres"),
-                                      ("mysql", "strict-mysql", "matrix_mysql")):
+        for name, feature, targets in (("postgres", "strict-postgres", ["matrix_postgres"]),
+                                       ("mysql", "strict-mysql", ["matrix_mysql", "matrix_mariadb"])):
             with self.subTest(name=name):
                 result = subprocess.run(
                     [sys.executable, str(HERE / f"check-orm-strict-{name}.py"), "--mutants", "x"],
@@ -325,9 +325,10 @@ class OrmSqlServersTests(Fixture):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 call = self.recorded()[-1]
                 self.assertEqual(call[call.index("--features") + 1], "rullst-orm/" + feature)
-                self.assertIn("--cargo-arg=--test=" + target, call)
+                for target in targets:
+                    self.assertIn("--cargo-arg=--test=" + target, call)
                 self.assertEqual(sum(argument.startswith("--cargo-arg=--test=")
-                                     for argument in call), 1)
+                                     for argument in call), len(targets))
 
     def test_polyglot_servers_run_every_backend_matrix(self) -> None:
         log = self.root / "mutants.out" / "log"

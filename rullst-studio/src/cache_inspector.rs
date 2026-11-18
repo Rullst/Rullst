@@ -282,4 +282,42 @@ mod tests {
         assert_eq!(forged.status(), StatusCode::NOT_FOUND);
         assert!(cache.get("key").await.expect("cache read").is_some());
     }
+
+    #[tokio::test]
+    async fn body_limit_and_signature_length_are_enforced_before_lookup() {
+        let cache = Cache::memory();
+        cache
+            .put("key", "value", None)
+            .await
+            .expect("cache fixture");
+        let app = router(Some(cache)).expect("cache router");
+        let forget = |token: String| {
+            with_verified_access(
+                Request::builder()
+                    .method("POST")
+                    .uri("/forget")
+                    .header("content-type", "application/x-www-form-urlencoded")
+                    .body(Body::from(format!("token={token}")))
+                    .expect("forget request"),
+            )
+        };
+        let status = |token: String| {
+            let app = app.clone();
+            async move {
+                app.oneshot(forget(token))
+                    .await
+                    .expect("forget response")
+                    .status()
+            }
+        };
+
+        // A 2048-byte body passes the limit and is refused for its token.
+        assert_eq!(status("A".repeat(2042)).await, StatusCode::BAD_REQUEST);
+        assert_eq!(
+            status("A".repeat(2043)).await,
+            StatusCode::PAYLOAD_TOO_LARGE
+        );
+        // 42 characters decode to 31 bytes, which no entry token has.
+        assert_eq!(status("A".repeat(42)).await, StatusCode::BAD_REQUEST);
+    }
 }

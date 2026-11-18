@@ -396,6 +396,64 @@ fn infers_chrono_widgets_from_any_path_spelling() {
     assert!(local.contains("FieldKind :: Text"), "{local}");
 }
 
+/// The ORM's date/time types are recognized by type, not spelling: the
+/// generated code asks `__orm_field_kind` at compile time, so an application
+/// type spelled `Date` or `Timestamp` stays a text field.
+#[test]
+fn infers_orm_date_time_widgets_by_type() {
+    let input: DeriveInput = parse_quote! {
+        struct Event {
+            id: i64,
+            at: Timestamp,
+            maybe: Option<rullst::orm::Date>,
+            title: String,
+            note: Option<String>,
+            #[nexus(kind = "text")]
+            code: Time,
+        }
+    };
+    let output = expand_nexus(&input)
+        .expect("valid Nexus derive")
+        .to_string();
+    let probe = "match (& :: rullst :: nexus :: __orm_field_kind :: Probe :: <";
+    let at = field_meta(&output, "at").expect("at metadata");
+    assert!(at.contains(&format!("{probe} Timestamp >")), "{at}");
+    assert!(
+        at.contains(
+            "use :: rullst :: nexus :: __orm_field_kind :: { Other as _ , Temporal as _ } ;"
+        ),
+        "{at}"
+    );
+    for (kind, widget) in [
+        ("Timestamp", "DateTimeUtc"),
+        ("DateTime", "DateTime"),
+        ("Date", "Date"),
+        ("Time", "Time"),
+    ] {
+        let arm = format!(
+            ":: core :: option :: Option :: Some (:: rullst :: nexus :: __orm_field_kind :: TemporalKind :: {kind}) => {{ :: rullst :: nexus :: FieldKind :: {widget} }}"
+        );
+        assert!(at.contains(&arm), "{kind}: {at}");
+    }
+    assert!(
+        at.contains(
+            ":: core :: option :: Option :: None => :: rullst :: nexus :: FieldKind :: Text"
+        ),
+        "{at}"
+    );
+    let maybe = field_meta(&output, "maybe").expect("maybe metadata");
+    assert!(
+        maybe.contains(&format!("{probe} Option < rullst :: orm :: Date > >")),
+        "{maybe}"
+    );
+    // Strings need no probe, and an explicit widget wins.
+    for name in ["title", "note", "code"] {
+        let meta = field_meta(&output, name).expect("field metadata");
+        assert!(!meta.contains("Probe"), "{name}: {meta}");
+        assert!(meta.contains("FieldKind :: Text ,"), "{name}: {meta}");
+    }
+}
+
 #[test]
 fn integer_fields_carry_their_type_range() {
     let input: DeriveInput = parse_quote! {

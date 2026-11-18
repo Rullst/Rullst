@@ -6,6 +6,7 @@
 
 use sha2::{Digest, Sha256};
 
+use crate::temporal::text;
 use crate::{Error, Orm, RullstValue};
 
 mod model_hash;
@@ -358,6 +359,18 @@ fn update_value(digest: &mut Sha256, value: &RullstValue) {
         RullstValue::Time(value) => {
             update_field(digest, 19, value.format("%T%.9f").to_string().as_bytes())
         }
+        // The same tags and text as the `chrono` variants, so an equal value
+        // keys the same cache entry whichever type holds it.
+        RullstValue::Timestamp(value) => {
+            update_field(digest, 16, text::timestamp_nanos(*value).as_bytes())
+        }
+        RullstValue::CivilDateTime(value) => {
+            update_field(digest, 17, text::date_time_nanos(*value).as_bytes())
+        }
+        RullstValue::CivilDate(value) => update_field(digest, 18, text::date(*value).as_bytes()),
+        RullstValue::CivilTime(value) => {
+            update_field(digest, 19, text::time_nanos(*value).as_bytes())
+        }
     }
 }
 
@@ -379,7 +392,7 @@ fn hex_digest(bytes: &[u8]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{build_key, drain_indexes, entry_index_key, index_key, store_entry};
+    use super::{build_key, drain_indexes, entry_index_key, index_key, store_entry, text};
     use crate::{Error, RullstValue};
 
     /// Unit tests never configure Redis, so these reach the configuration
@@ -494,6 +507,65 @@ mod tests {
         assert_ne!(keys[3], key(RullstValue::Time(later)));
         let next_day = NaiveDate::from_ymd_opt(2026, 10, 16).expect("date");
         assert_ne!(keys[2], key(RullstValue::Date(next_day)));
+    }
+
+    /// An equal value keys the same entry whether a jiff-based or a `chrono`
+    /// type holds it, so entries cached before an upgrade stay reachable.
+    #[test]
+    fn jiff_date_and_time_values_share_the_chrono_cache_keys() {
+        use crate::temporal::test_support::{
+            chrono_date, chrono_date_time, chrono_instant, chrono_time,
+        };
+        use crate::{Date, DateTime, Time, Timestamp};
+        let key = |value: RullstValue| {
+            build_key("academy", None, "users", "SELECT *", &[value]).expect("cache key")
+        };
+        for text in [
+            "2026-10-15T09:30:00.000000005Z",
+            "-000044-03-15T12:00:00Z",
+            "1999-12-31T23:59:59.5Z",
+        ] {
+            let at: Timestamp = text.parse().expect("instant");
+            let civil = DateTime::from(jiff::tz::Offset::UTC.to_datetime(*at));
+            let day = Date::from(civil.date());
+            let clock = Time::from(civil.time());
+            assert_eq!(
+                key(RullstValue::Timestamp(at)),
+                key(RullstValue::DateTime(chrono_instant(at)))
+            );
+            assert_eq!(
+                key(RullstValue::CivilDateTime(civil)),
+                key(RullstValue::NaiveDateTime(chrono_date_time(civil)))
+            );
+            assert_eq!(
+                key(RullstValue::CivilDate(day)),
+                key(RullstValue::Date(chrono_date(*day)))
+            );
+            assert_eq!(
+                key(RullstValue::CivilTime(clock)),
+                key(RullstValue::Time(chrono_time(*clock)))
+            );
+            assert_ne!(
+                key(RullstValue::Timestamp(at)),
+                key(RullstValue::CivilDateTime(civil))
+            );
+            assert_ne!(
+                key(RullstValue::CivilDate(day)),
+                key(RullstValue::CivilTime(clock))
+            );
+        }
+        assert_eq!(
+            text::timestamp_nanos("2026-10-15T09:30:00.5Z".parse().expect("instant")),
+            "2026-10-15T09:30:00.500000000Z"
+        );
+        assert_eq!(
+            text::date_time_nanos("2026-10-15T09:30:00".parse().expect("date-time")),
+            "2026-10-15 09:30:00.000000000"
+        );
+        assert_eq!(
+            text::time_nanos("09:30:00.000000001".parse().expect("time")),
+            "09:30:00.000000001"
+        );
     }
 
     #[test]

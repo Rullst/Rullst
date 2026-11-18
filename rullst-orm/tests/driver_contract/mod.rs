@@ -11,6 +11,7 @@ mod column_types;
 mod constraint_violations;
 mod dirty_tracking;
 mod id_only_rows;
+mod jiff_temporal;
 mod missing_rows;
 mod nested_transaction;
 mod offset_paging;
@@ -42,5 +43,6 @@ pub async fn exercise() {
     typed_transaction_errors::exercise().await;
     schema_constraints::exercise().await;
     temporal::exercise().await;
+    jiff_temporal::exercise().await;
     wide_values::exercise().await;
 }

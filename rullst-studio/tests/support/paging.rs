@@ -67,4 +67,84 @@ pub(super) async fn exercise_stable_paging(
     assert!(page.contains("row-1-edited"), "the edited row left page 1");
     assert!(page.contains("name=\"pk_id\" value=\"25\""));
     assert!(!page.contains("name=\"pk_id\" value=\"26\""));
+
+    // A search keeps only matching rows, in the page and in its count:
+    // `row-2` and `row-20` to `row-29`.
+    let searched = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/studio/tables/{paged_table}?search=row-2"))
+                .header("hx-request", "true")
+                .body(Body::empty())
+                .expect("valid paged search request"),
+        )
+        .await
+        .expect("Studio paged search response");
+    assert_eq!(searched.status(), StatusCode::OK);
+    let searched = response_text(searched).await;
+    assert!(
+        searched.contains("of <strong>11</strong> records"),
+        "{searched}"
+    );
+    assert!(!searched.contains("name=\"pk_id\" value=\"3\""));
+
+    use rullst_studio::data_browser::db::count_table_rows;
+    assert_eq!(count_table_rows(&paged_table, None).await.ok(), Some(30));
+    assert_eq!(
+        count_table_rows(&paged_table, Some("row-2")).await.ok(),
+        Some(11)
+    );
+    assert_eq!(
+        count_table_rows(&paged_table, Some(&"a".repeat(256)))
+            .await
+            .ok(),
+        Some(0)
+    );
+    assert!(
+        count_table_rows(&paged_table, Some(&"a".repeat(257)))
+            .await
+            .is_err()
+    );
+    assert!(
+        count_table_rows(&format!("{paged_table};"), None)
+            .await
+            .is_err()
+    );
+
+    // Without a search every row counts, even one whose only column is NULL.
+    let nullable_table = format!("{table}_nullable");
+    let quoted_nullable = if driver == "mysql" {
+        format!("`{nullable_table}`")
+    } else {
+        format!("\"{nullable_table}\"")
+    };
+    for statement in [
+        format!("CREATE TABLE {quoted_nullable} (note VARCHAR(32) NULL)"),
+        format!("INSERT INTO {quoted_nullable} (note) VALUES (NULL)"),
+    ] {
+        let mut builder = rullst_orm::_sqlx::QueryBuilder::new(statement);
+        fixture(&mut builder, driver)
+            .execute(pool)
+            .await
+            .expect("prepare the nullable table");
+    }
+    let nullable = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/studio/tables/{nullable_table}"))
+                .header("hx-request", "true")
+                .body(Body::empty())
+                .expect("valid nullable table request"),
+        )
+        .await
+        .expect("Studio nullable table response");
+    assert_eq!(nullable.status(), StatusCode::OK);
+    let nullable = response_text(nullable).await;
+    assert!(
+        nullable.contains("of <strong>1</strong> records"),
+        "{nullable}"
+    );
+    assert!(nullable.contains("text-slate-600 font-mono italic\">NULL</td>"));
 }
