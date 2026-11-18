@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794967738580,
+  "lastUpdate": 1794971439583,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -18662,6 +18662,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2961e734606fc72ed7a19416e6cd9985c6fb39d1",
+          "message": "Merge pull request #754 from Rullst/feat/v13-jiff-orm-types\n\nfeat(orm): add jiff-based Timestamp, DateTime, Date and Time column types",
+          "timestamp": "2026-11-17T23:52:12-03:00",
+          "tree_id": "91cb086dfa248c1698856d7be54bb86190a70f54",
+          "url": "https://github.com/Rullst/Rullst/commit/2961e734606fc72ed7a19416e6cd9985c6fb39d1"
+        },
+        "date": 1794971438969,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
             "range": "± 0",
             "unit": "ns/iter"
           }
