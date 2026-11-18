@@ -52,13 +52,13 @@ pub fn register_mail_handler(worker: &mut Worker) {
 /// Redis promotes scheduled jobs by the server's `TIME`, so a worker whose
 /// clock lags that server sees a correctly due job as slightly early. The
 /// check still rejects a queue that claims a schedule materially early.
-const CLAIM_CLOCK_SKEW: chrono::TimeDelta = chrono::TimeDelta::seconds(300);
+const CLAIM_CLOCK_SKEW: jiff::SignedDuration = jiff::SignedDuration::from_secs(300);
 
 fn prepare_claimed_message(mut message: Message) -> Result<Message, MailError> {
     if message
         .send_at
         .as_ref()
-        .is_some_and(|send_at| *send_at > chrono::Utc::now() + CLAIM_CLOCK_SKEW)
+        .is_some_and(|send_at| send_at.duration_since(jiff::Timestamp::now()) > CLAIM_CLOCK_SKEW)
     {
         return Err(MailError::SendError(
             "queue claimed scheduled mail before its due timestamp".to_string(),
@@ -138,7 +138,7 @@ mod tests {
 
         let due = Message::new()
             .to("due@example.com")
-            .send_at(chrono::Utc::now() - chrono::Duration::seconds(1));
+            .send_at(jiff::Timestamp::now() - jiff::SignedDuration::from_secs(1));
         let claimed = prepare_claimed_message(due).expect("due message");
         assert!(claimed.send_at.is_none());
     }

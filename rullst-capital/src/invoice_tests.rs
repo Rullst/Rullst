@@ -3,7 +3,12 @@ use crate::error::CapitalError;
 
 fn invoice(amounts: &[u64], currency: &str) -> Invoice {
     amounts.iter().fold(
-        Invoice::new("INV-2026-7", "owner@example.com", Utc::now(), currency),
+        Invoice::new(
+            "INV-2026-7",
+            "owner@example.com",
+            jiff::Timestamp::now(),
+            currency,
+        ),
         |invoice, amount| invoice.with_item("Plan", *amount),
     )
 }
@@ -17,8 +22,13 @@ fn rejection(invoice: &Invoice) -> String {
 
 #[test]
 fn invoice_html_escapes_every_untrusted_text_field() {
-    let mut invoice = Invoice::new("<INV&1>", "a\"b@example.com", Utc::now(), "U&SD")
-        .with_item("<script>alert('x')</script>", 150);
+    let mut invoice = Invoice::new(
+        "<INV&1>",
+        "a\"b@example.com",
+        jiff::Timestamp::now(),
+        "U&SD",
+    )
+    .with_item("<script>alert('x')</script>", 150);
     invoice.labels.title = "<b>Invoice</b>".to_string();
     let html = invoice.generate_html();
     assert!(!html.contains("<script>"));
@@ -266,4 +276,40 @@ fn serialized_invoices_use_minor_units_and_default_to_english_labels() {
         "items": [{"description": "Plan", "amount": 49.9}]
     });
     assert!(serde_json::from_value::<Invoice>(legacy).is_err());
+}
+
+#[test]
+fn the_date_prints_and_serializes_as_before_jiff() {
+    // 2026-10-22T23:45:30.250Z: the UTC date, whatever the local zone.
+    let date = jiff::Timestamp::new(1_792_712_730, 250_000_000).unwrap();
+    let invoice = Invoice::new("INV-1", "owner@example.com", date, "BRL").with_item("Plan", 4_990);
+    assert!(
+        invoice
+            .generate_html()
+            .contains("<strong>Date:</strong> 2026-10-22</p>")
+    );
+    let json = serde_json::to_value(&invoice).unwrap();
+    assert_eq!(json["date"], "2026-10-22T23:45:30.250Z");
+    let whole = Invoice::new(
+        "INV-1",
+        "owner@example.com",
+        jiff::Timestamp::from_second(0).unwrap(),
+        "BRL",
+    );
+    assert_eq!(
+        serde_json::to_value(&whole).unwrap()["date"],
+        "1970-01-01T00:00:00Z"
+    );
+    let read: Invoice = serde_json::from_value(json).unwrap();
+    assert_eq!(read.date, date);
+}
+
+/// An ORM `Timestamp` column converts without a call (`quota-sql` brings the ORM).
+#[cfg(feature = "quota-sql")]
+#[test]
+fn an_orm_timestamp_is_an_invoice_date() {
+    let at = jiff::Timestamp::from_second(1_792_712_730).unwrap();
+    let column = rullst_orm::Timestamp::from(at);
+    let invoice = Invoice::new("INV-1", "owner@example.com", column, "BRL");
+    assert_eq!(invoice.date, at);
 }

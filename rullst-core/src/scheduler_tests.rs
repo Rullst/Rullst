@@ -189,12 +189,8 @@ fn deferrable_tasks_start_at_the_next_window_and_plain_tasks_at_the_tick() {
             .is_err()
     );
 
-    let tick = chrono::DateTime::parse_from_rfc3339("2026-10-08T18:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Utc);
-    let midnight = chrono::DateTime::parse_from_rfc3339("2026-10-09T00:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Utc);
+    let tick: Timestamp = "2026-10-08T18:00:00Z".parse().unwrap();
+    let midnight: Timestamp = "2026-10-09T00:00:00Z".parse().unwrap();
     assert_eq!(deferred_start(&deferred, tick), Some(midnight));
     assert_eq!(deferred_start(&plain, tick), None);
 }

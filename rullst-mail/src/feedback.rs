@@ -201,13 +201,12 @@ impl ResendFeedbackVerifier {
             .as_str()
             .filter(|id| identifier(id, 128))
             .ok_or(MailFeedbackError::InvalidPayload)?;
-        let created = chrono::DateTime::parse_from_rfc3339(
+        let created = rullst_core::rfc3339::parse_unix_seconds(
             value["created_at"]
                 .as_str()
                 .ok_or(MailFeedbackError::InvalidPayload)?,
         )
-        .map_err(|_| MailFeedbackError::InvalidPayload)?
-        .timestamp();
+        .ok_or(MailFeedbackError::InvalidPayload)?;
         let observed_at = u64::try_from(created).map_err(|_| MailFeedbackError::InvalidPayload)?;
         if observed_at > now.saturating_add(300) {
             return Err(MailFeedbackError::InvalidPayload);

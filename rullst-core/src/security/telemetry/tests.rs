@@ -5,7 +5,7 @@ use super::*;
 #[test]
 fn timestamps_are_absolute_rfc3339_values() {
     let timestamp = current_timestamp_str();
-    assert!(chrono::DateTime::parse_from_rfc3339(&timestamp).is_ok());
+    assert!(crate::rfc3339::parse_unix_seconds(&timestamp).is_some());
     assert!(!timestamp.ends_with("s ago"));
     assert_ne!(timestamp, "Just now");
 }
@@ -109,7 +109,7 @@ fn a_custom_ban_ttl_sets_the_expiry() {
     assert_eq!(bans[0].reason, "Triggered honeypot route /admin.php");
     assert!(bans[0].expires_at_unix_secs >= before + 90);
     assert!(bans[0].expires_at_unix_secs <= after + 90);
-    assert!(chrono::DateTime::parse_from_rfc3339(&bans[0].timestamp_str).is_ok());
+    assert!(crate::rfc3339::parse_unix_seconds(&bans[0].timestamp_str).is_some());
 }
 
 #[test]

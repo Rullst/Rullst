@@ -64,7 +64,7 @@ impl LiveSecurityEvent {
         }
         truncate_utf8(&mut self.details, MAX_EVENT_DETAILS_BYTES);
         self.client_ip = normalize_ip(&self.client_ip);
-        if chrono::DateTime::parse_from_rfc3339(&self.timestamp_str).is_err() {
+        if crate::rfc3339::parse_unix_seconds(&self.timestamp_str).is_none() {
             self.timestamp_str = current_timestamp_str();
         }
         self

@@ -86,8 +86,8 @@ pub async fn deliver_next_account_mail(
                 &config.origin,
             )
             .map_err(|_| RecoveryError::Configuration)?;
-            let expires_at = chrono::DateTime::from_timestamp(notice.expires_at(), 0)
-                .ok_or(RecoveryError::InvalidAction)?;
+            let expires_at = jiff::Timestamp::from_second(notice.expires_at())
+                .map_err(|_| RecoveryError::InvalidAction)?;
             AccountEvent::PasswordResetAt { link, expires_at }
         }
         _ => return Err(RecoveryError::InvalidAction),

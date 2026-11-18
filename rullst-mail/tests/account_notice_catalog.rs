@@ -142,9 +142,7 @@ fn lifecycle_catalog_keeps_localized_purpose_links_and_versions_through_delivery
 
 #[test]
 fn durable_reset_renders_the_same_absolute_expiry_on_every_retry() {
-    let expiry = chrono::DateTime::parse_from_rfc3339("2026-09-18T12:20:00+00:00")
-        .unwrap()
-        .to_utc();
+    let expiry: jiff::Timestamp = "2026-09-18T12:20:00+00:00".parse().unwrap();
     for (preference, expected, title) in [
         ("PT-BR", MailLocale::PtBr, "Redefina sua senha"),
         ("es-419", MailLocale::Es, "Restablece tu contraseña"),
@@ -186,9 +184,7 @@ fn durable_reset_renders_the_same_absolute_expiry_on_every_retry() {
 
 #[test]
 fn email_login_is_localized_security_mail_with_stable_expiry_and_no_tracking() {
-    let expiry = chrono::DateTime::parse_from_rfc3339("2026-09-21T20:15:00+00:00")
-        .unwrap()
-        .to_utc();
+    let expiry: jiff::Timestamp = "2026-09-21T20:15:00+00:00".parse().unwrap();
     for (locale, locale_name, title, browser) in [
         (MailLocale::En, "En", "Confirm your sign-in", "browser"),
         (MailLocale::PtBr, "PtBr", "Confirme seu acesso", "navegador"),

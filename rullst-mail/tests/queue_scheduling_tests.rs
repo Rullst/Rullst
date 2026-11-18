@@ -58,7 +58,7 @@ async fn mail_facade_preserves_schedule_and_tenant_in_durable_envelope() {
     let queue = Queue::custom(Box::new(RecordingDriver {
         state: Arc::clone(&state),
     }));
-    let target = chrono::Utc::now() + chrono::Duration::minutes(5);
+    let target = jiff::Timestamp::now() + jiff::SignedDuration::from_mins(5);
     let message = Message::new()
         .to("user@example.com")
         .subject("Scheduled")
@@ -81,10 +81,16 @@ async fn mail_facade_preserves_schedule_and_tenant_in_durable_envelope() {
     assert_eq!(envelope["tenant_id"], "tenant:acme");
     assert_eq!(envelope["message"]["to"], "user@example.com");
 
+    // The stored schedule keeps chrono's RFC 3339 form (UTC, `Z`, 0/3/6/9 digits).
+    assert_eq!(
+        envelope["message"]["send_at"],
+        rullst_core::rfc3339::format_utc(target, rullst_core::rfc3339::Fraction::Auto)
+    );
+
     let target_system_time = UNIX_EPOCH
         + Duration::new(
-            u64::try_from(target.timestamp()).expect("post-epoch test timestamp"),
-            target.timestamp_subsec_nanos(),
+            u64::try_from(target.as_second()).expect("post-epoch test timestamp"),
+            u32::try_from(target.subsec_nanosecond()).expect("post-epoch nanoseconds"),
         );
     assert_eq!(*available_at, target_system_time);
 }

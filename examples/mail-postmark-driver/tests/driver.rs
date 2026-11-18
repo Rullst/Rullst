@@ -71,7 +71,7 @@ async fn the_offline_mode_captures_what_postmark_would_accept() {
         driver.send(&anonymous).await,
         Err(MailError::ConfigError(_))
     ));
-    let later = welcome().send_at(chrono::Utc::now() + chrono::TimeDelta::hours(1));
+    let later = welcome().send_at(jiff::Timestamp::now() + jiff::SignedDuration::from_hours(1));
     assert!(matches!(
         driver.send(&later).await,
         Err(MailError::ConfigError(_))
@@ -131,7 +131,8 @@ fn absent_fields_are_left_out() {
         json!([{ "Name": "List-Unsubscribe", "Value": "<http://acme.example/unsubscribe>" }])
     );
     // A schedule in the past is sent now, without a field.
-    let past = self::body(&welcome().send_at(chrono::Utc::now() - chrono::TimeDelta::minutes(1)));
+    let past =
+        self::body(&welcome().send_at(jiff::Timestamp::now() - jiff::SignedDuration::from_mins(1)));
     assert_eq!(past.as_object().map(|fields| fields.len()), Some(4));
 }
 
@@ -153,7 +154,7 @@ fn what_postmark_cannot_express_is_an_error() {
         request_body(&welcome().text("")),
         Err(MailError::ValidationError(_))
     ));
-    let later = welcome().send_at(chrono::Utc::now() + chrono::TimeDelta::days(1));
+    let later = welcome().send_at(jiff::Timestamp::now() + jiff::SignedDuration::from_hours(24));
     assert!(matches!(
         request_body(&later),
         Err(MailError::ConfigError(_))

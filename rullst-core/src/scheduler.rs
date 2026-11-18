@@ -4,6 +4,7 @@
 
 use crate::error_buffer::{ERROR_BUFFER_CAPACITY, ErrorBuffer, ErrorReporter, error_buffer};
 use cron_expression::CronSchedule;
+use jiff::Timestamp;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -340,7 +341,7 @@ async fn run_task_loop(
             break;
         }
 
-        let Some(next) = next_occurrence(&task.schedule, chrono::Utc::now(), last_fired) else {
+        let Some(next) = next_occurrence(&task.schedule, Timestamp::now(), last_fired) else {
             errors.report(SchedulerError::ScheduleExhausted {
                 label: task.label.clone(),
             });
@@ -375,14 +376,10 @@ async fn run_task_loop(
 /// The sleep is monotonic, but the schedule is wall-clock time: if the wall
 /// clock was stepped back during the sleep, wait again until it actually
 /// reaches `target` instead of firing early.
-async fn wait_until(
-    target: chrono::DateTime<chrono::Utc>,
-    shutdown: &mut watch::Receiver<bool>,
-) -> bool {
+async fn wait_until(target: Timestamp, shutdown: &mut watch::Receiver<bool>) -> bool {
     loop {
-        let wait = (target - chrono::Utc::now())
-            .to_std()
-            .unwrap_or(Duration::ZERO);
+        let wait =
+            Duration::try_from(target.duration_since(Timestamp::now())).unwrap_or(Duration::ZERO);
         if wait.is_zero() {
             return true;
         }
@@ -395,13 +392,10 @@ async fn wait_until(
 
 /// Start of a deferrable task's run due at `tick`, or `None` when the task
 /// is not deferrable.
-fn deferred_start(
-    task: &ScheduledTask,
-    tick: chrono::DateTime<chrono::Utc>,
-) -> Option<chrono::DateTime<chrono::Utc>> {
+fn deferred_start(task: &ScheduledTask, tick: Timestamp) -> Option<Timestamp> {
     let deferral = task.deferral.as_ref()?;
-    let (start_ms, reason) = deferral.start_for(tick.timestamp_millis());
-    let start = chrono::DateTime::from_timestamp_millis(start_ms).unwrap_or(tick);
+    let (start_ms, reason) = deferral.start_for(tick.as_millisecond());
+    let start = Timestamp::from_millisecond(start_ms).unwrap_or(tick);
     tracing::debug!(
         target: "rullst::scheduler",
         task = %task.label,
@@ -417,9 +411,9 @@ fn deferred_start(
 /// lags the monotonic timer.
 fn next_occurrence(
     schedule: &TaskSchedule,
-    now: chrono::DateTime<chrono::Utc>,
-    last_fired: Option<chrono::DateTime<chrono::Utc>>,
-) -> Option<chrono::DateTime<chrono::Utc>> {
+    now: Timestamp,
+    last_fired: Option<Timestamp>,
+) -> Option<Timestamp> {
     let after = last_fired.map_or(now, |fired| fired.max(now));
     schedule.next_after(&after)
 }

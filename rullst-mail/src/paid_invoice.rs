@@ -171,12 +171,16 @@ fn short_key(value: &str) -> Result<&str, MailError> {
 mod tests {
     use super::*;
     use crate::MemoryDriver;
-    use chrono::Utc;
     use rullst_capital::{ChargeReceipt, ChargeStatus, Invoice, InvoiceLocale};
 
     fn invoice() -> Invoice {
-        Invoice::new("INV-2026-42", "owner@example.com", Utc::now(), "BRL")
-            .with_item("Serviço de hospedagem", 4_990)
+        Invoice::new(
+            "INV-2026-42",
+            "owner@example.com",
+            jiff::Timestamp::now(),
+            "BRL",
+        )
+        .with_item("Serviço de hospedagem", 4_990)
     }
 
     fn paid_invoice(status: ChargeStatus) -> Result<PaidInvoice, rullst_capital::CapitalError> {
