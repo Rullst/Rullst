@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794980792133,
+  "lastUpdate": 1794982463769,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -24698,6 +24698,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "rbac_guard/authorize_owner_or_role",
             "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8fa4e300f0e881402f85d328b30a8ee8c5e7b556",
+          "message": "Merge pull request #761 from Rullst/feat/v13-messaging-cron-posix\n\nfeat(messaging)!: POSIX cron for new recurring schedules, legacy rows kept",
+          "timestamp": "2026-11-18T02:55:43-03:00",
+          "tree_id": "21d69fb858cf092de0acef1fa711cc4cce124917",
+          "url": "https://github.com/Rullst/Rullst/commit/8fa4e300f0e881402f85d328b30a8ee8c5e7b556"
+        },
+        "date": 1794982462942,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5776,
+            "range": "± 49",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 599,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
             "range": "± 0",
             "unit": "ns/iter"
           },
