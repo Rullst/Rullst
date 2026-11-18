@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794967348138,
+  "lastUpdate": 1794971220955,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -24309,6 +24309,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4664,
             "range": "± 49",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2961e734606fc72ed7a19416e6cd9985c6fb39d1",
+          "message": "Merge pull request #754 from Rullst/feat/v13-jiff-orm-types\n\nfeat(orm): add jiff-based Timestamp, DateTime, Date and Time column types",
+          "timestamp": "2026-11-17T23:52:12-03:00",
+          "tree_id": "91cb086dfa248c1698856d7be54bb86190a70f54",
+          "url": "https://github.com/Rullst/Rullst/commit/2961e734606fc72ed7a19416e6cd9985c6fb39d1"
+        },
+        "date": 1794971220331,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1004,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 718,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1753,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4147,
+            "range": "± 46",
             "unit": "ns/iter"
           }
         ]
