@@ -248,7 +248,9 @@ impl MailAssertion {
     }
 
     /// Asserts that the message has the specified scheduled delivery timestamp.
-    pub fn with_scheduled_at(self, expected: jiff::Timestamp) -> Self {
+    /// Takes a `jiff::Timestamp` or anything that converts into one.
+    pub fn with_scheduled_at(self, expected: impl Into<jiff::Timestamp>) -> Self {
+        let expected = expected.into();
         assert_eq!(
             self.message.send_at,
             Some(expected),

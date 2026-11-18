@@ -10,11 +10,12 @@
   TimeStyle)` (they took `&impl chrono::Datelike`, `&impl chrono::Timelike` and
   a reference to a value of both; pass civil values by value or a
   `&jiff::ZonedDateTime`); Mail's `Message::send_at` field
-  (`Option<jiff::Timestamp>`) and method (`send_at(jiff::Timestamp)`), the
-  memory driver's `with_scheduled_at(jiff::Timestamp)` and the `expires_at:
+  (`Option<jiff::Timestamp>`) and method (`send_at(impl Into<jiff::Timestamp>)`),
+  the memory driver's `with_scheduled_at(impl Into<jiff::Timestamp>)` and the `expires_at:
   jiff::Timestamp` of `AccountEvent::PasswordResetAt` and
   `AccountEvent::EmailLoginAt`; Capital's `Invoice::date` field and
-  `Invoice::new(invoice_id, customer_email, date: jiff::Timestamp, currency)`.
+  `Invoice::new(invoice_id, customer_email, date: impl Into<jiff::Timestamp>,
+  currency)`; the `impl Into` parameters also take the ORM's `Timestamp`.
   Replace `chrono::Utc::now()` with `jiff::Timestamp::now()`, `Utc::now() +
   Duration::minutes(5)` with `Timestamp::now() +
   jiff::SignedDuration::from_mins(5)` (or `checked_add`) and `.timestamp()` with

@@ -130,9 +130,10 @@ impl Message {
         self
     }
 
-    /// Schedules delivery for a specific future instant.
-    pub fn send_at(mut self, timestamp: Timestamp) -> Self {
-        self.send_at = Some(timestamp);
+    /// Schedules delivery for a specific future instant: a `jiff::Timestamp`
+    /// or anything that converts into one, such as the ORM's `Timestamp`.
+    pub fn send_at(mut self, timestamp: impl Into<Timestamp>) -> Self {
+        self.send_at = Some(timestamp.into());
         self
     }
 
