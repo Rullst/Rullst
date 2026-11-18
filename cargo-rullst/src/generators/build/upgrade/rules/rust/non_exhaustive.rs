@@ -28,6 +28,11 @@ impl super::Visitor<'_, '_> {
 
 /// The rule and line of a literal of a non-exhaustive Rullst struct.
 pub(super) fn literal(expr: &syn::ExprStruct, text: &str) -> Option<(&'static Rule, usize)> {
+    // `crate::mail::Message { .. }`: a type of the application's own module.
+    let first = expr.path.segments.first()?;
+    if first.ident == "crate" || first.ident == "self" || first.ident == "super" {
+        return None;
+    }
     let last = expr.path.segments.last()?;
     let fields = expr
         .fields
