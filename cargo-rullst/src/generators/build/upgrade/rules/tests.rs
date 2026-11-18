@@ -21,6 +21,7 @@ mod alpha6_non_exhaustive;
 mod alpha6_orm_save_mode;
 mod alpha6_passkeys;
 mod alpha6_public_deps;
+mod cron_corpus;
 mod data;
 mod docs;
 mod files;
