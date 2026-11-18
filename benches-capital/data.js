@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794953939879,
+  "lastUpdate": 1794963881729,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -18578,6 +18578,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ad761a9ca00857b7ee2bc8e4d8f98be7302eb97c",
+          "message": "Merge pull request #763 from Rullst/fix/v13-windows-file-target-tests\n\nfix(ai,security): roll back partial writes on Windows; fix Unix-only file-target tests",
+          "timestamp": "2026-11-17T21:33:54-03:00",
+          "tree_id": "b9b9b2e646e2baabe65fd17ec950dec9e38baae5",
+          "url": "https://github.com/Rullst/Rullst/commit/ad761a9ca00857b7ee2bc8e4d8f98be7302eb97c"
+        },
+        "date": 1794963880976,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
             "range": "± 0",
             "unit": "ns/iter"
           }
