@@ -299,7 +299,7 @@ async fn queries(today: NaiveDate, text: &str, charge: &Charge, roll: Roll) -> R
     let window = (Utc::now() - Duration::hours(2)).format("%F %T").to_string();
     let issued = Issued { code: code(), valid_until: Utc::now() };
     let limit = cutoff(Utc::now());
-    let parsed: NaiveDate = "2026-10-12".parse().unwrap();
+    let parsed: NaiveDate = "2026-10-12".parse()?;
     let opened = text.parse::<chrono::NaiveDate>().ok();
     let local = (Utc::now() + Duration::hours(OFFSET)).date_naive();
     let fresh = Charge::find(&charge.reference).await?;
