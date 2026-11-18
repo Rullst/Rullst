@@ -1,14 +1,9 @@
-//! The types' text against chrono's: `Display`, `Debug` and serde write
-//! chrono's text for every value, and `FromStr` and serde read every text
-//! chrono read, with chrono's value, falling back to jiff's parser.
+//! Golden text of the types; `golden_tests.rs` checks `Display`, `Debug`,
+//! serde and `FromStr` against the corpus recorded from chrono.
 
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use proptest::prelude::*;
 
-use super::test_support::{
-    chrono_date, chrono_date_time, chrono_instant, chrono_time, date, date_time, date_time_text,
-    instant, jiff_date, jiff_date_time, jiff_instant, jiff_time, time, time_text,
-};
+use super::test_support::{date, date_time, instant, time};
 use super::{Date, DateTime, Time, Timestamp};
 use crate::RullstValue;
 
@@ -168,16 +163,6 @@ fn defaults_are_chronos() {
     assert_eq!(DateTime::default().to_string(), "1970-01-01 00:00:00");
     assert_eq!(Date::default().to_string(), "1970-01-01");
     assert_eq!(Time::default().to_string(), "00:00:00");
-    assert_eq!(
-        chrono_instant(Timestamp::default()),
-        chrono::DateTime::<Utc>::default()
-    );
-    assert_eq!(
-        chrono_date_time(DateTime::default()),
-        NaiveDateTime::default()
-    );
-    assert_eq!(chrono_date(*Date::default()), NaiveDate::default());
-    assert_eq!(chrono_time(*Time::default()), NaiveTime::default());
 }
 
 #[test]
@@ -239,70 +224,15 @@ pub(super) fn date_text() -> impl Strategy<Value = String> {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(2048))]
 
+    /// Every written text reads back as itself (`golden_tests.rs` checks the
+    /// text against chrono's).
     #[test]
-    fn written_text_is_chronos(at in instant(), civil in date_time(), day in date(), clock in time()) {
-        let theirs = chrono_instant(at);
-        prop_assert_eq!(at.to_string(), theirs.to_string());
-        prop_assert_eq!(format!("{at:?}"), format!("{theirs:?}"));
-        prop_assert_eq!(serde_json::to_string(&at).unwrap(), serde_json::to_string(&theirs).unwrap());
-        let naive = chrono_date_time(civil);
-        prop_assert_eq!(civil.to_string(), naive.to_string());
-        prop_assert_eq!(format!("{civil:?}"), format!("{naive:?}"));
-        prop_assert_eq!(serde_json::to_string(&civil).unwrap(), serde_json::to_string(&naive).unwrap());
-        let naive_date = chrono_date(*day);
-        prop_assert_eq!(day.to_string(), naive_date.to_string());
-        prop_assert_eq!(format!("{day:?}"), format!("{naive_date:?}"));
-        prop_assert_eq!(serde_json::to_string(&day).unwrap(), serde_json::to_string(&naive_date).unwrap());
-        let naive_time = chrono_time(*clock);
-        prop_assert_eq!(clock.to_string(), naive_time.to_string());
-        prop_assert_eq!(format!("{clock:?}"), format!("{naive_time:?}"));
-        prop_assert_eq!(serde_json::to_string(&clock).unwrap(), serde_json::to_string(&naive_time).unwrap());
-        // And it reads back as itself.
+    fn written_text_reads_back(at in instant(), civil in date_time(), day in date(), clock in time()) {
         prop_assert_eq!(serde_json::from_str::<Timestamp>(&serde_json::to_string(&at).unwrap()).unwrap(), at);
         prop_assert_eq!(at.to_string().parse::<Timestamp>().unwrap(), at);
         prop_assert_eq!(format!("{civil:?}").parse::<DateTime>().unwrap(), civil);
+        prop_assert_eq!(serde_json::from_str::<DateTime>(&serde_json::to_string(&civil).unwrap()).unwrap(), civil);
         prop_assert_eq!(day.to_string().parse::<Date>().unwrap(), day);
         prop_assert_eq!(clock.to_string().parse::<Time>().unwrap(), clock);
-    }
-
-    /// chrono's value whenever chrono reads the text, else jiff's.
-    #[test]
-    fn instants_parse_as_chrono_then_jiff(text in prop_oneof![date_time_text(), "[0-9T:+\\-. ZzUTCu]{0,40}"]) {
-        let chrono_value = text.parse::<chrono::DateTime<Utc>>().ok().map(jiff_instant);
-        let expected = match chrono_value {
-            Some(Some(value)) => Some(value),
-            _ => text.parse::<jiff::Timestamp>().ok(),
-        };
-        prop_assert_eq!(text.parse::<Timestamp>().ok().map(|at| *at), expected, "{:?}", text);
-    }
-
-    #[test]
-    fn date_times_parse_as_chrono_then_jiff(text in prop_oneof![date_time_text(), "[0-9T:+\\-. ]{0,30}"]) {
-        let chrono_value = text.parse::<NaiveDateTime>().ok().map(jiff_date_time);
-        let expected = match chrono_value {
-            Some(Some(value)) => Some(value),
-            _ => text.parse::<jiff::civil::DateTime>().ok(),
-        };
-        prop_assert_eq!(text.parse::<DateTime>().ok().map(|at| *at), expected, "{:?}", text);
-    }
-
-    #[test]
-    fn dates_parse_as_chrono_then_jiff(text in prop_oneof![date_text(), "[0-9+\\- T]{0,16}"]) {
-        let chrono_value = text.parse::<NaiveDate>().ok().map(jiff_date);
-        let expected = match chrono_value {
-            Some(Some(value)) => Some(value),
-            _ => text.parse::<jiff::civil::Date>().ok(),
-        };
-        prop_assert_eq!(text.parse::<Date>().ok().map(|at| *at), expected, "{:?}", text);
-    }
-
-    #[test]
-    fn times_parse_as_chrono_then_jiff(text in prop_oneof![time_text(), "[0-9:. ]{0,16}"]) {
-        let chrono_value = text.parse::<NaiveTime>().ok().map(jiff_time);
-        let expected = match chrono_value {
-            Some(Some(value)) => Some(value),
-            _ => text.parse::<jiff::civil::Time>().ok(),
-        };
-        prop_assert_eq!(text.parse::<Time>().ok().map(|at| *at), expected, "{:?}", text);
     }
 }

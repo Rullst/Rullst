@@ -515,51 +515,10 @@ mod tests {
         assert_ne!(keys[2], key(RullstValue::Date(next_day)));
     }
 
-    /// An equal value keys the same entry whether a jiff-based or a `chrono`
-    /// type holds it, so entries cached before an upgrade stay reachable.
+    /// The key text of the jiff-based values; `golden_tests.rs` checks the
+    /// keys against those the `chrono` variants had.
     #[test]
-    fn jiff_date_and_time_values_share_the_chrono_cache_keys() {
-        use crate::temporal::test_support::{
-            chrono_date, chrono_date_time, chrono_instant, chrono_time,
-        };
-        use crate::{Date, DateTime, Time, Timestamp};
-        let key = |value: RullstValue| {
-            build_key("academy", None, "users", "SELECT *", &[value]).expect("cache key")
-        };
-        for text in [
-            "2026-10-15T09:30:00.000000005Z",
-            "-000044-03-15T12:00:00Z",
-            "1999-12-31T23:59:59.5Z",
-        ] {
-            let at: Timestamp = text.parse().expect("instant");
-            let civil = DateTime::from(jiff::tz::Offset::UTC.to_datetime(*at));
-            let day = Date::from(civil.date());
-            let clock = Time::from(civil.time());
-            assert_eq!(
-                key(RullstValue::Timestamp(at)),
-                key(RullstValue::DateTime(chrono_instant(at)))
-            );
-            assert_eq!(
-                key(RullstValue::CivilDateTime(civil)),
-                key(RullstValue::NaiveDateTime(chrono_date_time(civil)))
-            );
-            assert_eq!(
-                key(RullstValue::CivilDate(day)),
-                key(RullstValue::Date(chrono_date(*day)))
-            );
-            assert_eq!(
-                key(RullstValue::CivilTime(clock)),
-                key(RullstValue::Time(chrono_time(*clock)))
-            );
-            assert_ne!(
-                key(RullstValue::Timestamp(at)),
-                key(RullstValue::CivilDateTime(civil))
-            );
-            assert_ne!(
-                key(RullstValue::CivilDate(day)),
-                key(RullstValue::CivilTime(clock))
-            );
-        }
+    fn jiff_date_and_time_values_key_by_their_full_text() {
         assert_eq!(
             text::timestamp_nanos("2026-10-15T09:30:00.5Z".parse().expect("instant")),
             "2026-10-15T09:30:00.500000000Z"
