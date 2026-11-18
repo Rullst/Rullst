@@ -218,8 +218,14 @@ and fails on any surviving mutant.
   it. A flag is a reason to plan, not a failure: an abandoned public
   dependency forces a breaking change (as chrono did in November 2026), so
   plan its replacement before a release freezes the line, or record why it
-  stays. Locally, `python3 .github/public-dependency-health.py` prints the
-  same report (`GITHUB_TOKEN` is optional; the offline tests are
+  stays. To record that a crate stays, add the maintainer's decision to
+  `.github/public-dependency-reviews.json`: the crate, the flag kinds it
+  covers (`stale`, `newer-line`, `archived`, …), the reason, the reviewer, the
+  review date and an expiry at most 12 months later. Its flags are then
+  listed as "reviewed until <date>" and do not open the issue, until the
+  review expires or the crate gets a flag of another kind. An advisory can
+  never be reviewed. Locally, `python3 .github/public-dependency-health.py`
+  prints the same report (`GITHUB_TOKEN` is optional; the offline tests are
   `.github/test-public-dependency-health.py`).
 - **Feature matrix** (`.github/check-feature-matrix.py`) and feature
   boundaries (`.github/check-feature-boundaries.sh`) must list every facade
