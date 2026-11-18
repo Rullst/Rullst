@@ -1,7 +1,7 @@
 //! Provider accounts linked to users (`cargo rullst make:oauth`): one row per
 //! provider and subject, so a provider identity signs in to one account.
 use rullst::db::{Orm, sqlx};
-use rullst::orm::chrono::{DateTime, Utc};
+use rullst::orm::Timestamp;
 
 pub struct OAuthIdentity;
 
@@ -28,7 +28,7 @@ impl OAuthIdentity {
         user_id: i32,
         provider: &str,
         subject: &str,
-        created_at: DateTime<Utc>,
+        created_at: Timestamp,
     ) -> Result<(), rullst::orm::Error> {
         let insert = if Orm::driver()? == "postgres" {
             "INSERT INTO oauth_identities (user_id, provider, subject, created_at) VALUES ($1, $2, $3, $4)"

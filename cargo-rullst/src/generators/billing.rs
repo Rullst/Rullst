@@ -43,7 +43,7 @@ const FIXED_OUTPUTS: [&str; 10] = [
 pub(crate) fn render_billing_controller(foreign_key: &str) -> String {
     BILLING_CONTROLLER_TEMPLATE
         .replace("__PERSIST_BILLING_UPDATE__", PERSIST)
-        // `timestamps()` columns hold `chrono` instants on SQLx pools.
+        // `timestamps()` columns hold `rullst::orm::Timestamp` instants on SQLx pools.
         .replace("__UTC_TIMESTAMP_FN__", TIMESTAMP)
         // New records also start an empty dirty-tracking snapshot.
         .replace(

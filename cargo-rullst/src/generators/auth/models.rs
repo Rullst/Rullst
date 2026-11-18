@@ -10,7 +10,7 @@ use std::path::Path;
 
 /// The `User` model written by `cargo rullst auth`.
 const USER_MODEL_SOURCE: &str = r##"use rullst::db::{Orm, RowSnapshot};
-use rullst::orm::chrono::{DateTime, Utc};
+use rullst::orm::Timestamp;
 
 #[derive(Debug, Clone, Default, Orm)]
 #[orm(table = "users")]
@@ -23,8 +23,8 @@ pub struct User {
     pub oauth_id: Option<String>,
     // `timestamps()` columns: TIMESTAMPTZ on PostgreSQL, DATETIME(6) on
     // MySQL/MariaDB and RFC 3339 text on SQLite.
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
     // Lets this account into Nexus (`/nexus`) under the application's
     // sign-in. The database manages this column: ORM inserts and saves never
     // write it, so neither a form nor `save()` grants it, while queries can
@@ -107,7 +107,7 @@ pub(crate) const SESSION_EPOCH_METHODS: &str = r##"
         id: i32,
         epoch: u64,
         password_hash: &str,
-        updated_at: rullst::orm::chrono::DateTime<rullst::orm::chrono::Utc>,
+        updated_at: rullst::orm::Timestamp,
     ) -> Result<Option<u64>, rullst::orm::Error> {
         let (Ok(current), Some(next)) = (i64::try_from(epoch), epoch.checked_add(1)) else {
             return Ok(None);
