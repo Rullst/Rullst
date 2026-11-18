@@ -462,6 +462,18 @@ mod tests {
         assert_eq!(response.status(), StatusCode::FORBIDDEN);
     }
 
+    #[test]
+    fn build_errors_explain_themselves() {
+        assert_eq!(
+            StudioBuildError::LocalAccessRequiresDebugBuild.to_string(),
+            "Studio local access requires a debug build; shared environments need an application-owned authenticated boundary"
+        );
+        assert_eq!(
+            StudioBuildError::RandomnessUnavailable.to_string(),
+            "Studio could not obtain operating-system randomness for local action tokens"
+        );
+    }
+
     #[cfg(not(debug_assertions))]
     #[test]
     fn protected_router_fails_closed_in_release() {

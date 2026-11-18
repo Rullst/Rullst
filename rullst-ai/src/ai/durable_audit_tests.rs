@@ -181,6 +181,18 @@ fn targets_must_be_regular_files_and_metadata_errors_surface() {
     std::fs::write(&file, b"x").expect("write file");
     assert_eq!(validate_target(&file), Ok(()));
     assert_eq!(validate_target(&directory.join("missing")), Ok(()));
+    // Any metadata error other than NotFound surfaces. A NUL byte is refused
+    // as InvalidInput on every platform.
+    assert_eq!(
+        validate_target(&directory.join("bad\0name")),
+        Err(DurableAuditError::Io {
+            operation: "metadata",
+            kind: io::ErrorKind::InvalidInput,
+        })
+    );
+    // Unix reports a path below a regular file as ENOTDIR. Windows reports it
+    // as not found, so it passes as a missing target and the open fails.
+    #[cfg(unix)]
     assert_eq!(
         validate_target(&file.join("child")),
         Err(DurableAuditError::Io {
@@ -188,6 +200,17 @@ fn targets_must_be_regular_files_and_metadata_errors_surface() {
             kind: io::ErrorKind::NotADirectory,
         })
     );
+    #[cfg(windows)]
+    {
+        assert_eq!(validate_target(&file.join("child")), Ok(()));
+        assert!(matches!(
+            open_audit_file(&file.join("child")),
+            Err(DurableAuditError::Io {
+                operation: "open",
+                ..
+            })
+        ));
+    }
     std::fs::remove_dir_all(&directory).expect("remove directory");
 }
 
@@ -197,12 +220,10 @@ fn a_failed_write_is_rolled_back_or_marks_the_writer_unhealthy() {
     std::fs::write(&path, b"header-and-partial").expect("write file");
     let failure = io::Error::new(io::ErrorKind::WriteZero, "fixture");
 
+    // The handle the writer itself opens: O_APPEND on Unix, and on Windows
+    // one with the write access that truncation needs.
     let mut writable = AuditState {
-        file: OpenOptions::new()
-            .read(true)
-            .append(true)
-            .open(&path)
-            .expect("open"),
+        file: open_audit_file(&path).expect("open"),
         bytes: 6,
         records: 0,
         healthy: true,
@@ -230,4 +251,40 @@ fn a_failed_write_is_rolled_back_or_marks_the_writer_unhealthy() {
     );
     assert!(!read_only.healthy);
     std::fs::remove_file(&path).expect("remove file");
+}
+
+#[test]
+fn a_partial_write_on_the_opened_file_is_rolled_back_and_the_next_frame_follows() {
+    // Through the real open path, so the handle has the access the writer
+    // gets on this platform (Windows needs write access to truncate).
+    let path = scratch("rollback-open");
+    let log = DurableAuditLog::<Note>::try_open(&path).expect("open");
+    log.append(note(3)).expect("first append");
+    {
+        let mut state = log.state.lock().expect("state");
+        let previous_bytes = state.bytes;
+        // What a write that failed half-way through a frame leaves behind.
+        state
+            .file
+            .write_all(b"0000002a:partial")
+            .expect("partial write");
+        let failure = io::Error::new(io::ErrorKind::WriteZero, "fixture");
+        assert_eq!(
+            recover_partial_write(&mut state, previous_bytes, &failure),
+            Err(DurableAuditError::Io {
+                operation: "append",
+                kind: io::ErrorKind::WriteZero,
+            })
+        );
+        assert!(state.healthy);
+        let length = std::fs::metadata(&path).expect("metadata").len();
+        assert_eq!(length, previous_bytes);
+    }
+    // The next frame starts where the rolled-back one did, without a gap.
+    log.append(note(4)).expect("append after the rollback");
+    drop(log);
+    let reopened = DurableAuditLog::<Note>::try_open(&path).expect("reopen");
+    assert_eq!(reopened.entries().expect("entries"), vec![note(3), note(4)]);
+    drop(reopened);
+    std::fs::remove_file(&path).expect("remove log");
 }

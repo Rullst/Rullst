@@ -5,7 +5,8 @@ name: Supply Chain
 # security-audit.yml. The main ruleset requires the Cargo Deny job by its name,
 # "Check Dependencies (Licenses, Vulnerabilities)": keep that name unchanged.
 # A fourth job runs release.yml's evidence audit on the pull requests that
-# can change it.
+# can change it. A fifth, on scheduled runs only, reports a failure in an
+# issue and closes that issue when a later scheduled run passes.
 
 on:
   push:
@@ -14,13 +15,18 @@ on:
     branches: [main, v12, v13]
   workflow_dispatch:
   schedule:
-    # Daily, so a new RustSec advisory or an expiring exception shows up
-    # within a day even when nothing is pushed.
+    # Twice a day, so a new RustSec advisory or an expiring exception shows
+    # up within about twelve hours even when nothing is pushed. GitHub often
+    # starts these runs hours late: the 08:00 run of 17 November 2026 started
+    # at 17:21 and so caught RUSTSEC-2026-0543, published at 10:14 UTC.
     - cron: '0 8 * * *'
+    - cron: '0 20 * * *'
 
 concurrency:
-  # A daily run must not cancel, or be cancelled by, the main push run that
-  # release admission requires.
+  # A scheduled run must not cancel, or be cancelled by, the main push run
+  # that release admission requires. Both schedules share the '-daily'
+  # group; they start twelve hours apart and a run takes minutes, so one
+  # would cancel the other only if GitHub delayed it by half a day.
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}${{ github.event_name == 'schedule' && '-daily' || '' }}
   cancel-in-progress: true
 
@@ -68,10 +74,10 @@ jobs:
       - name: Audit production, fuzz and fixture dependency locks
         shell: bash
         run: |
-          cargo audit --ignore RUSTSEC-2026-0459 --ignore RUSTSEC-2026-0440
+          cargo audit --ignore RUSTSEC-2026-0459 --ignore RUSTSEC-2026-0440 --ignore RUSTSEC-2026-0543
           while IFS= read -r lockfile; do
             echo "Auditing $lockfile"
-            cargo audit --no-fetch --ignore RUSTSEC-2026-0459 --ignore RUSTSEC-2026-0440 --file "$lockfile"
+            cargo audit --no-fetch --ignore RUSTSEC-2026-0459 --ignore RUSTSEC-2026-0440 --ignore RUSTSEC-2026-0543 --file "$lockfile"
           done < <({
             find . -mindepth 3 -maxdepth 3 -path '*/fuzz/Cargo.lock' -print
             find ./.github/fixtures -name Cargo.lock -print
@@ -198,3 +204,103 @@ jobs:
             }
             END { exit failed }
           ' docs/src/security-advisory-exceptions.md
+
+  scheduled-failure-issue:
+    name: Report scheduled failures in an issue
+    # A failed scheduled run used to notify only by e-mail. After each
+    # scheduled run this job opens an issue titled "Scheduled supply-chain
+    # check failed" with the supply-chain-alert label, or comments on the open
+    # one, naming the failed jobs, the run and the RustSec IDs in their logs;
+    # when a later scheduled run passes, it closes that issue. It is the only
+    # job with issues: write; actions: read lets it list this run's jobs and
+    # read their logs. It checks out no code.
+    needs: [cargo-deny, cargo-audit, advisory-exceptions]
+    if: github.event_name == 'schedule' && !cancelled()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      issues: write
+    steps:
+      - name: Open, update or close the scheduled-failure issue
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TITLE: Scheduled supply-chain check failed
+          LABEL: supply-chain-alert
+          DENY_RESULT: ${{ needs.cargo-deny.result }}
+          AUDIT_RESULT: ${{ needs.cargo-audit.result }}
+          GOVERNANCE_RESULT: ${{ needs.advisory-exceptions.result }}
+        run: |
+          set -euo pipefail
+          # The open alert, if any (the oldest with this label and title).
+          issue="$(gh issue list --label "$LABEL" --state open --limit 100 \
+            --json number,title \
+            --jq '[.[] | select(.title == env.TITLE)] | sort_by(.number) | .[0].number // empty')"
+
+          if [ "$DENY_RESULT" = success ] && [ "$AUDIT_RESULT" = success ] \
+            && [ "$GOVERNANCE_RESULT" = success ]; then
+            if [ -n "$issue" ]; then
+              gh issue close "$issue" \
+                --comment "The scheduled run $RUN_URL passed, so this alert is resolved."
+            fi
+            exit 0
+          fi
+
+          body="$RUNNER_TEMP/scheduled-failure.md"
+          {
+            echo "The scheduled \`supply-chain.yml\` run $RUN_URL failed on $GITHUB_SHA."
+            echo
+            echo '| Job | Result |'
+            echo '| :--- | :--- |'
+            echo "| Check Dependencies (Licenses, Vulnerabilities) | $DENY_RESULT |"
+            echo "| Cargo Audit (production and fuzz locks) | $AUDIT_RESULT |"
+            echo "| Advisory exception governance | $GOVERNANCE_RESULT |"
+          } > "$body"
+
+          # RustSec IDs as cargo-deny ("├ ID: RUSTSEC-…"), cargo-audit
+          # ("ID:  RUSTSEC-…") and the governance check (an expired row)
+          # print them in the failed jobs' logs. The ignore flags echoed with
+          # each command are on other lines. gh refuses to print logs that
+          # contain terminal escape sequences, so curl reads them.
+          ids="$RUNNER_TEMP/advisory-ids.txt"
+          : > "$ids"
+          while IFS= read -r job; do
+            log="$RUNNER_TEMP/job-$job.log"
+            if ! curl -fsSL --retry 3 -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' -o "$log" \
+              "$GITHUB_API_URL/repos/$GH_REPO/actions/jobs/$job/logs"; then
+              echo "Could not read the log of job $job." >&2
+              continue
+            fi
+            sed 's/\x1b\[[0-9;]*m//g' "$log" |
+              grep -E 'ID:[[:space:]]+RUSTSEC-[0-9]{4}-[0-9]{4}|expired advisory exception row' |
+              grep -oE 'RUSTSEC-[0-9]{4}-[0-9]{4}' >> "$ids" || true
+          done < <(gh api --paginate \
+            "repos/$GH_REPO/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs" \
+            --jq '.jobs[] | select(.conclusion == "failure") | .id')
+          if [ -s "$ids" ]; then
+            {
+              echo
+              echo "RustSec advisories in the failed jobs' logs:"
+              echo
+              sort -u "$ids" | while IFS= read -r id; do
+                echo "- [$id](https://rustsec.org/advisories/$id.html)"
+              done
+            } >> "$body"
+          fi
+          {
+            echo
+            echo 'Upgrade, or govern an exception as MAINTAINING.md ("Advisories") describes.'
+            echo 'This issue closes when a later scheduled run passes.'
+          } >> "$body"
+
+          if [ -n "$issue" ]; then
+            gh issue comment "$issue" --body-file "$body"
+          else
+            gh label create "$LABEL" --color B60205 \
+              --description 'A scheduled supply-chain.yml run failed' --force
+            gh issue create --title "$TITLE" --label "$LABEL" --body-file "$body"
+          fi

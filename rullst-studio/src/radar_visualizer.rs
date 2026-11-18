@@ -212,6 +212,27 @@ mod tests {
     use tower::ServiceExt;
 
     #[tokio::test]
+    async fn ai_and_job_spans_get_their_own_badges() {
+        let collector = rullst_core::telemetry_spans::global_span_collector();
+        collector.record(rullst_core::telemetry_spans::TraceSpan::new(
+            "radar.ai", "ai", 30, 1700000000,
+        ));
+        collector.record(rullst_core::telemetry_spans::TraceSpan::new(
+            "radar.job",
+            "job",
+            40,
+            1700000000,
+        ));
+        let html = render_radar_page().await;
+        assert!(html.contains(
+            "border bg-purple-500/10 text-purple-400 border-purple-500/20\">AI GENERATION</span>"
+        ));
+        assert!(html.contains(
+            "border bg-amber-500/10 text-amber-400 border-amber-500/20\">ASYNC JOB</span>"
+        ));
+    }
+
+    #[tokio::test]
     async fn test_radar_visualizer_endpoint() {
         let app = router();
 

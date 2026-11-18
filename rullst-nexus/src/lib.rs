@@ -21,3 +21,7 @@
 
 pub mod nexus;
 pub use nexus::*;
+
+// Used by `#[derive(Nexus)]`, whose output reaches the ORM through Nexus.
+#[doc(hidden)]
+pub use rullst_orm::__field_kind as __orm_field_kind;

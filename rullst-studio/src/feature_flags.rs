@@ -257,6 +257,21 @@ mod tests {
     use axum::http::{Request, StatusCode};
     use tower::ServiceExt;
 
+    #[test]
+    fn migration_guidance_matches_each_dialect() {
+        for driver in ["postgres", "mysql", "mariadb"] {
+            assert_eq!(
+                feature_flag_table_ddl(driver),
+                "CREATE TABLE rullst_feature_flags (\n    name VARCHAR(255) PRIMARY KEY,\n    enabled BOOLEAN NOT NULL DEFAULT false,\n    rollout_percentage INTEGER,\n    variants TEXT\n);",
+                "{driver}"
+            );
+        }
+        assert_eq!(
+            feature_flag_table_ddl("sqlite"),
+            "CREATE TABLE rullst_feature_flags (\n    name TEXT PRIMARY KEY,\n    enabled INTEGER NOT NULL DEFAULT 0,\n    rollout_percentage INTEGER,\n    variants TEXT\n);"
+        );
+    }
+
     #[tokio::test]
     async fn test_feature_flags_endpoints() {
         let app = router();

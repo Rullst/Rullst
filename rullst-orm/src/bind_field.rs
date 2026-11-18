@@ -14,9 +14,10 @@
 //! The field type is only known after macro expansion, so the generated code
 //! selects the encoding by autoref dispatch:
 //! `(&Field(&self.field)).__rullst_encode()` resolves to [`Instant`] for a
-//! `DateTime<Utc>` or `Option<DateTime<Utc>>` field (under any path or type
-//! alias) and to [`Unchanged`] for every other field type, which is bound as
-//! a clone, as before.
+//! `DateTime<Utc>`, [`crate::Timestamp`] or optional field of either (under
+//! any path or type alias) and to [`Unchanged`] for every other field type,
+//! which is bound as a clone, as before. A `Timestamp` is sent as a
+//! [`crate::DateTime`] on MySQL/MariaDB, with the bytes of the `chrono` path.
 
 use chrono::{DateTime, Utc};
 
@@ -35,6 +36,24 @@ pub fn wire(value: DateTime<Utc>) -> Wire {
 /// The parameter for `value` on this build's pool.
 #[cfg(not(all(feature = "strict-mysql", not(feature = "strict-postgres"))))]
 pub fn wire(value: DateTime<Utc>) -> Wire {
+    value
+}
+
+/// What a [`crate::Timestamp`] is bound as on this build's pool.
+#[cfg(all(feature = "strict-mysql", not(feature = "strict-postgres")))]
+pub type TimestampWire = crate::DateTime;
+/// What a [`crate::Timestamp`] is bound as on this build's pool.
+#[cfg(not(all(feature = "strict-mysql", not(feature = "strict-postgres"))))]
+pub type TimestampWire = crate::Timestamp;
+
+/// The parameter for `value` on this build's pool.
+#[cfg(all(feature = "strict-mysql", not(feature = "strict-postgres")))]
+pub fn timestamp_wire(value: crate::Timestamp) -> TimestampWire {
+    crate::DateTime::from(crate::temporal::text::utc(*value))
+}
+/// The parameter for `value` on this build's pool.
+#[cfg(not(all(feature = "strict-mysql", not(feature = "strict-postgres"))))]
+pub fn timestamp_wire(value: crate::Timestamp) -> TimestampWire {
     value
 }
 
@@ -58,6 +77,20 @@ impl Instant for Field<'_, Option<DateTime<Utc>>> {
     type Encoded = Option<Wire>;
     fn __rullst_encode(&self) -> Option<Wire> {
         self.0.map(wire)
+    }
+}
+
+impl Instant for Field<'_, crate::Timestamp> {
+    type Encoded = TimestampWire;
+    fn __rullst_encode(&self) -> TimestampWire {
+        timestamp_wire(*self.0)
+    }
+}
+
+impl Instant for Field<'_, Option<crate::Timestamp>> {
+    type Encoded = Option<TimestampWire>;
+    fn __rullst_encode(&self) -> Option<TimestampWire> {
+        self.0.map(timestamp_wire)
     }
 }
 
@@ -103,6 +136,40 @@ mod tests {
         assert_eq!((&Field(&missing)).__rullst_encode(), None);
         assert_eq!((&Field(&text)).__rullst_encode(), "title");
         assert_eq!((&Field(&number)).__rullst_encode(), 7);
+    }
+
+    #[allow(clippy::needless_borrow)]
+    #[test]
+    fn jiff_instants_take_the_pool_encoding_too() {
+        use super::timestamp_wire;
+
+        let instant: crate::Timestamp = "2040-02-29T23:59:59Z".parse().expect("valid instant");
+        let wall: crate::DateTime = "2040-02-29T23:59:59".parse().expect("valid date-time");
+        let present = Some(instant);
+        let missing: Option<crate::Timestamp> = None;
+        let expected = if cfg!(all(
+            feature = "strict-mysql",
+            not(feature = "strict-postgres")
+        )) {
+            format!("{wall:?}")
+        } else {
+            format!("{instant:?}")
+        };
+        assert_eq!(format!("{:?}", timestamp_wire(instant)), expected);
+        assert_eq!(
+            format!("{:?}", (&Field(&instant)).__rullst_encode()),
+            expected
+        );
+        assert_eq!(
+            format!("{:?}", (&Field(&present)).__rullst_encode()),
+            format!("Some({expected})")
+        );
+        assert_eq!(
+            format!("{:?}", (&Field(&missing)).__rullst_encode()),
+            "None"
+        );
+        // The civil types are bound unchanged.
+        assert_eq!((&Field(&wall)).__rullst_encode(), wall);
     }
 
     /// The MySQL/MariaDB pool sends the UTC wall time (a `DATETIME`

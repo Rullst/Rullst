@@ -185,14 +185,32 @@ async fn only_a_missing_or_regular_file_target_is_opened() {
     ));
     std::fs::remove_dir(&directory).expect("remove directory target");
 
-    // A path below a regular file fails inspection with ENOTDIR, not NotFound.
-    let file = temporary_database("parent-file");
-    std::fs::File::create(&file).expect("create parent file");
+    // Any inspection error other than NotFound refuses the target. A NUL byte
+    // is refused as InvalidInput on every platform.
     assert!(matches!(
-        SqliteSuppressionStore::connect(database_url(&file.join("mail.sqlite")), 4, 4).await,
+        super::super::reject_existing_unsafe_target(Path::new("bad\0name.sqlite")),
         Err(SuppressionError::StorageUnavailable(
             "inspect database target"
         ))
+    ));
+
+    // A path below a regular file: Unix inspection fails with ENOTDIR, not
+    // NotFound. Windows reports it as not found, and SQLite cannot create it.
+    let file = temporary_database("parent-file");
+    std::fs::File::create(&file).expect("create parent file");
+    let below_file =
+        SqliteSuppressionStore::connect(database_url(&file.join("mail.sqlite")), 4, 4).await;
+    #[cfg(unix)]
+    assert!(matches!(
+        below_file,
+        Err(SuppressionError::StorageUnavailable(
+            "inspect database target"
+        ))
+    ));
+    #[cfg(not(unix))]
+    assert!(matches!(
+        below_file,
+        Err(SuppressionError::StorageUnavailable("connect database"))
     ));
     std::fs::remove_file(&file).expect("remove parent file");
 }

@@ -203,7 +203,11 @@ fn active_tenant_key() -> Result<Option<String>, crate::Error> {
         RullstValue::DateTime(_)
         | RullstValue::NaiveDateTime(_)
         | RullstValue::Date(_)
-        | RullstValue::Time(_) => {
+        | RullstValue::Time(_)
+        | RullstValue::Timestamp(_)
+        | RullstValue::CivilDateTime(_)
+        | RullstValue::CivilDate(_)
+        | RullstValue::CivilTime(_) => {
             return Err(crate::Error::Validation(
                 "audit tenant ID must not be a date or time".to_string(),
             ));
