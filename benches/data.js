@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794979821033,
+  "lastUpdate": 1794981607206,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -36907,6 +36907,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2018,
             "range": "± 129",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8fa4e300f0e881402f85d328b30a8ee8c5e7b556",
+          "message": "Merge pull request #761 from Rullst/feat/v13-messaging-cron-posix\n\nfeat(messaging)!: POSIX cron for new recurring schedules, legacy rows kept",
+          "timestamp": "2026-11-18T02:55:43-03:00",
+          "tree_id": "21d69fb858cf092de0acef1fa711cc4cce124917",
+          "url": "https://github.com/Rullst/Rullst/commit/8fa4e300f0e881402f85d328b30a8ee8c5e7b556"
+        },
+        "date": 1794981602611,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 691,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 912,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 422,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1939,
+            "range": "± 21",
             "unit": "ns/iter"
           }
         ]
