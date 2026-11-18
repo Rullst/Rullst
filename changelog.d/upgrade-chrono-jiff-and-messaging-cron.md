@@ -9,8 +9,9 @@
   `#[derive(Orm)]` or `#[derive(Nexus)]` model, a `rullst::orm::chrono`,
   `rullst::db::chrono` or `rullst_orm::chrono` path, `sqlx::types::chrono`
   or a bare `chrono::` path that only Rullst's dependencies made available,
-  `RullstValue`'s chrono variants, and a chrono value passed to
-  `RullstValue::from` or a query method; `V13-LOCALE-JIFF-DATES`,
+  `RullstValue`'s chrono variants, a chrono value passed to
+  `RullstValue::from` or a query method, and an SQLx read or `FromRow`
+  field that decodes chrono without SQLx's own `chrono` feature; `V13-LOCALE-JIFF-DATES`,
   `Locale::format_date`, `format_time` and `format_datetime` calls;
   `V13-MAIL-JIFF-TIMESTAMPS`, Mail's `send_at`, `with_scheduled_at` and the
   `expires_at` of `PasswordResetAt` and `EmailLoginAt`; and

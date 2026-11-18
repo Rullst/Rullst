@@ -31,34 +31,15 @@ use super::catalog::{
     CAPITAL_INVOICE_JIFF_DATE, LOCALE_JIFF_DATES, MAIL_JIFF_TIMESTAMPS, ORM_CHRONO_TYPES,
 };
 use super::{Rule, WorkspaceFacts};
-use proc_macro2::{Delimiter, Spacing, TokenStream, TokenTree};
+use proc_macro2::{Delimiter, TokenStream, TokenTree};
 use std::collections::BTreeSet;
+
+#[path = "alpha6_jiff/values.rs"]
+mod values;
+pub(super) use values::ChronoBindings;
 
 /// chrono's zone-less types, which no other date library here names.
 const NAIVE_TYPES: [&str; 3] = ["NaiveDateTime", "NaiveDate", "NaiveTime"];
-
-/// Identifiers that only chrono defines among the date libraries an
-/// application uses with Rullst (jiff's UTC is `TimeZone::UTC`). `Local`
-/// counts only in `Local::now`, since applications name variants `Local`.
-const CHRONO_NAMES: [&str; 7] = [
-    "chrono",
-    "Utc",
-    "FixedOffset",
-    "TimeDelta",
-    "NaiveDateTime",
-    "NaiveDate",
-    "NaiveTime",
-];
-
-/// chrono's `DateTime` constructors; `DateTime::` alone may be jiff's
-/// civil type or Rullst's.
-const CHRONO_CONSTRUCTORS: [&str; 5] = [
-    "from_timestamp",
-    "from_timestamp_millis",
-    "parse_from_rfc3339",
-    "parse_from_rfc2822",
-    "from_naive_utc_and_offset",
-];
 
 /// `RullstValue`'s variants that held chrono values up to 13.0.0-alpha.5.
 const CHRONO_VARIANTS: [&str; 4] = ["DateTime", "NaiveDateTime", "Date", "Time"];
@@ -268,113 +249,4 @@ fn mentions(stream: &TokenStream, names: &[&str]) -> bool {
         TokenTree::Group(group) => mentions(&group.stream(), names),
         _ => false,
     })
-}
-
-/// The names a file binds to chrono values: `let` bindings whose type or
-/// initializer is chrono's, and function parameters of a chrono type. Scopes
-/// are not tracked, so a name counts in the whole file.
-#[derive(Debug, Default)]
-pub(super) struct ChronoBindings {
-    names: BTreeSet<String>,
-}
-
-impl ChronoBindings {
-    pub(super) fn of(stream: TokenStream) -> Self {
-        let mut bindings = Self::default();
-        bindings.read(stream);
-        bindings
-    }
-
-    fn read(&mut self, stream: TokenStream) {
-        let tokens: Vec<TokenTree> = stream.into_iter().collect();
-        let mut index = 0;
-        while index < tokens.len() {
-            match &tokens[index] {
-                TokenTree::Ident(ident) if ident == "let" => self.binding(&tokens, index + 1),
-                TokenTree::Ident(ident) if ident == "fn" => self.parameters(&tokens, index + 1),
-                TokenTree::Group(group) => self.read(group.stream()),
-                _ => {}
-            }
-            index += 1;
-        }
-    }
-
-    /// `let [mut] name[: Type] = value;` from `start`, after `let`. A
-    /// pattern (`let Some(x) = …`, `if let …`) binds no name here.
-    fn binding(&mut self, tokens: &[TokenTree], start: usize) {
-        let index = start
-            + usize::from(
-                matches!(tokens.get(start), Some(TokenTree::Ident(ident)) if ident == "mut"),
-            );
-        let (Some(TokenTree::Ident(name)), Some(TokenTree::Punct(after))) =
-            (tokens.get(index), tokens.get(index + 1))
-        else {
-            return;
-        };
-        if !matches!(after.as_char(), ':' | '=') {
-            return;
-        }
-        let end = (index..tokens.len())
-            .find(|position| matches!(&tokens[*position], TokenTree::Punct(semi) if semi.as_char() == ';'))
-            .unwrap_or(tokens.len());
-        if self.carries_chrono(&tokens[index + 1..end].iter().cloned().collect()) {
-            self.names.insert(name.to_string());
-        }
-    }
-
-    /// The parameters of `fn name<..>(params)`, from the token after `fn`.
-    fn parameters(&mut self, tokens: &[TokenTree], start: usize) {
-        let Some(TokenTree::Group(params)) = tokens[start..].iter().find(|tree| {
-            matches!(tree, TokenTree::Group(group) if group.delimiter() == Delimiter::Parenthesis)
-        }) else {
-            return;
-        };
-        let params: Vec<TokenTree> = params.stream().into_iter().collect();
-        for param in
-            params.split(|tree| matches!(tree, TokenTree::Punct(comma) if comma.as_char() == ','))
-        {
-            let colon = param.iter().position(|tree| {
-                matches!(tree, TokenTree::Punct(colon) if colon.as_char() == ':' && colon.spacing() == Spacing::Alone)
-            });
-            let (Some(colon), Some(TokenTree::Ident(name))) = (
-                colon,
-                colon
-                    .and_then(|colon| colon.checked_sub(1))
-                    .and_then(|before| param.get(before)),
-            ) else {
-                continue;
-            };
-            if self.carries_chrono(&param[colon + 1..].iter().cloned().collect()) {
-                self.names.insert(name.to_string());
-            }
-        }
-    }
-
-    /// Whether `stream` builds or names a chrono value: one of chrono's own
-    /// identifiers, `DateTime<…>`, one of chrono's `DateTime::` constructors
-    /// or a name bound to a chrono value.
-    pub(super) fn carries_chrono(&self, stream: &TokenStream) -> bool {
-        let tokens: Vec<TokenTree> = stream.clone().into_iter().collect();
-        tokens.iter().enumerate().any(|(index, tree)| match tree {
-            TokenTree::Ident(ident) => {
-                let name = ident.to_string();
-                let punct = |offset: usize, expected: char| {
-                    matches!(tokens.get(index + offset), Some(TokenTree::Punct(punct)) if punct.as_char() == expected)
-                };
-                let constructor = punct(1, ':')
-                    && punct(2, ':')
-                    && matches!(tokens.get(index + 3), Some(TokenTree::Ident(function))
-                        if CHRONO_CONSTRUCTORS.iter().any(|name| function == name));
-                let local_now = name == "Local"
-                    && punct(1, ':')
-                    && matches!(tokens.get(index + 3), Some(TokenTree::Ident(now)) if now == "now");
-                CHRONO_NAMES.contains(&name.as_str())
-                    || local_now
-                    || self.names.contains(&name)
-                    || (name == "DateTime" && (punct(1, '<') || constructor))
-            }
-            TokenTree::Group(group) => self.carries_chrono(&group.stream()),
-            _ => false,
-        })
-    }
 }

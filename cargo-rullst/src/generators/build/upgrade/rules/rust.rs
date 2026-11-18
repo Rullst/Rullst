@@ -438,7 +438,10 @@ impl<'ast> Visit<'ast> for Visitor<'_, '_> {
             if has_derive("Nexus") {
                 self.nexus_model(item);
             }
-            if has_derive("Orm") || has_derive("Nexus") {
+            // A SQLx `FromRow` of its own decodes chrono fields with SQLx's
+            // `chrono` feature, which Rullst no longer enables.
+            let sqlx_row = has_derive("FromRow") && !self.context.facts.sqlx_chrono;
+            if has_derive("Orm") || has_derive("Nexus") || sqlx_row {
                 self.chrono_fields(item);
             }
             if has_derive("Deserialize") {

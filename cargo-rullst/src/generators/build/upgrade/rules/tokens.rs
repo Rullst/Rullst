@@ -106,6 +106,13 @@ pub(super) fn scan(
         chrono: super::alpha6_jiff::ChronoBindings::of(stream.clone()),
     };
     scanner.level(stream, None);
+    // SQLx reads that decode a chrono type need SQLx's `chrono` feature,
+    // which Rullst no longer enables.
+    if !context.facts.sqlx_chrono {
+        for line in scanner.chrono.decodes() {
+            scanner.out.add(&ORM_CHRONO_TYPES, *line);
+        }
+    }
     scanner.facts
 }
 

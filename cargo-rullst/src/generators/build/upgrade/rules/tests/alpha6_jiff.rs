@@ -283,3 +283,71 @@ fn manifests_decide_whether_bare_chrono_and_sqlx_chrono_are_the_applications() {
     ));
     assert!(!other.sqlx_chrono);
 }
+
+/// Patterns met in applications while dogfooding the rule: values built
+/// from chrono but turned into text, fields of structs that hold one, and
+/// helpers of the file that return one.
+#[test]
+fn only_expressions_that_still_hold_chrono_are_query_values() {
+    let source = r#"
+fn cutoff(now: DateTime<Utc>) -> DateTime<Utc> { now - Duration::days(30) }
+struct Roll { day: NaiveDate, session_id: i32 }
+async fn queries(today: NaiveDate, text: &str, charge: &Charge, roll: Roll) -> Result<(), Error> {
+    let start = today - Duration::days(6);
+    let since = format!("{} 00:00:00", today - Duration::days(7));
+    let label = (today + Duration::days(1)).to_string();
+    let window = (Utc::now() - Duration::hours(2)).format("%F %T").to_string();
+    let issued = Issued { code: code(), valid_until: Utc::now() };
+    let limit = cutoff(Utc::now());
+    let parsed: NaiveDate = "2026-10-12".parse().unwrap();
+    let opened = text.parse::<chrono::NaiveDate>().ok();
+    let local = (Utc::now() + Duration::hours(OFFSET)).date_naive();
+    let fresh = Charge::find(&charge.reference).await?;
+    sqlx::query(SQL).bind(start.to_string()).bind(&issued.code).bind(since).bind(&label).bind(window).execute(pool).await?;
+    sqlx::query(SQL).bind(fresh.id).bind(i32::try_from(charge.cents).unwrap_or(0)).bind(start.timestamp()).execute(pool).await?;
+    sqlx::query(SQL).bind(limit).execute(pool).await?;
+    sqlx::query(SQL).bind(parsed).execute(pool).await?;
+    sqlx::query(SQL).bind(opened).execute(pool).await?;
+    sqlx::query(SQL).bind(&local).execute(pool).await?;
+    sqlx::query(SQL).bind((start, 1)).execute(pool).await?;
+    sqlx::query(SQL).bind(start).execute(pool).await?;
+    sqlx::query(SQL).bind(roll.day).bind(roll.session_id).execute(pool).await?;
+    Ok(())
+}
+"#;
+    assert_eq!(
+        found_with(source, ORM, &own_chrono()),
+        [17, 18, 19, 20, 21, 22, 23]
+    );
+}
+
+#[test]
+fn sqlx_reads_that_decode_chrono_must_change_without_sqlxs_feature() {
+    let source = r#"
+async fn read(pool: &Pool, row: &Row) -> Result<(), Error> {
+    let days: Vec<NaiveDate> = sqlx::query_scalar("SELECT day FROM visits").fetch_all(pool).await?;
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM visits").fetch_one(pool).await?;
+    let last = rullst::db::sqlx::query_scalar::<_, DateTime<Utc>>("SELECT MAX(at) FROM visits").fetch_one(pool).await?;
+    let pairs = sqlx::query_as::<_, (i32, String)>("SELECT id, name FROM users").fetch_all(pool).await?;
+    let at = row.try_get::<DateTime<Utc>, _>("created_at")?;
+    let locale = request.extensions().get::<Locale>();
+    Ok(())
+}
+#[derive(Debug, sqlx::FromRow)]
+struct Visit {
+    id: i32,
+    day: NaiveDate,
+    note: String,
+}
+#[derive(sqlx::FromRow)]
+struct Consent {
+    created_at: String,
+}
+"#;
+    assert_eq!(found(source, ORM), [3, 5, 7, 14]);
+    let sqlx_chrono = WorkspaceFacts {
+        sqlx_chrono: true,
+        ..WorkspaceFacts::default()
+    };
+    assert!(found_with(source, ORM, &sqlx_chrono).is_empty());
+}
