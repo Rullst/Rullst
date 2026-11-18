@@ -75,6 +75,7 @@ pub struct RecurringMetadata {
     pub(super) created: i64,
     pub(super) next_due: Option<i64>,
     pub(super) cancelled: bool,
+    pub(super) syntax: super::CronSyntax,
 }
 impl RecurringMetadata {
     pub fn name(&self) -> &str {
@@ -91,6 +92,12 @@ impl RecurringMetadata {
     }
     pub fn is_cancelled(&self) -> bool {
         self.cancelled
+    }
+    /// The grammar of the stored definition's cron expression; see
+    /// [`RecurringDefinition::syntax`](super::RecurringDefinition::syntax).
+    /// Since 13.0.0-alpha.6.
+    pub fn syntax(&self) -> super::CronSyntax {
+        self.syntax
     }
 }
 

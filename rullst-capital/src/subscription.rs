@@ -44,7 +44,7 @@ pub struct TrialExtension {
 impl TrialExtension {
     /// Resolves the extension against the current UTC clock.
     pub fn from_days(days: u16) -> Result<Self, CapitalError> {
-        Self::from_days_at(days, chrono::Utc::now().timestamp())
+        Self::from_days_at(days, jiff::Timestamp::now().as_second())
     }
 
     /// Resolves the extension against an explicit trusted clock for tests and workers.

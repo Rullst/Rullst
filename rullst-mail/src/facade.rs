@@ -241,14 +241,13 @@ impl Mail {
     }
 }
 
-fn datetime_to_system_time(
-    timestamp: &chrono::DateTime<chrono::Utc>,
-) -> Result<SystemTime, MailError> {
-    let seconds = u64::try_from(timestamp.timestamp()).map_err(|_| {
+fn datetime_to_system_time(timestamp: &jiff::Timestamp) -> Result<SystemTime, MailError> {
+    let (seconds, nanos) = rullst_core::rfc3339::unix_parts(*timestamp);
+    let seconds = u64::try_from(seconds).map_err(|_| {
         MailError::ValidationError("mail schedule predates the Unix epoch".to_string())
     })?;
     UNIX_EPOCH
-        .checked_add(Duration::new(seconds, timestamp.timestamp_subsec_nanos()))
+        .checked_add(Duration::new(seconds, nanos))
         .ok_or_else(|| MailError::ValidationError("mail schedule exceeds system range".to_string()))
 }
 

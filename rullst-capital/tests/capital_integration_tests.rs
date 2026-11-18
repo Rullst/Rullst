@@ -82,7 +82,7 @@ fn test_invoice_html_generation() {
     let invoice = Invoice::new(
         "INV-2026-001",
         "alice@example.com",
-        chrono::Utc::now(),
+        jiff::Timestamp::now(),
         "USD",
     )
     .with_item("Pro Subscription", 2_900)

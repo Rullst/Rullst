@@ -106,7 +106,7 @@ async fn test_stripe_provider_methods() {
     assert!(provider.extend_trial("sub_str", -1).await.is_err());
 
     let secret = "whsec_stripe123";
-    let now = chrono::Utc::now().timestamp();
+    let now = jiff::Timestamp::now().as_second();
     let timestamp = now.to_string();
     let payload = br#"{"type":"customer.subscription.updated","data":{"object":{"object":"subscription","id":"sub_str_100","customer":"cus_123","customer_email":"user@stripe.com","status":"active","items":{"has_more":false,"data":[{"price":{"id":"price_pro"}}]}}}}"#;
 

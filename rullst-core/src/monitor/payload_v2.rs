@@ -159,9 +159,8 @@ pub(super) fn security_report(store: &SecurityStore) -> Security {
 }
 
 fn event_report(event: &LiveSecurityEvent) -> SecurityEventReport {
-    let at = chrono::DateTime::parse_from_rfc3339(&event.timestamp_str)
-        .ok()
-        .and_then(|time| u64::try_from(time.timestamp()).ok())
+    let at = crate::rfc3339::parse_unix_seconds(&event.timestamp_str)
+        .and_then(|seconds| u64::try_from(seconds).ok())
         .unwrap_or(0);
     SecurityEventReport {
         event_type: event.event_type.clone(),

@@ -145,7 +145,7 @@ impl BillingProvider for AcmePayProvider {
         headers: &HashMap<String, String>,
     ) -> Result<WebhookEvent, CapitalError> {
         // Authenticate the exact bytes before parsing anything.
-        self.verify_signature(payload, headers, chrono::Utc::now().timestamp())?;
+        self.verify_signature(payload, headers, jiff::Timestamp::now().as_second())?;
         let json: serde_json::Value = serde_json::from_slice(payload)
             .map_err(|_| CapitalError::PayloadParseError("acmepay JSON".into()))?;
         let text = |field: &str| {
@@ -330,7 +330,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // The live HMAC path: sign `<t>.<body>` with the real secret.
     let live = AcmePayProvider::new("live_key", "whsec_live_fixture");
-    let now = chrono::Utc::now().timestamp();
+    let now = jiff::Timestamp::now().as_second();
     let mut mac = Hmac::<Sha256>::new_from_slice(b"whsec_live_fixture")
         .map_err(|_| CapitalError::ConfigurationError("fixture secret".into()))?;
     mac.update(format!("{now}.{body}").as_bytes());

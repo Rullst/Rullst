@@ -47,7 +47,11 @@ impl StripeProvider {
         payload: &[u8],
         signature_header: &str,
     ) -> Result<(), CapitalError> {
-        self.verify_signature_at(payload, signature_header, chrono::Utc::now().timestamp())
+        self.verify_signature_at(
+            payload,
+            signature_header,
+            jiff::Timestamp::now().as_second(),
+        )
     }
 
     /// Verifies a signature against an explicit clock value for deterministic tests.

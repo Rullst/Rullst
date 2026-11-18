@@ -1,7 +1,7 @@
 //! Dates and times from a locale's [`DateData`] patterns.
 
 use super::{DateData, DateStyle, TimeStyle};
-use chrono::{Datelike, Timelike};
+use jiff::civil::{Date, DateTime, Time};
 use std::fmt::Write as _;
 
 /// The calendar and clock fields a pattern may use.
@@ -18,21 +18,25 @@ struct Fields {
 }
 
 impl Fields {
-    fn date(value: &impl Datelike) -> Self {
+    fn date(value: Date) -> Self {
         Self {
-            year: value.year(),
-            month: value.month(),
-            day: value.day(),
-            weekday: value.weekday().num_days_from_monday(),
+            year: value.year().into(),
+            month: value.month().unsigned_abs().into(),
+            day: value.day().unsigned_abs().into(),
+            weekday: value
+                .weekday()
+                .to_monday_zero_offset()
+                .unsigned_abs()
+                .into(),
             ..Self::default()
         }
     }
 
-    fn with_time(self, value: &impl Timelike) -> Self {
+    fn with_time(self, value: Time) -> Self {
         Self {
-            hour: value.hour(),
-            minute: value.minute(),
-            second: value.second(),
+            hour: value.hour().unsigned_abs().into(),
+            minute: value.minute().unsigned_abs().into(),
+            second: value.second().unsigned_abs().into(),
             ..self
         }
     }
@@ -113,22 +117,22 @@ fn time_pattern(data: &DateData, style: TimeStyle) -> &'static str {
     }
 }
 
-pub(super) fn date(data: &DateData, value: &impl Datelike, style: DateStyle) -> String {
+pub(super) fn date(data: &DateData, value: Date, style: DateStyle) -> String {
     render(date_pattern(data, style), data, &Fields::date(value))
 }
 
-pub(super) fn time(data: &DateData, value: &impl Timelike, style: TimeStyle) -> String {
+pub(super) fn time(data: &DateData, value: Time, style: TimeStyle) -> String {
     let fields = Fields::default().with_time(value);
     render(time_pattern(data, style), data, &fields)
 }
 
 pub(super) fn datetime(
     data: &DateData,
-    value: &(impl Datelike + Timelike),
+    value: DateTime,
     date_style: DateStyle,
     time_style: TimeStyle,
 ) -> String {
-    let fields = Fields::date(value).with_time(value);
+    let fields = Fields::date(value.date()).with_time(value.time());
     let date = render(date_pattern(data, date_style), data, &fields);
     let time = render(time_pattern(data, time_style), data, &fields);
     let [short, medium, long, full] = data.glue;

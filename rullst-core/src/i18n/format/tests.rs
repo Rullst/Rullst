@@ -1,5 +1,5 @@
 use super::*;
-use chrono::{NaiveDate, NaiveTime, TimeZone, Utc};
+use jiff::civil::{date, time};
 
 fn locale(tag: &'static str) -> Locale {
     Locale { tag }
@@ -12,13 +12,13 @@ fn documented_examples_match_cldr() {
         pt.format_currency(123_456, Currency::BRL),
         "R$\u{a0}1.234,56"
     );
-    let date = NaiveDate::from_ymd_opt(2026, 10, 22).unwrap();
-    assert_eq!(pt.format_date(&date, DateStyle::Short), "22/10/2026");
-    assert_eq!(pt.format_date(&date, DateStyle::Numeric), "22/10/2026");
+    let date = date(2026, 10, 22);
+    assert_eq!(pt.format_date(date, DateStyle::Short), "22/10/2026");
+    assert_eq!(pt.format_date(date, DateStyle::Numeric), "22/10/2026");
     let en = locale("en-US");
     assert_eq!(en.format_currency(123_456, Currency::USD), "$1,234.56");
-    assert_eq!(en.format_date(&date, DateStyle::Numeric), "10/22/2026");
-    assert_eq!(en.format_date(&date, DateStyle::Short), "10/22/26");
+    assert_eq!(en.format_date(date, DateStyle::Numeric), "10/22/2026");
+    assert_eq!(en.format_date(date, DateStyle::Short), "10/22/26");
     assert_eq!(
         locale("de-DE").format_currency(123_456, Currency::EUR),
         "1.234,56\u{a0}\u{20ac}"
@@ -66,9 +66,9 @@ fn tags_use_region_then_language_data_then_english() {
     let dates: Vec<&str> = data_dates::DATES.iter().map(|data| data.tag).collect();
     assert_eq!(numbers, dates);
     // A language without data formats like English.
-    let date = NaiveDate::from_ymd_opt(2026, 10, 22).unwrap();
+    let date = date(2026, 10, 22);
     assert_eq!(
-        locale("sv").format_date(&date, DateStyle::Long),
+        locale("sv").format_date(date, DateStyle::Long),
         "October 22, 2026"
     );
 }
@@ -170,59 +170,67 @@ fn numbers_keep_their_digits_and_zero_is_never_negative() {
 #[test]
 fn time_fields_cover_noon_midnight_and_zero_padding() {
     let en = locale("en");
-    let at = |hour, minute, second| NaiveTime::from_hms_opt(hour, minute, second).unwrap();
+    let at = |hour, minute, second| time(hour, minute, second, 0);
     assert_eq!(
-        en.format_time(&at(0, 5, 9), TimeStyle::Medium),
+        en.format_time(at(0, 5, 9), TimeStyle::Medium),
         "12:05:09\u{202f}AM"
     );
     assert_eq!(
-        en.format_time(&at(12, 0, 0), TimeStyle::Short),
+        en.format_time(at(12, 0, 0), TimeStyle::Short),
         "12:00\u{202f}PM"
     );
     assert_eq!(
-        en.format_time(&at(11, 59, 0), TimeStyle::Short),
+        en.format_time(at(11, 59, 0), TimeStyle::Short),
         "11:59\u{202f}AM"
     );
     assert_eq!(
-        locale("ko").format_time(&at(13, 1, 0), TimeStyle::Short),
+        locale("ko").format_time(at(13, 1, 0), TimeStyle::Short),
         "PM 1:01"
     );
     assert_eq!(
-        locale("de").format_time(&at(9, 3, 7), TimeStyle::Medium),
+        locale("de").format_time(at(9, 3, 7), TimeStyle::Medium),
         "09:03:07"
     );
     assert_eq!(
-        locale("es").format_time(&at(9, 3, 7), TimeStyle::Short),
+        locale("es").format_time(at(9, 3, 7), TimeStyle::Short),
         "9:03"
     );
 }
 
 #[test]
-fn dates_accept_any_chrono_value_and_unusual_years() {
+fn dates_accept_civil_and_zoned_values_and_unusual_years() {
     let en = locale("en");
-    let utc = Utc.with_ymd_and_hms(2026, 10, 22, 15, 45, 30).unwrap();
+    let zoned = date(2026, 10, 22)
+        .at(15, 45, 30, 0)
+        .to_zoned_datetime(jiff::tz::TimeZone::UTC)
+        .unwrap();
     assert_eq!(
-        en.format_date(&utc, DateStyle::Full),
+        en.format_date(&zoned, DateStyle::Full),
         "Thursday, October 22, 2026"
     );
     assert_eq!(
-        en.format_datetime(&utc, DateStyle::Medium, TimeStyle::Short),
+        en.format_datetime(&zoned, DateStyle::Medium, TimeStyle::Short),
         "Oct 22, 2026, 3:45\u{202f}PM"
     );
     assert_eq!(
-        en.format_datetime(&utc.naive_utc(), DateStyle::Numeric, TimeStyle::Short),
+        en.format_datetime(zoned.datetime(), DateStyle::Numeric, TimeStyle::Short),
         "10/22/2026, 3:45\u{202f}PM"
     );
-    let early = NaiveDate::from_ymd_opt(5, 1, 2).unwrap();
-    assert_eq!(en.format_date(&early, DateStyle::Short), "1/2/05");
-    assert_eq!(en.format_date(&early, DateStyle::Long), "January 2, 5");
-    let before = NaiveDate::from_ymd_opt(-1, 3, 4).unwrap();
-    assert_eq!(en.format_date(&before, DateStyle::Medium), "Mar 4, -1");
-    assert_eq!(en.format_date(&before, DateStyle::Short), "3/4/99");
     assert_eq!(
-        locale("ja").format_date(&early, DateStyle::Short),
-        "5/01/02"
+        en.format_time(&zoned, TimeStyle::Medium),
+        "3:45:30\u{202f}PM"
     );
+    assert_eq!(
+        en.format_date(zoned.datetime(), DateStyle::Short),
+        "10/22/26"
+    );
+    let early = date(5, 1, 2);
+    assert_eq!(en.format_date(early, DateStyle::Short), "1/2/05");
+    assert_eq!(en.format_date(early, DateStyle::Long), "January 2, 5");
+    let before = date(-1, 3, 4);
+    assert_eq!(en.format_date(before, DateStyle::Medium), "Mar 4, -1");
+    assert_eq!(en.format_date(before, DateStyle::Short), "3/4/99");
+    assert_eq!(locale("ja").format_date(early, DateStyle::Short), "5/01/02");
 }
 
 /// Expected strings are CLDR 48.0 (cldr-json `48.0.0`): each locale's

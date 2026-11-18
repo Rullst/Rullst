@@ -52,7 +52,7 @@ fn local_events_normalize_identity_type_timestamp_and_utf8_size() {
     assert_eq!(event.client_ip, "unknown");
     assert!(event.details.len() <= 2048);
     assert!(event.details.is_char_boundary(event.details.len()));
-    assert!(chrono::DateTime::parse_from_rfc3339(&event.timestamp_str).is_ok());
+    assert!(crate::rfc3339::parse_unix_seconds(&event.timestamp_str).is_some());
 
     event.event_type = "A".repeat(65);
     assert_eq!(event.normalized().event_type, "SECURITY_EVENT");

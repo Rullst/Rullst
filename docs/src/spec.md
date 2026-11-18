@@ -1188,8 +1188,10 @@ namespace and broker. Creation is idempotent for the same immutable definition;
 conflicting reuse fails. An edit requires cancellation and a new schedule name,
 with immutable generation identities protecting retained occurrence keys.
 
-Use the cron crate's five-field projection in UTC (weekday 1=Sun through 7=Sat,
-calendar-day and weekday restrictions intersect; names are accepted), with a
+Use POSIX five-field cron in UTC, read as Core's `Scheduler::task` reads it
+(weekday 0/7=Sun, either restricted day field matches, names accepted; since
+13.0.0-alpha.6; definitions stored earlier keep the cron crate's 1=Sun..7=Sat
+intersecting grammar as `CronSyntax::Legacy`), with a
 one-minute minimum resolution, bounded
 definitions/payloads, explicit first-after time and explicit missed-run policy.
 Bounded catch-up emits the oldest due occurrences within the caller's tick budget;
@@ -2533,8 +2535,10 @@ the same server-authoritative controls.
   `render_page_with_lang` for `<html lang>`.
 * **Formatting:** Since 13.0.0-alpha.3 `Locale::format_number(impl
   Into<Decimal>)`, `format_percent(ratio)`, `format_currency(minor_units:
-  i64, Currency)`, `format_date(&impl chrono::Datelike, DateStyle)`,
-  `format_time(&impl chrono::Timelike, TimeStyle)` and `format_datetime`
+  i64, Currency)`, `format_date(impl Into<jiff::civil::Date>, DateStyle)`,
+  `format_time(impl Into<jiff::civil::Time>, TimeStyle)` and
+  `format_datetime(impl Into<jiff::civil::DateTime>, ..)` (chrono's
+  `Datelike`/`Timelike` before 13.0.0-alpha.6)
   return `String`s with CLDR 48 conventions compiled in (generated from ICU
   78 and CLDR's date patterns by `.github/generate-i18n-format-data.py`; no
   runtime data or network). Data exist for `ar`, `cs`, `de`, `en`, `en-GB`,

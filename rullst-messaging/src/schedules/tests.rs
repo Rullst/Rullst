@@ -172,19 +172,23 @@ fn metadata_accessors_return_their_fields() {
         created: 1_800_000_000_000,
         next_due: Some(1_800_021_600_000),
         cancelled: false,
+        syntax: CronSyntax::Posix,
     };
     assert_eq!(active.name(), "daily-report");
     assert_eq!(active.generation(), "e".repeat(64));
     assert_eq!(active.created_at_ms(), 1_800_000_000_000);
     assert_eq!(active.next_due_at_ms(), Some(1_800_021_600_000));
     assert!(!active.is_cancelled());
+    assert_eq!(active.syntax(), CronSyntax::Posix);
     let cancelled = RecurringMetadata {
         next_due: None,
         cancelled: true,
+        syntax: CronSyntax::Legacy,
         ..active
     };
     assert_eq!(cancelled.next_due_at_ms(), None);
     assert!(cancelled.is_cancelled());
+    assert_eq!(cancelled.syntax(), CronSyntax::Legacy);
 
     let publication = PublishReceipt::new(
         MessageId::from_stored("msg_0123456789abcdef0123456789abcdef".to_owned()).unwrap(),
@@ -259,4 +263,160 @@ async fn invalid_requests_are_refused_before_storage_is_contacted() {
         store.cancel("daily-report").await.err(),
         Some(RecurringError::Storage)
     );
+}
+
+/// 2026-11-17T10:14:30Z, a Tuesday.
+const TUESDAY: i64 = 1_794_910_470_000;
+
+fn posix(expression: &str) -> RecurringDefinition {
+    RecurringDefinition::new("weekly", expression, 0, MissedRunPolicy::CatchUp, message()).unwrap()
+}
+
+/// A definition as stored before 13.0.0-alpha.6, without a syntax marker.
+fn legacy(expression: &str) -> RecurringDefinition {
+    let mut stored = serde_json::to_value(posix("0 0 1 1 *")).unwrap();
+    let object = stored.as_object_mut().unwrap();
+    assert_eq!(object.remove("syntax"), Some(serde_json::json!("posix")));
+    object.insert("expression".into(), expression.into());
+    serde_json::from_value(stored).unwrap()
+}
+
+#[test]
+fn new_definitions_read_posix_cron_like_core() {
+    let definition = posix("0 9 * * 1");
+    assert_eq!(definition.syntax(), CronSyntax::Posix);
+    // Weekday 1 is Monday; 0 and 7 are Sunday.
+    assert_eq!(definition.next_after(TUESDAY), Ok(Some(1_795_424_400_000)));
+    assert_eq!(
+        posix("0 9 * * 0").next_after(TUESDAY),
+        Ok(Some(1_795_338_000_000))
+    );
+    assert_eq!(
+        posix("0 9 * * 7").next_after(TUESDAY),
+        Ok(Some(1_795_338_000_000))
+    );
+    // Both day fields restricted: the 1st of the month or a Monday.
+    assert_eq!(
+        posix("0 0 1 * 1").next_after(TUESDAY),
+        Ok(Some(1_795_392_000_000))
+    );
+    let define = |expression: &str| {
+        RecurringDefinition::new("a", expression, 0, MissedRunPolicy::CatchUp, message())
+    };
+    assert_eq!(
+        define("1, 2 * * *").err(),
+        Some(RecurringError::InvalidInput(
+            "POSIX five-field UTC cron; this expression uses the legacy syntax"
+        ))
+    );
+    assert_eq!(
+        define("0 0 * * 8").err(),
+        Some(RecurringError::InvalidInput("five-field UTC cron"))
+    );
+    assert_eq!(
+        define("0 0 31 2 *").err(),
+        Some(RecurringError::InvalidInput("exhausted cron"))
+    );
+}
+
+#[test]
+fn stored_definitions_without_a_marker_keep_the_legacy_grammar() {
+    let stored = legacy("0 9 * * 1");
+    assert_eq!(stored.syntax(), CronSyntax::Legacy);
+    // Weekday 1 was Sunday.
+    assert_eq!(stored.next_after(TUESDAY), Ok(Some(1_795_338_000_000)));
+    // Joined tokens keep running.
+    assert_eq!(
+        legacy("1, 2 * * *").next_after(TUESDAY),
+        Ok(Some(1_794_913_260_000))
+    );
+    // A legacy definition is stored again without the marker, a POSIX one
+    // with it, and an unknown syntax is refused.
+    let json = serde_json::to_value(&stored).unwrap();
+    assert!(json.get("syntax").is_none());
+    assert_eq!(
+        serde_json::from_value::<RecurringDefinition>(json).unwrap(),
+        stored
+    );
+    let json = serde_json::to_value(posix("0 9 * * 1")).unwrap();
+    assert_eq!(json["syntax"], "posix");
+    let mut unknown = json;
+    unknown["syntax"] = "quartz".into();
+    assert!(serde_json::from_value::<RecurringDefinition>(unknown).is_err());
+}
+
+#[test]
+fn create_replays_a_legacy_definition_only_with_the_same_fields() {
+    let stored = legacy("0 9 * * 1");
+    // Equal definitions replay quietly.
+    assert_eq!(stored.replays(&stored.clone()), Ok(false));
+    assert_eq!(posix("0 9 * * 1").replays(&posix("0 9 * * 1")), Ok(false));
+    // The same expression and fields keep the legacy schedule, with a warning.
+    assert_eq!(stored.replays(&posix("0 9 * * 1")), Ok(true));
+    // Anything else on a legacy name, the POSIX rewrite included, is refused.
+    for requested in [
+        posix("0 9 * * 0"),
+        RecurringDefinition::new(
+            "weekly",
+            "0 9 * * 1",
+            60_000,
+            MissedRunPolicy::CatchUp,
+            message(),
+        )
+        .unwrap(),
+        RecurringDefinition::new(
+            "weekly",
+            "0 9 * * 1",
+            0,
+            MissedRunPolicy::Coalesce,
+            message(),
+        )
+        .unwrap(),
+        RecurringDefinition::new(
+            "weekly",
+            "0 9 * * 1",
+            0,
+            MissedRunPolicy::CatchUp,
+            ScheduledMessage::new("reports", "report.other", b"{}".to_vec()).unwrap(),
+        )
+        .unwrap(),
+    ] {
+        assert_eq!(
+            stored.replays(&requested),
+            Err(RecurringError::LegacyDefinition)
+        );
+    }
+    let mut renamed = posix("0 9 * * 1");
+    renamed.name = "other".into();
+    assert_eq!(
+        stored.replays(&renamed),
+        Err(RecurringError::LegacyDefinition)
+    );
+    // A POSIX definition conflicts as before, even with a legacy request.
+    assert_eq!(
+        posix("0 9 * * 1").replays(&posix("0 9 * * 0")),
+        Err(RecurringError::Conflict)
+    );
+    assert_eq!(
+        posix("0 9 * * 1").replays(&stored),
+        Err(RecurringError::Conflict)
+    );
+    assert!(
+        RecurringError::LegacyDefinition
+            .to_string()
+            .contains("keep its expression to keep it running")
+    );
+}
+
+#[test]
+fn definitions_report_their_posix_equivalent() {
+    assert_eq!(
+        posix("0 9 * * 1").posix_equivalent().as_deref(),
+        Some("0 9 * * 1")
+    );
+    assert_eq!(
+        legacy("0 9 * * 1").posix_equivalent().as_deref(),
+        Some("0 9 * * 0")
+    );
+    assert_eq!(legacy("0 0 1 * 2").posix_equivalent(), None);
 }

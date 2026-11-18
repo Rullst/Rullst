@@ -44,7 +44,7 @@ pub fn snapshot(id: &str) -> Value {
 
 pub fn verify(value: &Value, mock: bool) -> StripeSubscriptionEvent {
     let payload = serde_json::to_vec(value).unwrap();
-    let now = chrono::Utc::now().timestamp();
+    let now = jiff::Timestamp::now().as_second();
     let mut context = hmac::Hmac::<sha2::Sha256>::new_from_slice(b"whsec_inbox").unwrap();
     context.update(format!("{now}.").as_bytes());
     context.update(&payload);

@@ -7,10 +7,10 @@ pub rullst_mail::AccountEvent::PasswordReset::link: rullst_mail::ActionLink
 pub rullst_mail::AccountEvent::PasswordReset::expires_in_minutes: u32
 pub rullst_mail::AccountEvent::PasswordResetAt { .. }
 pub rullst_mail::AccountEvent::PasswordResetAt::link: rullst_mail::ActionLink
-pub rullst_mail::AccountEvent::PasswordResetAt::expires_at: chrono::datetime::DateTime<chrono::offset::utc::Utc>
+pub rullst_mail::AccountEvent::PasswordResetAt::expires_at: jiff::timestamp::Timestamp
 pub rullst_mail::AccountEvent::EmailLoginAt { .. }
 pub rullst_mail::AccountEvent::EmailLoginAt::link: rullst_mail::ActionLink
-pub rullst_mail::AccountEvent::EmailLoginAt::expires_at: chrono::datetime::DateTime<chrono::offset::utc::Utc>
+pub rullst_mail::AccountEvent::EmailLoginAt::expires_at: jiff::timestamp::Timestamp
 pub rullst_mail::AccountEvent::PasswordChanged
 pub rullst_mail::AccountEvent::EmailVerification { .. }
 pub rullst_mail::AccountEvent::EmailVerification::link: rullst_mail::ActionLink
@@ -293,7 +293,7 @@ pub fn rullst_mail::MailAssertion::with_attachment_named(self, filename: &str) -
 pub fn rullst_mail::MailAssertion::with_body_contains(self, fragment: &str) -> Self
 pub fn rullst_mail::MailAssertion::with_from(self, from: &str) -> Self
 pub fn rullst_mail::MailAssertion::with_inline_cid(self, cid: &str) -> Self
-pub fn rullst_mail::MailAssertion::with_scheduled_at(self, expected: chrono::datetime::DateTime<chrono::offset::utc::Utc>) -> Self
+pub fn rullst_mail::MailAssertion::with_scheduled_at(self, expected: impl core::convert::Into<jiff::timestamp::Timestamp>) -> Self
 pub fn rullst_mail::MailAssertion::with_subject(self, subject: &str) -> Self
 pub fn rullst_mail::MailAssertion::with_subject_contains(self, fragment: &str) -> Self
 pub fn rullst_mail::MailAssertion::with_unsubscribe_url(self, expected_url: &str) -> Self
@@ -536,7 +536,7 @@ pub rullst_mail::Message::from: core::option::Option<alloc::string::String>
 pub rullst_mail::Message::reply_to: core::option::Option<alloc::string::String>
 pub rullst_mail::Message::unsubscribe_url: core::option::Option<alloc::string::String>
 pub rullst_mail::Message::unsubscribe_email: core::option::Option<alloc::string::String>
-pub rullst_mail::Message::send_at: core::option::Option<chrono::datetime::DateTime<chrono::offset::utc::Utc>>
+pub rullst_mail::Message::send_at: core::option::Option<jiff::timestamp::Timestamp>
 pub rullst_mail::Message::attachments: alloc::vec::Vec<rullst_mail::Attachment>
 impl rullst_mail::Message
 pub fn rullst_mail::Message::attach(self, attachment: rullst_mail::Attachment) -> Self
@@ -550,7 +550,7 @@ pub fn rullst_mail::Message::list_unsubscribe_header(&self) -> core::option::Opt
 pub fn rullst_mail::Message::new() -> Self
 pub fn rullst_mail::Message::reply_to(self, reply_to: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn rullst_mail::Message::sanitize_secrets(self) -> Self
-pub fn rullst_mail::Message::send_at(self, timestamp: chrono::datetime::DateTime<chrono::offset::utc::Utc>) -> Self
+pub fn rullst_mail::Message::send_at(self, timestamp: impl core::convert::Into<jiff::timestamp::Timestamp>) -> Self
 pub fn rullst_mail::Message::send_in(self, duration: core::time::Duration) -> Self
 pub fn rullst_mail::Message::subject(self, subject: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn rullst_mail::Message::text(self, text: impl core::convert::Into<alloc::string::String>) -> Self
