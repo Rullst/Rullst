@@ -158,6 +158,85 @@ mod native {
         }
     }
 
+    /// The text each server keeps for the rows of `exercise`, in order:
+    /// `starts_at`, `local_start`, `day`, `opens`.
+    fn stored_golden(driver: &str) -> Vec<[&'static str; 4]> {
+        match driver {
+            "postgres" => vec![
+                [
+                    "2026-10-15 09:30:00.123456+00",
+                    "2026-02-28 06:30:00.25",
+                    "2026-02-28",
+                    "08:15:30.5",
+                ],
+                [
+                    "2040-02-29 23:59:59.5+00",
+                    "2040-02-29 23:59:59.999999",
+                    "2040-02-29",
+                    "23:59:59.999999",
+                ],
+                [
+                    "2000-01-01 00:00:00+00",
+                    "2000-01-01 00:00:00",
+                    "1999-12-31",
+                    "00:00:00",
+                ],
+                [
+                    "0001-01-01 00:00:00.000001+00",
+                    "0001-01-01 00:00:00",
+                    "0001-01-01",
+                    "00:00:00.000001",
+                ],
+            ],
+            "mysql" => vec![
+                [
+                    "2026-10-15 09:30:00.123456",
+                    "2026-02-28 06:30:00.250000",
+                    "2026-02-28",
+                    "08:15:30.500000",
+                ],
+                [
+                    "2040-02-29 23:59:59.500000",
+                    "2040-02-29 23:59:59.999999",
+                    "2040-02-29",
+                    "23:59:59.999999",
+                ],
+                [
+                    "1999-12-31 23:59:59.999999",
+                    "1999-12-31 23:59:59.999999",
+                    "1999-12-31",
+                    "00:00:00.000000",
+                ],
+            ],
+            _ => vec![
+                [
+                    "2026-10-15T09:30:00.123456+00:00",
+                    "2026-02-28 06:30:00.250",
+                    "2026-02-28",
+                    "08:15:30.500",
+                ],
+                [
+                    "2040-02-29T23:59:59.500+00:00",
+                    "2040-02-29 23:59:59.999999",
+                    "2040-02-29",
+                    "23:59:59.999999",
+                ],
+                [
+                    "1999-12-31T23:59:59.999999500+00:00",
+                    "1999-12-31 23:59:59.999999500",
+                    "1999-12-31",
+                    "00:00:00",
+                ],
+                [
+                    "0001-01-01T00:00:00.000001+00:00",
+                    "0001-01-01 00:00:00",
+                    "0001-01-01",
+                    "00:00:00.000001",
+                ],
+            ],
+        }
+    }
+
     fn titles<T>(entries: &[T], title: impl Fn(&T) -> &str) -> Vec<String> {
         entries
             .iter()
@@ -396,21 +475,39 @@ mod native {
             "{driver}"
         );
 
-        if driver == "sqlite" {
-            // Both wrote the same text.
-            let stored_text: Vec<(String, String, String, String)> = rullst_orm::sqlx::query_as(
-                "SELECT starts_at, local_start, day, opens FROM contract_jiff_calendar ORDER BY id",
-            )
+        // What each server stores, as its own text: the golden corpus of the
+        // rows (one written per type), the same for both.
+        let cast = |column: &str| match driver {
+            "postgres" => format!("{column}::text"),
+            "mysql" => format!("CAST({column} AS CHAR)"),
+            _ => column.to_string(),
+        };
+        let stored_text: Vec<(String, String, String, String)> =
+            rullst_orm::sqlx::query_as(rullst_orm::sqlx::AssertSqlSafe(format!(
+                "SELECT {}, {}, {}, {} FROM contract_jiff_calendar ORDER BY id",
+                cast("starts_at"),
+                cast("local_start"),
+                cast("day"),
+                cast("opens")
+            )))
             .fetch_all(Orm::pool().expect("pool"))
             .await
             .expect("read stored text");
-            for pair in stored_text.chunks(2) {
-                assert_eq!(pair[0], pair[1], "sqlite");
+        let golden = stored_golden(driver);
+        assert_eq!(stored_text.len(), golden.len() * 2, "{driver}");
+        for (pair, expected) in stored_text.chunks(2).zip(golden) {
+            for row in pair {
+                assert_eq!(
+                    [
+                        row.0.as_str(),
+                        row.1.as_str(),
+                        row.2.as_str(),
+                        row.3.as_str()
+                    ],
+                    expected,
+                    "{driver}"
+                );
             }
-            assert_eq!(stored_text[0].0, "2026-10-15T09:30:00.123456+00:00");
-            assert_eq!(stored_text[0].1, "2026-02-28 06:30:00.250");
-            assert_eq!(stored_text[2].0, "2040-02-29T23:59:59.500+00:00");
-            assert_eq!(stored_text[4].0, "1999-12-31T23:59:59.999999500+00:00");
         }
 
         // Updates through either type.
