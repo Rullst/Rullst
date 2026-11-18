@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794953616841,
+  "lastUpdate": 1794963491191,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -24213,6 +24213,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3708,
             "range": "± 13",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ad761a9ca00857b7ee2bc8e4d8f98be7302eb97c",
+          "message": "Merge pull request #763 from Rullst/fix/v13-windows-file-target-tests\n\nfix(ai,security): roll back partial writes on Windows; fix Unix-only file-target tests",
+          "timestamp": "2026-11-17T21:33:54-03:00",
+          "tree_id": "b9b9b2e646e2baabe65fd17ec950dec9e38baae5",
+          "url": "https://github.com/Rullst/Rullst/commit/ad761a9ca00857b7ee2bc8e4d8f98be7302eb97c"
+        },
+        "date": 1794963490452,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 979,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 716,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1702,
+            "range": "± 63",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4225,
+            "range": "± 20",
             "unit": "ns/iter"
           }
         ]
