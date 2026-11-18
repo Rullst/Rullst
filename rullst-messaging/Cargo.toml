@@ -26,7 +26,7 @@ sqlite = ["sqlx/sqlite", "dep:aes-gcm", "dep:serde_json", "dep:sqlx", "dep:url",
 orm-outbox = ["dep:rullst-orm", "dep:serde_json"]
 redis-streams = ["dep:redis", "dep:rustls", "dep:url", "tokio/time"]
 
-schedules-postgres = ["dep:subtle","dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls-aws-lc-rs", "dep:url", "dep:aes-gcm", "dep:zeroize", "dep:serde_json", "dep:chrono", "dep:cron", "dep:getrandom", "tokio/time"]
+schedules-postgres = ["dep:subtle","dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls-aws-lc-rs", "dep:url", "dep:aes-gcm", "dep:zeroize", "dep:serde_json", "dep:getrandom", "tokio/time"]
 
 webhooks = ["sqlite", "dep:reqwest", "dep:hmac", "dep:base64", "tokio/net", "tokio/time"]
 
@@ -46,8 +46,6 @@ url = { version = "2.5.8", optional = true }
 uuid = { workspace = true, features = ["v4"] }
 zeroize = { workspace = true, optional = true }
 
-chrono = { workspace = true, features = ["std"], optional = true }
-cron = { version = "0.17.0", optional = true }
 getrandom = { version = "0.4.2", optional = true }
 
 subtle = { workspace = true, optional = true }
@@ -57,6 +55,9 @@ hmac = { workspace = true, optional = true }
 base64 = { workspace = true, optional = true }
 
 [dev-dependencies]
+# Differential test of the POSIX schedules against Core's scheduler evaluator.
+proptest = "1.11.0"
+rullst-core = { workspace = true, features = ["test-util"] }
 # `Outbox::claim_next_at` for the ORM outbox relay tests.
 rullst-orm = { workspace = true, features = ["test-util"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "process", "io-std", "io-util"] }

@@ -242,3 +242,17 @@ async fn ticks_wait_for_their_time() {
     let runs = runs.load(Ordering::SeqCst);
     assert!(runs <= 3, "{runs} runs in 1.5 seconds");
 }
+
+#[cfg(feature = "test-util")]
+#[test]
+fn the_test_hook_reports_the_scheduler_occurrences() {
+    use super::__test_hooks::cron_next_after;
+    // 2026-11-17T10:14:30Z, a Tuesday; the next Monday 09:00 is the 23rd.
+    assert_eq!(
+        cron_next_after("0 9 * * 1", 1_794_910_470_000),
+        Ok(Some(1_795_424_400_000))
+    );
+    assert_eq!(cron_next_after("0 0 31 2 *", 0), Ok(None));
+    assert!(cron_next_after("0 9 * * 8", 0).is_err());
+    assert!(cron_next_after("* * * * *", i64::MAX).is_err());
+}

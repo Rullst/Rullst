@@ -37,6 +37,10 @@ redis = ["queue-redis", "cache-redis"]
 queue-redis = ["dep:redis"]
 cache-redis = ["dep:redis"]
 scheduler-tz = ["jiff/tzdb-zoneinfo", "jiff/tzdb-bundle-always"]
+# Test helpers for Rullst's own test suites, outside the 13.x stability
+# promise: `scheduler::__test_hooks`, which Messaging's POSIX schedules are
+# checked against.
+test-util = []
 storage-s3 = ["dep:aws-credential-types", "dep:aws-sigv4", "dep:reqwest", "tls"]
 storage-multipart = ["storage-s3", "dep:aes-gcm", "dep:roxmltree", "dep:zeroize"]
 telemetry = ["dep:tracing-opentelemetry", "dep:opentelemetry", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk", "dep:opentelemetry-http", "dep:opentelemetry-proto", "dep:prost", "dep:reqwest", "reqwest/blocking", "tls"]
