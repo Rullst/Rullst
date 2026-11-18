@@ -64,17 +64,19 @@ pub struct Invoice {
 }
 
 impl Invoice {
-    /// Creates an invoice without items and with English labels.
+    /// Creates an invoice without items and with English labels. `date` is a
+    /// `jiff::Timestamp` or anything that converts into one, such as the
+    /// ORM's `Timestamp`.
     pub fn new(
         invoice_id: impl Into<String>,
         customer_email: impl Into<String>,
-        date: Timestamp,
+        date: impl Into<Timestamp>,
         currency: impl Into<String>,
     ) -> Self {
         Self {
             invoice_id: invoice_id.into(),
             customer_email: customer_email.into(),
-            date,
+            date: date.into(),
             items: Vec::new(),
             currency: currency.into(),
             labels: InvoiceLabels::default(),
