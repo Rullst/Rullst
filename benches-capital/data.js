@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794963881729,
+  "lastUpdate": 1794967738580,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -18620,6 +18620,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1010a51e4f2d7014ddfe8a410d21c68bc8ea5b5c",
+          "message": "Merge pull request #764 from Rullst/ci/v13-dependency-health-reviews\n\nci(deps): let reviewed health flags stay out of the issue",
+          "timestamp": "2026-11-17T22:38:46-03:00",
+          "tree_id": "0e17ed91a23257034635839a253be8a2330adb3a",
+          "url": "https://github.com/Rullst/Rullst/commit/1010a51e4f2d7014ddfe8a410d21c68bc8ea5b5c"
+        },
+        "date": 1794967737749,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 7,
             "range": "± 0",
             "unit": "ns/iter"
           }
