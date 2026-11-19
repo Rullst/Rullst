@@ -10,6 +10,9 @@ extend-exclude = [
     "rullst-connect/src/providers/google.rs",
     "rullst-connect/src/providers/oidc.rs",
     "sbom-cyclonedx.json",
+    # Golden corpora of the ORM's date/time types: generated text and hex
+    # bytes recorded from chrono.
+    "rullst-orm/src/temporal/golden/",
     # CLDR month, weekday and currency names in other languages (generated
     # tables).
     "rullst-core/src/i18n/format/data_dates.rs",

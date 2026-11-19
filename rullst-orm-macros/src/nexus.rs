@@ -156,54 +156,8 @@ fn unwrapped_type_name(field_type: &Type) -> String {
     type_name
 }
 
-/// The chrono date/time widget of a field, by path segment rather than by
-/// spelling: `DateTime<Utc>` under any `chrono::` prefix is a UTC instant,
-/// `NaiveDateTime` a date-time, `NaiveDate` a date and `NaiveTime` a time.
-fn chrono_field_kind(field_type: &Type) -> Option<TokenStream2> {
-    let mut field_type = field_type;
-    if let Some(inner) = option_inner(field_type) {
-        field_type = inner;
-    }
-    let Type::Path(path) = field_type else {
-        return None;
-    };
-    let segment = path.path.segments.last()?;
-    match segment.ident.to_string().as_str() {
-        "NaiveDateTime" => Some(quote!(::rullst::nexus::FieldKind::DateTime)),
-        "NaiveDate" => Some(quote!(::rullst::nexus::FieldKind::Date)),
-        "NaiveTime" => Some(quote!(::rullst::nexus::FieldKind::Time)),
-        "DateTime" => {
-            let syn::PathArguments::AngleBracketed(arguments) = &segment.arguments else {
-                return None;
-            };
-            let utc = matches!(
-                arguments.args.first(),
-                Some(syn::GenericArgument::Type(Type::Path(zone)))
-                    if zone.path.segments.last().is_some_and(|zone| zone.ident == "Utc")
-            );
-            utc.then(|| quote!(::rullst::nexus::FieldKind::DateTimeUtc))
-        }
-        _ => None,
-    }
-}
-
-/// `T` of an `Option<T>` field type.
-fn option_inner(field_type: &Type) -> Option<&Type> {
-    let Type::Path(path) = field_type else {
-        return None;
-    };
-    let segment = path.path.segments.last()?;
-    let syn::PathArguments::AngleBracketed(arguments) = &segment.arguments else {
-        return None;
-    };
-    match arguments.args.first() {
-        Some(syn::GenericArgument::Type(inner)) if segment.ident == "Option" => Some(inner),
-        _ => None,
-    }
-}
-
 fn inferred_field_kind(field_type: &Type) -> TokenStream2 {
-    if let Some(kind) = chrono_field_kind(field_type).or_else(|| integer_field_kind(field_type)) {
+    if let Some(kind) = integer_field_kind(field_type) {
         return kind;
     }
     match unwrapped_type_name(field_type).as_str() {

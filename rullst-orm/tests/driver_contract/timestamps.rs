@@ -10,7 +10,7 @@ use rullst_orm::schema::{Blueprint, ColumnDefault, Schema};
     feature = "strict-mysql",
     feature = "strict-sqlite"
 ))]
-type Stamp = rullst_orm::chrono::DateTime<rullst_orm::chrono::Utc>;
+type Stamp = rullst_orm::Timestamp;
 #[cfg(not(any(
     feature = "strict-postgres",
     feature = "strict-mysql",

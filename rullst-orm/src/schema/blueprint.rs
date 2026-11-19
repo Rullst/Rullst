@@ -110,7 +110,7 @@ impl Blueprint {
         self.add_column(name, &col_type)
     }
 
-    /// Adds a calendar-date column for a [`crate::Date`] (or `chrono::NaiveDate`)
+    /// Adds a calendar-date column for a [`crate::Date`]
     /// field: `DATE` on
     /// PostgreSQL and MySQL/MariaDB, ISO-8601 `TEXT` (`YYYY-MM-DD`) on SQLite.
     ///
@@ -123,7 +123,7 @@ impl Blueprint {
         self.add_driver_typed_column(name, DriverType::Date)
     }
 
-    /// Adds a time-of-day column for a [`crate::Time`] (or `chrono::NaiveTime`)
+    /// Adds a time-of-day column for a [`crate::Time`]
     /// field: `TIME` on PostgreSQL, `TIME(6)` on MySQL/MariaDB and `TEXT` (`HH:MM:SS[.f]`) on
     /// SQLite. See [`Blueprint::date`] for the driver requirement. Added in v13.
     pub fn time(&mut self, name: &str) -> &mut Column {
@@ -131,7 +131,7 @@ impl Blueprint {
     }
 
     /// Adds a date-and-time column without a zone for a [`crate::DateTime`]
-    /// (or `chrono::NaiveDateTime`) field: `TIMESTAMP` on PostgreSQL,
+    /// field: `TIMESTAMP` on PostgreSQL,
     /// `DATETIME(6)` on MySQL/MariaDB and `TEXT` (`YYYY-MM-DD HH:MM:SS[.f]`)
     /// on SQLite. A `ColumnDefault::CurrentTimestamp` default is the current
     /// UTC wall time. See [`Blueprint::date`] for the driver requirement.
@@ -140,8 +140,7 @@ impl Blueprint {
         self.add_driver_typed_column(name, DriverType::Timestamp)
     }
 
-    /// Adds a UTC-instant column for a [`crate::Timestamp`] (or
-    /// `chrono::DateTime<Utc>`) field:
+    /// Adds a UTC-instant column for a [`crate::Timestamp`] field:
     /// `TIMESTAMPTZ` on PostgreSQL, `DATETIME(6)` holding UTC on
     /// MySQL/MariaDB (whose `TIMESTAMP` ends in 2038; SQLx sets the session
     /// time zone to `+00:00`) and RFC 3339 `TEXT`
@@ -196,8 +195,7 @@ impl Blueprint {
     ///
     /// With a strict driver feature (`strict-postgres`, `strict-mysql`,
     /// `strict-sqlite`, which generated projects use) they are
-    /// [`Blueprint::timestamp_tz`] columns for [`crate::Timestamp`] (or
-    /// `chrono::DateTime<Utc>`) fields:
+    /// [`Blueprint::timestamp_tz`] columns for [`crate::Timestamp`] fields:
     /// `TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP` on PostgreSQL,
     /// `DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6)` on MySQL/MariaDB and RFC 3339
     /// `TEXT` on SQLite. Since v13; alpha.1 created `TEXT` columns.

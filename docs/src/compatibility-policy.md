@@ -191,8 +191,8 @@ and `utoipa` (`Studio::with_openapi` takes any `serde::Serialize` document).
 | `async-trait` | `0.1` | `rullst::async_trait` |
 | `aws-sdk-sesv2` | `1` | Mail: `rullst::mail::aws_ses_sdk` and the native `AwsSesDriver` constructors |
 | `axum` | `0.8` | `rullst::web::axum`, `Router`, handlers and extractors of Core, Auth, Security, Capital, Connect, Nexus and Studio |
-| `chrono` | `0.4` | Core date formatting, `rullst::orm::chrono`, Mail and Capital |
 | `http` | `1` | `rullst::http` and the header, method and status types of the web crates |
+| `jiff` | `1` | `rullst::orm::jiff` and the ORM date/time types (`rullst::orm::Timestamp`, `DateTime`, `Date`, `Time`), which dereference to and convert from jiff's; Core, Mail and Capital date and time values |
 | `pgvector` | `0.4` | `rullst::orm::Vector` (`orm-pgvector`) |
 | `redis` | `1` | ORM: `Orm::redis_client` and `Orm::redis_manager` (`redis` feature), deliberately: they hand the application the ORM's own Redis client and connection manager |
 | `secrecy` | `0.10` | Connect tokens (`SecretString`, `prelude::ExposeSecret`) |

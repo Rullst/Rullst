@@ -6,8 +6,7 @@
 /// An integer literal stays `Int` (`i32`); `i64` and `u32` become `I64`, and
 /// `Option<T>` becomes `T`'s value or `Null`. The date/time types
 /// ([`crate::Timestamp`], [`crate::DateTime`], [`crate::Date`],
-/// [`crate::Time`]) and the `chrono` ones become their own variants, which
-/// bind the same parameter for the same value. The enum is
+/// [`crate::Time`]) become their own variants. The enum is
 /// `#[non_exhaustive]` since v13: match it with a wildcard arm.
 #[derive(Clone, Debug)]
 #[non_exhaustive]
@@ -26,35 +25,22 @@ pub enum RullstValue {
     /// Added in v13.
     Null,
     /// A UTC instant, for `timestamp_tz()` columns. With a strict driver
-    /// feature it is bound as SQLx's `DateTime<Utc>`, except on MySQL/MariaDB,
-    /// which receive its UTC wall time as a `DATETIME` (`NaiveDateTime`)
+    /// feature it is bound with [`crate::Timestamp`]'s codec, except on
+    /// MySQL/MariaDB, which receive its UTC wall time as a `DATETIME`
     /// parameter, because MariaDB turns a `TIMESTAMP` parameter outside
-    /// 1970–2038 into `NULL`; the SQLx `Any` pool
-    /// binds RFC 3339 text (`2026-10-15T09:30:00.500+00:00`), the form a
-    /// SQLite `timestamp_tz()` column stores. Added in v13.
-    DateTime(chrono::DateTime<chrono::Utc>),
-    /// A date and time without a zone, for `timestamp()` columns; text
-    /// `YYYY-MM-DD HH:MM:SS[.f]` on the `Any` pool. Added in v13.
-    NaiveDateTime(chrono::NaiveDateTime),
-    /// A calendar date, for `date()` columns; text `YYYY-MM-DD` on the `Any`
-    /// pool. Added in v13.
-    Date(chrono::NaiveDate),
-    /// A time of day, for `time()` columns; text `HH:MM:SS[.f]` on the `Any`
-    /// pool. Added in v13.
-    Time(chrono::NaiveTime),
-    /// A UTC instant, for `timestamp_tz()` columns: bound exactly as
-    /// [`RullstValue::DateTime`] binds the same instant (a `DATETIME`
-    /// parameter on MySQL/MariaDB, RFC 3339 text on the `Any` pool). Added in
-    /// 13.0.0-alpha.6.
+    /// 1970–2038 into `NULL`; the SQLx `Any` pool binds RFC 3339 text
+    /// (`2026-10-15T09:30:00.500+00:00`), the form a SQLite `timestamp_tz()`
+    /// column stores. Added in 13.0.0-alpha.6, replacing `DateTime`.
     Timestamp(crate::Timestamp),
-    /// A date and time without a zone, for `timestamp()` columns: bound as
-    /// [`RullstValue::NaiveDateTime`]. Added in 13.0.0-alpha.6.
+    /// A date and time without a zone, for `timestamp()` columns; text
+    /// `YYYY-MM-DD HH:MM:SS[.f]` on the `Any` pool. Added in 13.0.0-alpha.6,
+    /// replacing `NaiveDateTime`.
     CivilDateTime(crate::DateTime),
-    /// A calendar date, for `date()` columns: bound as [`RullstValue::Date`].
-    /// Added in 13.0.0-alpha.6.
+    /// A calendar date, for `date()` columns; text `YYYY-MM-DD` on the `Any`
+    /// pool. Added in 13.0.0-alpha.6, replacing `Date`.
     CivilDate(crate::Date),
-    /// A time of day, for `time()` columns: bound as [`RullstValue::Time`].
-    /// Added in 13.0.0-alpha.6.
+    /// A time of day, for `time()` columns; text `HH:MM:SS[.f]` on the `Any`
+    /// pool. Added in 13.0.0-alpha.6, replacing `Time`.
     CivilTime(crate::Time),
 }
 
@@ -77,10 +63,6 @@ macro_rules! bind_rullst_value {
             RullstValue::Bool(value) => $query.bind(*value),
             RullstValue::I64(value) => $query.bind(*value),
             RullstValue::Null => $query.bind(None::<String>),
-            RullstValue::DateTime(value) => $query.bind(temporal::date_time(value)),
-            RullstValue::NaiveDateTime(value) => $query.bind(temporal::naive_date_time(value)),
-            RullstValue::Date(value) => $query.bind(temporal::date(value)),
-            RullstValue::Time(value) => $query.bind(temporal::time(value)),
             RullstValue::Timestamp(value) => $query.bind(temporal::timestamp(*value)),
             RullstValue::CivilDateTime(value) => $query.bind(temporal::civil_date_time(*value)),
             RullstValue::CivilDate(value) => $query.bind(temporal::civil_date(*value)),
@@ -98,31 +80,13 @@ macro_rules! bind_rullst_value {
     feature = "strict-sqlite"
 )))]
 mod temporal {
-    use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, SecondsFormat, Utc};
-
-    pub(super) fn date_time(value: &DateTime<Utc>) -> String {
-        value.to_rfc3339_opts(SecondsFormat::AutoSi, false)
-    }
-
-    pub(super) fn naive_date_time(value: &NaiveDateTime) -> String {
-        value.format("%F %T%.f").to_string()
-    }
-
-    pub(super) fn date(value: &NaiveDate) -> String {
-        value.format("%F").to_string()
-    }
-
-    pub(super) fn time(value: &NaiveTime) -> String {
-        value.format("%T%.f").to_string()
-    }
-
     pub(super) use crate::temporal::text::{
         date as civil_date, date_time as civil_date_time, time as civil_time, timestamp,
     };
 }
 
-/// Date/time parameters with a strict driver: SQLx's own `chrono` codecs. A
-/// UTC instant is bound as generated writes bind it (`__bind_field::wire`):
+/// Date/time parameters with a strict driver: the types' own codecs. A UTC
+/// instant is bound as generated writes bind it (`__bind_field::timestamp_wire`):
 /// the UTC wall time as a `DATETIME` parameter on MySQL/MariaDB, whose
 /// `TIMESTAMP` parameters MariaDB nulls outside 1970–2038.
 #[cfg(any(
@@ -131,24 +95,6 @@ mod temporal {
     feature = "strict-sqlite"
 ))]
 mod temporal {
-    use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
-
-    pub(super) fn date_time(value: &DateTime<Utc>) -> crate::__bind_field::Wire {
-        crate::__bind_field::wire(*value)
-    }
-
-    pub(super) fn naive_date_time(value: &NaiveDateTime) -> NaiveDateTime {
-        *value
-    }
-
-    pub(super) fn date(value: &NaiveDate) -> NaiveDate {
-        *value
-    }
-
-    pub(super) fn time(value: &NaiveTime) -> NaiveTime {
-        *value
-    }
-
     pub(super) fn timestamp(value: crate::Timestamp) -> crate::__bind_field::TimestampWire {
         crate::__bind_field::timestamp_wire(value)
     }
@@ -217,30 +163,6 @@ impl From<i64> for RullstValue {
 impl From<u32> for RullstValue {
     fn from(value: u32) -> Self {
         RullstValue::I64(i64::from(value))
-    }
-}
-
-impl From<chrono::DateTime<chrono::Utc>> for RullstValue {
-    fn from(value: chrono::DateTime<chrono::Utc>) -> Self {
-        RullstValue::DateTime(value)
-    }
-}
-
-impl From<chrono::NaiveDateTime> for RullstValue {
-    fn from(value: chrono::NaiveDateTime) -> Self {
-        RullstValue::NaiveDateTime(value)
-    }
-}
-
-impl From<chrono::NaiveDate> for RullstValue {
-    fn from(value: chrono::NaiveDate) -> Self {
-        RullstValue::Date(value)
-    }
-}
-
-impl From<chrono::NaiveTime> for RullstValue {
-    fn from(value: chrono::NaiveTime) -> Self {
-        RullstValue::Time(value)
     }
 }
 

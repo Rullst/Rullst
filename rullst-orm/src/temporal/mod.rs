@@ -303,3 +303,7 @@ mod tests;
 #[cfg(test)]
 #[path = "support_tests.rs"]
 pub(crate) mod test_support;
+
+#[cfg(all(test, feature = "drivers-all"))]
+#[path = "golden_tests.rs"]
+mod golden;
