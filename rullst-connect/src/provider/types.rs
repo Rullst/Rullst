@@ -84,7 +84,9 @@ impl<'a> ExchangeParams<'a> {
         self
     }
 
-    /// The same parameters with the nonce the ID token must carry.
+    /// The same parameters with the nonce the ID token must carry. For a
+    /// nonce that may be absent, assign the public field instead:
+    /// `params.expected_nonce = stored_nonce.as_deref();`.
     pub fn with_expected_nonce(mut self, expected_nonce: &'a str) -> Self {
         self.expected_nonce = Some(expected_nonce);
         self

@@ -173,6 +173,29 @@ pub struct DeviceAuthorizationResponse {
     pub interval: Option<u64>,
 }
 
+impl DeviceAuthorizationResponse {
+    /// A response without the optional `verification_uri_complete` and
+    /// `interval`; set those fields directly when the provider returns them.
+    /// The struct is `#[non_exhaustive]` since 13.0.0-alpha.6, so a custom
+    /// [`Provider::request_device_code`](crate::Provider::request_device_code)
+    /// builds it here. Since 13.0.0-alpha.6.
+    pub fn new(
+        device_code: impl Into<String>,
+        user_code: impl Into<String>,
+        verification_uri: impl Into<String>,
+        expires_in: u64,
+    ) -> Self {
+        Self {
+            device_code: device_code.into(),
+            user_code: user_code.into(),
+            verification_uri: verification_uri.into(),
+            verification_uri_complete: None,
+            expires_in,
+            interval: None,
+        }
+    }
+}
+
 /// Redacts `device_code`, the secret the device polls with. `user_code` is
 /// shown to the user by design and stays visible.
 impl std::fmt::Debug for DeviceAuthorizationResponse {
