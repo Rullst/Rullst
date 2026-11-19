@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795052919724,
+  "lastUpdate": 1795055924132,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -24549,6 +24549,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3704,
             "range": "± 65",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dadfa7fdd6a6646119b8623f3e3e2b55510810f2",
+          "message": "Merge pull request #767 from Rullst/refactor/v13-studio-redundant-checks\n\nrefactor(studio): drop two redundant conditions",
+          "timestamp": "2026-11-18T23:24:35-03:00",
+          "tree_id": "817fd3ea81ba69b8e9eff2be8337f2c253f73a3e",
+          "url": "https://github.com/Rullst/Rullst/commit/dadfa7fdd6a6646119b8623f3e3e2b55510810f2"
+        },
+        "date": 1795055922955,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 607,
+            "range": "± 27",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 484,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1092,
+            "range": "± 54",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3132,
+            "range": "± 183",
             "unit": "ns/iter"
           }
         ]
