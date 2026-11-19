@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795062874680,
+  "lastUpdate": 1795065259096,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -15303,6 +15303,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 382,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ae533e2478882f264b27c92a092c28a090117b1d",
+          "message": "Merge pull request #755 from Rullst/feat/v13-jiff-docs\n\ndocs(v13): document the move from chrono to jiff",
+          "timestamp": "2026-11-19T02:00:14-03:00",
+          "tree_id": "ced36ea665aaba734552b54bda4b099e46ac5cfb",
+          "url": "https://github.com/Rullst/Rullst/commit/ae533e2478882f264b27c92a092c28a090117b1d"
+        },
+        "date": 1795065258804,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 351,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
