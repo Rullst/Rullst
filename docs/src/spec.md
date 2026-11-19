@@ -1178,7 +1178,8 @@ database and relays them to the existing static `MessageBroker` contract. Core's
 process-local `Scheduler` retains its API; it evaluates POSIX five-field
 expressions in UTC (weekday 0/7=Sun, either restricted day field matches), or
 in a named IANA zone through the opt-in `scheduler-tz` `task_in_tz` (section
-4.3), unlike the projection below. A broker publication is
+4.3). Since 13.0.0-alpha.6 new recurring definitions use the same UTC syntax
+(below). A broker publication is
 not proof of handler completion or an exactly-once external effect.
 
 Require a server-owned namespace, immutable limits and explicit encrypted storage
@@ -1188,12 +1189,29 @@ namespace and broker. Creation is idempotent for the same immutable definition;
 conflicting reuse fails. An edit requires cancellation and a new schedule name,
 with immutable generation identities protecting retained occurrence keys.
 
-Use POSIX five-field cron in UTC, read as Core's `Scheduler::task` reads it
-(weekday 0/7=Sun, either restricted day field matches, names accepted; since
-13.0.0-alpha.6; definitions stored earlier keep the cron crate's 1=Sun..7=Sat
-intersecting grammar as `CronSyntax::Legacy`), with a
-one-minute minimum resolution, bounded
+Evaluate a new definition's five fields with Core's POSIX evaluator in UTC
+(weekday 0-7 with 0 and 7 Sunday, names accepted, a day matching either
+restricted day field, each field valid on its own), with a one-minute minimum
+resolution, bounded
 definitions/payloads, explicit first-after time and explicit missed-run policy.
+Each stored definition records its syntax. A definition created before
+13.0.0-alpha.6 has no such record and keeps the legacy `cron`-crate projection
+(weekday 1=Sun through 7=Sat, calendar-day and weekday restrictions
+intersect, a field starting or ending with `,`, `-` or `/` joined with its
+neighbour); the legacy syntax is deprecated and its reading is planned for
+removal in 14.0. `RecurringDefinition::syntax()` and
+`RecurringMetadata::syntax()` return the `#[non_exhaustive]`
+`CronSyntax::Posix` or `CronSyntax::Legacy`, and
+`RecurringDefinition::posix_equivalent()` returns the POSIX expression with
+exactly the same occurrences, or `None` when none exists (both day fields
+restricted, joined tokens, over 128 bytes). `RecurringDefinition::new`
+rejects legacy-only expressions with a distinct `InvalidInput` message;
+stored legacy rows keep running, and `create` accepts a legacy definition
+deserialized from earlier JSON. Creating a definition equal to a stored
+legacy one except for its syntax replays the stored metadata (`Legacy`, with a
+logged warning); any other definition under a legacy name fails with
+`RecurringError::LegacyDefinition`. A 13.0 prerelease before alpha.6 cannot
+read definitions that record their syntax.
 Bounded catch-up emits the oldest due occurrences within the caller's tick budget;
 coalescing emits one oldest outstanding occurrence and advances after the observed
 current time. Advancing the schedule and persisting frozen occurrence content
@@ -1751,7 +1769,7 @@ type or infer application compatibility.
 
 `Blueprint::timestamps()` adds nullable `created_at`/`updated_at` columns
 that default to the database's current time. With a strict driver feature they
-are `timestamp_tz()` columns (below), read as `chrono::DateTime<Utc>`. The SQLx
+are `timestamp_tz()` columns (below), read as `rullst_orm::Timestamp`. The SQLx
 `Any` pool cannot read date/time values, so there they stay `TEXT` columns for
 `String` fields: SQLite and PostgreSQL receive `DEFAULT CURRENT_TIMESTAMP`, and
 MySQL/MariaDB, which accept a default on `TEXT`, `BLOB`, `JSON` or `GEOMETRY`
@@ -1809,8 +1827,21 @@ default return `Error::UnsupportedSchemaChange { driver, change }` before any
 statement runs.
 
 `date()`, `time()`, `timestamp()` and `timestamp_tz()` are columns for
-`chrono::NaiveDate`, `NaiveTime`, `NaiveDateTime` and `DateTime<Utc>` fields
-(`rullst_orm::chrono`): `DATE`, `TIME`, `TIMESTAMP` and `TIMESTAMPTZ` on
+`rullst_orm::Date`, `Time`, `DateTime` and `Timestamp` fields (module
+`rullst_orm::temporal`, also `rullst::orm::*` and `rullst::db::*`). Since
+13.0.0-alpha.6 these Rullst-owned types replace `chrono`'s `NaiveDate`,
+`NaiveTime`, `NaiveDateTime` and `DateTime<Utc>` (RUSTSEC-2026-0543 marks
+`chrono` unmaintained): SQLx 0.9 has date/time codecs only for `chrono` and
+`time`, and the orphan rule keeps the ORM from implementing SQLx's traits for
+jiff's types. Each wraps the `jiff` 1 type of the same role
+(`jiff::civil::Date`, `civil::Time`, `civil::DateTime`, `jiff::Timestamp`),
+converts to and from it with `From`, dereferences to it and is `Copy`, `Ord`
+and `Hash`; `Timestamp::now()` reads the system clock. `rullst_orm::jiff`
+(`rullst::orm::jiff`) re-exports the crate, and `rullst_orm::chrono` no longer
+exists. They write exactly the bytes the `chrono` codecs wrote and read every
+form those read, so stored data needs no migration (text, defaults and range
+below). They map to `DATE`, `TIME`,
+`TIMESTAMP` and `TIMESTAMPTZ` on
 PostgreSQL; `DATE`, `TIME(6)` and `DATETIME(6)` (a UTC instant for
 `timestamp_tz`, because `TIMESTAMP` ends in 2038, with SQLx setting the session
 time zone to `+00:00`) on MySQL/MariaDB; and ISO-8601 `TEXT` on SQLite in the
@@ -1821,26 +1852,28 @@ column's form (`CURRENT_TIMESTAMP` for `TIMESTAMPTZ`, `CURRENT_TIMESTAMP AT
 TIME ZONE 'UTC'` for the zone-less PostgreSQL types, `CURRENT_TIMESTAMP(6)`,
 `(CURRENT_DATE)` or `(CURRENT_TIME(6))` on MySQL/MariaDB, and on SQLite
 `strftime('%Y-%m-%dT%H:%M:%f+00:00', 'now')` for `timestamp_tz`). These
-columns and `chrono` fields need a strict driver feature: on the SQLx `Any`
+columns and date/time fields need a strict driver feature: on the SQLx `Any`
 pool `Schema::create`/`Schema::table` reject the native helpers on PostgreSQL
 and MySQL/MariaDB with `Error::Validation` before DDL, because a table holding
-such a column could not be read. `RullstValue` gains `DateTime`,
-`NaiveDateTime`, `Date` and `Time` variants, bound through SQLx's `chrono`
-codecs on strict pools and as that ISO-8601 text on the `Any` pool. On the
-MySQL/MariaDB pool a UTC instant, in a filter, an `Orm::raw` binding or a
-generated write of a `DateTime<Utc>` or `Option<DateTime<Utc>>` field, is sent
-as its UTC wall time in a `DATETIME` parameter (`NaiveDateTime`), because
+such a column could not be read. `RullstValue` has `Timestamp`,
+`CivilDateTime`, `CivilDate` and `CivilTime` variants (they replaced the
+`chrono` variants `DateTime`, `NaiveDateTime`, `Date` and `Time` in
+13.0.0-alpha.6), bound through the types' own codecs on strict pools and as
+that ISO-8601 text on the `Any` pool. On the MySQL/MariaDB pool a UTC instant,
+in a filter, an `Orm::raw` binding or a generated write of a `Timestamp` or
+`Option<Timestamp>` field, is sent as its UTC wall time in a `DATETIME`
+parameter (a civil `DateTime`), because
 MariaDB turns SQLx's `TIMESTAMP` parameter into `NULL` outside 1970–2038
 (since 13.0.0-alpha.5).
 
-Since 13.0.0-alpha.6 the ORM has its own date/time types for these columns,
-built on `jiff` 1.0 (`rullst_orm::jiff`): `Timestamp` (`timestamp_tz()`),
-`DateTime` (`timestamp()`), `Date` and `Time`, in `rullst_orm::temporal` and at
-the crate root. Each wraps the jiff type of the same name (`Deref`, `From` both
-ways; `Display`, `Debug` and serde write chrono's text, `FromStr` and serde
-read every text chrono read and jiff's forms; `Default` as chrono's: the Unix
-epoch, 1970-01-01 and midnight) and binds and decodes with a strict driver
-feature, as the `chrono` types do: the same
+The four types keep what applications observed of the `chrono` types:
+`Display`, `Debug` and serde write chrono's text byte for byte (a `Timestamp`
+displays as `2026-10-15 09:30:00.500 UTC` and serializes as
+`"2026-10-15T09:30:00.500Z"`; the jiff value behind `Deref` formats in jiff's
+style), `FromStr` and serde read every text chrono read first and then jiff's
+forms (`FromStr::Err` is `jiff::Error`), and `Default` is chrono's (the Unix
+epoch, 1970-01-01T00:00:00, 1970-01-01 and midnight). They bind and decode with
+a strict driver feature as the `chrono` types did: the same
 PostgreSQL and MySQL/MariaDB binary parameters (PostgreSQL microseconds since
 2000 truncated toward 2000; the MySQL/MariaDB length-prefixed date and time
 fields), the same SQLite text, the same `DATETIME` parameter for an instant in
@@ -1852,14 +1885,18 @@ in one column. Reading differs at the ends of jiff's range, without clamping:
 -9999-01-02T01:59:59Z to 9999-12-30T22:00:00.999999999Z, so a value outside
 (including the sentinel `9999-12-31 23:59:59` in a `timestamptz` or `DATETIME`
 read as a `Timestamp`; `WHERE col > '9999-12-30 22:00:00+00'` finds such rows)
-is a decode or parse error; a leap second reads as second 59 with its
-fraction; PostgreSQL `infinity` is an error, where `chrono` panicked; and a
-MySQL/MariaDB zero or truncated binary value is an error, where SQLx's
-`chrono` decoder could panic. `rullst::db::*` also exports the four names, so
-together with `use chrono::prelude::*` the name `DateTime` is ambiguous. `RullstValue` gains `Timestamp`,
-`CivilDateTime`, `CivilDate` and `CivilTime`, bound as the `chrono` variants
-bind the same value (as text on the `Any` pool, which decodes neither type), and
-Redis query-cache keys are the same for an equal value of either type.
+is a decode or parse error whose message suggests NULL in an
+`Option<Timestamp>` field, a value within the range, or reading the column as a
+civil `DateTime`, which keeps the full range; a leap second reads as second 59
+with its fraction; a few lenient forms that only `chrono` read from stored
+text (a space before the offset, a `UTC` suffix) no longer decode; PostgreSQL
+`infinity` is an error, where `chrono` panicked; and a MySQL/MariaDB zero or
+truncated binary value is an error, where SQLx's `chrono` decoder could panic.
+None of these is a value Rullst writes. `rullst::db::*` also exports the four
+names, so together with `use chrono::prelude::*` the name `DateTime` is
+ambiguous. The `RullstValue` variants bind as the `chrono` variants bound the
+same value (as text on the `Any` pool, which decodes neither type), and Redis
+query-cache keys are those of an equal `chrono` value.
 `soft_deletes()` keeps a `TEXT` `deleted_at` column. The Turso adapter
 (`TursoMigration`, `TursoModel`) writes its own SQL, so none of these builders
 or date/time codecs apply to it; its timestamps stay text.
@@ -2537,8 +2574,9 @@ the same server-authoritative controls.
   Into<Decimal>)`, `format_percent(ratio)`, `format_currency(minor_units:
   i64, Currency)`, `format_date(impl Into<jiff::civil::Date>, DateStyle)`,
   `format_time(impl Into<jiff::civil::Time>, TimeStyle)` and
-  `format_datetime(impl Into<jiff::civil::DateTime>, ..)` (chrono's
-  `Datelike`/`Timelike` before 13.0.0-alpha.6)
+  `format_datetime(impl Into<jiff::civil::DateTime>, DateStyle, TimeStyle)`
+  (since 13.0.0-alpha.6; they took `&impl chrono::Datelike`/`Timelike`
+  before, and an instant is passed as `&jiff::ZonedDateTime`)
   return `String`s with CLDR 48 conventions compiled in (generated from ICU
   78 and CLDR's date patterns by `.github/generate-i18n-format-data.py`; no
   runtime data or network). Data exist for `ar`, `cs`, `de`, `en`, `en-GB`,
@@ -2589,7 +2627,8 @@ the same server-authoritative controls.
   window rule to each tick within a maximum delay.
 * `Scheduler::task` matches POSIX five-field cron against UTC. Since
   13.0.0-alpha.6 Core evaluates the fields itself instead of with the `cron`
-  crate, which stays a dev-dependency for differential tests: the same syntax
+  crate (Messaging's recurring definitions created since then use the same
+  evaluator): the same syntax
   (numbers, `*`, lists, ranges, steps, month and weekday names, `?` as `*` in
   the day fields, weekdays 0-7), the same day-of-month or day-of-week rule and
   whole-minute occurrences from 1970 through 2100, except that each field must
@@ -4005,7 +4044,10 @@ explicit application work.
 
 Since 13.0.0-alpha.5 `Invoice` and `InvoiceItem` are `#[non_exhaustive]` and
 hold integer amounts in the currency's smallest unit, like `ChargeReceipt`:
-`Invoice::new(invoice_id, customer_email, date, currency)` plus
+`Invoice::new(invoice_id, customer_email, date, currency)` (since
+13.0.0-alpha.6 `date` is any `impl Into<jiff::Timestamp>`, an ORM `Timestamp`
+included, stored in `Invoice.date: jiff::Timestamp`; `chrono::DateTime<Utc>`
+before) plus
 `with_item(description, amount_minor)`. There is no stored total:
 `total_minor()` is the sum of the items. `Invoice::generate_html` renders
 without validation; trusted paths use `validate`/`try_generate_html`, which
@@ -4920,7 +4962,7 @@ Phase 2 of the production monitor; threat model `TM-STUDIO-3`; guide:
 * Updates write only submitted fields, and the edit form (`data-nexus-mode="edit"`) submits only controls the administrator changed. NULL, unregistered enum values, offset or sub-millisecond date-times and undecodable values render without a widget default that could overwrite them. An emptied number/relation/date/date-time/enum/JSON value is NULL (omitted on create), never `''`; the semantic validator rejects `''` for those kinds. A `FieldKind::Integer { min, max }` value must be a whole number in range and is stored canonically; `Number` accepts any finite number. Date and time kinds are parsed per kind and bound as typed values: `Date` (`YYYY-MM-DD`, year 0001 to 9999) as a date, `Time` (`HH:MM[:SS[.fraction]]`, v13) as a time, a local `DateTime` (`T` or space separator) as a date-time without a zone, and `DateTimeUtc` (v13) as a UTC instant, where a value without an offset is a wall time in the panel's time zone and one with `Z`, `±HH:MM` or `±HH` is converted. The zone is UTC unless `Nexus::with_time_zone` selects a `NexusTimeZone` (v13, 13.0.0-alpha.3): a fixed offset, or with the `tz` feature (`nexus-tz` in the facade) an IANA zone whose rules come from `jiff` (system zoneinfo, bundled fallback). A wall time that a daylight-saving gap skips is a `422` naming the zone; one that a fold repeats is read as its earlier instant. A text column stores them as `YYYY-MM-DD`, `HH:MM:SS[.fraction]`, `YYYY-MM-DD HH:MM:SS[.fraction]` (the text form of `CURRENT_TIMESTAMP`, so text comparison and ordering agree with application-written rows) and RFC 3339 respectively; a `DateTime` value with an offset is bound as text, as entered, which only a text column accepts. A malformed value is a `422` validation error. `Time` fields use a `time` input and `DateTimeUtc` fields a `datetime-local` input labelled with the zone's name (`UTC`, `UTC±HH:MM` or the IANA name) that shows the stored instant as a wall time in that zone; the later occurrence of a repeated wall time is shown as its UTC value (`Z`) in a text input so saving the form unchanged keeps it, and a value either picker cannot hold exactly (finer than milliseconds) is shown in a text input.
 * Record keys follow the registered primary-key kind: a `number`, `integer` or relation key must be a canonical integer (`+1`, `01` and `1e3` name no record, so the audit key is the changed key); other kinds are compared as text. A model may declare a composite key (`NexusModel::nexus_pk_columns`, v13; at most 8 distinct registered columns, none of them the tenant column): a record is then addressed by its values in key order, each percent-encoded (`urlencoding::encode`) and joined by `,`; only that canonical spelling with the right number of values names a record, each value typed by its column, and every key column is bound in list, edit, update, delete, batch and create predicates, read-only on edit and a sort tie-breaker. The UI addresses records under `/table/{table}/record/{key}` so keys such as `new`, `search` or `batch` never meet an action route. Other form values are bound as text; on PostgreSQL, numbers and integers are written through `NUMERIC`, canonical-integer relations through `BIGINT`, Booleans as untyped `'0'`/`'1'` literals and dates and times (including NULL) through `DATE`, `TIME`, `TIMESTAMP` or `TIMESTAMPTZ` casts, so native columns accept them, while other kinds need text columns. MySQL/MariaDB receive a UTC instant as its UTC wall time. Search matches the typed text literally and case-insensitively (`ILIKE` on PostgreSQL) in visible text, textarea, e-mail and URL fields; a model without one shows no search box and a search query lists no rows. The tenant predicate compares binary strings on MySQL/MariaDB.
 * `Password` fields are never rendered: list cells show a fixed mask (the column is not selected or sortable; neither is a hidden field, so a `sort_by` naming either orders by the key) and edit forms an empty input; an empty submission keeps the stored value. Non-empty values are written verbatim; Nexus neither hashes them nor runs ORM hooks, so credential-hash columns must be read-only in Nexus and changed by an application flow that hashes.
-* `#[derive(Nexus)]` follows ORM field semantics: `#[orm(skip)]`/`#[sqlx(skip)]` fields are not columns; `#[orm(encrypted)]`, `SecretString` and `#[orm(hidden)]` fields become hidden, read-only `Password` fields that are never listed, searched, sorted, rendered or written (only `#[nexus(kind = "password")]` turns an `#[orm(hidden)]` field into a write-only field, and any other widget override on these fields fails compilation); `#[orm(masked)]` fields default to `Password` unless an explicit `#[nexus(kind)]` shows them. The record key is the struct-level `primary_key` (one column, or up to 8 distinct columns separated by commas), else every `#[nexus(primary_key)]` field in declaration order, else `id`; annotations must match a struct-level list. A single integer key is hidden and read-only as database-generated, while another key, and every column of a composite key, is entered on create and read-only on edit. `chrono::NaiveDate`, `NaiveTime`, `NaiveDateTime` and `DateTime<Utc>` fields, and `rullst_orm::Date`, `Time`, `DateTime` and `Timestamp` fields, become `Date`, `Time`, `DateTime` and `DateTimeUtc`; the ORM types are recognized by type (through `rullst_orm::__field_kind`, at compile time) rather than by spelling, so an application type named `Date` or `Timestamp` stays `Text`. Rust integer fields (also under `Option`, and under an explicit `kind = "number"`) become `FieldKind::Integer` bounded by their type (`isize`/`usize` as 64-bit, `u64`/`usize` capped at `i64::MAX`); `f32`/`f64` stay `Number`.
+* `#[derive(Nexus)]` follows ORM field semantics: `#[orm(skip)]`/`#[sqlx(skip)]` fields are not columns; `#[orm(encrypted)]`, `SecretString` and `#[orm(hidden)]` fields become hidden, read-only `Password` fields that are never listed, searched, sorted, rendered or written (only `#[nexus(kind = "password")]` turns an `#[orm(hidden)]` field into a write-only field, and any other widget override on these fields fails compilation); `#[orm(masked)]` fields default to `Password` unless an explicit `#[nexus(kind)]` shows them. The record key is the struct-level `primary_key` (one column, or up to 8 distinct columns separated by commas), else every `#[nexus(primary_key)]` field in declaration order, else `id`; annotations must match a struct-level list. A single integer key is hidden and read-only as database-generated, while another key, and every column of a composite key, is entered on create and read-only on edit. The ORM's `Date`, `Time`, `DateTime` and `Timestamp` fields (`rullst::orm::*`, optional or not) become `Date`, `Time`, `DateTime` and `DateTimeUtc`; they are recognized by type (through `rullst_orm::__field_kind`, at compile time) rather than by spelling, so any path, import or alias works and an application type named `Date` or `Timestamp` stays `Text`. Rust integer fields (also under `Option`, and under an explicit `kind = "number"`) become `FieldKind::Integer` bounded by their type (`isize`/`usize` as 64-bit, `u64`/`usize` capped at `i64::MAX`); `f32`/`f64` stay `Number`.
 * The panel loads only same-origin assets under `/nexus/assets/` (stylesheet, behaviour script and a vendored, unmodified htmx 2.0.4 with eval, script tags, injected indicator styles and its `localStorage` history cache disabled). Nexus markup contains no inline script/style blocks, event-handler, `hx-on` or `style` attributes, so the default production nonce CSP applies unchanged; the application-wide `security.csp` must not be relaxed for Nexus. Since 13.0.0-alpha.5 `Nexus::with_stylesheet(path)` links up to eight application stylesheets after `nexus.css` on every page; `try_build` accepts only same-origin paths (a single leading `/`, at most 512 visible ASCII characters without quotes, `<`, `>`, `` ` `` or `\`) and otherwise fails with `NexusBuildError::InvalidStylesheet`, so `style-src 'self'` still covers the panel. The links reach the shell through a task-local value set by a layer of the Nexus router, so `render_shell` called outside a Nexus request links none. AI assistant replies are sanitized to an explicit text-formatting allowlist without any element that loads a resource by itself (no `img`), and links get `rel="noopener noreferrer"`.
 * `with_required_audit` requires the fixed `rullst_nexus_audits` schema and appends one minimized committed-mutation row in the same transaction. Audit unavailability rolls the data change back. This is not append-only, tamper-evident, denied-attempt, retention, backup, replication or external-SIEM evidence; those properties remain host responsibilities.
 

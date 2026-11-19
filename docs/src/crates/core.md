@@ -138,9 +138,9 @@ takes `?` as `*`. Each field must be valid on its own, occurrences are whole
 minutes from 1970 through 2100, and there are no seconds, years or
 `@daily`-style aliases. Since 13.0.0-alpha.6 Core evaluates the fields itself;
 earlier releases used the `cron` crate (12.x passed the fields to it
-unchanged, so 1 was Sunday and 0 was rejected), and Core's tests still compare
-the two. Messaging's durable recurring publications keep their documented
-`cron`-crate projection.
+unchanged, so 1 was Sunday and 0 was rejected). Since the same release,
+Messaging's [durable recurring publications](../recurring-publications.md)
+read new definitions with this evaluator too.
 See [time zones for scheduled tasks](#time-zones-for-scheduled-tasks) to
 match the fields against a local clock instead of UTC.
 `WorkerHandle` and `SchedulerHandle` buffer at most 256 undrained errors. Once

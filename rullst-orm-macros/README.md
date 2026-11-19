@@ -78,9 +78,9 @@ With the field, rows read through the ORM remember a fingerprint of each
 column. A `RowSnapshot` field without `#[sqlx(skip)]`, or a second one, fails
 compilation. Turso-primary models always write every column: they declare
 `#[orm(full_row_save)]`, and a `RowSnapshot` field on them fails compilation.
-`chrono`
-date/time fields (`DateTime<Utc>`, `NaiveDateTime`, `NaiveDate`, `NaiveTime`)
-bind through SQLx's codecs, which exist only for the strict driver features.
+Date/time fields (`rullst_orm::Timestamp`, `DateTime`, `Date`, `Time`) bind
+through the ORM's own SQLx codecs, which exist only for the strict driver
+features.
 A `#[sqlx(json)]` field is decoded through SQLx `Json`
 and generated writes bind it as `Json(value)` (a `json(nullable)` `None` as
 `NULL`), so a Serde-only type works on a JSON column; SQLx provides `Json` only

@@ -184,6 +184,9 @@ public API, so that 13.x releases can update them as private dependencies:
 `opentelemetry_sdk` and `tracing-opentelemetry`
 (`DistributedTelemetry::layer` returns an `impl tracing_subscriber::Layer`)
 and `utoipa` (`Studio::with_openapi` takes any `serde::Serialize` document).
+It also replaces `chrono` 0.4, which
+[RUSTSEC-2026-0543](security-advisory-exceptions.md) marks unmaintained, with
+`jiff` 1 ([moving off `chrono`](migration-v13.md#moving-off-chrono)).
 
 | Crate | 13.x line | Where the API exposes it |
 | :--- | :--- | :--- |

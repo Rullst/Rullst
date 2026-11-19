@@ -400,7 +400,7 @@ pub async fn create_account(
     email: &str,
     name: &str,
 ) -> Result<i32, rullst::orm::Error> {
-    let now = rullst::orm::chrono::Utc::now();
+    let now = rullst::orm::Timestamp::now();
     let mut user = User {
         name: name.to_owned(),
         email: email.to_owned(),

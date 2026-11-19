@@ -122,8 +122,8 @@ before those.
 | ORM constraint errors | A unique or primary-key violation now returns `Error::UniqueViolation { constraint, .. }` and a foreign-key violation `Error::ForeignKeyViolation { constraint, .. }`, from generated writes, query builders and `Orm::raw`, instead of `Error::DatabaseError(String)`. Their message names only the constraint (PostgreSQL) instead of quoting the database's text, so code that matched `DatabaseError` or searched the message for `UNIQUE constraint failed`, `duplicate key` or `Duplicate entry` must match the variants instead. `Orm::transaction` returns them unchanged too (see ORM transaction errors). |
 | ORM transaction errors | `Orm::transaction` returns `Result<R, E>`, where `E` is its closure's error type and must implement `From<rullst_orm::Error>` and `Display`, instead of `Result<R, rullst_orm::Error>` (13.0.0-alpha.3). After the rollback the closure's error reaches the caller unchanged instead of `Error::DatabaseError("Transaction failed: ...")`, so a `UniqueViolation`, `ForeignKeyViolation` or the application's own error keeps its type; begin, commit and post-commit failures arrive through `E::from`. A closure whose error type lacks `From<rullst_orm::Error>` (such as `String`) no longer compiles: return `rullst_orm::Error` or an application error that wraps it. Code that matched `DatabaseError` on the result must match the closure's own error instead; `cargo rullst upgrade` reports `Orm::transaction` calls in files that mention `DatabaseError` (`V13-ORM-TRANSACTION-ERRORS`). |
 | ORM encryption key settings | `RULLST_ENCRYPTION_KEY`, `RULLST_ENCRYPTION_KEY_ID` and `RULLST_ENCRYPTION_KEYRING` are now also read from `.env` in the current working directory when the process environment does not set them, as `APP_KEY` already was; the process environment still wins and the file is never exported. A `.env` that sets them now takes effect for `#[orm(encrypted)]` fields and `SecretString`, so remove stale entries; a malformed `.env` now fails such a lookup when the process lacks the variable. |
-| ORM query values | `RullstValue` is now `#[non_exhaustive]` and gains `I64(i64)` and `Null`, so a `match` on it outside the ORM needs a wildcard arm. `i64` and `u32` values now convert to `I64` (bound as `BIGINT`) and `Option<T>` to `T`'s value or `Null`, so `where_eq("lesson_id", Some(3))` and `BIGINT` filters compile. `Null` binds as a text-typed `NULL`; on PostgreSQL cast it for a column of another type, and filter missing values with `where_null`. Integer literals still convert to `Int` (`i32`). The `chrono` types `DateTime<Utc>`, `NaiveDateTime`, `NaiveDate` and `NaiveTime` convert to the new `DateTime`, `NaiveDateTime`, `Date` and `Time` variants; strict driver pools bind them natively and the SQLx `Any` pool as ISO-8601 text. |
-| ORM date/time columns | With a strict driver feature (`strict-postgres`, `strict-mysql` or `strict-sqlite`, which generated projects use), `Blueprint::timestamps()` now creates `timestamp_tz()` columns instead of `TEXT DEFAULT CURRENT_TIMESTAMP`: `TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP` on PostgreSQL, `DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6)` holding UTC on MySQL/MariaDB and RFC 3339 `TEXT` (`2026-10-15T09:30:00.123+00:00`) on SQLite. Read them as `rullst::orm::chrono::DateTime<Utc>`, set with `Utc::now()`, or as `Option<DateTime<Utc>>` marked `#[orm(db_default)]` so inserts keep the database default; a `String` field no longer decodes them on PostgreSQL or MySQL/MariaDB (on SQLite it still does, but the default text changes from `YYYY-MM-DD HH:MM:SS` to the RFC 3339 form). Only tables created from now on change, including a fresh database built by an existing migration that calls `timestamps()`; existing `TEXT` columns stay until a reviewed migration converts them, for example `ALTER TABLE t ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at::timestamptz` on PostgreSQL. The SQLx `Any` pool (the `drivers-all` default without a strict feature) cannot read date/time values, so there `timestamps()` keeps the `TEXT` columns and the new `date()`, `time()`, `timestamp()` and `timestamp_tz()` columns fail on PostgreSQL and MySQL/MariaDB with `Error::Validation` before any DDL runs. `make:migration:auto` declares `chrono` fields with those helpers instead of `string()`. Nexus now reads `Date`/`DateTime` fields as text on PostgreSQL and MySQL/MariaDB so native columns display, and writes them as typed values (see "Nexus dates and times"). `cargo rullst upgrade` reports `String` `created_at`/`updated_at` fields of SQLx models. |
+| ORM query values | `RullstValue` is now `#[non_exhaustive]` and gains `I64(i64)` and `Null`, so a `match` on it outside the ORM needs a wildcard arm. `i64` and `u32` values now convert to `I64` (bound as `BIGINT`) and `Option<T>` to `T`'s value or `Null`, so `where_eq("lesson_id", Some(3))` and `BIGINT` filters compile. `Null` binds as a text-typed `NULL`; on PostgreSQL cast it for a column of another type, and filter missing values with `where_null`. Integer literals still convert to `Int` (`i32`). The ORM's date/time types `Timestamp`, `DateTime`, `Date` and `Time` convert to the new `Timestamp`, `CivilDateTime`, `CivilDate` and `CivilTime` variants (from 13.0.0-alpha.1 to alpha.5, `chrono`'s types converted to `DateTime`, `NaiveDateTime`, `Date` and `Time` variants; see the "`chrono` replaced by `jiff`" row); strict driver pools bind them natively and the SQLx `Any` pool as ISO-8601 text. |
+| ORM date/time columns | With a strict driver feature (`strict-postgres`, `strict-mysql` or `strict-sqlite`, which generated projects use), `Blueprint::timestamps()` now creates `timestamp_tz()` columns instead of `TEXT DEFAULT CURRENT_TIMESTAMP`: `TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP` on PostgreSQL, `DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6)` holding UTC on MySQL/MariaDB and RFC 3339 `TEXT` (`2026-10-15T09:30:00.123+00:00`) on SQLite. Read them as `rullst::orm::Timestamp` (`chrono::DateTime<Utc>` until 13.0.0-alpha.5), set with `Timestamp::now()`, or as `Option<Timestamp>` marked `#[orm(db_default)]` so inserts keep the database default; a `String` field no longer decodes them on PostgreSQL or MySQL/MariaDB (on SQLite it still does, but the default text changes from `YYYY-MM-DD HH:MM:SS` to the RFC 3339 form). Only tables created from now on change, including a fresh database built by an existing migration that calls `timestamps()`; existing `TEXT` columns stay until a reviewed migration converts them, for example `ALTER TABLE t ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at::timestamptz` on PostgreSQL. The SQLx `Any` pool (the `drivers-all` default without a strict feature) cannot read date/time values, so there `timestamps()` keeps the `TEXT` columns and the new `date()`, `time()`, `timestamp()` and `timestamp_tz()` columns fail on PostgreSQL and MySQL/MariaDB with `Error::Validation` before any DDL runs. `make:migration:auto` declares date/time fields with those helpers instead of `string()`. Nexus now reads `Date`/`DateTime` fields as text on PostgreSQL and MySQL/MariaDB so native columns display, and writes them as typed values (see "Nexus dates and times"). `cargo rullst upgrade` reports `String` `created_at`/`updated_at` fields of SQLx models. |
 | Schema builder constraints | `Column` gains the public field `is_unique` (set by `Column::unique()`), so building a `Column { .. }` with a struct literal needs it; use `Column::new`. `Schema::create` also runs the `CREATE INDEX` statements of `index()`/`unique_index()` on PostgreSQL and SQLite, and `Blueprint::build()` includes the table's unique, foreign-key and CHECK constraints. `Error` gains `UnsupportedSchemaChange { driver, change }`, returned by `Schema::table` for changes SQLite cannot make to an existing table; a `match` on `Error` outside the ORM already needs a wildcard arm. |
 | ORM sandbox tests | `#[rullst_orm::test]` keeps the function's declared return type and returns the body's value after the rollback, so a test returning `Err` now fails instead of passing. A test whose declared type does not match its body, or is not a `Termination` type such as `Result<(), E: Debug>`, no longer compiles; fix the signature. Post-commit effects of sandboxed writes (`committed` observers, cache invalidation, Redis events, Scout) no longer run, because the sandbox never commits; assert them in a test that commits through `Orm::transaction`. |
 | ORM model SQLx options | A struct-level `#[sqlx(...)]` option other than `default` on a `#[derive(Orm)]` model, such as `rename_all = "camelCase"`, no longer compiles: `FromRow` decoded the renamed columns while generated SQL used the field names, so writes or reads failed at runtime. Name the fields after their columns instead. |
@@ -133,9 +133,9 @@ before those.
 | ORM chunk bounds | `chunk()`, `chunk_with_tx()`, `chunk_by_id()` and `chunk_by_id_with_tx()` now honour an explicit `limit(n)` as a cap on the total rows handed to the handler and an explicit `offset(k)` as the starting point, instead of silently walking every matching row from the first one. Remove `limit()`/`offset()` from chunked queries that relied on them being ignored. |
 | ORM eager pivot order | An eager `belongs_to_many` load now orders each parent's related rows like the related query, so an `order_by` in `with_<relation>_constrained` applies, instead of following the order of the unordered pivot rows. Without an `order_by` the order remains unspecified. |
 | PersonalData reports | `compliance_schema()` now reports the table `#[derive(Orm)]` uses (`#[orm(table)]` or the `<struct>s` default, previously the lowercased struct name) and lists in `encrypted_fields`/`has_encrypted_data` only `#[orm(encrypted)]` and `SecretString` columns; `#[privacy]` fields, which are not encrypted by the derive, are listed by the new `ComplianceModel::personal_fields()`. |
-| Nexus derive | A field annotated `#[nexus(primary_key)]` is now the record key even when a later field is named `id` (previously the last of them won, and both were hidden and read-only). An annotation that contradicts the struct-level `#[nexus(primary_key = "...")]` no longer compiles; since alpha.2, several annotated fields declare a composite key (see "Nexus composite keys"). A non-integer derived key (a UUID or code) is now listed and entered in the create form instead of being hidden and read-only; mark it `#[nexus(readonly)]` or `#[nexus(hidden)]` to keep the previous behaviour for a database-generated key. Fields typed `chrono::DateTime<Utc>`, `DateTime<chrono::Utc>` or `NaiveDateTime` now get the validated date-time widget instead of free text. Rust integer fields (`i8` to `i64`, `u8` to `u64`, `isize`, `usize`, also under `Option` or `kind = "number"`) now derive `FieldKind::Integer { min, max }` bounded by their type (`u64`/`usize` capped at `i64::MAX`) instead of `Number`, so Nexus rejects fractions, exponents and out-of-range values with `422`; code comparing derived metadata with `FieldKind::Number` must expect `Integer`. |
+| Nexus derive | A field annotated `#[nexus(primary_key)]` is now the record key even when a later field is named `id` (previously the last of them won, and both were hidden and read-only). An annotation that contradicts the struct-level `#[nexus(primary_key = "...")]` no longer compiles; since alpha.2, several annotated fields declare a composite key (see "Nexus composite keys"). A non-integer derived key (a UUID or code) is now listed and entered in the create form instead of being hidden and read-only; mark it `#[nexus(readonly)]` or `#[nexus(hidden)]` to keep the previous behaviour for a database-generated key. Date-time fields (`rullst::orm::Timestamp` or `DateTime`; until 13.0.0-alpha.5 `chrono::DateTime<Utc>`, `DateTime<chrono::Utc>` or `NaiveDateTime`) now get the validated date-time widget instead of free text. Rust integer fields (`i8` to `i64`, `u8` to `u64`, `isize`, `usize`, also under `Option` or `kind = "number"`) now derive `FieldKind::Integer { min, max }` bounded by their type (`u64`/`usize` capped at `i64::MAX`) instead of `Number`, so Nexus rejects fractions, exponents and out-of-range values with `422`; code comparing derived metadata with `FieldKind::Number` must expect `Integer`. |
 | Nexus composite keys | `NexusModel::nexus_pk_columns()` (default: `vec![nexus_pk()]`) declares a composite primary key, and `RegistryEntry` gains `pk_columns: Vec<&'static str>` (empty means the single `pk`): code that builds a `RegistryEntry` with a struct literal must add `pk_columns: Vec::new()`. In `#[derive(Nexus)]`, `#[nexus(primary_key = "a, b")]` or `#[nexus(primary_key)]` on several fields now declares a composite key (two annotated fields used to be a compile error); every column of a composite key is entered on create, even an integer one. A composite record is addressed by its values, each percent-encoded and joined by `,` (`7,intro`), in URLs, batch selections and the audit `record_key`. Registry validation rejects more than 8, repeated, unregistered or tenant key columns. |
-| Nexus dates and times | Date and time fields are written as typed values instead of text, so native PostgreSQL `DATE`/`TIME`/`TIMESTAMP`/`TIMESTAMPTZ` columns accept edits (PostgreSQL writes go through a cast; a text column still stores text). `#[derive(Nexus)]` now maps `chrono::DateTime<Utc>` to the new `FieldKind::DateTimeUtc` (it was `DateTime`) and `NaiveTime` to the new `FieldKind::Time`; `kind = "datetime_utc"` and `kind = "time"` select them. A `DateTimeUtc` field's `datetime-local` input shows and accepts wall times in the panel's time zone, UTC unless `Nexus::with_time_zone` selects another `NexusTimeZone` (13.0.0-alpha.3; IANA zones need the `nexus-tz` feature): a value without an offset is a wall time in that zone, one with `Z`, `±HH:MM` or `±HH` is converted, and a text column stores RFC 3339 (`2026-10-15T09:30:00+00:00`). The handlers `nexus_new_form`, `nexus_edit_form`, `nexus_create_record` and `nexus_update_record` take an extra `Option<Extension<NexusTimeZone>>` argument, which only code calling them directly sees. Code comparing derived metadata with `FieldKind::DateTime` for a `DateTime<Utc>` field must expect `DateTimeUtc`. A `Date` (and the date of a date-time) with year `0000` is now a `422`. A local date-time or time with a fraction is stored with chrono's 3, 6 or 9 digits (`10:00:00.5` becomes `10:00:00.500`). Hand-written metadata keeps working; switch `DateTime<Utc>` fields to `FieldKind::DateTimeUtc` for UTC handling, as the starters now do for `created_at`/`updated_at`. |
+| Nexus dates and times | Date and time fields are written as typed values instead of text, so native PostgreSQL `DATE`/`TIME`/`TIMESTAMP`/`TIMESTAMPTZ` columns accept edits (PostgreSQL writes go through a cast; a text column still stores text). `#[derive(Nexus)]` now maps a UTC instant (`rullst::orm::Timestamp`, `chrono::DateTime<Utc>` until 13.0.0-alpha.5) to the new `FieldKind::DateTimeUtc` (it was `DateTime`) and a time of day (`rullst::orm::Time`, formerly `NaiveTime`) to the new `FieldKind::Time`; `kind = "datetime_utc"` and `kind = "time"` select them. A `DateTimeUtc` field's `datetime-local` input shows and accepts wall times in the panel's time zone, UTC unless `Nexus::with_time_zone` selects another `NexusTimeZone` (13.0.0-alpha.3; IANA zones need the `nexus-tz` feature): a value without an offset is a wall time in that zone, one with `Z`, `±HH:MM` or `±HH` is converted, and a text column stores RFC 3339 (`2026-10-15T09:30:00+00:00`). The handlers `nexus_new_form`, `nexus_edit_form`, `nexus_create_record` and `nexus_update_record` take an extra `Option<Extension<NexusTimeZone>>` argument, which only code calling them directly sees. Code comparing derived metadata with `FieldKind::DateTime` for a UTC-instant field must expect `DateTimeUtc`. A `Date` (and the date of a date-time) with year `0000` is now a `422`. A local date-time or time with a fraction is stored with 3, 6 or 9 digits (`10:00:00.5` becomes `10:00:00.500`). Hand-written metadata keeps working; switch UTC-instant fields to `FieldKind::DateTimeUtc` for UTC handling, as the starters now do for `created_at`/`updated_at`. |
 | Nexus access in the starters | New SaaS and LMS projects mount Nexus with `NexusAuthPolicy::local_development_or_application(middlewares::nexus_access::NexusAdmins)`: debug builds keep loopback access, and release builds admit the signed-in user whose new `users.is_admin` column (Boolean, default false, `#[orm(db_default)]` on `User`, editable in Nexus) is true, with no `NEXUS_ADMIN_*` credentials (their `.env` no longer lists them). Grant the first administrator with `UPDATE users SET is_admin = TRUE WHERE email = '…';`. To adopt this in an existing SaaS/LMS application, add a migration with `table.boolean("is_admin").not_null().default(ColumnDefault::Integer(0))` (through `Schema::table`), the `#[orm(db_default)] pub is_admin: bool` field, and copy `src/middlewares/nexus_access.rs` from a new project. `cargo rullst auth` users also get `is_admin`, and its controller now sets `is_admin: false` when registering: a regenerated controller needs the field in an older `User` model. New Blog, Portfolio and ERP projects without `NEXUS_ADMIN_*` in a release build now start without Nexus (the ERP without its back office, serving only `/health` and `/ready`) and print one line naming the variables, instead of refusing to start; a weak or placeholder credential still stops startup. |
 | Nexus credentials | `NexusAuthPolicy::basic_from_env` (and release builds of `local_development_or_basic_from_env`) reads `NEXUS_ADMIN_USERNAME`/`NEXUS_ADMIN_PASSWORD` from the process environment, then `.env` in the working directory only, through `rullst::config::project_setting`. It no longer loads `.env` (or a parent directory's `.env`) into the process environment, so code that relied on that side effect must read its own settings; a malformed or unreadable `.env` now fails with the new `NexusBuildError::InvalidDotenv` instead of being ignored. |
 | Nexus panel | A list `sort_by` naming a hidden column (for example a derived `password_hash`) now orders by the record key, as a `Password` column already did; bookmarked URLs that sorted by such a column show key order. A model without a visible text, textarea, e-mail or URL field shows no search box, and a `q` sent to it lists no rows instead of every row. With the debug loopback policy, an IPv4-mapped loopback peer (`::ffff:127.0.0.1`, reported by a dual-stack `HOST=::` listener) is now accepted as loopback instead of receiving 403; other mapped addresses stay rejected. That policy also accepts a mutation with `Origin: null` when it carries `Sec-Fetch-Site: same-origin` (what browsers send under `Referrer-Policy: no-referrer`) and stamps `Referrer-Policy: same-origin` on responses that set none. A create or update rejected by validation now answers `422` with a plain-text message (`Invalid <label> form: …`) instead of an htmx out-of-band toast fragment, and a create without writable values answers `400` in plain text; the panel shows these messages, and HTML error bodies, as text. With required audit, a create whose primary key the administrator entered (a text or UUID key) now records that key in `record_key` instead of NULL. A saved local date-time is now stored as `YYYY-MM-DD HH:MM:SS[.fraction]` (the `CURRENT_TIMESTAMP`/SQLx text form) instead of the browser's `YYYY-MM-DDTHH:MM`, and the space-separated form is accepted on input; values with an offset are stored as entered. Rows Nexus saved earlier keep their `T` form until edited again. `FieldKind` gains the `Integer { min, max }` variant and is now `#[non_exhaustive]`: a `match` on it outside Nexus needs a wildcard arm, and later kinds will not break it again. The AI assistant no longer renders `<img>` (or any other element outside a text-formatting allowlist) from a reply; images a model returns are dropped. |
@@ -207,8 +207,8 @@ before those.
 | Blog robots and sitemap | The Blog starter's `robots.txt` and `sitemap.xml` use absolute URLs from `RULLST_PUBLIC_ORIGIN` (an HTTPS origin without a path, read from the process environment, then `.env`); the sitemap lists the home page and the 1,000 newest posts. Unset, `robots.txt` has no `Sitemap:` line and the sitemap is empty instead of advertising the relative `/` and `/sitemap.xml` that crawlers reject. New Blog projects list the variable in `.env`/`.env.example`. Existing applications must copy the controller's `public_origin`, `path_segment`, `robots_txt` and `sitemap_xml`. |
 | Generated login and registration | SaaS, LMS and `cargo rullst auth` controllers run Argon2id through at most four bounded permits (503 after a two-second wait) and export `credential_rate_limit` (ten submissions per peer per minute, then 429), which the SaaS/LMS routers apply to `POST /login` and `/register`. Behind a reverse proxy, configure `[security] trusted_proxies`. Existing applications must copy the controller and route changes. |
 | SaaS user JSON | The SaaS starter's `User.password_hash` is now `#[orm(hidden)]`, as in the LMS starter, so `to_json()`, audit rows and post-commit Redis model events no longer carry the Argon2 hash. In an existing SaaS application, add `#[orm(hidden)]` to that field. |
-| Registration timestamps | SaaS, LMS and `cargo rullst auth` registration now stores the current UTC time in `created_at`/`updated_at`; the generated `User` model reads them as `chrono::DateTime<Utc>` (see ORM date/time columns), and `utc_timestamp()`, `User::change_password` and `password_reset::redeem` take that type instead of `YYYY-MM-DD HH:MM:SS` text. Registration previously stored empty strings, which replaced the column default because the ORM inserts every field. Existing applications can copy `utc_timestamp` from a new controller; rows created earlier keep their empty timestamps until updated. |
-| Billing row timestamps | SaaS and `make:billing` controllers now store the current UTC time in `created_at`/`updated_at` of the billing customer they create on a first checkout and of a new subscription (SQLx), instead of empty strings that replaced the column default because the ORM inserts every field. SQLx billing models read those columns as `chrono::DateTime<Utc>`, and the billing stores write `CURRENT_TIMESTAMP` in the column's own type instead of casting it to text; Existing applications can copy `utc_timestamp` from a new controller. |
+| Registration timestamps | SaaS, LMS and `cargo rullst auth` registration now stores the current UTC time in `created_at`/`updated_at`; the generated `User` model reads them as `rullst::orm::Timestamp` (`chrono::DateTime<Utc>` until 13.0.0-alpha.5; see ORM date/time columns), and `utc_timestamp()`, `User::change_password` and `password_reset::redeem` take that type instead of `YYYY-MM-DD HH:MM:SS` text. Registration previously stored empty strings, which replaced the column default because the ORM inserts every field. Existing applications can copy `utc_timestamp` from a new controller; rows created earlier keep their empty timestamps until updated. |
+| Billing row timestamps | SaaS and `make:billing` controllers now store the current UTC time in `created_at`/`updated_at` of the billing customer they create on a first checkout and of a new subscription (SQLx), instead of empty strings that replaced the column default because the ORM inserts every field. SQLx billing models read those columns as `rullst::orm::Timestamp` (`chrono::DateTime<Utc>` until 13.0.0-alpha.5), and the billing stores write `CURRENT_TIMESTAMP` in the column's own type instead of casting it to text; Existing applications can copy `utc_timestamp` from a new controller. |
 | Registration lengths | SaaS, LMS and `cargo rullst auth` registration count the 120-character name limit and the 12-character password minimum in UTF-16 code units, as the forms' `minlength`/`maxlength` do, instead of UTF-8 bytes. The password maximum stays at the 72 bytes that `rullst::auth::hash_password` accepts, and the error message now says so. Long non-ASCII names are no longer rejected, while a non-ASCII password shorter than 12 characters (for example six Cyrillic letters, 12 bytes) is now refused. Existing sign-ins are unaffected. Existing applications can copy `form_length` and `valid_password`. |
 | Revocable login sessions | Additive: `rullst-auth` adds `make_login_cookie_with_epoch(user_id, epoch, max_age)`, `encrypt_session_with_epoch`, `decrypt_session_claims`, `SessionClaims` (`verify_epoch`), `DEFAULT_SESSION_MAX_AGE`, `MAX_SESSION_MAX_AGE` and `AuthError::SessionRevoked`. `make_login_cookie` cookies keep their format, 30-day lifetime and validity; `decrypt_session` rejects the new `v2.` tokens. New SaaS, LMS and `cargo rullst auth` projects store `users.session_epoch` (`BIGINT NOT NULL DEFAULT 0`, `#[orm(db_default)]` on the model), issue epoch cookies, refuse a cookie with another epoch in `auth_middleware` (the `cargo rullst auth` middleware now loads the user on every request) and mount `POST /logout/everywhere`, which increments the epoch. To adopt in an existing application, add the column with a migration and the `#[orm(db_default)] pub session_epoch: i64` field, issue cookies with `make_login_cookie_with_epoch`, decode them with `decrypt_session_claims` and `verify_epoch`, and increment the column in one `UPDATE` for sign-out everywhere, password changes and resets, and deactivation. Existing cookies decode as epoch 0 and keep working until the first increment. `make:age-gate` and `make:privacy` accept only authentication files equal to this release's SaaS starter, so a SaaS application generated by 13.0.0-alpha.1 must adopt the new `auth_middleware.rs` and `auth_controller.rs` first. See [encrypted sessions](crates/auth.md#revocable-cookies-the-session-epoch). |
 | Password change and reset | Additive: `rullst-auth` adds `PasswordResetToken` (`generate`, `expose`, `digest`), `password_reset_token_digest` and `password_reset_digests_match`. New SaaS, LMS and `cargo rullst auth` projects get `src/controllers/password_controller.rs` (`/password/change` behind `auth_middleware`, `/password/forgot` and `/password/reset`, every submission behind CSRF and `credential_rate_limit`), `src/models/password_reset.rs`, a `password_reset_tokens` migration, `User::change_password`, the `forgot_password_page`, `reset_password_page` and `change_password_page` views, a `notice` argument on `login_page` (shown on `/login?reset=done`) and the `mail` feature; the SaaS and LMS `.env` list `RULLST_PUBLIC_ORIGIN`. A change keeps only the asking browser signed in; a reset signs out every device and signs nobody in. To add the flows to an existing application that already uses session epochs, copy those three files and the migration (named after your users migration) from a new project of the same starter, add `User::change_password` to the user model, the three views and the login `notice` to `src/pages/auth.rs`, register the modules and routes as the new router does, make the `auth_controller` helpers that `password_controller` imports `pub(crate)`, enable the `mail` feature, and set `RULLST_PUBLIC_ORIGIN`, `MAIL_DRIVER` and `MAIL_FROM` for staging and production. See [Tutorial 11](tutorials/11-authentication-system.md#what-the-scaffold-currently-enforces). |
@@ -326,8 +326,8 @@ before those.
 | Distributed tracing layer type | **Breaking**, from 13.0.0-alpha.6: `DistributedTelemetry::layer` returns `impl tracing_subscriber::Layer<S> + Send + Sync + 'static` instead of `tracing_opentelemetry::OpenTelemetryLayer<S, opentelemetry_sdk::trace::SdkTracer>`, so `opentelemetry_sdk` and `tracing-opentelemetry`, which break every few months, are no longer public dependencies and a 13.x release can update them. `registry().with(runtime.layer())`, `.with_filter(..)` and `.boxed()` keep working, and the exported spans and `TraceParent` are unchanged. Code that writes the layer's type writes `impl Layer<S>` or boxes it (`Box<dyn Layer<S> + Send + Sync>`). `OpenTelemetryLayer`'s own builder methods (`with_location`, `with_threads`, `with_level`, `with_target`, `with_tracked_inactivity`, `with_context_activation`, the `with_error_*` methods, `with_counting_event_filter` and `with_tracer`) no longer compile on it; drop them, because the minimized pipeline removes the span attributes and events they add before export. The subscriber type `S` must be `Send + Sync`, as every subscriber installed with `set_global_default` or `with_default` already is. |
 | Validation field errors | **Breaking**, from 13.0.0-alpha.6: `ValidationError::ValidationError { errors, is_htmx }` carries `rullst::FieldErrors` (also `rullst::validation::FieldErrors`) instead of `validator::ValidationErrors`, so the error type of the `validator` crate is no longer part of Rullst's API. `errors.messages()` and `errors.codes()` return each field path's messages and validator codes as a `BTreeMap<String, Vec<String>>` (nested paths read `address.zip` and `items[0].name`), `errors.is_empty()` tells whether any field failed, and `errors.as_any().downcast_ref::<validator::ValidationErrors>()` reaches the `validator` errors with their parameters. Build the variant from `FieldErrors::validate(&payload)`, which runs the payload's constraints, or from `FieldErrors::default()`, and add a failure that only the handler can see with `errors.add(field, code, message)`. The JSON response (`{"errors": {"<path>": ["<message>"]}}`), the HTMX fragment, `Display` and `Debug` are unchanged. `rullst::Validate` and the bound of `ValidatedForm` and `ValidatedJson` stay those of `validator` 0.21, which the application's `#[derive(Validate)]` implements, so `validator` stays a public dependency. |
 | Studio OpenAPI documents | From 13.0.0-alpha.6, `Studio::with_openapi` and `rullst::studio::api_playground::router` take any `serde::Serialize` document instead of utoipa 6's `OpenApi`: the `OpenApi` of utoipa 5, 6 or a later release, or a `serde_json::Value` read from a file. `utoipa` is no longer a public dependency, and `.with_openapi(ApiDoc::openapi())` compiles as before. **Breaking** only for an argument whose type came from the parameter: write the type for `Default::default()`, a `serde_json::from_str(..)` without one, or `.into()` (`utoipa::openapi::OpenApi::default()`, `serde_json::from_str::<serde_json::Value>(..)`). Studio serializes the document once and serves those bytes at `/studio/api/openapi.json`. `/studio/api` renders a utoipa document exactly as before, lists the operations of any OpenAPI 3.1 or 3.2 document, and for another one (such as 3.0) says that it cannot list them and links the JSON. |
-| `chrono` replaced by `jiff` | **Breaking**, from 13.0.0-alpha.6: RustSec marked `chrono` unmaintained (RUSTSEC-2026-0543), so Rullst no longer depends on it and uses `jiff` 1. The ORM's date and time types are `rullst::orm::Timestamp` (for `chrono::DateTime<Utc>`), `rullst::orm::DateTime` (`NaiveDateTime`), `rullst::orm::Date` (`NaiveDate`) and `rullst::orm::Time` (`NaiveTime`), also as `rullst::db::*`: they wrap and dereference to jiff's types, convert to and from them, and store the same bytes in the same columns, so existing rows need no data migration. `rullst::orm::chrono` is gone and `rullst::orm::jiff` re-exports jiff; `RullstValue`'s chrono variants are replaced by `Timestamp`, `CivilDateTime`, `CivilDate` and `CivilTime`, and model fields and query values take the new types (`Timestamp::now()` for `Utc::now()`). `Locale::format_date`, `format_time` and `format_datetime` take jiff civil values by value (or a `&jiff::ZonedDateTime`); Mail's `Message::send_at` and `send_at` field, `MailAssertion::with_scheduled_at` and the `expires_at` of `AccountEvent::PasswordResetAt` and `EmailLoginAt`, and Capital's `Invoice::new` date and `Invoice.date`, take a `jiff::Timestamp`. Queued messages and invoices serialize as before. An application may keep chrono for its own code by declaring it; its own SQLx queries that bind or read chrono values then need SQLx's `chrono` feature on its own `sqlx` dependency. `cargo rullst upgrade` reports chrono where it meets these APIs (`V13-ORM-CHRONO-TYPES`, `V13-LOCALE-JIFF-DATES`, `V13-MAIL-JIFF-TIMESTAMPS`, `V13-CAPITAL-INVOICE-JIFF-DATE`). |
-| Messaging schedules use the scheduler's cron syntax | **Breaking**, from 13.0.0-alpha.6: `RecurringDefinition::new` (`rullst-messaging`, feature `schedules-postgres`) reads its five-field UTC cron expression with Core's POSIX syntax, as `Scheduler::task` does, instead of the `cron` crate's. Weekdays run from 0 to 7 (0 and 7 are Sunday) instead of 1 (Sunday) to 7 (Saturday), so `2-6` now means Tuesday to Saturday and Monday to Friday is `1-5`; names such as `MON-FRI` keep their meaning. When both the day of the month and the weekday are restricted, a day that matches either one runs the schedule, instead of a day that matches both. Each field must be valid on its own, so a field that starts or ends with `,`, `-` or `/` (`1, 2 * * *`, `/5 * * * *`), which the `cron` crate joined with its neighbour, or that runs a number into a name (`1jan`), which it split, is refused with `RecurringError::InvalidInput`. Definitions stored before the upgrade keep the meaning they were created with (deprecated until 14.0), and `PostgresRecurringStore::create` refuses to change one in place (`RecurringError::LegacyDefinition`): keep a stored schedule's expression as it is (its `RecurringMetadata::syntax()` is `CronSyntax::Legacy`), or cancel it and create the POSIX expression under a new name. `cargo rullst upgrade` reports each `RecurringDefinition::new` call whose expression is not a string literal that means the same under both syntaxes (`V13-MESSAGING-CRON-POSIX`), for review, with a literal's POSIX form for a schedule not yet stored where the rewrite is mechanical. |
+| `chrono` replaced by `jiff` | **Breaking**, from 13.0.0-alpha.6: RustSec marked `chrono` unmaintained (RUSTSEC-2026-0543), so Rullst no longer depends on it and uses `jiff` 1. The ORM's date and time types are `rullst::orm::Timestamp` (for `chrono::DateTime<Utc>`), `rullst::orm::DateTime` (`NaiveDateTime`), `rullst::orm::Date` (`NaiveDate`) and `rullst::orm::Time` (`NaiveTime`), also as `rullst::db::*`: they wrap and dereference to jiff's types, convert to and from them, and store the same bytes in the same columns, so existing rows need no data migration. `rullst::orm::chrono` is gone and `rullst::orm::jiff` re-exports jiff; `RullstValue`'s chrono variants are replaced by `Timestamp`, `CivilDateTime`, `CivilDate` and `CivilTime`, and model fields and query values take the new types (`Timestamp::now()` for `Utc::now()`). `Locale::format_date`, `format_time` and `format_datetime` take jiff civil values by value (or a `&jiff::ZonedDateTime`); Mail's `Message::send_at` and `send_at` field, `MailAssertion::with_scheduled_at` and the `expires_at` of `AccountEvent::PasswordResetAt` and `EmailLoginAt`, and Capital's `Invoice::new` date and `Invoice.date`, take a `jiff::Timestamp`. Queued messages and invoices serialize as before. An application may keep chrono for its own code by declaring it; its own SQLx queries that bind or read chrono values then need SQLx's `chrono` feature on its own `sqlx` dependency. `cargo rullst upgrade` reports chrono where it meets these APIs (`V13-ORM-CHRONO-TYPES`, `V13-LOCALE-JIFF-DATES`, `V13-MAIL-JIFF-TIMESTAMPS`, `V13-CAPITAL-INVOICE-JIFF-DATE`). Details: [moving off `chrono`](#moving-off-chrono). |
+| Messaging schedules use the scheduler's cron syntax | **Breaking**, from 13.0.0-alpha.6: `RecurringDefinition::new` (`rullst-messaging`, feature `schedules-postgres`) reads its five-field UTC cron expression with Core's POSIX syntax, as `Scheduler::task` does, instead of the `cron` crate's. Weekdays run from 0 to 7 (0 and 7 are Sunday) instead of 1 (Sunday) to 7 (Saturday), so `2-6` now means Tuesday to Saturday and Monday to Friday is `1-5`; names such as `MON-FRI` keep their meaning. When both the day of the month and the weekday are restricted, a day that matches either one runs the schedule, instead of a day that matches both. Each field must be valid on its own, so a field that starts or ends with `,`, `-` or `/` (`1, 2 * * *`, `/5 * * * *`), which the `cron` crate joined with its neighbour, or that runs a number into a name (`1jan`), which it split, is refused with `RecurringError::InvalidInput`. Definitions stored before the upgrade keep the meaning they were created with (deprecated until 14.0), and `PostgresRecurringStore::create` refuses to change one in place (`RecurringError::LegacyDefinition`): keep a stored schedule's expression as it is (its `RecurringMetadata::syntax()` is `CronSyntax::Legacy`), or cancel it and create the POSIX expression under a new name. `cargo rullst upgrade` reports each `RecurringDefinition::new` call whose expression is not a string literal that means the same under both syntaxes (`V13-MESSAGING-CRON-POSIX`), for review, with a literal's POSIX form for a schedule not yet stored where the rewrite is mechanical. Details: [Messaging schedules and POSIX cron](#messaging-schedules-and-posix-cron). |
 
 The [12.0→12.1 guide](migration-v12-1.md) still applies to applications that have
 not adopted the 12.1 account, payment and deployment changes. Skipping directly
@@ -405,6 +405,239 @@ The starter's `rullst-orm` dependency relies on default features; since
 13.0.0-alpha.3 `rullst-orm` has none, so after the upgrade it has no SQLx
 driver until the backend is named. The `V13-ORM-DEFAULT-FEATURES` finding
 gives the fix.
+
+### Moving off `chrono`
+
+RustSec published
+[RUSTSEC-2026-0543](https://rustsec.org/advisories/RUSTSEC-2026-0543.html)
+on 2026-11-17: `chrono` is unmaintained. The advisory reports no
+vulnerability, and the `chrono` maintainer recommends `jiff` or `time`. Up to
+13.0.0-alpha.5 `chrono` 0.4 was a public dependency of Rullst 13, so
+13.0.0-alpha.6 removes it from every Rullst crate and uses
+[`jiff`](https://docs.rs/jiff/1) 1 instead. This section details the
+"`chrono` replaced by `jiff`" row. Your application may keep using `chrono`
+in its own code: declare it in your own `Cargo.toml` and convert values where
+they reach a Rullst API.
+
+**Database columns.** SQLx 0.9 has date/time codecs only for `chrono` and
+`time`, and Rust's orphan rule prevents Rullst from implementing SQLx's traits
+for jiff's types. The ORM therefore owns four column types in
+`rullst_orm::temporal`, also exported as `rullst::orm::*` and `rullst::db::*`:
+
+| `chrono` type (to alpha.5) | Rullst type (from alpha.6) | Wraps | Schema helper |
+| :--- | :--- | :--- | :--- |
+| `DateTime<Utc>` | `rullst::orm::Timestamp` | `jiff::Timestamp` | `timestamp_tz()`, and `timestamps()` |
+| `NaiveDateTime` | `rullst::orm::DateTime` | `jiff::civil::DateTime` | `timestamp()` |
+| `NaiveDate` | `rullst::orm::Date` | `jiff::civil::Date` | `date()` |
+| `NaiveTime` | `rullst::orm::Time` | `jiff::civil::Time` | `time()` |
+
+Each type converts to and from the jiff type with `From` and dereferences to
+it, so jiff's methods apply (`at.as_second()`); the result of jiff arithmetic
+converts back with `.into()`. `Display`, `Debug`, serde and `FromStr` are
+byte for byte those of the `chrono` type it replaces (a `Timestamp` displays
+as `2026-10-15 09:30:00.500 UTC` and serializes as
+`"2026-10-15T09:30:00.500Z"`), and parsing accepts every form `chrono`
+accepted first, then jiff's own forms (`FromStr::Err` is `jiff::Error`). The
+jiff value behind `Deref` formats in jiff's style
+(`2026-10-15T09:30:00.5Z`). The types are also `Copy`, `Ord` and `Hash`, and
+`Timestamp::now()` reads the system clock. `rullst::orm::chrono`
+(`rullst_orm::chrono`) is removed, and `rullst::orm::jiff` re-exports the jiff
+crate that these types use. Use the new types in model fields (also inside
+`Option`), in `#[derive(Nexus)]` models and as query values. In
+`RullstValue`, the variants `Timestamp`, `CivilDateTime`, `CivilDate` and
+`CivilTime` replace `DateTime`, `NaiveDateTime`, `Date` and `Time`. Your own
+SQLx queries can bind and read the new types on the strict pools; the SQLx
+`Any` pool has no codec for them, as it had none for `chrono`. If your own
+SQLx code binds or reads `chrono` values (or names `sqlx::types::chrono`),
+enable the `chrono` feature on your own `sqlx` dependency, because Rullst no
+longer enables it. `rullst::db::*` glob-exports `DateTime`, `Date`, `Time` and
+`Timestamp`, so a module that also has `use chrono::prelude::*` gets
+ambiguous names: import the types it uses by name.
+
+**Stored data needs no migration.** On SQLite, PostgreSQL, MySQL and MariaDB
+the new types write exactly the bytes that the `chrono` types wrote, and they
+read every form those types read. Existing rows need no data migration, and
+old and new rows can share a column. `Default` gives the same values as
+before: 1970-01-01 for `Date`, 1970-01-01T00:00:00 for `DateTime`, the Unix
+epoch for `Timestamp` and midnight for `Time`.
+
+jiff's range is narrower than `chrono`'s. A value outside it is a decode or
+parse error, never a panic or a clamped value:
+
+- `DateTime`, `Date` and `Time` hold years -9999 to 9999.
+- `Timestamp` holds `-9999-01-02T01:59:59Z..=9999-12-30T22:00:00.999999999Z`.
+  The common end-of-time sentinel `9999-12-31 23:59:59` in a `timestamp_tz()`
+  column no longer reads: the error names the range and suggests NULL in an
+  `Option<Timestamp>` field for "no end", a value within the range, or reading
+  the column as a civil `DateTime`, which keeps the full range. Find such
+  rows before upgrading:
+  `SELECT id FROM events WHERE ends_at > '9999-12-30 22:00:00+00'` on
+  PostgreSQL, or `> '9999-12-30 22:00:00'` on MySQL/MariaDB.
+
+A few stored values read differently; none of them is a value Rullst writes:
+
+- a leap second (`:60`) reads as second 59, with the same fraction;
+- a few lenient text forms that only `chrono` read from a stored timestamp,
+  such as a space before the offset or a `UTC` suffix, no longer decode;
+- a Nexus date-time whose UTC instant falls in the year 10000 may fail on the
+  strict PostgreSQL or MySQL/MariaDB pools.
+
+**APIs outside the database take jiff's own types:**
+
+- **Core.** `Locale::format_date(date: impl Into<jiff::civil::Date>, style)`,
+  `format_time(time: impl Into<jiff::civil::Time>, style)` and
+  `format_datetime(value: impl Into<jiff::civil::DateTime>, date_style,
+  time_style)` used to take `&impl chrono::Datelike` and `Timelike`. Pass a
+  civil value by value: an ORM `Date`, `Time` or `DateTime` converts as it
+  is, and `*value` turns an ORM `DateTime` into the civil date-time that
+  `format_date` and `format_time` also accept. Each also accepts a
+  `&jiff::ZonedDateTime`, so for an instant pass
+  `&jiff::ZonedDateTime` in the reader's zone
+  (`at.in_tz("America/Sao_Paulo")?`); looking a zone up by name needs jiff's
+  time zone database, which `jiff = "1"` with its default features in your
+  own `Cargo.toml` provides. The formatted text is unchanged. Every
+  Core build now depends on `jiff`. The scheduler's API is unchanged, and the
+  `scheduler-tz` feature still adds the IANA time zone database.
+- **Mail.** `Message.send_at` is an `Option<jiff::Timestamp>`, and
+  `Message::send_at(timestamp: impl Into<jiff::Timestamp>)` and the memory
+  driver's assertion `MailAssertion::with_scheduled_at(expected: impl
+  Into<jiff::Timestamp>)` take one. The `expires_at` field of
+  `AccountEvent::PasswordResetAt` and `AccountEvent::EmailLoginAt` is also a
+  `jiff::Timestamp`.
+- **Capital.** `Invoice.date` is a `jiff::Timestamp`, and
+  `Invoice::new(invoice_id, customer_email, date: impl
+  Into<jiff::Timestamp>, currency)`.
+- An ORM `Timestamp` passes to these methods as it is; assign one to the
+  fields with `.into()`.
+- Messaging, Security and Auth have no public change. The serialized forms
+  do not change: messages queued as JSON before the upgrade deliver at their
+  time, and an invoice's JSON is byte for byte the same.
+
+**Typical rewrites.** In the right column, `Timestamp`, `SignedDuration` and
+`at` are jiff's types. An ORM `Timestamp` dereferences to `jiff::Timestamp`,
+so write `*at` where an expression needs the jiff value itself.
+
+| To alpha.5 (`chrono`) | From alpha.6 (`jiff`) |
+| :--- | :--- |
+| `Utc::now()` | `jiff::Timestamp::now()`, or `rullst::orm::Timestamp::now()` for a model field |
+| `Utc::now() + Duration::minutes(5)` | `Timestamp::now() + SignedDuration::from_mins(5)`, or `Timestamp::now().checked_add(SignedDuration::from_mins(5))?`, which returns an error instead of panicking at the end of jiff's range |
+| `at.timestamp()` | `at.as_second()` |
+| `NaiveDate::from_ymd_opt(2026, 10, 22)` | `jiff::civil::Date::new(2026, 10, 22)?` (or `jiff::civil::date(2026, 10, 22)` for a constant) |
+| `"2026-10-15T09:30:00Z".parse::<DateTime<Utc>>()` | `"2026-10-15T09:30:00Z".parse::<Timestamp>()` |
+| `at.format("%d/%m/%Y")` | `at.strftime("%d/%m/%Y")` |
+| `at.naive_utc()` | `jiff::tz::TimeZone::UTC.to_datetime(at)` |
+
+```rust
+use rullst::orm::jiff::{civil, SignedDuration};
+use rullst::orm::{Date, Timestamp};
+
+// A `timestamp_tz()` field and an instant five minutes later.
+let created_at = Timestamp::now();
+let expires_at = created_at.checked_add(SignedDuration::from_mins(5))?;
+assert_eq!(expires_at.as_second() - created_at.as_second(), 300);
+
+// `Display` keeps chrono's text; the jiff value behind `Deref` has jiff's.
+let at: Timestamp = "2026-10-15T09:30:00.5Z".parse()?;
+assert_eq!(at.to_string(), "2026-10-15 09:30:00.500 UTC");
+assert_eq!((*at).to_string(), "2026-10-15T09:30:00.5Z");
+
+// A `date()` field. Mail and Capital take an ORM `Timestamp` or a jiff one.
+let due: Date = civil::Date::new(2026, 10, 22)?.into();
+assert_eq!(due.to_string(), "2026-10-22");
+let invoice = rullst::capital::Invoice::new("INV-1", "ana@example.com", created_at, "BRL");
+let reminder = rullst::mail::Message::new().send_at(expires_at);
+# let _ = (invoice, reminder);
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+**How `cargo rullst upgrade` helps.** Four `MUST-CHANGE` rules, all
+introduced in 13.0.0-alpha.6, report the code that passes or reads `chrono`
+values where Rullst now takes the new types. Each one names the "`chrono`
+replaced by `jiff`" row and the replacement to apply by hand:
+
+- `V13-ORM-CHRONO-TYPES`: `chrono` types in model fields, Nexus models and
+  query values, and `rullst::orm::chrono` paths;
+- `V13-LOCALE-JIFF-DATES`: `Locale::format_date`, `format_time` and
+  `format_datetime` calls;
+- `V13-MAIL-JIFF-TIMESTAMPS`: `Message::send_at`, `with_scheduled_at` and the
+  `expires_at` of the account events;
+- `V13-CAPITAL-INVOICE-JIFF-DATE`: `Invoice::new` and `invoice.date`.
+
+### Messaging schedules and POSIX cron
+
+The `cron` crate depends on `chrono`, so 13.0.0-alpha.6 also stops using it
+for Messaging's durable recurring publications (`schedules-postgres`, facade
+`messaging-schedules-postgres`); see the "Messaging schedules use the
+scheduler's cron syntax" row. A new `RecurringDefinition` now reads its five
+fields exactly like [Core's `Scheduler::task`](crates/core.md), with POSIX
+semantics in UTC:
+
+| | Up to alpha.5 (the `cron` crate) | From alpha.6 (POSIX, like `Scheduler::task`) |
+| :--- | :--- | :--- |
+| Weekday numbers | 1 = Sunday to 7 = Saturday; 0 is rejected | 0 to 7: 0 and 7 are Sunday, 1 is Monday |
+| Day-of-month and weekday both restricted | both must match | either one matches |
+| A field that starts or ends with `,`, `-` or `/` | joined with its neighbour, which shifts the later fields | rejected |
+
+Weekday names (`Mon`, `Mon-Fri`) mean the same day in both syntaxes. The same
+text can change meaning, as these examples show:
+
+| Expression | Up to alpha.5 | From alpha.6 |
+| :--- | :--- | :--- |
+| `0 9 * * 1` | Sundays at 09:00 | Mondays at 09:00 |
+| `0 9 * * 2-6` | Monday to Friday | Tuesday to Saturday |
+| `0 9 * * 7` | Saturdays | Sundays |
+| `0 9 * * 0` | rejected | Sundays |
+| `0 0 1 * Mon` | the 1st, when it is a Monday | the 1st of every month, and every Monday |
+| `1, 2 * * *` | accepted, with `1,` and `2` joined into one field | rejected by `RecurringDefinition::new` |
+
+Definitions stored before the upgrade keep their meaning. Each definition
+records the syntax it was created with, and a definition stored without that
+record is read with the earlier `cron`-crate rules, now called the legacy
+syntax. `RecurringDefinition::syntax()` and `RecurringMetadata::syntax()`
+return `CronSyntax::Posix` or `CronSyntax::Legacy`
+(`rullst::messaging::schedules::CronSyntax`, `#[non_exhaustive]`), and
+`create` and `schedules()` return the metadata, so inspection lists show
+which definitions are legacy. The legacy syntax is deprecated: reading such
+definitions is planned for removal in 14.0. An expression that only the
+legacy syntax accepted, such as `1, 2 * * *`, is refused by
+`RecurringDefinition::new` with its own `InvalidInput` message, while a stored
+definition with it keeps running. A legacy definition deserialized from JSON
+exported before the upgrade keeps its syntax, and `create` accepts it, so an
+export and import moves schedules without changing their meaning.
+`RecurringDefinition::posix_equivalent()` returns the POSIX expression whose
+occurrences are exactly those of a definition (`0 9 * * 1`, Sundays in the
+legacy syntax, gives `0 9 * * 0`), or `None` when there is none: both day
+fields restricted, tokens that joined into another field, or a result over 128
+bytes. A POSIX definition returns its own expression.
+
+`cargo rullst upgrade` reports `V13-MESSAGING-CRON-POSIX` at each
+`RecurringDefinition::new` call whose expression is not a string literal that
+means the same in both syntaxes, and gives a literal's POSIX form when the
+rewrite is mechanical. What to do depends on whether that schedule is already
+stored:
+
+- **A schedule already stored** (created before the upgrade). Calling
+  `create` again at startup with the same name and the same expression
+  replays: it returns the stored metadata with `syntax() ==
+  CronSyntax::Legacy`, logs a warning and keeps the old meaning (`0 9 * * 1`
+  stays Sundays), so startup does not fail. Leave the code as it is to keep
+  the legacy schedule until 14.0. To move it to POSIX, cancel it and create
+  the POSIX expression (`posix_equivalent()` of the stored definition, when it
+  has one) under a new name. Any other definition under a legacy name, the
+  rewritten expression included (`0 9 * * 0`), fails with
+  `RecurringError::LegacyDefinition`: "schedule name is held by a legacy cron
+  definition; keep its expression to keep it running, or cancel it and create
+  the POSIX definition under a new name". A cancelled name can never be
+  reused.
+- **A new schedule.** Write the expression in the POSIX syntax: subtract one
+  from each weekday number, or use weekday names, and where an expression
+  restricts both the day of the month and the weekday, decide whether you
+  mean "both" or "either".
+
+Check expressions read from configuration or a database yourself. Plan a
+rollback as a database restore: a 13.0 prerelease before alpha.6 cannot read
+definitions that record their syntax, so take a backup before alpha.6 creates
+its first definition.
 
 ## Upgrading an alpha.2 application to alpha.3
 
@@ -1341,6 +1574,8 @@ Work through the steps in order.
     Code that keeps chrono for its own work declares `chrono` itself and
     converts where it meets Rullst; its own SQLx queries that bind or read
     chrono values need the `chrono` feature on its own `sqlx` dependency.
+    See [moving off `chrono`](#moving-off-chrono) for the type table, the
+    range limits and examples.
 21. **Review messaging schedules for POSIX cron** (Messaging schedules use
     the scheduler's cron syntax row, `V13-MESSAGING-CRON-POSIX`).
     `RecurringDefinition::new` now reads a new definition's expression as
@@ -1365,6 +1600,7 @@ Work through the steps in order.
     `-` or `/` (`1, 2 * * *`, `/5 * * * *`) or runs a number into a name
     (`1jan`), stored or not: stop creating such a schedule in code, or cancel
     it and create a POSIX expression under a new name.
+    See [Messaging schedules and POSIX cron](#messaging-schedules-and-posix-cron).
 22. **Dependencies and feature graphs** (no rule).
     - `cargo rullst make:cors-jwt` middleware generated earlier keeps the
       `jsonwebtoken` 11 its project declares. To move it to 12, the version

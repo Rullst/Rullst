@@ -531,8 +531,8 @@ deferred constraint, arrive through that conversion.
 
 Filters such as `where_eq` and `where_in`, `Orm::raw(..).bind(..)` and
 `with_tenant` take any value that converts into `RullstValue`: `String`/`&str`,
-`i32`, `i64`, `u32`, `f64`, `bool`, the `chrono` types `DateTime<Utc>`,
-`NaiveDateTime`, `NaiveDate` and `NaiveTime` (see
+`i32`, `i64`, `u32`, `f64`, `bool`, the date/time types `Timestamp`,
+`DateTime`, `Date` and `Time` (see
 [date and time columns](#date-and-time-columns)), a `#[derive(Enum)]` type
 (see [native database enums](#native-database-enums)) and `Option` of those. In a filter
 (`where_eq`, `where_in`, `where_between`, their `or_where` variants and the
@@ -740,43 +740,61 @@ the earlier statements applied.
 
 ### Date and time columns
 
-`date()`, `time()`, `timestamp()` and `timestamp_tz()` hold `chrono` values
-(re-exported as `rullst_orm::chrono`, and in the facade as
-`rullst::orm::chrono`):
+`date()`, `time()`, `timestamp()` and `timestamp_tz()` hold the ORM's
+date/time types `Date`, `Time`, `DateTime` and `Timestamp`
+(`rullst_orm::temporal`, also exported as `rullst_orm::*`, and in the facade
+as `rullst::orm::*` and `rullst::db::*`):
 
-| Helper | Rust field | PostgreSQL | MySQL/MariaDB | SQLite (ISO-8601 text) |
-| :--- | :--- | :--- | :--- | :--- |
-| `date` | `NaiveDate` | `DATE` | `DATE` | `2026-10-15` |
-| `time` | `NaiveTime` | `TIME` | `TIME(6)` | `09:30:00.500` |
-| `timestamp` | `NaiveDateTime` | `TIMESTAMP` | `DATETIME(6)` | `2026-10-15 09:30:00.500` |
-| `timestamp_tz` | `DateTime<Utc>` | `TIMESTAMPTZ` | `DATETIME(6)` (UTC) | `2026-10-15T09:30:00.500+00:00` |
+| Helper | Rust field | Wraps | PostgreSQL | MySQL/MariaDB | SQLite (ISO-8601 text) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `date` | `Date` | `jiff::civil::Date` | `DATE` | `DATE` | `2026-10-15` |
+| `time` | `Time` | `jiff::civil::Time` | `TIME` | `TIME(6)` | `09:30:00.500` |
+| `timestamp` | `DateTime` | `jiff::civil::DateTime` | `TIMESTAMP` | `DATETIME(6)` | `2026-10-15 09:30:00.500` |
+| `timestamp_tz` | `Timestamp` | `jiff::Timestamp` | `TIMESTAMPTZ` | `DATETIME(6)` (UTC) | `2026-10-15T09:30:00.500+00:00` |
 
-Since 13.0.0-alpha.6 the same columns also hold the ORM's own jiff-based
-types, `rullst_orm::Date`, `Time`, `DateTime` and `Timestamp` (in the facade
-`rullst::orm::Date` and so on; `rullst_orm::jiff` is the jiff 1.0 crate they
-wrap). They dereference to and convert from `jiff::civil::{Date, Time,
-DateTime}` and `jiff::Timestamp`, write the same bytes and text as the `chrono`
-types in the table and read everything those read, so a column may hold rows
-written by either; their `Display`, `Debug`, serde and `FromStr` are chrono's
-too (the jiff value behind `Deref` formats in jiff's style, and arithmetic on
-it converts back with `into()`). jiff's range ends sooner than chrono's:
-`DateTime`, `Date` and `Time` hold years -9999 to 9999, and `Timestamp`
--9999-01-02T01:59:59Z to 9999-12-30T22:00:00.999999999Z, so a `timestamp_tz`
-row holding the end-of-time sentinel `9999-12-31 23:59:59` is a decode error
-for a `Timestamp` (find such rows with `WHERE col > '9999-12-30 22:00:00+00'`
-on PostgreSQL or `WHERE col > '9999-12-30 22:00:00'` on MySQL/MariaDB). A leap
-second reads as second 59. `RullstValue` has a variant for each (`Timestamp`,
-`CivilDateTime`, `CivilDate`, `CivilTime`). The `chrono` types are removed
-before 13.0.0-alpha.6 is published.
+Each type wraps the [`jiff`](https://docs.rs/jiff/1) 1 type beside it,
+converts to and from it with `From` and dereferences to it, so jiff's
+arithmetic, formatting and time zones apply (`event.starts_at.as_second()`);
+`rullst_orm::jiff` (`rullst::orm::jiff`) re-exports the crate.
+`Timestamp::now()` reads the system clock, and the result of jiff arithmetic
+converts back with `.into()`. `Display`, `Debug`, serde and `FromStr` are
+byte for byte those of the `chrono` types they replace (a `Timestamp`
+displays as `2026-10-15 09:30:00.500 UTC` and serializes as
+`"2026-10-15T09:30:00.500Z"`); parsing accepts every form `chrono` accepted,
+then jiff's own forms. The jiff value behind `Deref` formats in jiff's style
+(`2026-10-15T09:30:00.5Z`). `Default` is chrono's: the Unix epoch,
+1970-01-01T00:00:00, 1970-01-01 and midnight. The types
+exist because SQLx has date/time codecs only for `chrono` and `time`, and
+Rust's orphan rule keeps the ORM from adding them to jiff's types. Up to
+13.0.0-alpha.5 these columns held `chrono` values; the new types write the
+same bytes and read every form the `chrono` types read, so existing rows need
+no migration (see [moving off `chrono`](../migration-v13.md#moving-off-chrono)).
+`RullstValue` has a variant for each (`Timestamp`, `CivilDateTime`,
+`CivilDate`, `CivilTime`).
+
+jiff's range ends sooner than chrono's, and a value outside it is a decode
+error, never a clamped value: `DateTime`, `Date` and `Time` hold years -9999 to
+9999, and `Timestamp` `-9999-01-02T01:59:59Z..=9999-12-30T22:00:00.999999999Z`.
+A `timestamp_tz` row holding the end-of-time sentinel `9999-12-31 23:59:59`
+does not read as a `Timestamp`; the error suggests NULL in an
+`Option<Timestamp>` field for "no end", a value within the range, or reading
+the column as a civil `DateTime`, which keeps the full range. Find such rows
+with `WHERE col > '9999-12-30 22:00:00+00'` on PostgreSQL or
+`WHERE col > '9999-12-30 22:00:00'` on MySQL/MariaDB. A leap second (`:60`)
+reads as second 59, and a few lenient text forms that only `chrono` read from
+stored timestamps (a space before the offset, a `UTC` suffix) no longer
+decode; Rullst writes none of these values. `rullst::db::*` exports the four
+names, so a module that also has `use chrono::prelude::*` imports them by name.
 
 MySQL/MariaDB store a UTC instant in `DATETIME(6)` because their `TIMESTAMP`
 ends in 2038; SQLx sets the session time zone to `+00:00`, so values and
 `CURRENT_TIMESTAMP` defaults are UTC (other clients see the same UTC wall
-time). The ORM sends a `DateTime<Utc>` (a model field, a filter value or an
+time). The ORM sends a `Timestamp` (a model field, a filter value or an
 `Orm::raw` binding) to them as its UTC wall time in a `DATETIME` parameter:
-MariaDB turns SQLx's own `TIMESTAMP` parameter into `NULL` outside
-1970–2038. When you bind a `DateTime<Utc>` with SQLx directly, bind
-`value.naive_utc()` for the same effect. A `ColumnDefault::CurrentTimestamp` default is the current UTC time in
+MariaDB turns a `TIMESTAMP` parameter into `NULL` outside 1970–2038, and a
+`Timestamp` that you bind with SQLx directly is sent as one. Bind its UTC wall
+time, `DateTime::from(jiff::tz::TimeZone::UTC.to_datetime(*value))`, for the
+same effect. A `ColumnDefault::CurrentTimestamp` default is the current UTC time in
 the column's own form: `CURRENT_TIMESTAMP` on a PostgreSQL `TIMESTAMPTZ`, the
 UTC wall time (`CURRENT_TIMESTAMP AT TIME ZONE 'UTC'`) on the zone-less types,
 `CURRENT_TIMESTAMP(6)`, `(CURRENT_DATE)` or `(CURRENT_TIME(6))` on
@@ -786,28 +804,27 @@ for `timestamp_tz`).
 
 `table.timestamps()` adds nullable `created_at`/`updated_at` `timestamp_tz()`
 columns that default to the current time. Model fields, filters and ordering
-use the `chrono` types; `RullstValue` converts them (`where_gt("starts_at",
-Utc::now())`), and `#[orm(db_default)]` leaves a column to its database
+use these types; `RullstValue` converts them (`where_gt("starts_at",
+Timestamp::now())`), and `#[orm(db_default)]` leaves a column to its database
 default:
 
 ```rust,ignore
 // Needs a strict driver feature (see below).
-use rullst_orm::chrono::{DateTime, NaiveDate, Utc};
-use rullst_orm::{Orm, RowSnapshot};
+use rullst_orm::{Date, Orm, RowSnapshot, Timestamp};
 
 #[derive(Debug, Clone, Orm)]
 #[orm(table = "events")]
 pub struct Event {
     pub id: i32,
-    pub starts_at: DateTime<Utc>,
-    pub day: NaiveDate,
-    pub ends_at: Option<DateTime<Utc>>,
+    pub starts_at: Timestamp,
+    pub day: Date,
+    pub ends_at: Option<Timestamp>,
     // Never written by `save()`: INSERT keeps the column DEFAULT and UPDATE
     // keeps the stored value. The handle keeps its own value (here `None`)
     // until the row is read again.
     #[orm(db_default)]
-    pub created_at: Option<DateTime<Utc>>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: Option<Timestamp>,
+    pub updated_at: Timestamp,
     #[sqlx(skip)]
     pub snapshot: RowSnapshot,
 }
@@ -816,7 +833,7 @@ pub struct Event {
 `#[orm(db_default)]` fields are left out of the generated `INSERT` and of
 every `UPDATE` of `save()`, `update_partial()` has no setter for them and
 `#[derive(Nexus)]` shows them read-only. Set an `updated_at` without it
-yourself (`Utc::now()`) or maintain it with a trigger. A model with a
+yourself (`Timestamp::now()`) or maintain it with a trigger. A model with a
 `RowSnapshot` field refreshes them from the stored row after each update.
 
 `#[orm(db_default)]` is also the option for any column that the database or
@@ -833,15 +850,15 @@ model's `FromRow` still reads `#[orm(skip)]` fields.
 | `#[orm(skip)]` | is not a database column for the ORM | rejected | never |
 | `#[orm(db_default)]` | exists and is managed by the database | allowed | never |
 
-Date/time columns and `chrono` fields need a strict driver feature
+Date/time columns and fields need a strict driver feature
 (`strict-postgres`, `strict-mysql` or `strict-sqlite`, which generated projects
 use). SQLx's dynamic `Any` pool, selected by `drivers-all` without a
 strict feature, carries only integer, float, text and blob values: it cannot
-decode a `chrono` field, and it cannot read a PostgreSQL or MySQL/MariaDB
+decode a date/time field, and it cannot read a PostgreSQL or MySQL/MariaDB
 `DATE`, `TIME`, `TIMESTAMP` or `TIMESTAMPTZ` column at all. On that pool
 `Schema::create` and `Schema::table` reject those helpers on PostgreSQL and
 MySQL/MariaDB with `Error::Validation`, SQLite keeps its ISO-8601 text for
-`String` fields, chrono filter values bind as that same text, and
+`String` fields, date/time filter values bind as that same text, and
 `timestamps()` keeps the alpha.1 `TEXT DEFAULT CURRENT_TIMESTAMP` columns
 (`DEFAULT (CURRENT_TIMESTAMP)` on MySQL/MariaDB, which accept a default on
 `TEXT`, `BLOB`, `JSON` and `GEOMETRY` columns only as an expression; other
