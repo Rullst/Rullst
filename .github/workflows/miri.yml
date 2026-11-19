@@ -54,6 +54,8 @@ jobs:
           - scope: rullst-auth/passkey ceremony
             manifest: rullst-auth/Cargo.toml
             filter: auth::passkey::ceremony::tests
+            # Passkeys compile only with this feature since 13.0.0-alpha.6.
+            features: passkeys
           - scope: rullst-capital/billable contract
             manifest: rullst-capital/Cargo.toml
             filter: billable::tests
@@ -88,12 +90,24 @@ jobs:
         env:
           MIRI_MANIFEST: ${{ matrix.manifest }}
           MIRI_TEST_FILTER: ${{ matrix.filter }}
+          MIRI_FEATURES: ${{ matrix.features || '' }}
           RUSTFLAGS: -Zrandomize-layout
           MIRIFLAGS: -Zmiri-disable-isolation
         run: |
+          # jsonschema asserts its own struct sizes at compile time, which a
+          # randomized layout breaks; only that crate keeps the default layout.
+          # Profile rustflags follow RUSTFLAGS, so the later `=no` wins there.
+          miri_args=(
+            --manifest-path "$MIRI_MANIFEST"
+            -Zprofile-rustflags
+            --config 'profile.dev.package.jsonschema.rustflags = ["-Zrandomize-layout=no"]'
+          )
+          if [ -n "$MIRI_FEATURES" ]; then
+            miri_args+=(--features "$MIRI_FEATURES")
+          fi
+
           scope_list="$RUNNER_TEMP/miri-scope.txt"
-          cargo +"$MIRI_TOOLCHAIN" miri test \
-            --manifest-path "$MIRI_MANIFEST" \
+          cargo +"$MIRI_TOOLCHAIN" miri test "${miri_args[@]}" \
             --lib "$MIRI_TEST_FILTER" -- --list | tee "$scope_list"
 
           if ! grep --fixed-strings --quiet "$MIRI_TEST_FILTER" "$scope_list"; then
@@ -101,8 +115,7 @@ jobs:
             exit 1
           fi
 
-          cargo +"$MIRI_TOOLCHAIN" miri test \
-            --manifest-path "$MIRI_MANIFEST" \
+          cargo +"$MIRI_TOOLCHAIN" miri test "${miri_args[@]}" \
             --lib "$MIRI_TEST_FILTER"
 
   careful:
