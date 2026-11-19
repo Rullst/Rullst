@@ -23,8 +23,12 @@
 //!   1970-01-01T00:00:00, 1970-01-01 and midnight.
 //!
 //! The jiff value reached through `Deref` or `into()` is jiff's, with jiff's
-//! text forms (`2026-10-15T09:30:00.5Z`); results of its arithmetic convert
-//! back with `into()`:
+//! text forms (`2026-10-15T09:30:00.5Z`). Arithmetic (`checked_add`,
+//! `checked_sub`, `saturating_add`, `saturating_sub`, `duration_until`,
+//! `duration_since`), `tomorrow`, `yesterday` and `DateTime::date`/`time` are
+//! the types' own methods and return the ORM types; there are no `+`/`-`
+//! operators, which panic on overflow in jiff. Other jiff results convert back
+//! with `into()`:
 //!
 //! ```
 //! use rullst_orm::jiff::SignedDuration;
@@ -33,8 +37,9 @@
 //! let at: Timestamp = "2026-10-15T09:30:00.5Z".parse().unwrap();
 //! assert_eq!(at.to_string(), "2026-10-15 09:30:00.500 UTC");
 //! assert_eq!(at.as_millisecond(), 1_792_056_600_500);
-//! let later: Timestamp = at.checked_add(SignedDuration::from_hours(1)).unwrap().into();
+//! let later: Timestamp = at.checked_add(SignedDuration::from_hours(1)).unwrap();
 //! assert_eq!(later.to_string(), "2026-10-15 10:30:00.500 UTC");
+//! assert_eq!(later.to_rfc3339(), "2026-10-15T10:30:00.500+00:00");
 //! assert!(matches!(RullstValue::from(later), RullstValue::Timestamp(_)));
 //! ```
 //!
@@ -71,6 +76,7 @@ use std::str::FromStr;
 
 use crate::RullstValue;
 
+mod arithmetic;
 mod calendar;
 #[cfg(any(feature = "drivers-all", feature = "strict-mysql"))]
 mod mysql;

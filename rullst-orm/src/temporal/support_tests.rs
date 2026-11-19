@@ -72,9 +72,9 @@ pub(crate) fn date_time() -> impl Strategy<Value = DateTime> {
 }
 
 pub(crate) fn date() -> impl Strategy<Value = Date> {
-    date_time().prop_map(|value| Date::from(value.date()))
+    date_time().prop_map(DateTime::date)
 }
 
 pub(crate) fn time() -> impl Strategy<Value = Time> {
-    date_time().prop_map(|value| Time::from(value.time()))
+    date_time().prop_map(DateTime::time)
 }
