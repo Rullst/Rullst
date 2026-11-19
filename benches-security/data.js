@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795081152594,
+  "lastUpdate": 1795125788359,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -25244,6 +25244,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 11,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "58438b64caa847ef7ffdcc08653ce26cb5a8a8a0",
+          "message": "Merge pull request #773 from Rullst/fix/v13-miri-admission-scopes\n\nci(miri): enable passkeys and keep jsonschema's layout in strict scopes",
+          "timestamp": "2026-11-19T13:43:34-03:00",
+          "tree_id": "2571ab81773dc82a634bfc930a952bfed1b146f7",
+          "url": "https://github.com/Rullst/Rullst/commit/58438b64caa847ef7ffdcc08653ce26cb5a8a8a0"
+        },
+        "date": 1795125787696,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5664,
+            "range": "± 33",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 568,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 14,
             "range": "± 0",
             "unit": "ns/iter"
           }
