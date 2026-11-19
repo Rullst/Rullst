@@ -3410,7 +3410,6 @@ checksum = "175dc66334db3b9ab9985bf8b61cfed50dc16d20964bb47f9e479adcae984a7f"
 dependencies = [
  "jiff-core 0.1.8",
  "jiff-static 0.2.46",
- "jiff-tzdb 0.1.10",
  "jiff-tzdb-platform 0.1.3",
  "log",
  "portable-atomic",
@@ -5989,7 +5988,7 @@ dependencies = [
  "ammonia",
  "axum",
  "base64 0.23.1",
- "jiff 0.2.46",
+ "jiff 1.0.0",
  "rullst-ai",
  "rullst-auth",
  "rullst-core",
@@ -6114,9 +6113,9 @@ version = "13.0.0-alpha.5"
 dependencies = [
  "axum",
  "base64 0.23.1",
- "chrono",
  "futures-util",
  "hmac",
+ "jiff 1.0.0",
  "rand 0.10.4",
  "reqwest",
  "ring",

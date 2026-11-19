@@ -52,7 +52,7 @@ pub async fn logger_middleware(
     let method = req.method().to_string();
     let uri = req.uri().to_string();
     let start = Instant::now();
-    let timestamp = chrono::Utc::now().to_rfc3339();
+    let timestamp = rfc3339(jiff::Timestamp::now());
 
     let res = next.run(req).await;
 
@@ -70,6 +70,32 @@ pub async fn logger_middleware(
     let _ = state.tx.send(log);
 
     res
+}
+
+/// `instant` as RFC 3339 text in UTC with `+00:00` and no fraction or 3, 6
+/// or 9 fraction digits, whichever shows every non-zero digit: the form
+/// `RequestLog::timestamp` has always had (chrono's `to_rfc3339`).
+fn rfc3339(instant: jiff::Timestamp) -> String {
+    let wall = jiff::tz::Offset::UTC.to_datetime(instant);
+    let nanos = wall.subsec_nanosecond();
+    let fraction = if nanos == 0 {
+        String::new()
+    } else if nanos % 1_000_000 == 0 {
+        format!(".{:03}", nanos / 1_000_000)
+    } else if nanos % 1_000 == 0 {
+        format!(".{:06}", nanos / 1_000)
+    } else {
+        format!(".{nanos:09}")
+    };
+    format!(
+        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}{fraction}+00:00",
+        wall.year(),
+        wall.month(),
+        wall.day(),
+        wall.hour(),
+        wall.minute(),
+        wall.second()
+    )
 }
 
 pub fn router(state: Arc<LoggerState>) -> Router {
@@ -155,6 +181,68 @@ mod tests {
             latency_ms: 12,
             timestamp: "2026-08-22T00:00:00Z".to_string(),
         });
+    }
+
+    #[tokio::test]
+    async fn the_middleware_passes_the_response_through_and_logs_it() {
+        let state = Arc::new(LoggerState::new());
+        let mut logs = state.tx.subscribe();
+        let app = Router::new()
+            .route("/teapot", get(|| async { StatusCode::IM_A_TEAPOT }))
+            .layer(axum::middleware::from_fn_with_state(
+                state,
+                logger_middleware,
+            ));
+        let before = jiff::Timestamp::now();
+
+        let req = Request::builder()
+            .method("GET")
+            .uri("/teapot?x=1")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::IM_A_TEAPOT);
+
+        let log = logs.try_recv().expect("one request log");
+        assert_eq!(log.method, "GET");
+        assert_eq!(log.uri, "/teapot?x=1");
+        assert_eq!(log.status, 418);
+        let logged = log
+            .timestamp
+            .strip_suffix("+00:00")
+            .expect("UTC offset")
+            .parse::<jiff::civil::DateTime>()
+            .expect("RFC 3339 wall time");
+        let logged = jiff::tz::Offset::UTC.to_timestamp(logged).unwrap();
+        assert!(before <= logged && logged <= jiff::Timestamp::now());
+    }
+
+    #[test]
+    fn request_timestamps_keep_their_rfc3339_form() {
+        let at = |second, nanosecond| {
+            rfc3339(jiff::Timestamp::new(second, nanosecond).expect("valid instant"))
+        };
+        assert_eq!(at(1_792_056_600, 0), "2026-10-15T09:30:00+00:00");
+        assert_eq!(
+            at(1_792_056_600, 500_000_000),
+            "2026-10-15T09:30:00.500+00:00"
+        );
+        assert_eq!(
+            at(1_792_056_600, 1_000_000),
+            "2026-10-15T09:30:00.001+00:00"
+        );
+        assert_eq!(
+            at(1_792_056_600, 120_000),
+            "2026-10-15T09:30:00.000120+00:00"
+        );
+        assert_eq!(at(1_792_056_600, 1_000), "2026-10-15T09:30:00.000001+00:00");
+        assert_eq!(
+            at(1_792_056_600, 123_456_789),
+            "2026-10-15T09:30:00.123456789+00:00"
+        );
+        assert_eq!(at(1_792_056_600, 7), "2026-10-15T09:30:00.000000007+00:00");
+        assert_eq!(at(-62_135_596_800, 0), "0001-01-01T00:00:00+00:00");
+        assert_eq!(at(253_402_207_199, 0), "9999-12-30T21:59:59+00:00");
     }
 
     #[test]
