@@ -1575,9 +1575,9 @@ Work through the steps in order.
       bytes, so no data migration runs.
     - Core (`V13-LOCALE-JIFF-DATES`): pass a jiff civil value, or
       `&zoned` for a `jiff::ZonedDateTime` in the visitor's zone, to
-      `format_date`, `format_time` and `format_datetime`. They take values,
-      not references: pass an ORM value itself (`locale.format_date(day,
-      DateStyle::Short)` with `day: rullst::orm::Date`) or the jiff value
+      `format_date`, `format_time` and `format_datetime`. Pass an ORM value
+      itself or a reference to it (`locale.format_date(&day,
+      DateStyle::Short)` with `day: rullst::orm::Date`), or the jiff value
       behind it (`*day`).
     - Mail and Capital (`V13-MAIL-JIFF-TIMESTAMPS`,
       `V13-CAPITAL-INVOICE-JIFF-DATE`): pass a `jiff::Timestamp` to
@@ -1591,8 +1591,10 @@ Work through the steps in order.
     range limits and examples.
 
     Code moved from chrono to jiff mostly changes method names. The ORM
-    types dereference to the jiff value (`*at`), so jiff's methods apply to
-    them:
+    types have the common operations themselves, returning ORM types, and
+    dereference to the jiff value (`*at`) for the rest of jiff's methods.
+    They have no `+` or `-` operators, because jiff's panic on overflow; the
+    checked and saturating methods report it instead:
 
     | chrono | jiff |
     | :--- | :--- |
@@ -1602,9 +1604,11 @@ Work through the steps in order.
     | `day.month0()`, `day.month()` | `day.month() - 1`, `day.month()`: `year()` is an `i16` and `month()`, `day()`, `hour()` are `i8`, so cast where code expected `i32` or `u32` |
     | `NaiveDate::from_ymd_opt(2026, 11, 19)` | `jiff::civil::Date::new(2026, 11, 19)`, which returns a `Result` (`i16`, `i8`, `i8` arguments) |
     | `day.iter_days()` | `day.series(1.day())` (`use jiff::ToSpan`) |
-    | `day + Duration::days(n)` | `day.saturating_add(n.days())` on a date or date-time; on a `Timestamp`, which has no calendar, `at.checked_add(SignedDuration::from_hours(24 * n))?` |
-    | `(later - earlier).num_days()` | `later.duration_since(earlier)`, a `SignedDuration` (`.as_hours() / 24` whole days), or `earlier.until(later)?.get_days()` for calendar days |
-    | `at.to_rfc3339()` | `rullst::orm::Timestamp`'s `Display` writes `2026-10-15 09:30:00.500 UTC` and serde writes `"2026-10-15T09:30:00.500Z"`; jiff's `Display` writes `Z` and the shortest fraction, not chrono's `+00:00` |
+    | `day + Duration::days(n)` | `day.saturating_add(n.days())` or `day.checked_add(n.days())?` on a `Date` or `DateTime` (`use jiff::ToSpan`); a `Timestamp` has no calendar, so `at.checked_add(SignedDuration::from_hours(24 * n))?`, and its `saturating_add` returns a `Result` that is an error for a `Span` with units above hours. `checked_sub` and `saturating_sub` subtract |
+    | `day.succ_opt()`, `day.pred_opt()` | `day.tomorrow()?`, `day.yesterday()?` on a `Date` or `DateTime` |
+    | `(later - earlier).num_days()` | `later.days_since(earlier)` or `earlier.days_until(later)` on a `Date` (whole calendar days, an `i64`); `later.duration_since(earlier)` and `duration_until` on every ORM type give a `SignedDuration` |
+    | `at.date()`, `at.time()` | `rullst::orm::DateTime`'s `date()` and `time()`, which return `rullst::orm::Date` and `Time` |
+    | `at.to_rfc3339()` | `rullst::orm::Timestamp::to_rfc3339()`, byte for byte chrono's output (`2026-10-15T09:30:00.500+00:00`); jiff's own `Display` writes `Z` and the shortest fraction |
 21. **Review messaging schedules for POSIX cron** (Messaging schedules use
     the scheduler's cron syntax row, `V13-MESSAGING-CRON-POSIX`).
     `RecurringDefinition::new` now reads a new definition's expression as
