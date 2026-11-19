@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795050818490,
+  "lastUpdate": 1795052998794,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -15183,6 +15183,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 354,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3c338836d9c50fcc5a69130218099401cb499041",
+          "message": "Merge pull request #758 from Rullst/feat/v13-jiff-nexus-studio\n\nrefactor(nexus,studio): replace chrono with jiff 1.0",
+          "timestamp": "2026-11-18T22:32:14-03:00",
+          "tree_id": "70050685711b45d9e2e9576f46ebe34189d12b68",
+          "url": "https://github.com/Rullst/Rullst/commit/3c338836d9c50fcc5a69130218099401cb499041"
+        },
+        "date": 1795052997777,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 387,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
