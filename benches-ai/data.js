@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795081242459,
+  "lastUpdate": 1795125897175,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -22293,6 +22293,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 295,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "58438b64caa847ef7ffdcc08653ce26cb5a8a8a0",
+          "message": "Merge pull request #773 from Rullst/fix/v13-miri-admission-scopes\n\nci(miri): enable passkeys and keep jsonschema's layout in strict scopes",
+          "timestamp": "2026-11-19T13:43:34-03:00",
+          "tree_id": "2571ab81773dc82a634bfc930a952bfed1b146f7",
+          "url": "https://github.com/Rullst/Rullst/commit/58438b64caa847ef7ffdcc08653ce26cb5a8a8a0"
+        },
+        "date": 1795125896502,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1714,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 328,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 391,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
