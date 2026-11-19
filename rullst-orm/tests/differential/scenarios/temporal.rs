@@ -62,7 +62,7 @@ async fn save(
 }
 
 /// Kept for the ordering and filter steps.
-const KEPT: [(&str, &str, (i32, u32, u32)); 4] = [
+const KEPT: [(&str, &str, (i16, i8, i8)); 4] = [
     ("micros", "2026-10-15T09:30:00.123456Z", (2026, 10, 15)),
     ("nanos", "2026-10-15T09:30:00.987654321Z", (2026, 10, 15)),
     ("whole_second", "2026-10-15T09:29:59Z", (2026, 10, 14)),
