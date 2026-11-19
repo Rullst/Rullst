@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795068767597,
+  "lastUpdate": 1795070372682,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -15363,6 +15363,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 381,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9feff71f4b89de6f091c912968673e31ab8b3bef",
+          "message": "Merge pull request #770 from Rullst/docs/v13-chrono-jiff-cheat-sheet\n\ndocs(migration): chrono→jiff cheat sheet; review glob-imported literals and moved Caddyfiles",
+          "timestamp": "2026-11-19T03:27:19-03:00",
+          "tree_id": "aac5498666e37292640de9bd73249b4b57dc3ae5",
+          "url": "https://github.com/Rullst/Rullst/commit/9feff71f4b89de6f091c912968673e31ab8b3bef"
+        },
+        "date": 1795070372279,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 386,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
