@@ -94,6 +94,38 @@ fn literals_with_fields_of_another_struct_are_not_reported() {
 }
 
 #[test]
+fn literals_a_glob_may_bring_in_are_reviewed() {
+    const GLOB: &str = "V13-NON-EXHAUSTIVE-LITERAL-GLOB";
+    // A test module that reaches Connect's `HttpResponse` through its parent.
+    let test_module = "use super::*;\nfn ok(body: String) -> HttpResponse { HttpResponse { status: 200, body } }\nfn err() -> RagRetrievalError { RagRetrievalError(String::new()) }\nfn own() -> Point { Point { x: 1, y: 2 } }\n";
+    assert_eq!(found(test_module, GLOB), [2, 3]);
+    assert_eq!(found(test_module, LITERAL), Vec::<usize>::new());
+    for glob in [
+        "use crate::providers::*;",
+        "pub use self::client::*;",
+        "use rullst::connect::prelude::*;",
+    ] {
+        let source = format!(
+            "{glob}\nfn ok(body: String) -> HttpResponse {{ HttpResponse {{ status: 200, body }} }}\n"
+        );
+        let (literal, review) = (found(&source, LITERAL), found(&source, GLOB));
+        // A Rullst glob also names the crate, so the literal must change.
+        if glob.contains("rullst") {
+            assert_eq!((literal, review), (vec![2], vec![]), "{glob}");
+        } else {
+            assert_eq!((literal, review), (vec![], vec![2]), "{glob}");
+        }
+    }
+    // Without a glob, or with a glob of another crate, nothing is reported.
+    for header in ["", "use std::collections::*;\n", "use superb::*;\n"] {
+        let source = format!(
+            "{header}fn ok(body: String) -> HttpResponse {{ HttpResponse {{ status: 200, body }} }}\n"
+        );
+        assert!(found(&source, GLOB).is_empty(), "{header}");
+    }
+}
+
+#[test]
 fn calls_of_rullst_tuple_structs_must_change() {
     let source = "use rullst::ai::ai::rag::{RagAuditError, RagRetrievalError};\nfn e() -> RagRetrievalError {\n    RagRetrievalError(\"down\".to_string())\n}\nfn a() -> RagAuditError { RagAuditError::new(\"down\") }\n";
     assert_eq!(found(source, LITERAL), [3]);

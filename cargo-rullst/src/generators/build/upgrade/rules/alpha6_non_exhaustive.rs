@@ -9,7 +9,7 @@
 //! left alone.
 
 use super::Rule;
-use super::catalog::{NON_EXHAUSTIVE_LITERAL, NON_EXHAUSTIVE_MATCH};
+use super::catalog::{NON_EXHAUSTIVE_LITERAL, NON_EXHAUSTIVE_LITERAL_GLOB, NON_EXHAUSTIVE_MATCH};
 
 /// One enum per line: its name, its crate and its variants.
 const ENUMS: &str = "
@@ -216,23 +216,68 @@ pub(super) fn match_rule(names: impl Fn(&str) -> bool, text: &str) -> Option<&'s
         .then_some(&NON_EXHAUSTIVE_MATCH)
 }
 
+/// Whether `text` imports names through a glob that can bring in a Rullst
+/// type without naming its crate: `use super::*;`, `use self::…::*;`,
+/// `use crate::…::*;`, or a glob of a Rullst path.
+fn glob_import(text: &str) -> bool {
+    text.lines().any(|line| {
+        let line = line.trim();
+        let path = line
+            .strip_prefix("pub use ")
+            .or_else(|| line.strip_prefix("use "))
+            .and_then(|rest| rest.strip_suffix("::*;"));
+        path.is_some_and(|path| {
+            ["super", "self", "crate"]
+                .iter()
+                .any(|module| path == *module || path.starts_with(&format!("{module}::")))
+                || path.contains("rullst")
+        })
+    })
+}
+
+/// The rule for a construction of one of `structs` named `name` whose crate
+/// the file names, or the review rule when the file names no such crate but
+/// imports a glob, which can bring the type in unnamed.
+fn construction(
+    structs: impl Iterator<Item = (&'static str, &'static str, Vec<&'static str>)>,
+    matches: impl Fn(&str, &[&str]) -> bool,
+    text: &str,
+) -> Option<&'static Rule> {
+    let mut unnamed = false;
+    for (struct_name, krate, own) in structs {
+        if !matches(struct_name, &own) {
+            continue;
+        }
+        if names_crate(text, krate) {
+            return Some(&NON_EXHAUSTIVE_LITERAL);
+        }
+        unnamed = true;
+    }
+    (unnamed && glob_import(text)).then_some(&NON_EXHAUSTIVE_LITERAL_GLOB)
+}
+
 /// The rule for a struct literal whose path ends in `name` and whose named
 /// fields are `fields`: a struct above whose fields include every one of
-/// them, in a file that names its crate.
+/// them, in a file that names its crate (or, for review, imports a glob).
 pub(super) fn literal_rule(name: &str, fields: &[String], text: &str) -> Option<&'static Rule> {
-    (!fields.is_empty()
-        && entries(STRUCTS).any(|(struct_name, krate, own)| {
-            struct_name == name
-                && fields.iter().all(|field| own.contains(&field.as_str()))
-                && names_crate(text, krate)
-        }))
-    .then_some(&NON_EXHAUSTIVE_LITERAL)
+    if fields.is_empty() {
+        return None;
+    }
+    construction(
+        entries(STRUCTS),
+        |struct_name, own| {
+            struct_name == name && fields.iter().all(|field| own.contains(&field.as_str()))
+        },
+        text,
+    )
 }
 
 /// The rule for a call whose path ends in `name`: one of the tuple structs
-/// above, in a file that names its crate.
+/// above, in a file that names its crate (or, for review, imports a glob).
 pub(super) fn call_rule(name: &str, text: &str) -> Option<&'static Rule> {
-    entries(TUPLE_STRUCTS)
-        .any(|(struct_name, krate, _)| struct_name == name && names_crate(text, krate))
-        .then_some(&NON_EXHAUSTIVE_LITERAL)
+    construction(
+        entries(TUPLE_STRUCTS),
+        |struct_name, _| struct_name == name,
+        text,
+    )
 }
