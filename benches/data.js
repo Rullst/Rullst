@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795064610686,
+  "lastUpdate": 1795067422764,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -37285,6 +37285,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1089,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ccbb907a88c1ffe552c0d72bdb6fcfbb2f539012",
+          "message": "Merge pull request #771 from Rullst/fix/v13-non-exhaustive-settability\n\nfeat(connect): build a DeviceAuthorizationResponse outside the crate",
+          "timestamp": "2026-11-19T02:46:14-03:00",
+          "tree_id": "759c67fdc66e7ceb56dcd146fd5fb8dae4104b68",
+          "url": "https://github.com/Rullst/Rullst/commit/ccbb907a88c1ffe552c0d72bdb6fcfbb2f539012"
+        },
+        "date": 1795067418614,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 550,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 724,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 326,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1481,
+            "range": "± 21",
             "unit": "ns/iter"
           }
         ]
