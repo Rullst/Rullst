@@ -19,7 +19,7 @@ async fn packaged_auth_notice_survives_mail_preparation_and_redeems_once() {
     let notice = issue(&service, &email, &browser, &clock).await;
     let event = AccountEvent::EmailLoginAt {
         link: ActionLink::new(notice.expose_link().to_string(), "https://app.example").unwrap(),
-        expires_at: chrono::DateTime::from_timestamp(notice.expires_at(), 0).unwrap(),
+        expires_at: jiff::Timestamp::from_second(notice.expires_at()).unwrap(),
     };
     let message = AccountMail::new(notice.recipient(), "School", MailLocale::PtBr, event)
         .unwrap()

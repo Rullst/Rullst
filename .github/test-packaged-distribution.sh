@@ -222,7 +222,7 @@ mkdir -p "$login_dir/tests/email_login"
   printf 'rullst = { version = "=%s", default-features = false, features = ["auth-email-login-sqlite", "auth-email-login-postgres", "mail"] }\n' "$version"
   printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "process", "io-std"] }\n'
   printf 'sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "any", "sqlite", "postgres", "tls-rustls-aws-lc-rs"] }\n'
-  printf 'tempfile = "3"\nurl = "2.5.8"\nrand = "0.10.1"\nchrono = "0.4.45"\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\n'
+  printf 'tempfile = "3"\nurl = "2.5.8"\nrand = "0.10.1"\njiff = { version = "1.0.0", default-features = false, features = ["std"] }\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\n'
 } > "$login_dir/Cargo.toml"
 cp "$repository_root/.github/fixtures/email-login-mail-facade.rs" "$login_dir/tests/email_login_mail.rs"
 for test in email_login_contract email_login_restart; do
