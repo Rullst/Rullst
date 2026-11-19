@@ -3,11 +3,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use ed25519_dalek::{Signer, SigningKey};
-#[cfg(feature = "experimental-simulators")]
-use rullst_iot::hsm::{SimulatedHsmDevice, SimulatedHsmProfile};
 use rullst_iot::mesh::{MeshNode, MeshTopology, NodeStatus};
-#[cfg(feature = "experimental-simulators")]
-use rullst_iot::pqc::SimulatedPqcFixture;
 use rullst_iot::ui::IotDashboard;
 use rullst_iot::*;
 
@@ -238,30 +234,6 @@ fn test_gpio_and_ble_structures() {
 }
 
 #[test]
-#[cfg(feature = "experimental-simulators")]
-fn test_simulated_hsm_fixture_digests() {
-    let hsm = SimulatedHsmDevice::new(SimulatedHsmProfile::Atecc608A, "DEV-SEC-001");
-    let fixture = hsm.derive_fixture_bytes();
-    assert_eq!(fixture.len(), 32);
-
-    let digest = hsm.digest_fixture(b"telemetry_packet_bytes");
-    assert_eq!(digest.len(), 32);
-}
-
-#[test]
-#[cfg(feature = "experimental-simulators")]
-fn test_simulated_pqc_fixture_derivations() {
-    let fixture = SimulatedPqcFixture::from_seed(b"pqc_fixture_seed_edge");
-    assert_eq!(fixture.public_fixture().len(), 32);
-
-    let ciphertext = fixture.derive_ciphertext_fixture(b"fixture_input");
-    assert_eq!(ciphertext.len(), 32);
-
-    let output = fixture.derive_output_fixture(&ciphertext);
-    assert_eq!(output.len(), 32);
-}
-
-#[test]
 fn test_mesh_topology_routing() {
     let mut mesh = MeshTopology::new();
     mesh.register(MeshNode::new("node_weak", -90));
@@ -284,19 +256,6 @@ fn test_iot_micro_dashboard_rendering() {
     assert!(card_html.contains("voltage"));
     assert!(card_html.contains("SNAPSHOT"));
     assert!(!card_html.contains("ONLINE"));
-}
-
-#[test]
-#[cfg(feature = "experimental-simulators")]
-fn test_simulated_hsm_profiles() {
-    let hsm_tpm = SimulatedHsmDevice::new(SimulatedHsmProfile::Tpm2, "DEV-TPM-002");
-    assert_eq!(hsm_tpm.derive_fixture_bytes().len(), 32);
-
-    let hsm_stsafe = SimulatedHsmDevice::new(SimulatedHsmProfile::Stsafe, "DEV-SE-003");
-    assert_eq!(hsm_stsafe.derive_fixture_bytes().len(), 32);
-
-    let hsm_software = SimulatedHsmDevice::new(SimulatedHsmProfile::Software, "DEV-CUST-004");
-    assert_eq!(hsm_software.derive_fixture_bytes().len(), 32);
 }
 
 #[test]

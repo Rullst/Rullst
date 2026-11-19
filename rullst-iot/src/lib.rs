@@ -2,8 +2,7 @@
 //!
 //! This crate does not currently provide MQTT/CoAP network transport, hardware
 //! HSM bindings, or post-quantum cryptography. It does provide bounded MQTT 5
-//! PUBLISH and CoAP request encoders. Deterministic fixtures resembling other
-//! capabilities require the explicit `experimental-simulators` feature.
+//! PUBLISH and CoAP request encoders.
 //!
 //! **Maturity: Extension**
 //! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)) since
@@ -57,12 +56,6 @@ pub mod ui;
 pub mod mesh;
 pub mod ota;
 
-// Explicitly simulated cryptographic fixtures.
-#[cfg(feature = "experimental-simulators")]
-pub mod hsm;
-#[cfg(feature = "experimental-simulators")]
-pub mod pqc;
-
 // Power recommendations and digital-twin state.
 pub mod power;
 pub mod twin;
@@ -72,21 +65,15 @@ pub use anomaly::{AnomalyDetector, AnomalyState};
 pub use ble::{GattCharacteristic, GattService};
 pub use coap::{CoapCodecError, CoapMessageType, CoapMethod, CoapRequest, MAX_COAP_DATAGRAM_BYTES};
 pub use gpio::{GpioPin, PinMode, PinState};
-#[cfg(feature = "experimental-simulators")]
-pub use hsm::{SimulatedHsmDevice, SimulatedHsmProfile};
 pub use i2c::{I2cFrameError, I2cHelper, MAX_I2C_READ_BYTES};
 pub use mesh::{MeshNode, MeshTopology, NodeStatus};
 pub use modbus::{ModbusFrame, ModbusFunction};
-#[cfg(feature = "experimental-simulators")]
-pub use mqtt::SimulatedMqttPayloadFormatter;
 pub use mqtt::{MAX_MQTT_PACKET_BYTES, MqttCodecError, MqttPublish, MqttQos};
 pub use ota::{
     BootPartition, OtaCommit, OtaError, OtaImageVerifier, OtaManager, OtaManifest, OtaStatus,
     RollbackCounterError, RollbackCounterStore,
 };
 pub use power::{HarvesterState, PowerGovernor, PowerMode};
-#[cfg(feature = "experimental-simulators")]
-pub use pqc::SimulatedPqcFixture;
 pub use twin::{DigitalTwin, TwinJsonError, TwinSyncError};
 pub use ui::{IotDashboard, IotHtml};
 

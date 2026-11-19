@@ -204,13 +204,3 @@ fn encoded_packet_buffer_has_exactly_its_length() {
         assert_eq!(packet.capacity(), packet.len(), "payload {payload_len}");
     }
 }
-
-#[cfg(feature = "experimental-simulators")]
-#[test]
-fn simulated_formatter_only_formats_a_value() {
-    let telemetry = SensorTelemetry::new("fixture", "temperature", 24.5, 1);
-    assert_eq!(
-        SimulatedMqttPayloadFormatter::format_value(&telemetry),
-        "24.5"
-    );
-}
