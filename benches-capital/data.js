@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795053281041,
+  "lastUpdate": 1795056144665,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -18872,6 +18872,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dadfa7fdd6a6646119b8623f3e3e2b55510810f2",
+          "message": "Merge pull request #767 from Rullst/refactor/v13-studio-redundant-checks\n\nrefactor(studio): drop two redundant conditions",
+          "timestamp": "2026-11-18T23:24:35-03:00",
+          "tree_id": "817fd3ea81ba69b8e9eff2be8337f2c253f73a3e",
+          "url": "https://github.com/Rullst/Rullst/commit/dadfa7fdd6a6646119b8623f3e3e2b55510810f2"
+        },
+        "date": 1795056143710,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 3,
             "range": "± 0",
             "unit": "ns/iter"
           }
