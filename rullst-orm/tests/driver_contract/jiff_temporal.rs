@@ -118,8 +118,10 @@ mod native {
     /// Writes `entry` again through `Orm::raw`, binding each value as a
     /// `RullstValue` (on MySQL/MariaDB an instant goes as a `DATETIME`).
     async fn insert_raw(driver: &str, entry: &JiffEntry) {
+        // `RullstValue::Null` is a text parameter, which PostgreSQL casts
+        // only explicitly.
         let placeholders = if driver == "postgres" {
-            "$1, $2, $3, $4, $5, $6"
+            "$1, $2, $3, $4, $5, CAST($6 AS TIMESTAMPTZ)"
         } else {
             "?, ?, ?, ?, ?, ?"
         };
