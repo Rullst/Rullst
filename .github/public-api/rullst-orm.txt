@@ -106,11 +106,23 @@ pub trait rullst_orm::DatabaseEnum
 pub const rullst_orm::DatabaseEnum::TYPE_NAME: &'static str
 pub const rullst_orm::DatabaseEnum::VARIANTS: &'static [&'static str]
 pub struct rullst_orm::Date(_)
+impl rullst_orm::Date
+pub fn rullst_orm::Date::checked_add<A: core::convert::Into<jiff::civil::date::DateArithmetic>>(self, duration: A) -> core::result::Result<Self, jiff::error::Error>
+pub fn rullst_orm::Date::checked_sub<A: core::convert::Into<jiff::civil::date::DateArithmetic>>(self, duration: A) -> core::result::Result<Self, jiff::error::Error>
+pub fn rullst_orm::Date::days_since(self, other: impl core::convert::Into<jiff::civil::date::Date>) -> i64
+pub fn rullst_orm::Date::days_until(self, other: impl core::convert::Into<jiff::civil::date::Date>) -> i64
+pub fn rullst_orm::Date::duration_since(self, other: impl core::convert::Into<jiff::civil::date::Date>) -> jiff::signed_duration::SignedDuration
+pub fn rullst_orm::Date::duration_until(self, other: impl core::convert::Into<jiff::civil::date::Date>) -> jiff::signed_duration::SignedDuration
+pub fn rullst_orm::Date::saturating_add<A: core::convert::Into<jiff::civil::date::DateArithmetic>>(self, duration: A) -> Self
+pub fn rullst_orm::Date::saturating_sub<A: core::convert::Into<jiff::civil::date::DateArithmetic>>(self, duration: A) -> Self
+pub fn rullst_orm::Date::tomorrow(self) -> core::result::Result<Self, jiff::error::Error>
+pub fn rullst_orm::Date::yesterday(self) -> core::result::Result<Self, jiff::error::Error>
 impl core::clone::Clone for rullst_orm::Date
 impl core::cmp::Eq for rullst_orm::Date
 impl core::cmp::Ord for rullst_orm::Date
 impl core::cmp::PartialEq for rullst_orm::Date
 impl core::cmp::PartialOrd for rullst_orm::Date
+impl core::convert::From<&rullst_orm::Date> for jiff::civil::date::Date
 impl core::convert::From<jiff::civil::date::Date> for rullst_orm::Date
 impl core::convert::From<rullst_orm::Date> for jiff::civil::date::Date
 impl core::convert::From<rullst_orm::Date> for rullst_orm::RullstValue
@@ -139,11 +151,23 @@ impl core::marker::Unpin for rullst_orm::Date
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::Date
 impl core::panic::unwind_safe::UnwindSafe for rullst_orm::Date
 pub struct rullst_orm::DateTime(_)
+impl rullst_orm::DateTime
+pub fn rullst_orm::DateTime::checked_add<A: core::convert::Into<jiff::civil::datetime::DateTimeArithmetic>>(self, duration: A) -> core::result::Result<Self, jiff::error::Error>
+pub fn rullst_orm::DateTime::checked_sub<A: core::convert::Into<jiff::civil::datetime::DateTimeArithmetic>>(self, duration: A) -> core::result::Result<Self, jiff::error::Error>
+pub fn rullst_orm::DateTime::date(self) -> rullst_orm::Date
+pub fn rullst_orm::DateTime::duration_since(self, other: impl core::convert::Into<jiff::civil::datetime::DateTime>) -> jiff::signed_duration::SignedDuration
+pub fn rullst_orm::DateTime::duration_until(self, other: impl core::convert::Into<jiff::civil::datetime::DateTime>) -> jiff::signed_duration::SignedDuration
+pub fn rullst_orm::DateTime::saturating_add<A: core::convert::Into<jiff::civil::datetime::DateTimeArithmetic>>(self, duration: A) -> Self
+pub fn rullst_orm::DateTime::saturating_sub<A: core::convert::Into<jiff::civil::datetime::DateTimeArithmetic>>(self, duration: A) -> Self
+pub fn rullst_orm::DateTime::time(self) -> rullst_orm::Time
+pub fn rullst_orm::DateTime::tomorrow(self) -> core::result::Result<Self, jiff::error::Error>
+pub fn rullst_orm::DateTime::yesterday(self) -> core::result::Result<Self, jiff::error::Error>
 impl core::clone::Clone for rullst_orm::DateTime
 impl core::cmp::Eq for rullst_orm::DateTime
 impl core::cmp::Ord for rullst_orm::DateTime
 impl core::cmp::PartialEq for rullst_orm::DateTime
 impl core::cmp::PartialOrd for rullst_orm::DateTime
+impl core::convert::From<&rullst_orm::DateTime> for jiff::civil::datetime::DateTime
 impl core::convert::From<jiff::civil::datetime::DateTime> for rullst_orm::DateTime
 impl core::convert::From<rullst_orm::DateTime> for jiff::civil::datetime::DateTime
 impl core::convert::From<rullst_orm::DateTime> for rullst_orm::RullstValue
@@ -915,6 +939,7 @@ impl core::cmp::Eq for rullst_orm::Time
 impl core::cmp::Ord for rullst_orm::Time
 impl core::cmp::PartialEq for rullst_orm::Time
 impl core::cmp::PartialOrd for rullst_orm::Time
+impl core::convert::From<&rullst_orm::Time> for jiff::civil::time::Time
 impl core::convert::From<jiff::civil::time::Time> for rullst_orm::Time
 impl core::convert::From<rullst_orm::Time> for jiff::civil::time::Time
 impl core::convert::From<rullst_orm::Time> for rullst_orm::RullstValue
@@ -944,12 +969,20 @@ impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::Time
 impl core::panic::unwind_safe::UnwindSafe for rullst_orm::Time
 pub struct rullst_orm::Timestamp(_)
 impl rullst_orm::Timestamp
+pub fn rullst_orm::Timestamp::checked_add<A: core::convert::Into<jiff::timestamp::TimestampArithmetic>>(self, duration: A) -> core::result::Result<Self, jiff::error::Error>
+pub fn rullst_orm::Timestamp::checked_sub<A: core::convert::Into<jiff::timestamp::TimestampArithmetic>>(self, duration: A) -> core::result::Result<Self, jiff::error::Error>
+pub fn rullst_orm::Timestamp::duration_since(self, other: impl core::convert::Into<jiff::timestamp::Timestamp>) -> jiff::signed_duration::SignedDuration
+pub fn rullst_orm::Timestamp::duration_until(self, other: impl core::convert::Into<jiff::timestamp::Timestamp>) -> jiff::signed_duration::SignedDuration
 pub fn rullst_orm::Timestamp::now() -> Self
+pub fn rullst_orm::Timestamp::saturating_add<A: core::convert::Into<jiff::timestamp::TimestampArithmetic>>(self, duration: A) -> core::result::Result<Self, jiff::error::Error>
+pub fn rullst_orm::Timestamp::saturating_sub<A: core::convert::Into<jiff::timestamp::TimestampArithmetic>>(self, duration: A) -> core::result::Result<Self, jiff::error::Error>
+pub fn rullst_orm::Timestamp::to_rfc3339(self) -> alloc::string::String
 impl core::clone::Clone for rullst_orm::Timestamp
 impl core::cmp::Eq for rullst_orm::Timestamp
 impl core::cmp::Ord for rullst_orm::Timestamp
 impl core::cmp::PartialEq for rullst_orm::Timestamp
 impl core::cmp::PartialOrd for rullst_orm::Timestamp
+impl core::convert::From<&rullst_orm::Timestamp> for jiff::timestamp::Timestamp
 impl core::convert::From<jiff::timestamp::Timestamp> for rullst_orm::Timestamp
 impl core::convert::From<rullst_orm::Timestamp> for jiff::timestamp::Timestamp
 impl core::convert::From<rullst_orm::Timestamp> for rullst_orm::RullstValue
