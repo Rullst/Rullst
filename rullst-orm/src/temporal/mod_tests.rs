@@ -176,7 +176,7 @@ fn now_reads_the_clock() {
 #[test]
 fn ordering_follows_time() {
     let at = instant_at("2026-10-15T09:30:00.5Z");
-    let later = Timestamp::from(at.checked_add(jiff::SignedDuration::from_nanos(1)).unwrap());
+    let later = at.checked_add(jiff::SignedDuration::from_nanos(1)).unwrap();
     assert!(at < later);
     let mut values = [later, at];
     values.sort();
