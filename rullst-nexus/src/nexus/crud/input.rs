@@ -3,11 +3,10 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
-use rullst_orm::RullstValue;
-
 use crate::nexus::types::{FieldKind, FieldMeta, RegistryEntry};
 
 mod temporal;
+pub(crate) use temporal::TemporalValue;
 pub(super) use temporal::{has_offset, localize_form_values, time_input_value, zoned_input_value};
 
 const MAX_FORM_PAIRS: usize = 256;
@@ -30,7 +29,7 @@ pub(super) struct ValidatedFieldValue<'a> {
     pub(super) value: Option<String>,
     /// The typed value of a date or time, bound instead of `value`'s text so
     /// native date/time columns accept it.
-    pub(super) typed: Option<RullstValue>,
+    pub(super) typed: Option<TemporalValue>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
