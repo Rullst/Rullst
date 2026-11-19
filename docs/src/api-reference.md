@@ -81,5 +81,5 @@ tested REST product walkthrough. A coherent CRUD example with JSON validation,
 typed error responses, pagination, authorization negatives and matching OpenAPI
 is still needed. Per-symbol reference reviews also need explicit feature,
 error, concurrency and migration coverage. The
-[API documentation plan](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#api-documentation-quality)
+[API documentation plan](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#later-13x-no-date)
 tracks that work separately from this navigation index.

@@ -1016,7 +1016,7 @@ owner before selecting another round. September 24–25 remain reserved for
 combined validation; September 26 remains the conditional final-adjustment and
 publication day. Publication is excluded from the current implementation goal.
 
-The [master roadmap](../../ROADMAP.md#executive-milestone-tracker) owns the current
+The [master roadmap](../../ROADMAP.md#milestone-index) owns the current
 status of the framework milestones and the separately governed M31 programme.
 Its milestones differ substantially in scope and remaining effort; counting
 their status labels cannot tell us whether this release adds "10% of all future

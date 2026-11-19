@@ -283,7 +283,7 @@ and fixes ship in a new prerelease. From 13.0.0:
 - **14.0** carries only breaking changes.
 - The maintainer intends to keep 13.x the active line for 12 months after
   13.0.0. Meanwhile breaking ideas go to the
-  [v14 candidates](../../ROADMAP.md#v14-candidates) list, and a 13.x release
+  [major-version candidates](../../ROADMAP.md#if-a-major-version-is-ever-needed) list, and a 13.x release
   may mark a future change with `#[deprecated]`.
 - v14 development starts only when breaking changes justify it, and is not
   planned before those 12 months end.
