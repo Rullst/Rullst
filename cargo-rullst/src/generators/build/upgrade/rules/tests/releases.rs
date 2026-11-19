@@ -151,6 +151,7 @@ fn rules_carry_the_release_of_their_change() {
             "V13-MEDIA-PROCESSING-MATCH",
             "V13-NON-EXHAUSTIVE-MATCH",
             "V13-NON-EXHAUSTIVE-LITERAL",
+            "V13-NON-EXHAUSTIVE-LITERAL-GLOB",
             "V13-SCHEDULER-CRON-FIELDS",
             "V13-CSRF-TOKEN-COMPARED",
             "V13-JSONWEBTOKEN-12",
