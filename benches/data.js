@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795055304193,
+  "lastUpdate": 1795058801814,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -37123,6 +37123,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 976,
             "range": "± 28",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4d6c3a2fef5f96124b01366e4e430813830d7cf3",
+          "message": "Merge pull request #756 from Rullst/feat/v13-jiff-cli-upgrade-docs\n\nfeat(cli): chrono-to-jiff upgrade rules and the CLI's own clock on jiff",
+          "timestamp": "2026-11-19T00:21:51-03:00",
+          "tree_id": "2ae5e722fb3bc57d51c5141508c93281d4c515c3",
+          "url": "https://github.com/Rullst/Rullst/commit/4d6c3a2fef5f96124b01366e4e430813830d7cf3"
+        },
+        "date": 1795058798116,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 439,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 611,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 289,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1099,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
