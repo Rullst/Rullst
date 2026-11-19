@@ -2,16 +2,18 @@
 
 use super::field::{DAY_OF_MONTH, HOUR, MINUTE, MONTH, Values};
 use super::*;
-use chrono::{Datelike, TimeZone, Weekday};
+use jiff::SignedDuration;
+use jiff::civil::Weekday;
 
-fn next_days(expression: &str, count: usize) -> Vec<(Weekday, u32)> {
+fn next_days(expression: &str, count: usize) -> Vec<(Weekday, i8)> {
     let schedule = CronSchedule::parse(expression).unwrap();
     // Wednesday 2026-09-30 00:00 UTC.
-    let mut cursor = Utc.with_ymd_and_hms(2026, 9, 30, 0, 0, 0).unwrap();
+    let mut cursor = utc(2026, 9, 30, 0, 0);
     let mut days = Vec::new();
     for _ in 0..count {
         cursor = schedule.next_after(&cursor).unwrap();
-        days.push((cursor.weekday(), cursor.day()));
+        let civil = Offset::UTC.to_datetime(cursor);
+        days.push((civil.weekday(), civil.day()));
     }
     days
 }
@@ -23,12 +25,13 @@ fn weekdays(expression: &str, count: usize) -> Vec<Weekday> {
         .collect()
 }
 
-fn utc(year: i32, month: u32, day: u32, hour: u32, minute: u32) -> DateTime<Utc> {
-    Utc.with_ymd_and_hms(year, month, day, hour, minute, 0)
+fn utc(year: i16, month: i8, day: i8, hour: i8, minute: i8) -> Timestamp {
+    Offset::UTC
+        .to_timestamp(jiff::civil::date(year, month, day).at(hour, minute, 0, 0))
         .unwrap()
 }
 
-fn next(expression: &str, after: DateTime<Utc>) -> Option<DateTime<Utc>> {
+fn next(expression: &str, after: Timestamp) -> Option<Timestamp> {
     CronSchedule::parse(expression).unwrap().next_after(&after)
 }
 
@@ -42,19 +45,30 @@ fn numeric_weekdays_follow_posix_numbering() {
     use Weekday::*;
     assert_eq!(
         weekdays("0 9 * * 1-5", 7),
-        [Wed, Thu, Fri, Mon, Tue, Wed, Thu]
+        [
+            Wednesday, Thursday, Friday, Monday, Tuesday, Wednesday, Thursday
+        ]
     );
-    assert_eq!(weekdays("0 3 * * 0", 2), [Sun, Sun]);
-    assert_eq!(weekdays("0 3 * * 7", 2), [Sun, Sun]);
-    assert_eq!(weekdays("0 3 * * 6", 1), [Sat]);
-    assert_eq!(weekdays("0 3 * * 5-7", 3), [Fri, Sat, Sun]);
-    assert_eq!(weekdays("0 3 * * FRI-SUN", 3), [Fri, Sat, Sun]);
-    assert_eq!(weekdays("0 3 * * 1,3,sat", 4), [Wed, Sat, Mon, Wed]);
-    assert_eq!(weekdays("0 3 * * 1-5/2", 4), [Wed, Fri, Mon, Wed]);
-    assert_eq!(weekdays("0 3 * * */3", 3), [Wed, Sat, Sun]);
-    assert_eq!(weekdays("0 3 * * mon-fri", 3), [Wed, Thu, Fri]);
-    assert_eq!(weekdays("0 3 * * 0,7", 2), [Sun, Sun]);
-    assert_eq!(weekdays("0 3 * * 0-7", 3), [Wed, Thu, Fri]);
+    assert_eq!(weekdays("0 3 * * 0", 2), [Sunday, Sunday]);
+    assert_eq!(weekdays("0 3 * * 7", 2), [Sunday, Sunday]);
+    assert_eq!(weekdays("0 3 * * 6", 1), [Saturday]);
+    assert_eq!(weekdays("0 3 * * 5-7", 3), [Friday, Saturday, Sunday]);
+    assert_eq!(weekdays("0 3 * * FRI-SUN", 3), [Friday, Saturday, Sunday]);
+    assert_eq!(
+        weekdays("0 3 * * 1,3,sat", 4),
+        [Wednesday, Saturday, Monday, Wednesday]
+    );
+    assert_eq!(
+        weekdays("0 3 * * 1-5/2", 4),
+        [Wednesday, Friday, Monday, Wednesday]
+    );
+    assert_eq!(weekdays("0 3 * * */3", 3), [Wednesday, Saturday, Sunday]);
+    assert_eq!(
+        weekdays("0 3 * * mon-fri", 3),
+        [Wednesday, Thursday, Friday]
+    );
+    assert_eq!(weekdays("0 3 * * 0,7", 2), [Sunday, Sunday]);
+    assert_eq!(weekdays("0 3 * * 0-7", 3), [Wednesday, Thursday, Friday]);
 }
 
 #[test]
@@ -64,15 +78,15 @@ fn restricted_day_fields_match_either_day() {
     assert_eq!(
         days,
         [
-            (Weekday::Thu, 1),
-            (Weekday::Mon, 5),
-            (Weekday::Mon, 12),
-            (Weekday::Mon, 19)
+            (Weekday::Thursday, 1),
+            (Weekday::Monday, 5),
+            (Weekday::Monday, 12),
+            (Weekday::Monday, 19)
         ]
     );
     // A star-prefixed day field keeps the intersection (Vixie cron).
     let days = next_days("0 0 */2 * 1", 2);
-    assert_eq!(days, [(Weekday::Mon, 5), (Weekday::Mon, 19)]);
+    assert_eq!(days, [(Weekday::Monday, 5), (Weekday::Monday, 19)]);
     let saturday = utc(2026, 11, 14, 12, 0);
     assert_eq!(next("0 0 13 * 5", saturday), Some(utc(2026, 11, 20, 0, 0)));
     assert_eq!(next("0 0 13 * ?", saturday), Some(utc(2026, 12, 13, 0, 0)));
@@ -88,10 +102,10 @@ fn restricted_day_fields_match_either_day() {
 #[test]
 fn schedules_are_evaluated_in_utc() {
     let schedule = CronSchedule::parse("30 23 * * *").unwrap();
-    let start = Utc.with_ymd_and_hms(2026, 9, 30, 12, 0, 0).unwrap();
+    let start = utc(2026, 9, 30, 12, 0);
     assert_eq!(
         schedule.next_after(&start).unwrap(),
-        Utc.with_ymd_and_hms(2026, 9, 30, 23, 30, 0).unwrap()
+        utc(2026, 9, 30, 23, 30)
     );
 }
 
@@ -118,10 +132,13 @@ fn malformed_expressions_are_rejected() {
 #[test]
 fn every_weekday_name_and_single_day_ranges_parse() {
     use Weekday::*;
-    assert_eq!(weekdays("0 3 * * tue,wednesday,thurs", 3), [Wed, Thu, Tue]);
-    assert_eq!(weekdays("0 3 * * TUES", 1), [Tue]);
-    assert_eq!(weekdays("0 3 * * 3-3", 2), [Wed, Wed]);
-    assert_eq!(weekdays("0 3 * * 0-0", 2), [Sun, Sun]);
+    assert_eq!(
+        weekdays("0 3 * * tue,wednesday,thurs", 3),
+        [Wednesday, Thursday, Tuesday]
+    );
+    assert_eq!(weekdays("0 3 * * TUES", 1), [Tuesday]);
+    assert_eq!(weekdays("0 3 * * 3-3", 2), [Wednesday, Wednesday]);
+    assert_eq!(weekdays("0 3 * * 0-0", 2), [Sunday, Sunday]);
     let error = CronSchedule::parse("0 3 * * funday").err().unwrap();
     assert!(error.contains("`funday` is not a POSIX weekday"), "{error}");
 }
@@ -240,12 +257,12 @@ fn next_occurrences_are_whole_minutes_strictly_after() {
         every_minute.next_after(&ten),
         Some(utc(2026, 11, 14, 10, 1))
     );
-    let late = ten + TimeDelta::milliseconds(59_999);
+    let late = ten + SignedDuration::from_millis(59_999);
     assert_eq!(
         every_minute.next_after(&late),
         Some(utc(2026, 11, 14, 10, 1))
     );
-    let early = ten - TimeDelta::nanoseconds(1);
+    let early = ten - SignedDuration::from_nanos(1);
     assert_eq!(every_minute.next_after(&early), Some(ten));
     // A later minute in the same hour, then the next allowed hour.
     assert_eq!(next("0,45 * * * *", ten), Some(utc(2026, 11, 14, 10, 45)));
@@ -311,7 +328,7 @@ fn year_ends_and_search_bounds() {
         next("59 23 31 12 *", utc(2026, 12, 31, 23, 59)),
         Some(utc(2027, 12, 31, 23, 59))
     );
-    let last_moment = utc(2026, 12, 31, 23, 59) + TimeDelta::milliseconds(59_999);
+    let last_moment = utc(2026, 12, 31, 23, 59) + SignedDuration::from_millis(59_999);
     assert_eq!(next("0 0 1 1 *", last_moment), Some(utc(2027, 1, 1, 0, 0)));
     // The search ends with 2100.
     assert_eq!(
@@ -321,7 +338,7 @@ fn year_ends_and_search_bounds() {
     assert_eq!(next("59 23 31 12 *", utc(2100, 12, 31, 23, 59)), None);
     assert_eq!(next("* * * * *", utc(2101, 1, 1, 0, 0)), None);
     assert_eq!(next("0 0 1 1 *", utc(2100, 1, 1, 0, 0)), None);
-    assert_eq!(next("* * * * *", DateTime::<Utc>::MAX_UTC), None);
+    assert_eq!(next("* * * * *", Timestamp::MAX), None);
     // It starts in 1970, and an instant whose next second is before year 0
     // has no occurrence.
     assert_eq!(
@@ -336,9 +353,9 @@ fn year_ends_and_search_bounds() {
         next("* * * * *", utc(0, 6, 1, 0, 0)),
         Some(utc(1970, 1, 1, 0, 0))
     );
-    let year_zero = Utc.with_ymd_and_hms(-1, 12, 31, 23, 59, 59).unwrap();
+    let year_zero = utc(-1, 12, 31, 23, 59) + SignedDuration::from_secs(59);
     assert_eq!(next("* * * * *", year_zero), Some(utc(1970, 1, 1, 0, 0)));
-    let before_zero = year_zero - TimeDelta::seconds(1);
+    let before_zero = year_zero - SignedDuration::from_secs(1);
     assert_eq!(next("* * * * *", before_zero), None);
     assert_eq!(next("* * * * *", utc(-5, 1, 1, 0, 0)), None);
 }

@@ -24,8 +24,10 @@ pub struct RevokeSessionDto {
 fn shown(seconds: u64) -> String {
     i64::try_from(seconds)
         .ok()
-        .and_then(|seconds| rullst::orm::chrono::DateTime::from_timestamp(seconds, 0))
-        .map_or_else(String::new, |time| time.format("%Y-%m-%d %H:%M UTC").to_string())
+        .and_then(|seconds| rullst::orm::jiff::Timestamp::from_second(seconds).ok())
+        .map_or_else(String::new, |time| {
+            time.strftime("%Y-%m-%d %H:%M UTC").to_string()
+        })
 }
 
 fn row(info: &SessionInfo, session: &AuthenticatedSession) -> DeviceRow {

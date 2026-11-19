@@ -24,7 +24,7 @@ fn event(kind: &str, object: Value, now: i64) -> Value {
 #[test]
 fn payment_refund_and_dispute_hints_require_exact_signature_and_mode() {
     let provider = StripeProvider::new("sk_test_contract", "whsec_contract");
-    let now = chrono::Utc::now().timestamp();
+    let now = jiff::Timestamp::now().as_second();
     for (kind, object, session) in [
         (
             "checkout.session.completed",
@@ -74,7 +74,7 @@ fn payment_refund_and_dispute_hints_require_exact_signature_and_mode() {
 #[test]
 fn subscription_connected_account_and_inconsistent_payloads_are_rejected() {
     let provider = StripeProvider::new("sk_test_contract", "whsec_contract");
-    let now = chrono::Utc::now().timestamp();
+    let now = jiff::Timestamp::now().as_second();
     let base = event(
         "checkout.session.completed",
         json!({"object":"checkout.session","id":"cs_test_checkout","mode":"payment","livemode":false,"payment_intent":"pi_checkout"}),
@@ -102,7 +102,7 @@ fn subscription_connected_account_and_inconsistent_payloads_are_rejected() {
 #[test]
 fn verified_one_time_event_exposes_identity_digests_and_mode() {
     let provider = StripeProvider::new("sk_test_contract", "whsec_contract");
-    let now = chrono::Utc::now().timestamp();
+    let now = jiff::Timestamp::now().as_second();
     let body = serde_json::to_vec(&event(
         "checkout.session.completed",
         json!({"object":"checkout.session","id":"cs_test_checkout","mode":"payment","livemode":false,"payment_intent":"pi_checkout"}),

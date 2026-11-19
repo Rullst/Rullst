@@ -21,7 +21,7 @@ cargo run -p rullst-mail --example custom_transport
 
 In an application, the same types are available through the facade as
 `rullst::mail::*` with the `mail` feature. The example also uses `reqwest`,
-`secrecy`, `serde_json`, `chrono` and `async-trait` (`MailDriver` is an
+`secrecy`, `serde_json`, `jiff` and `async-trait` (`MailDriver` is an
 `#[async_trait]` trait; the facade's `rullst::async_trait` works too); add
 equivalent crates to your own `Cargo.toml`.
 

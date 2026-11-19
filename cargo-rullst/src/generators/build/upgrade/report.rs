@@ -110,6 +110,17 @@ fn by_file_and_rule(findings: &[SourceFinding]) -> Vec<FileRuleEntry<'_>> {
     entries
 }
 
+/// The notes of an entry's rule in its file, by line.
+fn notes<'a>(findings: &'a [SourceFinding], entry: &SourceFinding) -> Vec<(usize, &'a str)> {
+    let mut notes: Vec<_> = findings
+        .iter()
+        .filter(|finding| finding.path == entry.path && finding.rule.code == entry.rule.code)
+        .filter_map(|finding| finding.note.as_deref().map(|note| (finding.line, note)))
+        .collect();
+    notes.sort_unstable();
+    notes
+}
+
 /// `12, 40, 77`.
 fn line_list(lines: &[usize]) -> String {
     lines
@@ -164,6 +175,9 @@ pub(super) fn plan_text(
             finding.rule.message
         ));
         lines.push(format!("      migration-v13 row: {}", finding.rule.row));
+        for (line, note) in notes(&scan.findings, finding) {
+            lines.push(format!("      line {line}: {note}"));
+        }
     }
     for path in &scan.unscanned {
         lines.push(format!(
@@ -256,6 +270,9 @@ pub(super) fn render_report(
             finding.rule.message,
             finding.rule.row
         ));
+        for (line, note) in notes(&scan.findings, finding) {
+            report.push_str(&format!("  - line {line}: {note}\n"));
+        }
     }
     for path in &scan.unscanned {
         report.push_str(&format!(
@@ -272,7 +289,8 @@ pub(super) fn render_report(
 /// The `rullst.upgrade-plan.v1` document, with one finding per location
 /// (sorted by path, line and code). v13 extends it additively: each
 /// finding keeps `path`, `line`, `code`, `severity` and `message` and adds
-/// `kind`, `introduced_in`, `migration_row` and `migration_url`; the root adds
+/// `kind`, `introduced_in`, `migration_row`, `migration_url` and `note`
+/// (`null` unless the rule computed something for the location); the root adds
 /// `rule_selection`, and `finding_counts.reviewed` counts the review locations
 /// a `rullst-upgrade: reviewed` marker left out.
 pub(super) fn render_json_report(
@@ -307,6 +325,7 @@ pub(super) fn render_json_report(
                 "message": finding.rule.message,
                 "migration_row": finding.rule.row,
                 "migration_url": rules::MIGRATION_GUIDE_URL,
+                "note": finding.note,
             })
         })
         .collect::<Vec<_>>();

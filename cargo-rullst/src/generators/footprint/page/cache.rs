@@ -50,10 +50,14 @@ fn seconds(value: &str) -> Option<u64> {
     value.trim().parse().ok()
 }
 
+/// The Unix second of an HTTP date (RFC 2822, as in `Sun, 06 Nov 1994
+/// 08:49:37 GMT`), whose weekday must match its date.
 fn http_date(value: &str) -> Option<i64> {
-    chrono::DateTime::parse_from_rfc2822(value.trim())
+    static PARSER: jiff::fmt::rfc2822::DateTimeParser = jiff::fmt::rfc2822::DateTimeParser::new();
+    PARSER
+        .parse_timestamp(value.trim())
         .ok()
-        .map(|date| date.timestamp())
+        .map(jiff::Timestamp::as_second)
 }
 
 /// The freshness lifetime the response states, in seconds.
@@ -202,5 +206,27 @@ mod tests {
         assert_eq!(directive("a, b=1", "b"), Some("1"));
         assert_eq!(directive("a, b=1", "a"), Some(""));
         assert_eq!(directive("a, b=1", "c"), None);
+    }
+
+    #[test]
+    fn http_dates_parse_as_rfc_2822_with_a_matching_weekday() {
+        assert_eq!(
+            http_date("Sun, 06 Nov 1994 08:49:37 GMT"),
+            Some(784_111_777)
+        );
+        assert_eq!(
+            http_date("  Thu, 01 Jan 2026 00:00:00 GMT\r\n"),
+            Some(1_767_225_600)
+        );
+        assert_eq!(
+            http_date("Wed, 31 Dec 2025 21:00:00 -0300"),
+            Some(1_767_225_600)
+        );
+        assert_eq!(http_date("01 Jan 2026 00:00:00 +0000"), Some(1_767_225_600));
+        // 2026-01-01 is a Thursday.
+        assert_eq!(http_date("Fri, 01 Jan 2026 00:00:00 GMT"), None);
+        assert_eq!(http_date("2026-01-01T00:00:00Z"), None);
+        assert_eq!(http_date("0"), None);
+        assert_eq!(http_date(""), None);
     }
 }

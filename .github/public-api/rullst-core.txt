@@ -1833,11 +1833,11 @@ impl rullst_core::i18n::Locale
 pub fn rullst_core::i18n::Locale::currency_name(&self, currency: rullst_core::i18n::Currency) -> core::option::Option<&'static str>
 pub fn rullst_core::i18n::Locale::format_currency(&self, minor_units: i64, currency: rullst_core::i18n::Currency) -> alloc::string::String
 pub fn rullst_core::i18n::Locale::format_data_tag(&self) -> &'static str
-pub fn rullst_core::i18n::Locale::format_date(&self, date: &impl chrono::traits::Datelike, style: rullst_core::i18n::DateStyle) -> alloc::string::String
-pub fn rullst_core::i18n::Locale::format_datetime(&self, value: &(impl chrono::traits::Datelike + chrono::traits::Timelike), date_style: rullst_core::i18n::DateStyle, time_style: rullst_core::i18n::TimeStyle) -> alloc::string::String
+pub fn rullst_core::i18n::Locale::format_date(&self, date: impl core::convert::Into<jiff::civil::date::Date>, style: rullst_core::i18n::DateStyle) -> alloc::string::String
+pub fn rullst_core::i18n::Locale::format_datetime(&self, value: impl core::convert::Into<jiff::civil::datetime::DateTime>, date_style: rullst_core::i18n::DateStyle, time_style: rullst_core::i18n::TimeStyle) -> alloc::string::String
 pub fn rullst_core::i18n::Locale::format_number(&self, value: impl core::convert::Into<rullst_core::i18n::Decimal>) -> alloc::string::String
 pub fn rullst_core::i18n::Locale::format_percent(&self, ratio: impl core::convert::Into<rullst_core::i18n::Decimal>) -> alloc::string::String
-pub fn rullst_core::i18n::Locale::format_time(&self, time: &impl chrono::traits::Timelike, style: rullst_core::i18n::TimeStyle) -> alloc::string::String
+pub fn rullst_core::i18n::Locale::format_time(&self, time: impl core::convert::Into<jiff::civil::time::Time>, style: rullst_core::i18n::TimeStyle) -> alloc::string::String
 pub fn rullst_core::i18n::Locale::plural_category(&self, count: impl rullst_core::i18n::PluralCount) -> core::option::Option<rullst_core::i18n::PluralCategory>
 pub fn rullst_core::i18n::Locale::tag(&self) -> &'static str
 impl core::clone::Clone for rullst_core::i18n::Locale

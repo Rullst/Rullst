@@ -130,8 +130,8 @@ pub(crate) fn valid_password(password: &str) -> bool {
 
 /// The current UTC time for the `created_at`/`updated_at` columns of
 /// `timestamps()`. The ORM inserts every field, so the model must carry it.
-pub(crate) fn utc_timestamp() -> rullst::orm::chrono::DateTime<rullst::orm::chrono::Utc> {
-    rullst::orm::chrono::Utc::now()
+pub(crate) fn utc_timestamp() -> rullst::orm::Timestamp {
+    rullst::orm::Timestamp::now()
 }
 
 /// The `rullst_csrf` cookie's token, masked for this response so that a
@@ -429,11 +429,11 @@ mod tests {
 
     #[test]
     fn registration_timestamps_are_current_utc_instants() {
-        let before = rullst::orm::chrono::Utc::now();
+        let before = rullst::orm::Timestamp::now();
         let now = utc_timestamp();
         assert!(now >= before);
         // Later than 2026-01-01T00:00:00Z.
-        assert!(now.timestamp() > 1_767_225_599);
+        assert!(now.as_second() > 1_767_225_599);
     }
 
     #[test]

@@ -49,7 +49,11 @@ pub(super) fn scan_source(
     out: &mut Collector,
 ) -> Result<FileSummary, syn::Error> {
     let file = syn::parse_file(context.text)?;
-    let mut visitor = Visitor { context, out };
+    let mut visitor = Visitor {
+        context,
+        out,
+        chrono_aliases: super::alpha6_jiff::aliases(&file),
+    };
     visitor.visit_file(&file);
     functions::scan(&file, context, visitor.out);
     markup::scan(&file, visitor.out);
@@ -149,6 +153,8 @@ pub(super) fn mentions(tokens: proc_macro2::TokenStream, name: &str) -> bool {
 struct Visitor<'a, 'b> {
     context: &'a FileContext<'a>,
     out: &'b mut Collector,
+    /// The file's names for chrono types (`V13-ORM-CHRONO-TYPES`).
+    chrono_aliases: std::collections::BTreeSet<String>,
 }
 
 impl Visitor<'_, '_> {
@@ -262,6 +268,18 @@ impl Visitor<'_, '_> {
                 && !has_key(&entries(&field.attrs, "sqlx"), &["skip", "default"])
             {
                 self.hit(&ORM_SKIP_MANAGED_COLUMNS, at);
+            }
+        }
+    }
+
+    /// Fields of an ORM or Nexus model that hold a chrono type, unless
+    /// `#[sqlx(skip)]` keeps them out of every row.
+    fn chrono_fields(&mut self, item: &syn::ItemStruct) {
+        for field in &item.fields {
+            if super::alpha6_jiff::chrono_type(&field.ty, &self.chrono_aliases)
+                && !has_key(&entries(&field.attrs, "sqlx"), &["skip"])
+            {
+                self.hit(&ORM_CHRONO_TYPES, field_line(field));
             }
         }
     }
@@ -420,6 +438,12 @@ impl<'ast> Visit<'ast> for Visitor<'_, '_> {
             if has_derive("Nexus") {
                 self.nexus_model(item);
             }
+            // A SQLx `FromRow` of its own decodes chrono fields with SQLx's
+            // `chrono` feature, which Rullst no longer enables.
+            let sqlx_row = has_derive("FromRow") && !self.context.facts.sqlx_chrono;
+            if has_derive("Orm") || has_derive("Nexus") || sqlx_row {
+                self.chrono_fields(item);
+            }
             if has_derive("Deserialize") {
                 self.deserialized(item);
             }
@@ -447,6 +471,11 @@ impl<'ast> Visit<'ast> for Visitor<'_, '_> {
             }
             let facts = self.context.facts;
             if let Some(rule) = super::alpha6_passkeys::path_rule(&path, self.context.text, facts) {
+                self.hit(rule, at);
+            }
+            // `use rullst::orm::{chrono, Model}`, which the token scan reads
+            // as separate paths.
+            if let Some(rule) = super::alpha6_jiff::path_rule(&path, None, facts) {
                 self.hit(rule, at);
             }
         }

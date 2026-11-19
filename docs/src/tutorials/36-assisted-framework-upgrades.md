@@ -332,6 +332,11 @@ release:
 | 13.0.0-alpha.6 | `V13-TELEMETRY-LAYER-TYPE` (a dependency kept out of the API) |
 | 13.0.0-alpha.6 | `V13-VALIDATION-FIELD-ERRORS` (a dependency kept out of the API) |
 | 13.0.0-alpha.6 | `V13-STUDIO-OPENAPI-INFERRED` (a dependency kept out of the API) |
+| 13.0.0-alpha.6 | `V13-ORM-CHRONO-TYPES` (chrono replaced by jiff) |
+| 13.0.0-alpha.6 | `V13-LOCALE-JIFF-DATES` (chrono replaced by jiff) |
+| 13.0.0-alpha.6 | `V13-MAIL-JIFF-TIMESTAMPS` (chrono replaced by jiff) |
+| 13.0.0-alpha.6 | `V13-CAPITAL-INVOICE-JIFF-DATE` (chrono replaced by jiff) |
+| 13.0.0-alpha.6 | `V13-MESSAGING-CRON-POSIX` (the scheduler's cron syntax for messaging) |
 
 A rule is dated by the first release tag whose catalog contains its code
 (`git show v13.0.0-alpha.2:cargo-rullst/src/generators/build/upgrade/rules/catalog.rs`,
@@ -373,6 +378,7 @@ must-change findings gate execution.
 | `introduced_in` | The release that introduced the rule's change, such as `13.0.0-alpha.3` |
 | `migration_row` | First-column title of the row in `migration-v13.md` |
 | `migration_url` | The published table of the v13 migration guide |
+| `note` | What this location needs beyond the rule's guidance, such as the POSIX form of a messaging schedule's cron literal (`V13-MESSAGING-CRON-POSIX`); `null` for most findings. The human plan prints it as `line N: …` under the finding (since the 13.0.0-alpha.6 CLI) |
 
 The root object adds `finding_counts` (`must_change`, `review` and
 `reviewed`, the review locations a `rullst-upgrade: reviewed` marker left
@@ -816,6 +822,8 @@ totals, which every new row or rule would change.
 | Distributed tracing layer type | (a) must-change | `V13-TELEMETRY-LAYER-TYPE` | `OpenTelemetryLayer`, or one of its own builder methods called on `.layer()`, in a file that names `DistributedTelemetry` or `telemetry::distributed`, so an application's own OpenTelemetry pipeline is left alone; the `Send + Sync` bound on the subscriber has no rule; introduced in 13.0.0-alpha.6 |
 | Validation field errors | (a) must-change | `V13-VALIDATION-FIELD-ERRORS` | A `ValidationError::ValidationError { .. }` pattern or value that names its `errors` field, in a file that names `rullst`; introduced in 13.0.0-alpha.6 |
 | Studio OpenAPI documents | (a) must-change | `V13-STUDIO-OPENAPI-INFERRED` | `with_openapi(..)` or `api_playground::router(..)` whose argument is `Default::default()`, a `from_str`, `from_slice`, `from_value` or `from_reader` call without a turbofish, or ends in `.into()`; introduced in 13.0.0-alpha.6 |
+| `chrono` replaced by `jiff` | (a) must-change | `V13-ORM-CHRONO-TYPES`, `V13-LOCALE-JIFF-DATES`, `V13-MAIL-JIFF-TIMESTAMPS`, `V13-CAPITAL-INVOICE-JIFF-DATE` | `V13-ORM-CHRONO-TYPES`: a field of a `#[derive(Orm)]` or `#[derive(Nexus)]` struct, unless `#[sqlx(skip)]`, typed with chrono's `DateTime<Tz>`, `NaiveDateTime`, `NaiveDate` or `NaiveTime` (under any path, inside `Option` or another generic, or through a type alias or `use … as` rename of the same file); `rullst::orm::chrono`, `rullst::db::chrono` and `rullst_orm::chrono` paths, also in `use` trees; `sqlx::types::chrono` when no manifest enables SQLx's `chrono` feature, and a bare `chrono::` path when no manifest declares `chrono` either; `RullstValue::DateTime`, `NaiveDateTime`, `Date` and `Time`; a chrono value (an expression that starts with a chrono path, a `let` binding, parameter or chrono-typed struct field of the file, or a call of a function of the file that returns one, and that no `.to_string()`, `.format(..)` or similar turns into another type) given to `RullstValue::from`, a `where_…` or `or_where…` method, `bind`, `on_eq` or the `…_raw_bindings` methods, where SQLx's own `bind` is left alone while a manifest enables SQLx's `chrono` feature; and, while none does, SQLx reads that decode a chrono type (`query_scalar`/`query_as` assigned to a chrono-typed `let`, a chrono turbofish on `query_scalar`, `query_as`, `get` or `try_get`) and chrono fields of a `#[derive(FromRow)]` struct. `V13-LOCALE-JIFF-DATES`: `format_date`, `format_time` and `format_datetime` calls given a `DateStyle` or `TimeStyle`. `V13-MAIL-JIFF-TIMESTAMPS`: `send_at` calls and reads and `with_scheduled_at` calls in a file that names `rullst_mail` or `mail::`, and `PasswordResetAt` or `EmailLoginAt` patterns or values that name `expires_at`. `V13-CAPITAL-INVOICE-JIFF-DATE`: `Invoice::new` with four arguments in a file that names `rullst_capital` or `capital::`. Each at every location; an application's own chrono code is left alone; introduced in 13.0.0-alpha.6 |
+| Messaging schedules use the scheduler's cron syntax | (a) must-change | `V13-MESSAGING-CRON-POSIX` | Each `RecurringDefinition::new` call in a file that names `rullst_messaging` or `messaging::`, except one whose expression is a string literal that means the same under both syntaxes (no weekday number, not both day fields restricted, accepted by Core's evaluator); a literal's finding carries a note with its POSIX form for a schedule not yet stored (weekday numbers moved down by one) or why there is none (both day fields restricted, a field joined with its neighbour or split, a form Core refuses); must-change because the call needs a review, and a schedule already stored keeps its expression; introduced in 13.0.0-alpha.6 |
 
 ## Planned simpler update experience
 

@@ -2,7 +2,7 @@
 
 use rullst_orm::RullstValue;
 
-use super::input::has_offset;
+use super::input::{TemporalValue, has_offset};
 use super::query::sanitize_identifier;
 use crate::nexus::types::{FieldKind, FieldMeta};
 
@@ -105,13 +105,27 @@ pub(crate) fn select_column(field: &FieldMeta, driver: &str) -> String {
 /// The value bound for a typed date or time on `driver`. MySQL and MariaDB
 /// `DATETIME` columns hold UTC without a zone (MariaDB rejects an offset in a
 /// date-time literal), so a UTC instant is bound there as its UTC wall time.
-pub(crate) fn driver_value(value: RullstValue, driver: &str) -> RullstValue {
-    match value {
-        RullstValue::DateTime(instant) if driver == "mysql" => {
-            RullstValue::NaiveDateTime(instant.naive_utc())
-        }
-        other => other,
-    }
+///
+/// An instant later than 9999-12-30T22:00Z, which a `jiff::Timestamp` cannot
+/// hold, is bound as the text the `chrono`-era value had on the SQLx `Any`
+/// pool: RFC 3339 (`9999-12-31T23:30:00+00:00`), or on MySQL its UTC wall
+/// time once that passes 9999-12-31 (`+10000-01-01 04:00:00`). PostgreSQL
+/// casts that text to `TIMESTAMPTZ` and SQLite stores it as before.
+/// `None` only for an instant without that text, which validation refuses.
+pub(crate) fn driver_value(value: TemporalValue, driver: &str) -> Option<RullstValue> {
+    Some(match value {
+        TemporalValue::Date(date) => RullstValue::CivilDate(date.into()),
+        TemporalValue::Time(time) => RullstValue::CivilTime(time.into()),
+        TemporalValue::DateTime(local) => RullstValue::CivilDateTime(local.into()),
+        TemporalValue::Instant(instant) if driver == "mysql" => match instant.wall_time(0) {
+            Some(wall) => RullstValue::CivilDateTime(wall.into()),
+            None => RullstValue::String(instant.utc_wall_text()?),
+        },
+        TemporalValue::Instant(instant) => match instant.timestamp() {
+            Some(timestamp) => RullstValue::Timestamp(timestamp.into()),
+            None => RullstValue::String(instant.rfc3339(false)?),
+        },
+    })
 }
 
 /// The exact tenant scope `column = placeholder`.
@@ -159,6 +173,10 @@ pub(crate) fn search_predicate(column: &str, placeholder: &str, driver: &str) ->
         format!("{column} LIKE {placeholder} ESCAPE '{LIKE_ESCAPE}'")
     }
 }
+
+#[cfg(test)]
+#[path = "dialect_value_tests.rs"]
+mod value_tests;
 
 #[cfg(test)]
 mod tests {
@@ -303,33 +321,6 @@ mod tests {
             "CAST(paid_at AS CHAR) AS paid_at"
         );
         assert_eq!(select_column(&paid, "sqlite"), "paid_at");
-    }
-
-    #[test]
-    fn mysql_binds_a_utc_instant_as_its_utc_wall_time() {
-        let instant = rullst_orm::chrono::DateTime::parse_from_rfc3339("2026-10-15T09:30:00.5Z")
-            .expect("valid instant")
-            .with_timezone(&rullst_orm::chrono::Utc);
-        assert_eq!(
-            format!(
-                "{:?}",
-                driver_value(RullstValue::DateTime(instant), "mysql")
-            ),
-            "NaiveDateTime(2026-10-15T09:30:00.500)"
-        );
-        for driver in ["postgres", "sqlite"] {
-            assert_eq!(
-                format!("{:?}", driver_value(RullstValue::DateTime(instant), driver)),
-                "DateTime(2026-10-15T09:30:00.500Z)"
-            );
-        }
-        assert_eq!(
-            format!(
-                "{:?}",
-                driver_value(RullstValue::String("x".into()), "mysql")
-            ),
-            "String(\"x\")"
-        );
     }
 
     #[test]

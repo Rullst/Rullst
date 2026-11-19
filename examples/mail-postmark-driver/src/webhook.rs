@@ -8,7 +8,7 @@
 
 use crate::PROVIDER;
 use base64::{Engine, engine::general_purpose::STANDARD};
-use chrono::{DateTime, SecondsFormat};
+use jiff::Timestamp;
 use rullst_mail::{SuppressionEvent, SuppressionReason};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -106,22 +106,20 @@ impl PostmarkWebhook {
             _ => return Err(invalid()),
         };
         let recipient = change["Recipient"].as_str().ok_or_else(invalid)?;
-        let changed_at = change["ChangedAt"]
+        let changed_at: Timestamp = change["ChangedAt"]
             .as_str()
-            .and_then(|value| DateTime::parse_from_rfc3339(value).ok())
-            .ok_or_else(invalid)?
-            .to_utc();
-        let observed_at = u64::try_from(changed_at.timestamp()).map_err(|_| invalid())?;
+            .and_then(|value| value.parse().ok())
+            .filter(|changed_at| *changed_at >= Timestamp::UNIX_EPOCH)
+            .ok_or_else(invalid)?;
+        let observed_at = u64::try_from(changed_at.as_second()).map_err(|_| invalid())?;
         let digest = Sha256::digest(recipient.as_bytes());
         let digest: String = digest
             .iter()
             .take(16)
             .map(|byte| format!("{byte:02x}"))
             .collect();
-        let event_id = format!(
-            "{}:{digest}",
-            changed_at.to_rfc3339_opts(SecondsFormat::Nanos, true)
-        );
+        // Nine fractional digits, so a retry yields the same identifier.
+        let event_id = format!("{changed_at:.9}:{digest}");
         SuppressionEvent::try_new(PROVIDER, event_id, recipient, reason, observed_at)
             .map(Some)
             .map_err(|_| invalid())

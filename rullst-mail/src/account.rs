@@ -60,12 +60,12 @@ pub enum AccountEvent {
     /// Absolute expiry for durable retries: the rendered payload remains identical.
     PasswordResetAt {
         link: ActionLink,
-        expires_at: chrono::DateTime<chrono::Utc>,
+        expires_at: jiff::Timestamp,
     },
     /// Browser-bound, single-use sign-in with an absolute expiry stable on retry.
     EmailLoginAt {
         link: ActionLink,
-        expires_at: chrono::DateTime<chrono::Utc>,
+        expires_at: jiff::Timestamp,
     },
     PasswordChanged,
     EmailVerification {
@@ -269,7 +269,7 @@ impl AccountMail {
             let expiry = format!(
                 "{} {}",
                 locale.select("Expires at", "Expira em", "Caduca el"),
-                expires_at.to_rfc3339()
+                rullst_core::rfc3339::format_with_offset(*expires_at, 0)
             );
             text.push_str(&format!("{expiry}\n"));
             html.push_str(&format!("<p>{expiry}</p>"));

@@ -99,8 +99,14 @@ promoted to Extension in 13.0.0-alpha.5 (see the
 | `rullst-supervision` | Experimental | 3,113 | 3,769 | 66 | 598 | 0 | 95 | 24 |
 | `rullst-iot` | Experimental | 2,593 | 1,395 | 83 | 307 | 3 | 34 | 37 |
 
-¹ Most of the crate is excluded from mutation with `mutants::skip`, so the
-listed count understates its test obligation.
+¹ On the measurement date, `mutants::skip` kept most of the crate out of
+mutation, so the listed count understated its test obligation. Both crates
+have been measured since: `rullst-macros` in 13.0.0-alpha.6
+([PR #698](https://github.com/Rullst/Rullst/pull/698), 432 mutants, no
+survivor) and `rullst-studio` in the 13.0.0-rc.1 campaign
+([PR #752](https://github.com/Rullst/Rullst/pull/752), 948 mutants, 22 missed,
+each an accepted equivalent or a redundant condition removed afterwards); see
+the [mutation testing record](mutation-testing.md#campaign-status).
 
 **By tier**, the share of the workspace totals (263,711 production lines, 5,958
 tests, 33,834 mutants, 42 fuzz targets):

@@ -1,13 +1,16 @@
+use jiff::civil::date as ymd;
+
 use super::*;
 
-fn debug(value: Option<RullstValue>) -> String {
-    format!("{value:?}")
+fn clock(hour: i8, minute: i8, second: i8, nanos: i32) -> Option<Time> {
+    Time::new(hour, minute, second, nanos).ok()
 }
 
 #[test]
 fn dates_are_four_two_two_digits_from_year_one() {
-    assert_eq!(date("2024-02-29"), NaiveDate::from_ymd_opt(2024, 2, 29));
-    assert_eq!(date("0001-01-01"), NaiveDate::from_ymd_opt(1, 1, 1));
+    assert_eq!(date("2024-02-29"), Some(ymd(2024, 2, 29)));
+    assert_eq!(date("0001-01-01"), Some(ymd(1, 1, 1)));
+    assert_eq!(date("9999-12-31"), Some(ymd(9999, 12, 31)));
     for invalid in [
         "0000-01-01",
         "2026-02-29",
@@ -34,11 +37,7 @@ fn times_accept_minutes_seconds_and_up_to_nine_fraction_digits() {
         ("09:30:00.999999999", (9, 30, 0, 999_999_999)),
     ] {
         let (hour, minute, second, nano) = expected;
-        assert_eq!(
-            time(value),
-            NaiveTime::from_hms_nano_opt(hour, minute, second, nano),
-            "{value}"
-        );
+        assert_eq!(time(value), clock(hour, minute, second, nano), "{value}");
     }
     for invalid in [
         "24:00",
@@ -60,11 +59,11 @@ fn times_accept_minutes_seconds_and_up_to_nine_fraction_digits() {
 fn local_date_times_have_no_offset() {
     assert_eq!(
         local_date_time("2026-10-15T09:30"),
-        NaiveDate::from_ymd_opt(2026, 10, 15).and_then(|date| date.and_hms_opt(9, 30, 0))
+        Some(ymd(2026, 10, 15).at(9, 30, 0, 0))
     );
     assert_eq!(
         local_date_time("2026-10-15 09:30:15"),
-        NaiveDate::from_ymd_opt(2026, 10, 15).and_then(|date| date.and_hms_opt(9, 30, 15))
+        Some(ymd(2026, 10, 15).at(9, 30, 15, 0))
     );
     for invalid in [
         "2026-10-15T09:30Z",
@@ -78,7 +77,7 @@ fn local_date_times_have_no_offset() {
 }
 
 fn instant(text: &str) -> Option<String> {
-    utc(text).map(|value| value.to_rfc3339_opts(SecondsFormat::AutoSi, true))
+    utc(text).and_then(|value| value.rfc3339(true))
 }
 
 #[test]
@@ -100,11 +99,28 @@ fn utc_values_without_an_offset_are_utc_and_offsets_are_converted() {
         ("2026-10-15T00:30:00+23:59", "2026-10-14T00:31:00Z"),
         // MySQL's DATETIME text, which holds UTC.
         ("2026-10-15 09:30:00.500000", "2026-10-15T09:30:00.500Z"),
+        ("2026-10-15T00:30:00-23:59", "2026-10-16T00:29:00Z"),
+        (
+            "2026-10-15T09:30:00.000000001Z",
+            "2026-10-15T09:30:00.000000001Z",
+        ),
+        // The instants of years 0 and 10000 that offsets reach.
+        ("0001-01-01T00:30:00+01:00", "0000-12-31T23:30:00Z"),
+        ("0001-01-01T00:00:00+23:59", "0000-12-31T00:01:00Z"),
+        ("9999-12-31T23:59:59Z", "9999-12-31T23:59:59Z"),
+        ("9999-12-31T23:00:00-05:00", "+10000-01-01T04:00:00Z"),
+        (
+            "9999-12-31 23:59:59.999999999-23:59",
+            "+10000-01-01T23:58:59.999999999Z",
+        ),
     ] {
         assert_eq!(instant(value).as_deref(), Some(expected), "{value}");
     }
     for invalid in [
         "2026-10-15T09:30:00+24:00",
+        "2026-10-15T09:30:00-24:00",
+        "2026-10-15T09:30:00+24",
+        "2026-10-15T09:30:00-99:59",
         "2026-10-15T09:30:00+05:60",
         "2026-10-15T09:30:00+0530",
         "2026-10-15T09:30:00+05:30:00",
@@ -121,46 +137,65 @@ fn utc_values_without_an_offset_are_utc_and_offsets_are_converted() {
 
 #[test]
 fn normalized_values_carry_their_text_and_typed_value() {
-    let normalized = |kind: FieldKind, value: &str| {
-        normalize(&kind, value.to_owned()).map(|(text, typed)| (text, debug(typed)))
-    };
+    let normalized = |kind: FieldKind, value: &str| normalize(&kind, value.to_owned());
+    let utc_instant = |text: &str| utc(text).map(TemporalValue::Instant);
     assert_eq!(
         normalized(FieldKind::Date, "2026-10-15"),
-        Some(("2026-10-15".to_owned(), "Some(Date(2026-10-15))".to_owned()))
+        Some((
+            "2026-10-15".to_owned(),
+            Some(TemporalValue::Date(ymd(2026, 10, 15)))
+        ))
     );
     assert_eq!(
         normalized(FieldKind::Time, "09:30"),
-        Some(("09:30:00".to_owned(), "Some(Time(09:30:00))".to_owned()))
+        Some((
+            "09:30:00".to_owned(),
+            clock(9, 30, 0, 0).map(TemporalValue::Time)
+        ))
     );
     assert_eq!(
         normalized(FieldKind::Time, "09:30:00.5"),
         Some((
             "09:30:00.500".to_owned(),
-            "Some(Time(09:30:00.500))".to_owned()
+            clock(9, 30, 0, 500_000_000).map(TemporalValue::Time)
+        ))
+    );
+    assert_eq!(
+        normalized(FieldKind::Time, "09:30:00.1234"),
+        Some((
+            "09:30:00.123400".to_owned(),
+            clock(9, 30, 0, 123_400_000).map(TemporalValue::Time)
         ))
     );
     assert_eq!(
         normalized(FieldKind::DateTime, "2026-10-15T09:30"),
         Some((
             "2026-10-15 09:30:00".to_owned(),
-            "Some(NaiveDateTime(2026-10-15T09:30:00))".to_owned()
+            Some(TemporalValue::DateTime(ymd(2026, 10, 15).at(9, 30, 0, 0)))
         ))
     );
     // A text column keeps an offset value as entered, bound as text.
     assert_eq!(
         normalized(FieldKind::DateTime, "2026-10-15T09:30Z"),
-        Some(("2026-10-15T09:30Z".to_owned(), "None".to_owned()))
+        Some(("2026-10-15T09:30Z".to_owned(), None))
     );
     assert_eq!(
         normalized(FieldKind::DateTimeUtc, "2026-10-15T09:30:00-03:00"),
         Some((
             "2026-10-15T12:30:00+00:00".to_owned(),
-            "Some(DateTime(2026-10-15T12:30:00Z))".to_owned()
+            utc_instant("2026-10-15T12:30:00Z")
+        ))
+    );
+    assert_eq!(
+        normalized(FieldKind::DateTimeUtc, "9999-12-31T23:00:00.5-05:00"),
+        Some((
+            "+10000-01-01T04:00:00.500+00:00".to_owned(),
+            utc_instant("9999-12-31T23:00:00.5-05:00")
         ))
     );
     assert_eq!(
         normalized(FieldKind::Text, "09:30"),
-        Some(("09:30".to_owned(), "None".to_owned()))
+        Some(("09:30".to_owned(), None))
     );
     for (kind, invalid) in [
         (FieldKind::Date, "0000-01-01"),
@@ -215,6 +250,8 @@ fn inputs_show_values_they_can_hold_exactly() {
         assert_eq!(shown(unshowable), None, "{unshowable}");
     }
     assert_eq!(shown("9999-12-31T23:59:59Z"), picker("9999-12-31T23:59:59"));
+    // Year 10000 in UTC, so not shown in UTC.
+    assert_eq!(shown("9999-12-31T23:00:00-05:00"), None);
 }
 
 #[test]

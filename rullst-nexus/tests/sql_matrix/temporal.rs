@@ -120,6 +120,16 @@ pub async fn native_date_time_columns_round_trip(
     let (status, body) = send(app, "PUT", &record, "due_on=2026-02-30").await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{driver}: {body}");
 
+    // Later than 9999-12-30T22:00Z, which a `jiff::Timestamp` cannot hold:
+    // bound as RFC 3339 text (PostgreSQL casts it) or MySQL's UTC wall time.
+    let (status, body) = send(app, "PUT", &record, "paid_at=9999-12-31T23%3A30%3A00.5Z").await;
+    assert_eq!(status, StatusCode::OK, "{driver} late instant: {body}");
+    assert_eq!(
+        matching(pool, driver, "9999-12-31 23:30:00.5", "10:15:30").await,
+        1,
+        "{driver} late instant"
+    );
+
     // NULL reaches native columns too (PostgreSQL needs the cast for it).
     let (status, body) = send(app, "PUT", &record, "due_on=&opens_at=&starts_at=&paid_at=").await;
     assert_eq!(status, StatusCode::OK, "{driver} null: {body}");

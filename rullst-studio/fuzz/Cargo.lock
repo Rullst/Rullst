@@ -593,7 +593,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1610,7 +1610,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1784,9 +1784,9 @@ version = "13.0.0-alpha.5"
 dependencies = [
  "async-trait",
  "axum",
- "chrono",
  "hex",
  "hmac",
+ "jiff",
  "rand 0.10.3",
  "reqwest",
  "rullst-core",
@@ -1805,12 +1805,12 @@ dependencies = [
  "async-trait",
  "axum",
  "base64 0.23.1",
- "chrono",
  "dashmap",
  "dotenvy",
  "futures-util",
  "http",
  "http-body",
+ "jiff",
  "libloading",
  "rand 0.10.3",
  "rullst-macros",
@@ -1889,9 +1889,9 @@ version = "13.0.0-alpha.5"
 dependencies = [
  "axum",
  "base64 0.23.1",
- "chrono",
  "futures-util",
  "hmac",
+ "jiff",
  "rand 0.10.3",
  "rullst-capital",
  "rullst-core",
@@ -1985,7 +1985,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3163,7 +3163,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

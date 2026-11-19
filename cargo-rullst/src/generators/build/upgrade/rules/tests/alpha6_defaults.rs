@@ -44,6 +44,16 @@ async fn probe() {
         "// GET /health returns \"version\"\nfn f() { let _ = \"/health\"; }\n",
         &[],
     );
+    // An application's own `/healthz` probe next to a quiz answer named
+    // `version`; a probe path built with `format!` still counts.
+    assert_only(
+        "fn f() { let _ = (get(\"/healthz\"), json!({\"choice\": \"version\"})); }\n",
+        &[],
+    );
+    assert_only(
+        "fn f(base: &str, body: Value) { let _ = (format!(\"{base}/ready\"), &body[\"version\"]); }\n",
+        &["V13-HEALTH-FRAMEWORK-VERSION"],
+    );
 }
 
 #[test]

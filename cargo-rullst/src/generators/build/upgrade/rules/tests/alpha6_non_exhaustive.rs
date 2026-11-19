@@ -85,6 +85,9 @@ fn literals_with_fields_of_another_struct_are_not_reported() {
     // Without a path that names the crate.
     let elsewhere = "struct TraceSpan { name: String }\nfn s() -> TraceSpan { TraceSpan { name: String::new() } }\n";
     assert_eq!(found(elsewhere, LITERAL), Vec::<usize>::new());
+    // A module of the application named like a Rullst crate.
+    let module = "use rullst::auth::Session;\nfn m() -> crate::mail::Message { crate::mail::Message { to: String::new(), subject: String::new() } }\nfn n() -> Message { Message { to: String::new(), subject: String::new() } }\nuse crate::mail::Message;\n";
+    assert_eq!(found(module, LITERAL), Vec::<usize>::new());
     // Core's types count in any file that names Rullst.
     let core = "use rullst::telemetry_spans::{TraceSpan, global_span_collector};\nfn r() { global_span_collector().record(TraceSpan { name: String::new(), kind: String::new(), duration_us: 1, timestamp: 2 }); }\n";
     assert_eq!(found(core, LITERAL), [2]);

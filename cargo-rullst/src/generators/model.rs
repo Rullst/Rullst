@@ -127,7 +127,7 @@ pub fn create_new_model(
             fs::create_dir_all(migrations_dir)?;
         }
 
-        let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
+        let timestamp = crate::clock::local_migration_stamp()?;
         let migration_name = format!("create_{}", plural_name);
         let file_stem = format!("m{}_{}", timestamp, migration_name);
         let migration_path = migrations_dir.join(format!("{}.rs", file_stem));

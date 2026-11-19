@@ -27,12 +27,12 @@ fn column_kind(rust_type: &str) -> Option<ColumnKind> {
         "bool" => ("boolean", Some("INTEGER"), Some("0")),
         "String" => ("string", Some("TEXT"), Some("''")),
         "SecretString" | "Json" => ("string", Some("TEXT"), None),
-        // Native date/time columns: `chrono` fields need them on PostgreSQL
-        // and MySQL/MariaDB, where a TEXT column does not decode.
-        "DateTime" => ("timestamp_tz", None, None),
-        "NaiveDateTime" => ("timestamp", None, None),
-        "NaiveDate" => ("date", None, None),
-        "NaiveTime" => ("time", None, None),
+        // Native date/time columns for `rullst::orm`'s types: PostgreSQL and
+        // MySQL/MariaDB need them, where a TEXT column does not decode.
+        "Timestamp" => ("timestamp_tz", None, None),
+        "DateTime" => ("timestamp", None, None),
+        "Date" => ("date", None, None),
+        "Time" => ("time", None, None),
         _ => return None,
     };
     Some(ColumnKind {
@@ -42,7 +42,23 @@ fn column_kind(rust_type: &str) -> Option<ColumnKind> {
     })
 }
 
+/// chrono's types, which the ORM bound until 13.0.0-alpha.5.
+const CHRONO_TYPES: [&str; 4] = [
+    super::super::schema_diff::CHRONO_DATE_TIME,
+    "NaiveDateTime",
+    "NaiveDate",
+    "NaiveTime",
+];
+
 fn supported(table: &str, field: &ParsedField) -> Result<ColumnKind, String> {
+    if CHRONO_TYPES.contains(&field.rust_type.as_str()) {
+        // A model still on chrono, part way through the 13.0.0-alpha.6
+        // upgrade: its `DateTime<Utc>` is not the civil `DateTime`.
+        return Err(format!(
+            "`{table}.{}` has chrono's `{}`, which the ORM no longer maps since 13.0.0-alpha.6; make the field `rullst::orm::Timestamp` (for `DateTime<Utc>`), `DateTime`, `Date` or `Time` first (`cargo rullst upgrade --dry-run` lists such fields as V13-ORM-CHRONO-TYPES)",
+            field.name, field.rust_type
+        ));
+    }
     column_kind(&field.rust_type).ok_or_else(|| {
         // The extractor reports a tuple, array or reference type as `Unknown`.
         let rust_type = match field.rust_type.as_str() {
@@ -50,7 +66,7 @@ fn supported(table: &str, field: &ParsedField) -> Result<ColumnKind, String> {
             other => format!("type `{other}`"),
         };
         format!(
-            "`{table}.{}` has {rust_type}, which make:migration:auto cannot map to a column (supported: i8, i16, i32, i64, f32, f64, bool, String, SecretString, chrono date/time types and Json); add it with `cargo rullst make:migration` or mark it `#[orm(skip)]`",
+            "`{table}.{}` has {rust_type}, which make:migration:auto cannot map to a column (supported: i8, i16, i32, i64, f32, f64, bool, String, SecretString, `rullst::orm::Timestamp`, `DateTime`, `Date`, `Time` and Json); add it with `cargo rullst make:migration` or mark it `#[orm(skip)]`",
             field.name
         )
     })

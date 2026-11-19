@@ -27,7 +27,7 @@ pub fn scaffold_chat_session() -> Result<(), Box<dyn std::error::Error>> {
 
     reject_existing_outputs()?;
     let backend = project_orm_backend();
-    let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S");
+    let timestamp = crate::clock::local_migration_stamp()?;
     let migration_stem = format!("m{timestamp}_create_chat_memory_tables");
     let migration_path = Path::new("src/migrations").join(format!("{migration_stem}.rs"));
     if migration_path.exists() {

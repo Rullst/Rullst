@@ -1,6 +1,6 @@
 use rullst::db::{Orm, RowSnapshot};
 use rullst::nexus::{FieldKind, FieldMeta, NexusModel};
-use rullst::orm::chrono::{DateTime, Utc};
+use rullst::orm::Timestamp;
 
 #[derive(Debug, Clone, Default, Orm)]
 #[orm(table = "users")]
@@ -12,8 +12,8 @@ pub struct User {
     pub password_hash: Option<String>,
     pub oauth_provider: Option<String>,
     pub oauth_id: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
     // Lets this account into Nexus (`/nexus`) under the application's
     // sign-in. The database manages this column: ORM inserts and saves never
     // write it, so neither a form nor `save()` grants it, while queries can
@@ -83,7 +83,7 @@ impl User {
         id: i32,
         epoch: u64,
         password_hash: &str,
-        updated_at: rullst::orm::chrono::DateTime<rullst::orm::chrono::Utc>,
+        updated_at: rullst::orm::Timestamp,
     ) -> Result<Option<u64>, rullst::orm::Error> {
         let (Ok(current), Some(next)) = (i64::try_from(epoch), epoch.checked_add(1)) else {
             return Ok(None);

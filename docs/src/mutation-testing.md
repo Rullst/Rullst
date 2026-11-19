@@ -239,11 +239,13 @@ received a test or is listed under
   files leave 19 of 697 mutants missed and 1 timeout. The crate's 948 mutants
   now leave 22 missed and 2 timeouts: 18 accepted equivalents listed below
   (most are SQLite and MySQL branches that the all-feature PostgreSQL pool
-  never takes), 4 mutants of two redundant conditions left for a follow-up
-  (the ban count in the radar's threat level, since every ban is also
-  recorded as an event and a counter, and the forget token's empty and length
-  pre-check, which the 32-byte signature check repeats with the same `400`),
-  and the two timeouts listed with the timeouts.
+  never takes), 4 mutants of two redundant conditions, and the two timeouts
+  listed with the timeouts. A follow-up removed both conditions and their
+  mutants: the ban count in the radar's threat level (the store bans only
+  when it counts a trap and records an event, and its event list never
+  empties) and the forget token's empty and length pre-check (only a
+  43-character token decodes to the 32-byte signature, so that check already
+  answers `400`).
 - **`rullst`** (the facade; 13.0.0-rc.1 campaign on `c22b6bca`,
   [PR #752](https://github.com/Rullst/Rullst/pull/752), same fork): targeted
   runs of the 6 files with mutants (the account-mail worker and the IoT
@@ -493,12 +495,12 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-mail/src/security.rs`: `redact_labelled_private_keys`, `MAX_PEM_LABEL_BYTES + 1` with `*` | Reading at most 64 label bytes cuts a longer label inside its run of label bytes, so the `-----` check that follows fails as the length check would. |
 | `rullst-mail/src/security.rs`: `href_values`, `value_start + length + 1` with `-` or `*` | The scan resumes on the closing quote or the byte before it (the opening quote for an empty value), and no `href` match can contain a quote. |
 | `rullst-mail/src/inspection/sniff.rs`: `root_element`, `open < close` with `<=` | Both are positions just after one byte, a `[` and a `>`, so they are never equal. |
-| `rullst-mail/src/pipeline.rs`: `DeliveryPipeline::require_due`, `send_at > now`, and `DeliveryPipeline::prepare_with_context`, the 366-day bound `send_at > now + 366 days`, each with `>=` | They differ only when the schedule equals a `Utc::now()` reading taken inside the call to the nanosecond, which a caller cannot arrange. |
+| `rullst-mail/src/pipeline.rs`: `DeliveryPipeline::require_due`, `send_at > now`, and `DeliveryPipeline::prepare_with_context`, the 366-day bound `send_at - now > 366 days`, each with `>=` | They differ only when the schedule equals a `Timestamp::now()` reading taken inside the call (plus 366 days) to the nanosecond, which a caller cannot arrange. |
 | `rullst-mail/src/suppression/mod.rs`: `ascii_domain`, either `&&` with `\|\|` | `recipient_address` rejects `:` and `ascii_domain` refuses `/`, `?`, `#`, `%` and `\` before parsing, so `http://{domain}/` never parses with a port or a path other than `/`, and the URL parser refuses an empty host: all three tests always hold. |
 | `rullst-mail/src/drivers/failover.rs`: `FailoverDriver::is_tripped`, `elapsed() < self.cooldown` with `<=` | An `Instant` reading would have to equal the last failure plus the cooldown to the nanosecond. |
 | `rullst-mail/src/drivers/memory.rs`: `MailTrap::driver` with `Default::default()` | `MemoryDriver::default()` is `MemoryDriver::new()`, the driver connected to the global trap. |
 | `rullst-mail/src/error.rs`: `bounded_message`, `boundary > 0` with `>=` | `is_char_boundary(0)` is always true, so the loop stops at 0 either way. |
-| `rullst-mail/src/worker.rs`: `prepare_claimed_message`, `send_at > now + CLAIM_CLOCK_SKEW`, and `rullst-mail/src/drivers/resend.rs`: `ResendDriver::send_request`, `send_at > now + MAX_PROVIDER_SCHEDULE`, each with `>=` | They differ only when the schedule equals a `Utc::now()` reading taken inside the call, plus 300 s or 30 days, to the nanosecond. |
+| `rullst-mail/src/worker.rs`: `prepare_claimed_message`, `send_at - now > CLAIM_CLOCK_SKEW`, and `rullst-mail/src/drivers/resend.rs`: `ResendDriver::send_request`, `send_at - now > MAX_PROVIDER_SCHEDULE`, each with `>=` | They differ only when the schedule equals a `Timestamp::now()` reading taken inside the call, plus 300 s or 30 days, to the nanosecond. |
 | `rullst-ai/src/ai/egress.rs`: `EgressPolicy::strict` with `Default::default()` | `strict` already returns `Self::default()`. |
 | `rullst-ai/src/ai/egress.rs`: `is_public_ipv6`, `is_unspecified() \|\| is_loopback()` with `&&` | `::` and `::1` lie outside `2000::/3`, which the next clause rejects. |
 | `rullst-ai/src/ai/guardrails/markdown_inline.rs`: `open_tag_end`, the self-closing `then_some(index + 1)` with `-` or `*` | The tag then ends on or just before its `/`; the byte before that `/` is whitespace, a quote or a name byte, never a bracket. |

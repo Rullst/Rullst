@@ -99,7 +99,7 @@ impl AcmeMailDriver {
         })?;
         if message
             .send_at
-            .is_some_and(|send_at| send_at > chrono::Utc::now())
+            .is_some_and(|send_at| send_at > jiff::Timestamp::now())
         {
             return Err(MailError::ConfigError(
                 "AcmeMail cannot schedule mail; use Mail::enqueue with a durable queue".into(),

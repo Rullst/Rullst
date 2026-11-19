@@ -181,3 +181,71 @@ fn a_wall_time_in_a_daylight_saving_gap_is_a_typed_error() {
         Ok(pairs(&[("ends_at", "2026-11-01T05:30:00Z")]))
     );
 }
+
+#[test]
+fn instants_past_jiff_timestamps_are_shown_and_read_as_before() {
+    let new_york_winter = NexusTimeZone::fixed_offset(-300).unwrap();
+    // A stored instant in year 10000 UTC is a 9999 wall time here.
+    assert_eq!(
+        zoned_input_value("9999-12-31T23:00:00-05:00", &new_york_winter),
+        picker("9999-12-31T23:00:00")
+    );
+    assert_eq!(
+        zoned_input_value("9999-12-31T23:30:00Z", &new_york_winter),
+        picker("9999-12-31T18:30:00")
+    );
+    // Submitted there, it becomes year-10000 text that validation refuses.
+    let entry = entry();
+    let localized = localize_form_values(
+        &entry,
+        pairs(&[("starts_at", "9999-12-31T23:00")]),
+        &new_york_winter,
+    );
+    assert_eq!(
+        localized,
+        Ok(pairs(&[("starts_at", "+10000-01-01T04:00:00Z")]))
+    );
+    assert!(matches!(
+        validate_form_values(&entry, localized.unwrap(), FormMode::Update),
+        Err(FormInputError::InvalidField {
+            field: "starts_at",
+            ..
+        })
+    ));
+    // Typed with its offset, the same instant is accepted.
+    let values = validate_form_values(
+        &entry,
+        pairs(&[("starts_at", "9999-12-31T23:00:00-05:00")]),
+        FormMode::Update,
+    )
+    .unwrap();
+    assert_eq!(
+        values[0].value.as_deref(),
+        Some("+10000-01-01T04:00:00+00:00")
+    );
+}
+
+#[cfg(feature = "tz")]
+#[test]
+fn named_zones_keep_their_jiff_range_limits() {
+    let new_york = NexusTimeZone::named("America/New_York").unwrap();
+    // No named-zone offset exists past 9999-12-30T22:00Z: shown as text.
+    assert_eq!(zoned_input_value("9999-12-31T23:30:00Z", &new_york), None);
+    assert_eq!(
+        zoned_input_value("9999-12-30T21:30:00Z", &new_york),
+        picker("9999-12-30T16:30:00")
+    );
+    let error = localize_form_values(
+        &entry(),
+        pairs(&[("ends_at", "9999-12-31T10:00")]),
+        &new_york,
+    )
+    .unwrap_err();
+    assert_eq!(
+        error,
+        FormInputError::NonexistentLocalTime {
+            field: "ends_at",
+            zone: "America/New_York".to_string(),
+        }
+    );
+}

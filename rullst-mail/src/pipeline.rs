@@ -8,6 +8,7 @@ use crate::validator::{recipient_address, validate_email_deliverability, validat
 
 const MAX_TENANT_ID_LEN: usize = 128;
 const MAX_SCHEDULE_DAYS: i64 = 366;
+const MAX_SCHEDULE: jiff::SignedDuration = jiff::SignedDuration::from_hours(24 * MAX_SCHEDULE_DAYS);
 /// Largest subject accepted before any content scan runs.
 const MAX_SUBJECT_BYTES: usize = 2 * 1024;
 /// Largest HTML body and, separately, largest plain-text body accepted before
@@ -93,7 +94,7 @@ impl DeliveryPipeline {
         if message
             .send_at
             .as_ref()
-            .is_some_and(|send_at| send_at > &chrono::Utc::now())
+            .is_some_and(|send_at| send_at > &jiff::Timestamp::now())
         {
             Err(MailError::ConfigError(format!(
                 "{transport} cannot schedule future delivery directly; initialize a durable Rullst queue"
@@ -156,9 +157,11 @@ impl DeliveryPipeline {
             }
         }
 
-        if message.send_at.as_ref().is_some_and(|send_at| {
-            send_at > &(chrono::Utc::now() + chrono::Duration::days(MAX_SCHEDULE_DAYS))
-        }) {
+        if message
+            .send_at
+            .as_ref()
+            .is_some_and(|send_at| send_at.duration_since(jiff::Timestamp::now()) > MAX_SCHEDULE)
+        {
             return Err(MailError::ValidationError(format!(
                 "mail delivery may be scheduled at most {MAX_SCHEDULE_DAYS} days ahead"
             )));
