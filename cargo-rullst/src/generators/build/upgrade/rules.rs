@@ -14,9 +14,11 @@
 
 mod alpha5_runtime;
 mod alpha5_slimming;
+mod alpha6_cron;
 mod alpha6_defaults;
 mod alpha6_deprecated;
 mod alpha6_gaps;
+mod alpha6_jiff;
 mod alpha6_media;
 mod alpha6_non_exhaustive;
 mod alpha6_passkeys;
@@ -117,6 +119,9 @@ pub(crate) struct SourceFinding {
     pub rule: &'static Rule,
     pub path: PathBuf,
     pub line: usize,
+    /// What this location needs beyond the rule's guidance, such as the
+    /// rewritten expression a rule could compute.
+    pub note: Option<String>,
 }
 
 /// The findings of one scan and the Rust files it could not inspect.
@@ -180,6 +185,8 @@ impl SourceScan {
 #[derive(Default)]
 struct Collector {
     lines: BTreeMap<(&'static str, usize), &'static Rule>,
+    /// A finding's note ([`SourceFinding::note`]), by code and line.
+    notes: BTreeMap<(&'static str, usize), String>,
     /// `V13-CREDENTIAL-RATE-LIMIT` at calls of an application function named
     /// like a hasher, by line: reported unless the package defines that
     /// function with its hashing bounded ([`Self::add_bounded`]).
@@ -197,6 +204,12 @@ struct Collector {
 impl Collector {
     fn add(&mut self, rule: &'static Rule, line: usize) {
         self.lines.entry((rule.code, line.max(1))).or_insert(rule);
+    }
+
+    /// [`Self::add`] with a note for the location; the first note stays.
+    fn add_note(&mut self, rule: &'static Rule, line: usize, note: String) {
+        self.add(rule, line);
+        self.notes.entry((rule.code, line.max(1))).or_insert(note);
     }
 
     /// A call of the application's own `callee` at `line`, which needs a
@@ -288,10 +301,12 @@ impl Collector {
         }
         let mut hits: Vec<_> = self.lines.into_iter().collect();
         hits.sort_by_key(|((code, line), _)| (*line, *code));
-        findings.extend(hits.into_iter().map(|((_, line), rule)| SourceFinding {
+        let mut notes = self.notes;
+        findings.extend(hits.into_iter().map(|((code, line), rule)| SourceFinding {
             rule,
             path: path.to_path_buf(),
             line,
+            note: notes.remove(&(code, line)),
         }));
     }
 }
@@ -314,6 +329,12 @@ pub(super) struct WorkspaceFacts {
     /// A manifest declares `jsonwebtoken` older than 12, whose `from_secret`
     /// key constructors do not return a `Result`.
     pub jsonwebtoken_below_12: bool,
+    /// A manifest declares `chrono` (13.0.0-alpha.6 removed Rullst's
+    /// re-export), so a bare `chrono::` path can be the application's own.
+    pub chrono_dependency: bool,
+    /// A manifest enables SQLx's `chrono` feature itself, which Rullst's ORM
+    /// no longer enables since 13.0.0-alpha.6.
+    pub sqlx_chrono: bool,
 }
 
 /// Scans the workspace when the plan targets v13.
@@ -448,6 +469,7 @@ fn scan_package(
                 rule: &catalog::CREDENTIAL_RATE_LIMIT,
                 path,
                 line,
+                note: None,
             }),
     );
     scan.findings.extend(
@@ -458,6 +480,7 @@ fn scan_package(
                 rule: &catalog::CONNECT_INFALLIBLE_NEW_REMOVED,
                 path,
                 line,
+                note: None,
             }),
     );
     match server_start {
@@ -467,6 +490,7 @@ fn scan_package(
             rule: &catalog::HEALTH_PROBES,
             path,
             line,
+            note: None,
         }),
         None => {}
     }

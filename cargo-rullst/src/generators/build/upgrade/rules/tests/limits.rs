@@ -33,6 +33,7 @@ fn finding_kinds_have_fixed_names_and_are_counted_apart() {
         rule: rule(kind),
         path: PathBuf::from("src/main.rs"),
         line,
+        note: None,
     };
     let scan = SourceScan {
         findings: vec![

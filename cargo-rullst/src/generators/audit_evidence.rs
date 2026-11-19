@@ -69,7 +69,7 @@ fn generate_cyclonedx_sbom_at(
         "serialNumber": format!("urn:uuid:{}", uuid::Uuid::new_v4()),
         "version": 1,
         "metadata": {
-            "timestamp": chrono::Utc::now().to_rfc3339(),
+            "timestamp": crate::clock::rfc3339(crate::clock::now()?),
             "tools": [{
                 "vendor": "Rullst Core Team",
                 "name": "cargo-rullst",

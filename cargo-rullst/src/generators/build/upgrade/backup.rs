@@ -1,5 +1,4 @@
 use super::manifest::ManifestUpgradePlan;
-use chrono::Utc;
 use std::path::{Path, PathBuf};
 use walkdir::{DirEntry, WalkDir};
 
@@ -21,7 +20,7 @@ impl UpgradeBackup {
         let project_root = project_root.canonicalize()?;
         let run_id = format!(
             "{}-{:016x}",
-            Utc::now().format("%Y%m%dT%H%M%SZ"),
+            crate::clock::compact_utc(crate::clock::now()?),
             rand::random::<u64>()
         );
         let root = project_root

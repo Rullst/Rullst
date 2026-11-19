@@ -181,7 +181,10 @@ pub(crate) fn collect(root: &Path, ignores: &[String], tools: &Tools<'_>) -> Rep
     let (markup, incomplete) = a11y::collect(root, &sources);
     checks.extend(a11y::checks(&markup, &incomplete));
     Report {
-        generated_at: chrono::Utc::now().to_rfc3339(),
+        // A clock outside jiff's range (beyond the year 9999) leaves it empty.
+        generated_at: crate::clock::now()
+            .map(crate::clock::rfc3339)
+            .unwrap_or_default(),
         checks,
         personal_data,
     }

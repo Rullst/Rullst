@@ -144,8 +144,8 @@ pub(crate) fn valid_email(email: &str) -> bool {
         })
 }
 
-pub(crate) fn utc_timestamp() -> rullst::orm::chrono::DateTime<rullst::orm::chrono::Utc> {
-    rullst::orm::chrono::Utc::now()
+pub(crate) fn utc_timestamp() -> rullst::orm::Timestamp {
+    rullst::orm::Timestamp::now()
 }
 
 /// Provider sign-in attempts each client may start per minute.

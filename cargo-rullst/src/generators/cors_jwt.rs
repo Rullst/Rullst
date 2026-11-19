@@ -36,9 +36,6 @@ pub fn ensure_jwt_dependencies(cargo_toml: &str) -> Result<String, Box<dyn std::
             "jsonwebtoken = { version = \"12\", default-features = false, features = [\"aws_lc_rs\"] }",
         );
     }
-    if !dependency_is_declared(cargo_toml, "chrono") {
-        missing.push("chrono = { version = \"0.4\", features = [\"serde\"] }");
-    }
     if !dependency_is_declared(cargo_toml, "serde") {
         missing.push("serde = { version = \"1\", features = [\"derive\"] }");
     }
@@ -296,7 +293,7 @@ pub fn create_jwt_middleware() -> Result<(), Box<dyn std::error::Error>> {
             fs::write(cargo_toml_path, updated)?;
             println!(
                 "{}",
-                "  ✨ Added 'jsonwebtoken' and 'chrono' dependencies to your Cargo.toml.".green()
+                "  ✨ Added the 'jsonwebtoken' dependency to your Cargo.toml.".green()
             );
         }
     }

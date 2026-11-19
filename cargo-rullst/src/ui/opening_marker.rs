@@ -43,14 +43,21 @@ pub(crate) fn stamp_path(file: &str) -> Option<PathBuf> {
     cache_base(|name| std::env::var_os(name)).map(|base| base.join(DIRECTORY).join(file))
 }
 
-/// Today's local date as the stamp content.
+/// Today's local date as the stamp content, empty when the system clock is
+/// outside jiff's range (beyond the year 9999).
 pub(crate) fn today() -> String {
-    chrono::Local::now().format("%Y-%m-%d").to_string()
+    crate::clock::now()
+        .map(|now| crate::clock::date(now, &crate::clock::local_zone()))
+        .unwrap_or_default()
 }
 
 /// Claims today's animation: returns `true` only when the stamp did not
-/// already hold `today` and was successfully replaced by it.
+/// already hold `today` and was successfully replaced by it. Without a date
+/// (`today` empty) nothing animates.
 pub(crate) fn claim_daily_animation(path: &Path, today: &str) -> bool {
+    if today.is_empty() {
+        return false;
+    }
     match read_stamp(path) {
         Ok(Some(stamp)) if stamp == today => false,
         Ok(_) => write_stamp(path, today).is_ok(),
@@ -134,6 +141,29 @@ mod tests {
         assert!(!claim_daily_animation(&path, "2026-10-01"));
         assert!(claim_daily_animation(&path, "2026-10-02"));
         assert!(!claim_daily_animation(&path, "2026-10-02"));
+    }
+
+    #[test]
+    fn without_a_date_nothing_animates_and_today_is_an_iso_date() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join(DIRECTORY).join(FILE);
+        assert!(!claim_daily_animation(&path, ""));
+        assert!(!path.exists());
+
+        let today = today();
+        let digits: Vec<bool> = today.bytes().map(|byte| byte.is_ascii_digit()).collect();
+        assert_eq!(today.len(), 10, "{today}");
+        assert!(today.as_str() >= "2026-01-01", "{today}");
+        assert_eq!(&today[4..5], "-", "{today}");
+        assert_eq!(&today[7..8], "-", "{today}");
+        assert!(
+            digits[..4]
+                .iter()
+                .chain(&digits[5..7])
+                .chain(&digits[8..])
+                .all(|digit| *digit),
+            "{today}"
+        );
     }
 
     #[test]

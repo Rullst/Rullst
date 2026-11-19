@@ -16,6 +16,7 @@ fn finding(code: &str, path: &str, line: usize) -> rules::SourceFinding {
         rule: rule(code),
         path: Path::new("/project").join(path),
         line,
+        note: None,
     }
 }
 

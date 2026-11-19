@@ -127,8 +127,10 @@ pub async fn jwt_middleware(mut request: Request, next: Next) -> Response {
 
 pub fn generate_token(user_id: impl Into<String>) -> Result<String, JwtConfigError> {
     let config = JwtConfig::from_env()?;
-    let now = chrono::Utc::now().timestamp();
-    let issued_at = u64::try_from(now).map_err(|_| JwtConfigError::InvalidTimestamp)?;
+    let issued_at = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|_| JwtConfigError::InvalidTimestamp)?
+        .as_secs();
     let expires_at = issued_at
         .checked_add(24 * 60 * 60)
         .ok_or(JwtConfigError::InvalidTimestamp)?;
