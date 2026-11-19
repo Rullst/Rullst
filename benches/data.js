@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795058801814,
+  "lastUpdate": 1795062161634,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -37177,6 +37177,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1099,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0ac7fe3be8a0f2cec11c7ee1feba533e55d05304",
+          "message": "Merge pull request #768 from Rullst/feat/v13-orm-remove-chrono\n\nfeat(orm)!: remove chrono from rullst-orm and rullst-orm-macros",
+          "timestamp": "2026-11-19T01:19:00-03:00",
+          "tree_id": "99d76f3b7d4c9ace3d65d06b8290436450d1c9ba",
+          "url": "https://github.com/Rullst/Rullst/commit/0ac7fe3be8a0f2cec11c7ee1feba533e55d05304"
+        },
+        "date": 1795062157808,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 595,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 773,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 337,
+            "range": "± 28",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1558,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
