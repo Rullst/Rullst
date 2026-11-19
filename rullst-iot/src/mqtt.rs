@@ -9,7 +9,6 @@ extern crate alloc;
 use alloc::{string::String, vec::Vec};
 use core::{fmt, num::NonZeroU16};
 
-
 /// Local allocation ceiling for one encoded MQTT packet.
 pub const MAX_MQTT_PACKET_BYTES: usize = 1024 * 1024;
 
