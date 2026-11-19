@@ -370,6 +370,9 @@ impl Scanner<'_, '_> {
         if let Some(rule) = super::alpha6_public_deps::ident_rule(name, self.context.text) {
             self.hit(rule, at);
         }
+        if let Some(rule) = super::rc1_experimental::ident_rule(name) {
+            self.hit(rule, at);
+        }
         match name {
             "health_router"
             | "health_router_with_lifecycle"
@@ -414,6 +417,9 @@ impl Scanner<'_, '_> {
             self.hit(rule, at);
         }
         if let Some(rule) = super::alpha6_jiff::path_rule(segments, tokens.get(end), facts) {
+            self.hit(rule, at);
+        }
+        if let Some(rule) = super::rc1_experimental::path_rule(segments) {
             self.hit(rule, at);
         }
         for pair in segments.windows(2) {
