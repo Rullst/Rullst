@@ -16,7 +16,7 @@ mod date;
 mod number;
 
 use super::{Decimal, Locale};
-use chrono::{Datelike, Timelike};
+use jiff::civil::{Date, DateTime, Time};
 
 /// How much of a date to write, from CLDR's date formats.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -251,31 +251,35 @@ impl Locale {
     /// A calendar date in the locale's pattern for `style`:
     /// `22/10/2026` (pt-BR, `Short`), `October 22, 2026` (en, `Long`).
     ///
-    /// Takes any `chrono` date (`NaiveDate`, `NaiveDateTime`, or a
-    /// `DateTime` in its own time zone; convert a UTC timestamp to the
-    /// visitor's zone first). Years before 1 are written as ISO numbers
-    /// (`0`, `-1`).
-    pub fn format_date(&self, date: &impl Datelike, style: DateStyle) -> String {
-        date::date(self.date_data(), date, style)
+    /// Takes a `jiff::civil::Date`, a `jiff::civil::DateTime` or a
+    /// `&jiff::ZonedDateTime` (convert a `jiff::Timestamp` to the visitor's
+    /// zone first). Years before 1 are written as ISO numbers (`0`, `-1`).
+    /// Since 13.0.0-alpha.6; it took a `chrono::Datelike` before.
+    pub fn format_date(&self, date: impl Into<Date>, style: DateStyle) -> String {
+        date::date(self.date_data(), date.into(), style)
     }
 
     /// A time of day in the locale's pattern for `style`: `3:45 PM` (en,
-    /// with U+202F before `PM`), `15:45` (pt-BR).
-    pub fn format_time(&self, time: &impl Timelike, style: TimeStyle) -> String {
-        date::time(self.date_data(), time, style)
+    /// with U+202F before `PM`), `15:45` (pt-BR). Takes a
+    /// `jiff::civil::Time`, a `jiff::civil::DateTime` or a
+    /// `&jiff::ZonedDateTime` (since 13.0.0-alpha.6; a `chrono::Timelike`
+    /// before).
+    pub fn format_time(&self, time: impl Into<Time>, style: TimeStyle) -> String {
+        date::time(self.date_data(), time.into(), style)
     }
 
     /// A date and time joined as the locale does for the date style:
     /// `October 22, 2026 at 3:45 PM` (en, `Long` and `Short`),
     /// `22/10/2026, 15:45` (pt-BR, `Short` and `Short`). `Numeric` dates
-    /// join like `Short` ones.
+    /// join like `Short` ones. Takes a `jiff::civil::DateTime` or a
+    /// `&jiff::ZonedDateTime` (since 13.0.0-alpha.6; a chrono value before).
     pub fn format_datetime(
         &self,
-        value: &(impl Datelike + Timelike),
+        value: impl Into<DateTime>,
         date_style: DateStyle,
         time_style: TimeStyle,
     ) -> String {
-        date::datetime(self.date_data(), value, date_style, time_style)
+        date::datetime(self.date_data(), value.into(), date_style, time_style)
     }
 }
 

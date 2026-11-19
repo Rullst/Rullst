@@ -211,7 +211,7 @@ impl core::panic::unwind_safe::UnwindSafe for rullst_capital::InfinitePayProvide
 #[non_exhaustive] pub struct rullst_capital::Invoice
 pub rullst_capital::Invoice::invoice_id: alloc::string::String
 pub rullst_capital::Invoice::customer_email: alloc::string::String
-pub rullst_capital::Invoice::date: chrono::datetime::DateTime<chrono::offset::utc::Utc>
+pub rullst_capital::Invoice::date: jiff::timestamp::Timestamp
 pub rullst_capital::Invoice::items: alloc::vec::Vec<rullst_capital::InvoiceItem>
 pub rullst_capital::Invoice::currency: alloc::string::String
 pub rullst_capital::Invoice::labels: rullst_capital::InvoiceLabels
@@ -220,7 +220,7 @@ pub fn rullst_capital::Invoice::bind_succeeded_charge(&self, receipt: &rullst_ca
 pub fn rullst_capital::Invoice::generate_html(&self) -> alloc::string::String
 pub fn rullst_capital::Invoice::generate_pdf(&self) -> core::result::Result<alloc::vec::Vec<u8>, rullst_capital::CapitalError>
 pub fn rullst_capital::Invoice::generate_pdf_with_font(&self, font_bytes: &[u8]) -> core::result::Result<alloc::vec::Vec<u8>, rullst_capital::CapitalError>
-pub fn rullst_capital::Invoice::new(invoice_id: impl core::convert::Into<alloc::string::String>, customer_email: impl core::convert::Into<alloc::string::String>, date: chrono::datetime::DateTime<chrono::offset::utc::Utc>, currency: impl core::convert::Into<alloc::string::String>) -> Self
+pub fn rullst_capital::Invoice::new(invoice_id: impl core::convert::Into<alloc::string::String>, customer_email: impl core::convert::Into<alloc::string::String>, date: impl core::convert::Into<jiff::timestamp::Timestamp>, currency: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn rullst_capital::Invoice::total_minor(&self) -> core::result::Result<u64, rullst_capital::CapitalError>
 pub fn rullst_capital::Invoice::try_generate_html(&self) -> core::result::Result<alloc::string::String, rullst_capital::CapitalError>
 pub fn rullst_capital::Invoice::validate(&self) -> core::result::Result<(), rullst_capital::CapitalError>

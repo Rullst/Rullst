@@ -62,11 +62,18 @@ creating a new name. Retained definitions reserve names and count against the
 quota, even after cancellation; retiring a namespace is an explicit deployment
 operation. A random generation and scheduled UTC instant identify each occurrence.
 
-The five fields use the Rust `cron` crate's calendar semantics: minute, hour,
-day-of-month, month, weekday; seconds are zero, years span 1970 through 2100.
-Weekdays are **1=Sunday through 7=Saturday**, or names such as `Mon`. Day-of-month
-and weekday restrictions intersect. This is not POSIX crontab syntax: weekday
-zero and seconds/year fields are rejected. There is no implicit local timezone
+Since 13.0.0-alpha.6 the five fields are POSIX cron, read in UTC exactly as
+Core's `Scheduler::task` reads them: minute, hour, day-of-month, month,
+weekday; occurrences are whole minutes from 1970 through 2100. Weekdays are
+**0-7 (0 and 7 are Sunday)** or names such as `Mon`; when both day fields are
+restricted, a day matching either one runs, otherwise both must match; each
+field must be valid on its own. Definitions stored by earlier prereleases have
+no syntax marker and keep the `cron` crate's grammar (weekdays 1=Sunday through
+7=Saturday, day restrictions intersect): `RecurringDefinition::syntax` and
+`RecurringMetadata::syntax` report `CronSyntax::Legacy` for them, deprecated
+with removal planned for 14.0. Creating such a name again with the same
+expression keeps the legacy schedule (with a warning); any other change fails
+with `RecurringError::LegacyDefinition`. There is no implicit local timezone
 or daylight-saving conversion. `first_after_ms` is exclusive. Exhausted calendars
 stop producing occurrences.
 

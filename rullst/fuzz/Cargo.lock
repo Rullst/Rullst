@@ -594,7 +594,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1609,6 +1609,7 @@ dependencies = [
  "async-trait",
  "axum",
  "chrono",
+ "jiff",
  "rullst-auth",
  "rullst-core",
  "rullst-macros",
@@ -1663,12 +1664,12 @@ dependencies = [
  "async-trait",
  "axum",
  "base64 0.23.1",
- "chrono",
  "dashmap",
  "dotenvy",
  "futures-util",
  "http",
  "http-body",
+ "jiff",
  "libloading",
  "rand 0.10.3",
  "rullst-macros",

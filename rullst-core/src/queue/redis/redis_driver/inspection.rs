@@ -278,8 +278,7 @@ fn preview(row: PreviewRow, max_field_bytes: u32) -> QueuedJobPreview {
 
 fn format_millis(millis: f64) -> String {
     // Scores are integral milliseconds; `as` saturates out-of-range values.
-    chrono::DateTime::from_timestamp_millis(millis as i64)
-        .map(|time| time.to_rfc3339_opts(chrono::SecondsFormat::Millis, true))
+    crate::rfc3339::format_unix_millis_utc(millis as i64, crate::rfc3339::Fraction::Millis)
         .unwrap_or_default()
 }
 

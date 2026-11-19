@@ -26,7 +26,11 @@ extend-exclude = [
     "docs/*.pt-BR.html",
     # Brazilian Portuguese book pages; their code blocks match the English
     # pages, which are checked (.github/check-translations.py).
-    "docs/src/pt-BR/"
+    "docs/src/pt-BR/",
+    # Golden cron vectors: random field-shaped strings recorded from the
+    # `cron` crate (`Nd-Ow`, `/yor`), which must stay as generated.
+    "rullst-core/src/scheduler_cron_golden/",
+    "rullst-messaging/src/schedules/cron_expression_vectors.txt"
 ]
 
 [default.extend-words]
