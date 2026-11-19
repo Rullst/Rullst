@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795062819469,
+  "lastUpdate": 1795065226963,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -24693,6 +24693,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3725,
             "range": "± 20",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ae533e2478882f264b27c92a092c28a090117b1d",
+          "message": "Merge pull request #755 from Rullst/feat/v13-jiff-docs\n\ndocs(v13): document the move from chrono to jiff",
+          "timestamp": "2026-11-19T02:00:14-03:00",
+          "tree_id": "ced36ea665aaba734552b54bda4b099e46ac5cfb",
+          "url": "https://github.com/Rullst/Rullst/commit/ae533e2478882f264b27c92a092c28a090117b1d"
+        },
+        "date": 1795065226645,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 701,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 547,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1252,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1935,
+            "range": "± 12",
             "unit": "ns/iter"
           }
         ]
