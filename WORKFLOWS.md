@@ -6,7 +6,7 @@ claim must always point to the GitHub Actions run, commit SHA, logs, and produce
 artifacts.
 
 Last source-level review: **2026-09-20 UTC**, with later workflow changes
-recorded through 13.0.0-alpha.5.
+recorded through 13.0.0-alpha.6.
 
 ## Status language
 
@@ -141,13 +141,15 @@ and MariaDB 11.4 servers: a Blank starter and an API starter are each
 migrated, given two rows, extended with `cargo rullst auth` and migrated again.
 SQL checks the six added columns, the unique `users_email_unique` index, the
 placeholder e-mails, the unchanged starter schema and rows, the migration
-records and the `rullst_auth_sessions` table; the application signs up an
-account over HTTP through the generated form sign-up (Argon2id hash, one
-registered session; the API starter has no sign-up of its own and applies CSRF
-to this one); `db:rollback` must restore the starter exactly and keep every
-row, and a second `db:migrate` must succeed. It runs on `main` pushes, nightly,
-with the `full-matrix` label and in manual runs. The SaaS starter (which
-already has accounts) and other server versions are not covered.
+records and the `password_reset_tokens` and `rullst_auth_sessions` tables; the
+application signs up an account over HTTP through the generated form sign-up
+(Argon2id hash; the API starter has no sign-up of its own and applies CSRF to
+this one) and registers the sign-in in `rullst_auth_sessions`, which stores
+only a digest of the cookie's session secret; `db:rollback` must restore the
+starter exactly (its sessions migration drops `rullst_auth_sessions`) and keep
+every row, and a second `db:migrate` must succeed. It runs on `main` pushes,
+nightly, with the `full-matrix` label and in manual runs. The SaaS starter
+(which already has accounts) and other server versions are not covered.
 
 `First-hour documentation` runs `.github/check-first-hour.py`: in reading
 order, it runs the blocks marked `<!-- first-hour: … -->` in the README

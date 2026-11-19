@@ -297,6 +297,29 @@ each in release mode (its generated `[profile.release]`, the toolchain of
   requires one per starter. Measure it first with the script's
   `--report-only` flag, which prints suggested limits without checking any.
 
+### Gating evidence and fork runs
+
+Evidence that gates a merge or a release comes only from runs in
+`Rullst/Rullst`, and the official benchmark publication only from
+`Rullst/Benchmarks`: the required checks of a pull request, release
+admission, the release fuzz evidence and the published Benchmarks figures.
+Never substitute a run from anywhere else for them.
+
+Heavy work that gates nothing may run in a maintainer's fork of the
+repository: mutation campaigns, calibrations, diagnostic probes and benchmark
+trial runs. In the fork:
+
+- enable only the workflow the work needs and keep the others disabled;
+- sync the fork to the exact commit being measured first, and dispatch from
+  it;
+- record each run's URL and the measured commit SHA in the evidence document
+  (for mutation campaigns,
+  [`docs/src/mutation-testing.md`](docs/src/mutation-testing.md#campaign-status)),
+  so the result can be checked against the source it measured.
+
+A fork run is a measurement, not a gate: a test or a limit it leads to is
+still checked by the gates in `Rullst/Rullst`.
+
 ## 5. Fuzzing evidence
 
 Release mode of `fuzzing.yml` covers all 42 targets
@@ -339,8 +362,9 @@ adding a registry macro to `REVIEWED_PLAIN_MACROS` or a crate to
 
 Full measurements run on hosted runners with `mutants.yml`
 (`gh workflow run mutants.yml --ref <branch> -f mode=targeted -f file=<path>
--f test_scope=package [-f shard=k/n]`). A dispatch from a branch runs that
-branch's version of the workflow. Download each run's `outcomes.json`, list
+-f test_scope=package [-f shard=k/n]`), in this repository or in a
+maintainer's fork ([fork runs](#gating-evidence-and-fork-runs)). A dispatch
+from a branch runs that branch's version of the workflow. Download each run's `outcomes.json`, list
 the `MissedMutant` and `Timeout` entries, and kill them with tests as in
 section 4. Measure `cargo-rullst` files with `-f test_scope=lib` and
 `-f timeout_seconds=900`, the scope and test timeout the pull-request gate

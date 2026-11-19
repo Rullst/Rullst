@@ -11,6 +11,7 @@
 - [💡 The Rullst Philosophy](philosophy.md)
 - [Simple Capability Status](capability-status.md)
 - [Maturity Tiers: Core, Extension, Experimental](maturity.md)
+- [Scope and Limits](scope-and-limits.md)
 
 # 🍳 Rullst Cookbook & Tutorials
 
@@ -214,6 +215,7 @@
   - [03. Operações CRUD com Active Record](pt-BR/tutorials/03-active-record-crud.md)
   - [05. Migrações e seeders](pt-BR/tutorials/05-migrations-and-seeds.md)
   - [11. Estrutura de autenticação](pt-BR/tutorials/11-authentication-system.md)
+- [Escopo e limites](pt-BR/scope-and-limits.md)
 
 # Historical Records
 

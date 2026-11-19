@@ -1,5 +1,26 @@
 # v13 delivery plan and evidence
 
+**13.0.0-alpha.6 prepared on November 16, 2026, for a tag on November 17
+or later.** The release-preparation pull request sets all twenty packages of
+the release order to `13.0.0-alpha.6`; the coordinator records the tag, the
+exact-SHA admission and the release run here after publication. It is the
+13.0 feature and public API freeze. It carries every pending fix and
+improvement: the Rust 1.100 toolchain and current dependency majors
+(ed25519-dalek 3, jsonwebtoken 12, jsonschema 0.61), the removal of every
+API still deprecated (in 12.x or during the 13.0 prereleases), smaller
+dependency graphs (Studio and Nexus without `rullst-security`, SQLite-only
+applications without a TLS stack, Core without `cron` and `ring`, passkeys
+behind a feature), the `#[non_exhaustive]` audit of the public API, the
+production monitor's traces, security radar, desktop notifications and
+proxy support in Studio, per-response CSRF masking with compressed pages,
+the security baseline in every environment, revocable server-side login
+sessions, explicit ORM save modes and the fixes the applications upgraded
+to alpha.5 reported. Next come 13.0.0-rc.1 (fixes and documentation only)
+and then 13.0.0. Work planned next is under
+[Planned after 13.0.0-alpha.6](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-after-1300-alpha6);
+the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha6---2026-11-17)
+lists every change and the known limitations.
+
 **13.0.0-alpha.5 published on November 14, 2026.** All twenty packages were
 published from tag `v13.0.0-alpha.5` at `5feda4ac`
 ([release run 43631881119](https://github.com/Rullst/Rullst/actions/runs/43631881119))
@@ -21,15 +42,8 @@ On the evidence of its acceptance runs, the maintainer promoted `rullst-iot`,
 `rullst-privacy` and `rullst-supervision` to the Extension tier, made the
 InfinitePay adapter supported and moved `cargo rullst footprint` into the
 CLI's Core tier ([maturity tiers](maturity.md#promotions-in-1300-alpha5)).
-Next comes 13.0.0-alpha.6, the freeze, which carries every pending fix and
-improvement: the Rust 1.100 toolchain and current dependency majors, the
-removal of every API still deprecated (in 12.x or during the 13.0
-prereleases), smaller dependency graphs and several former 13.x candidates.
-Then come 13.0.0-rc.1 (fixes and documentation only) and 13.0.0. Work planned
-next is under
-[Planned after 13.0.0-alpha.5](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-after-1300-alpha5);
-the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-14)
-lists every change and the known limitations.
+The work planned next was delivered in
+[13.0.0-alpha.6](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha6---2026-11-17).
 
 **13.0.0-alpha.4 published on October 31, 2026.** All twenty packages were
 published from tag `v13.0.0-alpha.4` at `2bd3c2ad`

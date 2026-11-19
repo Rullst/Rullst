@@ -140,17 +140,22 @@ For a quarantine and malware-scanner flow, pass the content to
 The CSRF middleware reads a multipart body only until its first `_token` field
 ends, within the first 64 KiB, so that it never buffers a whole upload. Render
 `_token` as the form's first field, before any file input, or send the
-`X-CSRF-Token` header (HTMX: `hx-headers`). Otherwise staging and production
-answer `403` with:
+`X-CSRF-Token` header (HTMX: `hx-headers`). Otherwise the CSRF check answers
+`403` with:
 
 ```text
 Missing CSRF token: a multipart/form-data form must send its _token field before any file field (the CSRF check reads only the first 64 KiB of the body), or send the X-CSRF-Token header
 ```
 
-Development and test do not mount the CSRF middleware, so `Multipart::read`
-applies the same rule in every environment: a first `_token` field that ends
-after the first 64 KiB, without the header, is `CsrfTokenTooLate`, answered with
-the same `403` and text. The mistake therefore shows up before a deployment.
+Since 13.0.0-alpha.6 `Server` mounts the CSRF middleware in every
+environment, development and test included, and so does
+`apply_security_baseline` for `Environment::Development` and
+`Environment::Test`; until 13.0.0-alpha.5 only staging and production had it.
+`Multipart::read` applies the same rule itself, for a router that runs without
+the baseline (a test that calls `router()` directly): a first `_token` field
+that ends after the first 64 KiB, without the header, is `CsrfTokenTooLate`,
+answered with the same `403` and text. The mistake therefore shows up before a
+deployment.
 
 ## WAF
 

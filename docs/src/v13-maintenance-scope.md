@@ -103,7 +103,7 @@ promoted to Extension in 13.0.0-alpha.5 (see the
 mutation, so the listed count understated its test obligation. Both crates
 have been measured since: `rullst-macros` in 13.0.0-alpha.6
 ([PR #698](https://github.com/Rullst/Rullst/pull/698), 432 mutants, no
-survivor) and `rullst-studio` in the 13.0.0-rc.1 campaign
+survivor) and `rullst-studio` in the 13.0 campaign
 ([PR #752](https://github.com/Rullst/Rullst/pull/752), 948 mutants, 22 missed,
 each an accepted equivalent or a redundant condition removed afterwards); see
 the [mutation testing record](mutation-testing.md#campaign-status).
