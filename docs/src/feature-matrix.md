@@ -110,7 +110,7 @@ the drivers.
 | `storage-multipart` | no | v13 candidate: `storage-s3` plus server-mediated multipart uploads with bounded XML parsing and checkpoint key zeroization; see [private multipart uploads](private-multipart-uploads.md) |
 | `nexus` | no | The generated Nexus administration interface, without the AI assistant (since 13.0.0-alpha.4) |
 | `nexus-ai` | no | v13: `nexus` plus the AI assistant at `/nexus/chat` (`rullst-nexus/ai`), which adds `rullst-ai`; without it `/nexus/chat` answers 404 with a notice naming this feature |
-| `nexus-tz` | no | v13: `nexus` plus `NexusTimeZone::named`, so `DateTimeUtc` form values are shown and read in a named IANA time zone with its daylight-saving rules; adds `jiff` with the system zoneinfo database and a bundled fallback |
+| `nexus-tz` | no | v13: `nexus` plus `NexusTimeZone::named`, so `DateTimeUtc` form values are shown and read in a named IANA time zone with its daylight-saving rules; enables the time zone database of `jiff` (always a dependency since 13.0.0-alpha.6): the system zoneinfo, with a bundled fallback |
 | `studio` | no | Studio plus Core's Studio integration marker |
 | `auth` | no | Authentication, sessions and RBAC helpers from `rullst-auth`; without passkeys since 13.0.0-alpha.6 |
 | `auth-passkeys` | no | v13 (13.0.0-alpha.6): `auth` plus WebAuthn passkeys (`rullst::auth::passkey`, Auth `passkeys`), which adds aws-lc-rs to `rullst-auth`; `auth-sqlite` and `auth-passkey-postgres` include it |
@@ -151,7 +151,7 @@ the drivers.
 | `queue-redis` | no | Redis dependency and Core's Redis queue backend |
 | `cache-redis` | no | Redis dependency and Core's Redis cache backend |
 | `redis` | no | Convenience alias enabling `queue-redis`, `cache-redis` and `orm-redis` |
-| `scheduler-tz` | no | v13: `Scheduler::task_in_tz` and `Scheduler::deferrable_task_in_tz`, cron tasks (and deferral windows) in a named IANA time zone with a documented daylight-saving rule; adds `jiff` with the system zoneinfo database and a bundled fallback |
+| `scheduler-tz` | no | v13: `Scheduler::task_in_tz` and `Scheduler::deferrable_task_in_tz`, cron tasks (and deferral windows) in a named IANA time zone with a documented daylight-saving rule; enables the time zone database of `jiff` (always a dependency since 13.0.0-alpha.6): the system zoneinfo, with a bundled fallback |
 | `oauth` | no | OAuth2/OIDC providers from `rullst-connect` with its Axum integration (`rullst-connect/rullst`): the `AuthCallback` extractor and the local mock IdP router |
 | `oauth-sqlite` | no | `oauth` plus bounded encrypted shared-local token-generation state with exact SQLite compare-and-swap, and the v13 SQLite login-challenge store (`SqliteChallengeStore`) |
 | `oauth-postgres` | no | v13: `oauth` plus the PostgreSQL login-challenge store (`PostgresChallengeStore`) over the application's pool |

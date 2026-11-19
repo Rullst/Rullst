@@ -69,7 +69,7 @@ rand = "0.10.1"
 subtle = "2.6.1"
 base64 = "0.23.0"
 uuid = { version = "1.26.1", default-features = false, features = ["v4"] }
-chrono = { version = "0.4.45", default-features = false }
+jiff = { version = "1.0.0", default-features = false, features = ["std"] }
 tracing = "0.1.44"
 tracing-core = "0.1.36"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -94,7 +94,7 @@ toml = "1.1.6"
 dotenvy = "0.15"
 redis = { version = "1.7.0", default-features = false }
 jsonwebtoken = { version = "12.0.0", default-features = false, features = ["aws_lc_rs", "use_pem"] }
-lettre = { version = "0.11.22", default-features = false }
+lettre = { version = "0.11.24", default-features = false }
 opentelemetry = { version = "0.33.0", default-features = false }
 opentelemetry-otlp = { version = "0.33.0", default-features = false }
 opentelemetry_sdk = { version = "0.33.0", default-features = false }

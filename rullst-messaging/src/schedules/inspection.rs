@@ -53,10 +53,16 @@ impl<C: Clock> PostgresRecurringStore<C> {
         }
         bounded(async {
             let (mut tx, now) = self.begin().await?;
-            let rows = sqlx::query("SELECT name,generation,created,next_due,cancelled FROM rullst_recurring_definitions
+            let rows = sqlx::query("SELECT name,generation,created,next_due,cancelled,content FROM rullst_recurring_definitions
                 WHERE namespace=$1 AND ($2::TEXT IS NULL OR name > $2) ORDER BY name LIMIT $3")
                 .bind(self.config.namespace()).bind(after).bind(limit).fetch_all(&mut *tx).await.map_err(|_| RecurringError::Storage)?;
-            let output = rows.iter().map(management::metadata).collect::<Result<Vec<_>>>()?;
+            let output = rows
+                .iter()
+                .map(|row| {
+                    let syntax = management::stored_definition(self, row)?.syntax;
+                    management::metadata(row, syntax)
+                })
+                .collect::<Result<Vec<_>>>()?;
             self.commit(tx, now, None).await?; Ok(output)
         }).await
     }

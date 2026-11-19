@@ -154,12 +154,43 @@ impl std::fmt::Debug for ScheduledMessage {
     }
 }
 
+/// The grammar of a [`RecurringDefinition`]'s cron expression.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+#[non_exhaustive]
+pub enum CronSyntax {
+    /// POSIX five-field cron, read exactly as Core's `Scheduler::task` reads
+    /// it: weekdays 0-7 (0 and 7 are Sunday), a day matching either day
+    /// field when both are restricted, each field valid on its own. Every
+    /// definition built with [`RecurringDefinition::new`] uses it, since
+    /// 13.0.0-alpha.6.
+    Posix,
+    /// The grammar of the `cron` crate 0.17, which evaluated every schedule
+    /// until 13.0.0-alpha.5: weekdays 1 (Sunday) to 7 (Saturday), both day
+    /// fields must match, and tokens may join or split. Stored definitions
+    /// without a syntax marker keep it and their occurrences. Deprecated:
+    /// removal is planned for 14.0.
+    Legacy,
+}
+
+/// The message of the [`RecurringError::InvalidInput`] for an expression that
+/// only the legacy grammar accepts.
+pub(super) const LEGACY_ONLY: &str =
+    "POSIX five-field UTC cron; this expression uses the legacy syntax";
+
 /// Immutable UTC schedule. Host authorization precedes creation/cancellation.
 ///
-/// Uses the `cron` crate's five calendar fields (minute, hour, day, month,
-/// weekday), with seconds fixed to zero and years 1970..=2100. Weekdays use
-/// 1=Sunday through 7=Saturday or names. Day-of-month and weekday restrictions
-/// intersect. This is not a POSIX/crontab parser: weekday 0 is rejected.
+/// The expression is POSIX five-field cron (`minute hour day-of-month month
+/// day-of-week`), read in UTC exactly as Core's `Scheduler::task` reads it:
+/// numbers, `*`, ranges, lists and steps, month and weekday names, `?` in
+/// the day fields, weekdays 0-7 (0 and 7 are Sunday), and a day matching
+/// *either* day field when both are restricted (neither starts with `*` or
+/// `?`), otherwise both. Each field must be valid on its own. Occurrences are
+/// whole minutes from 1970 through 2100.
+///
+/// Definitions stored before 13.0.0-alpha.6 have no syntax marker and keep
+/// the [`CronSyntax::Legacy`] grammar of the `cron` crate, so their
+/// occurrences never change; [`Self::syntax`] tells them apart.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "StoredDefinition")]
 pub struct RecurringDefinition {
@@ -168,8 +199,16 @@ pub struct RecurringDefinition {
     pub(super) first_after: i64,
     pub(super) missed: MissedRunPolicy,
     pub(super) message: ScheduledMessage,
+    #[serde(skip_serializing_if = "is_legacy")]
+    pub(super) syntax: CronSyntax,
 }
 impl RecurringDefinition {
+    /// A POSIX definition; see [`RecurringDefinition`] for the grammar.
+    ///
+    /// An expression only the legacy grammar accepts, such as `1, 2 * * *`,
+    /// fails with `InvalidInput("POSIX five-field UTC cron; this expression
+    /// uses the legacy syntax")`; any other invalid expression with
+    /// `InvalidInput("five-field UTC cron")`.
     pub fn new(
         name: impl Into<String>,
         expression: impl Into<String>,
@@ -177,16 +216,30 @@ impl RecurringDefinition {
         missed: MissedRunPolicy,
         message: ScheduledMessage,
     ) -> Result<Self> {
-        let value = Self {
-            name: name.into(),
-            expression: expression
-                .into()
-                .split_whitespace()
-                .collect::<Vec<_>>()
-                .join(" "),
-            first_after: first_after_ms,
+        Self::build(
+            name.into(),
+            expression.into(),
+            first_after_ms,
             missed,
             message,
+            CronSyntax::Posix,
+        )
+    }
+    fn build(
+        name: String,
+        expression: String,
+        first_after: i64,
+        missed: MissedRunPolicy,
+        message: ScheduledMessage,
+        syntax: CronSyntax,
+    ) -> Result<Self> {
+        let value = Self {
+            name,
+            expression: expression.split_whitespace().collect::<Vec<_>>().join(" "),
+            first_after,
+            missed,
+            message,
+            syntax,
         };
         value.validate()?;
         Ok(value)
@@ -203,6 +256,12 @@ impl RecurringDefinition {
     pub fn first_after_ms(&self) -> i64 {
         self.first_after
     }
+    /// The grammar of [`Self::cron_expression`]: [`CronSyntax::Posix`] for a
+    /// definition built with [`Self::new`], [`CronSyntax::Legacy`] for one
+    /// stored before 13.0.0-alpha.6. Since 13.0.0-alpha.6.
+    pub fn syntax(&self) -> CronSyntax {
+        self.syntax
+    }
     pub(super) fn validate(&self) -> Result<()> {
         crate::validation::validate_route_identifier("schedule name", &self.name, 128)
             .map_err(|_| RecurringError::InvalidInput("schedule name"))?;
@@ -215,21 +274,72 @@ impl RecurringDefinition {
         Ok(())
     }
     pub(super) fn next_after(&self, after: i64) -> Result<Option<i64>> {
+        const FIVE_FIELDS: RecurringError = RecurringError::InvalidInput("five-field UTC cron");
         if self.expression.len() > 128 || self.expression.split_whitespace().count() != 5 {
-            return Err(RecurringError::InvalidInput("five-field UTC cron"));
+            return Err(FIVE_FIELDS);
         }
-        let schedule: cron::Schedule = format!("0 {} *", self.expression)
-            .parse()
-            .map_err(|_| RecurringError::InvalidInput("five-field UTC cron"))?;
-        let time = chrono::DateTime::<chrono::Utc>::from_timestamp_millis(after)
-            .ok_or(RecurringError::InvalidInput("cron timestamp"))?;
-        Ok(schedule
-            .after(&time)
-            .next()
-            .map(|next| next.timestamp_millis())
-            .filter(|value| *value <= MAX_TIMESTAMP))
+        let legacy = || cron_expression::Schedule::parse_five_fields(&self.expression);
+        let next = match self.syntax {
+            CronSyntax::Posix => posix_cron::PosixSchedule::parse(&self.expression)
+                .map_err(|_| match legacy() {
+                    Some(_) => RecurringError::InvalidInput(LEGACY_ONLY),
+                    None => FIVE_FIELDS,
+                })?
+                .next_after(after),
+            CronSyntax::Legacy => legacy()
+                .ok_or(FIVE_FIELDS)?
+                .next_after(after)
+                .map_err(|_| RecurringError::InvalidInput("cron timestamp"))?,
+        };
+        Ok(next.filter(|value| *value <= MAX_TIMESTAMP))
+    }
+    /// The POSIX expression whose occurrences are exactly those of this
+    /// definition, to recreate a [`CronSyntax::Legacy`] definition as POSIX
+    /// under a new name: `0 9 * * 1` (Sunday in the legacy grammar) gives
+    /// `0 9 * * 0`. `None` when there is none: both day fields restricted
+    /// (POSIX runs on a day matching either, legacy only on one matching
+    /// both), tokens that joined or split into a seconds or year field, or a
+    /// result longer than 128 bytes. A POSIX definition returns its own
+    /// expression. Since 13.0.0-alpha.6.
+    pub fn posix_equivalent(&self) -> Option<String> {
+        match self.syntax {
+            CronSyntax::Posix => Some(self.expression.clone()),
+            CronSyntax::Legacy => {
+                cron_expression::Schedule::parse_five_fields(&self.expression)?.posix_equivalent()
+            }
+        }
+    }
+    /// What `create` does when `self` is stored under the requested
+    /// definition's name: `Ok(false)` replays an equal definition and
+    /// `Ok(true)` replays a legacy one that differs only in its syntax,
+    /// which keeps its legacy meaning.
+    pub(super) fn replays(&self, requested: &Self) -> Result<bool> {
+        if self == requested {
+            return Ok(false);
+        }
+        match self.syntax {
+            CronSyntax::Legacy if self.differs_only_in_syntax(requested) => Ok(true),
+            CronSyntax::Legacy => Err(RecurringError::LegacyDefinition),
+            _ => Err(RecurringError::Conflict),
+        }
+    }
+    fn differs_only_in_syntax(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.expression == other.expression
+            && self.first_after == other.first_after
+            && self.missed == other.missed
+            && self.message == other.message
     }
 }
+
+fn is_legacy(syntax: &CronSyntax) -> bool {
+    *syntax == CronSyntax::Legacy
+}
+
+fn legacy() -> CronSyntax {
+    CronSyntax::Legacy
+}
+
 impl std::fmt::Debug for RecurringDefinition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("RecurringDefinition([REDACTED])")
@@ -264,16 +374,20 @@ struct StoredDefinition {
     first_after: i64,
     missed: MissedRunPolicy,
     message: ScheduledMessage,
+    /// Absent in definitions stored before 13.0.0-alpha.6.
+    #[serde(default = "legacy")]
+    syntax: CronSyntax,
 }
 impl TryFrom<StoredDefinition> for RecurringDefinition {
     type Error = RecurringError;
     fn try_from(value: StoredDefinition) -> Result<Self> {
-        Self::new(
+        Self::build(
             value.name,
             value.expression,
             value.first_after,
             value.missed,
             value.message,
+            value.syntax,
         )
     }
 }

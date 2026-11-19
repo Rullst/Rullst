@@ -2,18 +2,29 @@
 //! bound for native `DATE`, `TIME`, `TIMESTAMP` and `TIMESTAMPTZ` columns,
 //! and the value a `time` or `datetime-local` input can show.
 
-use rullst_orm::RullstValue;
-use rullst_orm::chrono::{
-    DateTime, Datelike, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, SecondsFormat, TimeDelta,
-    Timelike, Utc,
-};
+use jiff::civil::{Date, DateTime, Time};
 
 use super::{FormInputError, canonical_datetime, parse_date_part};
 use crate::nexus::NexusTimeZone;
+use crate::nexus::instant::{Instant, date_text, time_text};
 use crate::nexus::types::{FieldKind, RegistryEntry};
 
+/// The typed value of a validated date or time, bound instead of its text
+/// so native date/time columns accept it (see `dialect::driver_value`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TemporalValue {
+    /// A [`FieldKind::Date`] value.
+    Date(Date),
+    /// A [`FieldKind::Time`] value.
+    Time(Time),
+    /// A [`FieldKind::DateTime`] value without an offset.
+    DateTime(DateTime),
+    /// A [`FieldKind::DateTimeUtc`] value.
+    Instant(Instant),
+}
+
 /// A calendar date `YYYY-MM-DD` (year 0001 to 9999, as HTML date inputs).
-pub(super) fn date(value: &str) -> Option<NaiveDate> {
+pub(super) fn date(value: &str) -> Option<Date> {
     let mut parts = value.split('-');
     let year = parse_date_part(parts.next(), 4)?;
     let month = parse_date_part(parts.next(), 2)?;
@@ -21,11 +32,16 @@ pub(super) fn date(value: &str) -> Option<NaiveDate> {
     if parts.next().is_some() || year == 0 {
         return None;
     }
-    NaiveDate::from_ymd_opt(i32::try_from(year).ok()?, month, day)
+    Date::new(
+        i16::try_from(year).ok()?,
+        i8::try_from(month).ok()?,
+        i8::try_from(day).ok()?,
+    )
+    .ok()
 }
 
 /// A time of day `HH:MM`, `HH:MM:SS` or `HH:MM:SS.fraction` (1 to 9 digits).
-pub(super) fn time(value: &str) -> Option<NaiveTime> {
+pub(super) fn time(value: &str) -> Option<Time> {
     let mut parts = value.split(':');
     let hour = parse_date_part(parts.next(), 2)?;
     let minute = parse_date_part(parts.next(), 2)?;
@@ -36,9 +52,14 @@ pub(super) fn time(value: &str) -> Option<NaiveTime> {
     if parts.next().is_some() {
         return None;
     }
-    // Rejects hour 24, minute or second 60; with at most nine fraction
-    // digits there is no leap second.
-    NaiveTime::from_hms_nano_opt(hour, minute, second, nanos)
+    // Rejects hour 24, minute or second 60 (jiff has no leap second).
+    Time::new(
+        i8::try_from(hour).ok()?,
+        i8::try_from(minute).ok()?,
+        i8::try_from(second).ok()?,
+        i32::try_from(nanos).ok()?,
+    )
+    .ok()
 }
 
 fn seconds_and_nanos(seconds: &str) -> Option<(u32, u32)> {
@@ -61,19 +82,19 @@ fn seconds_and_nanos(seconds: &str) -> Option<(u32, u32)> {
 }
 
 /// Splits a date-time at its `T` or space into the date and the time part.
-fn date_and_time(value: &str) -> Option<(NaiveDate, &str)> {
+fn date_and_time(value: &str) -> Option<(Date, &str)> {
     let (date_part, time_part) = value.split_once(['T', ' '])?;
     Some((date(date_part)?, time_part))
 }
 
 /// A local date-time without an offset, as a `datetime-local` input submits.
-pub(super) fn local_date_time(value: &str) -> Option<NaiveDateTime> {
+pub(super) fn local_date_time(value: &str) -> Option<DateTime> {
     let (date, time_part) = date_and_time(value)?;
-    Some(date.and_time(time(time_part)?))
+    Some(date.to_datetime(time(time_part)?))
 }
 
 /// The offset in seconds east of UTC of `Z`, `±HH:MM` or `±HH` (PostgreSQL
-/// writes `+00`), and the time before it.
+/// writes `+00`) under 24 hours, and the time before it.
 fn split_offset(time_part: &str) -> Option<(&str, i32)> {
     if let Some(local) = time_part.strip_suffix(['Z', 'z']) {
         return Some((local, 0));
@@ -87,8 +108,7 @@ fn split_offset(time_part: &str) -> Option<(&str, i32)> {
         Some(minutes) => parse_date_part(Some(minutes), 2)?,
         None => 0,
     };
-    // `FixedOffset::east_opt` rejects 24 hours or more.
-    if fields.next().is_some() || minutes > 59 {
+    if fields.next().is_some() || hours > 23 || minutes > 59 {
         return None;
     }
     let seconds = i32::try_from(hours * 3600 + minutes * 60).ok()?;
@@ -98,46 +118,44 @@ fn split_offset(time_part: &str) -> Option<(&str, i32)> {
 /// A UTC instant: a date-time with `Z`, `±HH:MM` or `±HH` is converted to
 /// UTC, and one without an offset, as a `datetime-local` input submits, is
 /// already UTC.
-pub(super) fn utc(value: &str) -> Option<DateTime<Utc>> {
+pub(super) fn utc(value: &str) -> Option<Instant> {
     let (date, time_part) = date_and_time(value)?;
     let (local, offset) = match split_offset(time_part) {
         Some((local, offset)) => (local, offset),
         None => (time_part, 0),
     };
-    let local = date.and_time(time(local)?);
-    let zone = FixedOffset::east_opt(offset)?;
-    Some(local.and_local_timezone(zone).single()?.with_timezone(&Utc))
+    Instant::at_offset(date.to_datetime(time(local)?), offset)
 }
 
 /// The canonical text and the typed value of a validated form value. A
 /// date-time with an offset in a [`FieldKind::DateTime`] field (a text
 /// column) keeps its text and binds no typed value; other kinds are not
 /// temporal. `None` means `value` is not a valid value of its kind.
-pub(super) fn normalize(kind: &FieldKind, value: String) -> Option<(String, Option<RullstValue>)> {
+pub(super) fn normalize(
+    kind: &FieldKind,
+    value: String,
+) -> Option<(String, Option<TemporalValue>)> {
     Some(match kind {
         FieldKind::Date => {
             let date = date(&value)?;
-            (value, Some(RullstValue::Date(date)))
+            (value, Some(TemporalValue::Date(date)))
         }
         FieldKind::Time => {
             let time = time(&value)?;
-            (
-                time.format("%H:%M:%S%.f").to_string(),
-                Some(RullstValue::Time(time)),
-            )
+            (time_text(time), Some(TemporalValue::Time(time)))
         }
         FieldKind::DateTime => match local_date_time(&value) {
             Some(local) => (
                 canonical_datetime(value),
-                Some(RullstValue::NaiveDateTime(local)),
+                Some(TemporalValue::DateTime(local)),
             ),
             None => (value, None),
         },
         FieldKind::DateTimeUtc => {
             let instant = utc(&value)?;
             (
-                instant.to_rfc3339_opts(SecondsFormat::AutoSi, false),
-                Some(RullstValue::DateTime(instant)),
+                instant.rfc3339(false)?,
+                Some(TemporalValue::Instant(instant)),
             )
         }
         _ => (value, None),
@@ -146,16 +164,8 @@ pub(super) fn normalize(kind: &FieldKind, value: String) -> Option<(String, Opti
 
 /// `HH:MM:SS[.mmm]`: what `time` and `datetime-local` inputs can show, at
 /// most millisecond precision; `None` for a finer value.
-fn input_time(time: NaiveTime) -> Option<String> {
-    let nanos = time.nanosecond();
-    if !nanos.is_multiple_of(1_000_000) {
-        return None;
-    }
-    let seconds = time.format("%H:%M:%S").to_string();
-    Some(match nanos / 1_000_000 {
-        0 => seconds,
-        millis => format!("{seconds}.{millis:03}"),
-    })
+fn input_time(time: Time) -> Option<String> {
+    (time.subsec_nanosecond() % 1_000_000 == 0).then(|| time_text(time))
 }
 
 /// The value of a `time` input showing the stored `text`, when it can.
@@ -174,18 +184,17 @@ pub(crate) fn zoned_input_value(
     zone: &NexusTimeZone,
 ) -> Option<(&'static str, String)> {
     let instant = utc(text)?;
-    let offset = TimeDelta::seconds(i64::from(zone.offset_at(&instant)?));
-    let local = instant.naive_utc().checked_add_signed(offset)?;
+    let local = instant.wall_time(zone.offset_at(&instant)?)?;
     if !(1..=9999).contains(&local.year()) {
         return None;
     }
     let time = input_time(local.time())?;
     if zone.instant_of(&local).ok()? != instant {
-        return Some(("text", instant.to_rfc3339_opts(SecondsFormat::AutoSi, true)));
+        return Some(("text", instant.rfc3339(true)?));
     }
     Some((
         "datetime-local",
-        format!("{}T{time}", local.format("%Y-%m-%d")),
+        format!("{}T{time}", date_text(local.date())),
     ))
 }
 
@@ -230,8 +239,7 @@ fn zoned_submission(
     let Some(local) = local_date_time(value) else {
         return Ok(None);
     };
-    let instant = zone.instant_of(&local)?;
-    Ok(Some(instant.to_rfc3339_opts(SecondsFormat::AutoSi, true)))
+    Ok(zone.instant_of(&local)?.rfc3339(true))
 }
 
 /// Whether the time part of a date-time carries an offset (`Z`, `+`, `-`).

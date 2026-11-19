@@ -200,10 +200,10 @@ fn active_tenant_key() -> Result<Option<String>, crate::Error> {
                 "audit tenant ID must not be NULL".to_string(),
             ));
         }
-        RullstValue::DateTime(_)
-        | RullstValue::NaiveDateTime(_)
-        | RullstValue::Date(_)
-        | RullstValue::Time(_) => {
+        RullstValue::Timestamp(_)
+        | RullstValue::CivilDateTime(_)
+        | RullstValue::CivilDate(_)
+        | RullstValue::CivilTime(_) => {
             return Err(crate::Error::Validation(
                 "audit tenant ID must not be a date or time".to_string(),
             ));
@@ -355,7 +355,7 @@ mod tests {
             matches!(&null, Err(crate::Error::Validation(message)) if message == "audit tenant ID must not be NULL"),
             "{null:?}"
         );
-        let date = chrono::NaiveDate::from_ymd_opt(2026, 10, 15).expect("date");
+        let date: crate::Date = "2026-10-15".parse().expect("date");
         let dated = crate::with_tenant(date, async { active_tenant_key() }).await;
         assert!(
             matches!(&dated, Err(crate::Error::Validation(message)) if message == "audit tenant ID must not be a date or time"),

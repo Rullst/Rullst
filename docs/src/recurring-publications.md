@@ -62,13 +62,39 @@ creating a new name. Retained definitions reserve names and count against the
 quota, even after cancellation; retiring a namespace is an explicit deployment
 operation. A random generation and scheduled UTC instant identify each occurrence.
 
-The five fields use the Rust `cron` crate's calendar semantics: minute, hour,
-day-of-month, month, weekday; seconds are zero, years span 1970 through 2100.
-Weekdays are **1=Sunday through 7=Saturday**, or names such as `Mon`. Day-of-month
-and weekday restrictions intersect. This is not POSIX crontab syntax: weekday
-zero and seconds/year fields are rejected. There is no implicit local timezone
-or daylight-saving conversion. `first_after_ms` is exclusive. Exhausted calendars
-stop producing occurrences.
+The five fields (minute, hour, day-of-month, month, weekday) use the POSIX
+syntax of [Core's `Scheduler::task`](crates/core.md), evaluated in UTC by the
+same code: weekdays are **0 to 7, with 0 and 7 for Sunday and 1 for Monday**,
+or names such as `Mon`; when both day-of-month and weekday are restricted
+(neither starts with `*` or `?`), a day matching either one is due
+(`0 0 1 * Mon` is the 1st plus every Monday), otherwise both must match; each
+field must be valid on its own. Occurrences are whole minutes from 1970
+through 2100, and seconds/year fields and `@daily`-style aliases are rejected.
+There is no implicit local timezone or daylight-saving conversion.
+`first_after_ms` is exclusive. Exhausted calendars stop producing occurrences.
+
+This syntax applies since 13.0.0-alpha.6. Each stored definition records the
+syntax it was created with. A definition created by an earlier 13.0
+prerelease has no such record and keeps the legacy `cron`-crate meaning:
+weekdays 1=Sunday through 7=Saturday, day-of-month and weekday restrictions
+intersect, and a field starting or ending with `,`, `-` or `/` is joined with
+its neighbour. The legacy syntax is deprecated, and reading it is planned for
+removal in 14.0. `RecurringDefinition::syntax()` and
+`RecurringMetadata::syntax()` return `CronSyntax::Posix` or
+`CronSyntax::Legacy`, and `RecurringDefinition::posix_equivalent()` gives the
+POSIX expression with exactly the same occurrences (`0 9 * * 1`, Sundays in
+the legacy grammar, gives `0 9 * * 0`), or `None` when there is none (both
+day fields restricted, tokens joined into another field, or a result over 128
+bytes). `RecurringDefinition::new` refuses an expression that only the legacy
+syntax accepted (`1, 2 * * *`), while a stored definition with it keeps
+running; a legacy definition deserialized from JSON exported earlier is
+accepted by `create`. Creating the same name and expression as a stored legacy
+definition replays it, with a logged warning and its legacy meaning; any other
+definition under that name fails with `RecurringError::LegacyDefinition`. To
+move a schedule, cancel it and create the POSIX expression under a new name. A
+13.0 prerelease before alpha.6 cannot read definitions that record their
+syntax, so a rollback past alpha.6 is a database restore. See
+[Messaging schedules and POSIX cron](migration-v13.md#messaging-schedules-and-posix-cron).
 
 `CatchUp` preserves every missed due time; a tick emits the oldest due times
 first, up to its 1–100 occurrence budget. `Coalesce` emits the oldest outstanding

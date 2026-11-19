@@ -229,7 +229,8 @@ fn json_findings_extend_the_v1_schema_with_kind_and_migration_row() {
                 "introduced_in": "13.0.0-alpha.1",
                 "message": "a dynamic value in an `on*`/`hx-on*` attribute of `html!` no longer compiles",
                 "migration_row": "`html!` event handlers",
-                "migration_url": "https://rullst.github.io/Rullst/book/migration-v13.html#changes-from-the-published-1210-source"
+                "migration_url": "https://rullst.github.io/Rullst/book/migration-v13.html#changes-from-the-published-1210-source",
+                "note": null
             },
             {
                 "path": "src/main.rs",
@@ -240,7 +241,8 @@ fn json_findings_extend_the_v1_schema_with_kind_and_migration_row() {
                 "introduced_in": "13.0.0-alpha.1",
                 "message": "`render_page` declares `lang=\"pt-BR\"`; English pages should use `render_page_with_lang`",
                 "migration_row": "Starter page language",
-                "migration_url": "https://rullst.github.io/Rullst/book/migration-v13.html#changes-from-the-published-1210-source"
+                "migration_url": "https://rullst.github.io/Rullst/book/migration-v13.html#changes-from-the-published-1210-source",
+                "note": null
             }
         ])
     );

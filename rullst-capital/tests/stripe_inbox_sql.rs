@@ -21,7 +21,7 @@ async fn sqlite_inbox_commits_domain_and_outcome_or_allows_retry() {
     let path = std::env::temp_dir().join(format!(
         "rullst-stripe-inbox-{}-{}.db",
         std::process::id(),
-        chrono::Utc::now().timestamp_nanos_opt().unwrap()
+        jiff::Timestamp::now().as_nanosecond()
     ));
     let url = format!("sqlite:{}?mode=rwc", path.to_string_lossy());
     let db = pool(&url).await;

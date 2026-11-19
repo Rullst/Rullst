@@ -187,9 +187,7 @@ fn dates_and_times_match_cldr() {
     let samples: Vec<_> = DATES
         .iter()
         .map(|&(year, month, day, hour, minute, second)| {
-            NaiveDate::from_ymd_opt(year, month, day)
-                .and_then(|date| date.and_hms_opt(hour, minute, second))
-                .unwrap()
+            DateTime::new(year, month, day, hour, minute, second, 0).unwrap()
         })
         .collect();
     let date_styles = [
@@ -205,20 +203,28 @@ fn dates_and_times_match_cldr() {
         for (style, joined) in date_styles.iter().zip(groups(dates, 5)) {
             for (sample, expected) in samples.iter().zip(outputs(joined, samples.len())) {
                 let date = sample.date();
-                assert_eq!(locale.format_date(&date, *style), expected, "{tag} {style:?} {sample}");
+                assert_eq!(
+                    locale.format_date(date, *style),
+                    expected,
+                    "{tag} {style:?} {sample}"
+                );
             }
         }
         for (style, joined) in time_styles.iter().zip(groups(times, 2)) {
             for (sample, expected) in samples.iter().zip(outputs(joined, samples.len())) {
                 let time = sample.time();
-                assert_eq!(locale.format_time(&time, *style), expected, "{tag} {style:?} {sample}");
+                assert_eq!(
+                    locale.format_time(time, *style),
+                    expected,
+                    "{tag} {style:?} {sample}"
+                );
             }
         }
         for (time_style, joined_styles) in time_styles.iter().zip([with_short, with_medium]) {
             for (date_style, joined) in date_styles.iter().zip(groups(joined_styles, 4)) {
                 for (sample, expected) in samples.iter().zip(outputs(joined, samples.len())) {
                     assert_eq!(
-                        locale.format_datetime(sample, *date_style, *time_style),
+                        locale.format_datetime(*sample, *date_style, *time_style),
                         expected,
                         "{tag} {date_style:?} {time_style:?} {sample}"
                     );
@@ -407,8 +413,8 @@ console.log(JSON.stringify(o));''', json.dumps([TAGS, DATES])], check=True, capt
     open(out_file, 'w').write('\n'.join(lines))
 
     lines = header('//! Expected dates and times from CLDR 48 (ICU 78, through Node.js `Intl`) for every',
-                   ['use crate::i18n::Locale;', 'use chrono::NaiveDate;']) + [
-             f'const DATES: [(i32, u32, u32, u32, u32, u32); {len(DATES)}] = [{", ".join(str(d) for d in DATES)}];']
+                   ['use crate::i18n::Locale;', 'use jiff::civil::DateTime;']) + [
+             f'const DATES: [(i16, i8, i8, i8, i8, i8); {len(DATES)}] = [{", ".join(str(d) for d in DATES)}];']
     lines += ['', '/// `(tag, dates, times, dates with the short time, dates with the medium',
               '/// time)`: `;` separates the date styles (short, medium, long, full,',
               '/// numeric; four for the joined forms) and the time styles (short, medium).',

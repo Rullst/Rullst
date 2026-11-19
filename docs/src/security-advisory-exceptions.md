@@ -4,7 +4,7 @@ Rullst does not treat an ignored scanner finding as remediated. Any temporary
 exception must have a narrow scope, a compensating control, an owner, and an
 expiry date. CI must fail for every advisory that is not actively governed here.
 
-Last reviewed: **2026-11-14**.
+Last reviewed: **2026-11-17**.
 
 ## Active exceptions
 
@@ -44,6 +44,16 @@ they use, publishes a release for 0.28: 0.15.0, the newest, requires 0.27.
 
 ## Remediation history
 
+- On 2026-11-19, the bridge exception for `RUSTSEC-2026-0543` (`chrono`
+  unmaintained, approved on 2026-11-17 until 2026-12-17) was removed after
+  Rullst 13 replaced `chrono` with `jiff` 1 in every crate, generator and
+  example before 13.0.0-alpha.6. `cargo tree -i chrono` is empty for the
+  workspace (all features, all targets, dev and build dependencies), every
+  fuzz crate and every fixture lockfile. `Cargo.lock` still lists `chrono`
+  0.4.45 only because `serde_with`, a dependency of the `testcontainers`
+  dev-dependency, names it in a weak `chrono_0_4?/alloc` feature: Cargo
+  records such an optional dependency in the lockfile without enabling or
+  building it, and `cargo audit` reports it as an allowed warning.
 - On 2026-10-22, the time-bounded exception for `RUSTSEC-2026-0367`,
   `RUSTSEC-2026-0368` and `RUSTSEC-2026-0369` (`zip` 6.0.0 as a build
   dependency of `libduckdb-sys`, approved on 2026-10-17 until 2026-10-31) was

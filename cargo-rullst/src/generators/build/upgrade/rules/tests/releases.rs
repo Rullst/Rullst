@@ -126,7 +126,8 @@ fn rules_carry_the_release_of_their_change() {
     // The changes of the 13.0 freeze: the health probes' framework version,
     // CSRF static files by path, the removal of the APIs still deprecated,
     // the explicit ORM save mode, passkeys behind a feature, the
-    // non-exhaustive public types and the dependencies kept out of the API.
+    // non-exhaustive public types, the dependencies kept out of the API,
+    // chrono replaced by jiff and the scheduler's cron syntax for messaging.
     assert_eq!(
         codes_introduced_in("13.0.0-alpha.6"),
         [
@@ -159,6 +160,11 @@ fn rules_carry_the_release_of_their_change() {
             "V13-TELEMETRY-LAYER-TYPE",
             "V13-VALIDATION-FIELD-ERRORS",
             "V13-STUDIO-OPENAPI-INFERRED",
+            "V13-ORM-CHRONO-TYPES",
+            "V13-LOCALE-JIFF-DATES",
+            "V13-MAIL-JIFF-TIMESTAMPS",
+            "V13-CAPITAL-INVOICE-JIFF-DATE",
+            "V13-MESSAGING-CRON-POSIX",
         ]
     );
     assert!(codes_introduced_in("13.0.0-rc.1").is_empty());
@@ -200,6 +206,7 @@ fn three_release_scan() -> SourceScan {
         rule,
         path: PathBuf::from("src/main.rs"),
         line,
+        note: None,
     };
     SourceScan {
         findings: vec![

@@ -656,8 +656,8 @@ deferred constraint, arrive through that conversion.
 
 Filters such as `where_eq` and `where_in`, `Orm::raw(..).bind(..)` and
 `with_tenant` take any value that converts into `RullstValue`: `String`/`&str`,
-`i32`, `i64`, `u32`, `f64`, `bool`, the `chrono` `DateTime<Utc>`,
-`NaiveDateTime`, `NaiveDate` and `NaiveTime` types, a `#[derive(Enum)]` type,
+`i32`, `i64`, `u32`, `f64`, `bool`, the date/time types `Timestamp`,
+`DateTime`, `Date` and `Time`, a `#[derive(Enum)]` type,
 and `Option` of those. `None` binds SQL
 `NULL`, typed as text: on PostgreSQL write `CAST($1 AS BIGINT)` to store it in
 a column of another type. A comparison with `NULL` never matches, so filter
@@ -783,9 +783,15 @@ indexes and constraints to an existing table; SQLite changes it cannot make
 (adding a foreign key to an existing column, a CHECK) return
 `Error::UnsupportedSchemaChange` before any statement runs.
 
-`date()`, `time()`, `timestamp()` and `timestamp_tz()` hold
-`chrono::NaiveDate`, `NaiveTime`, `NaiveDateTime` and `DateTime<Utc>` fields
-(`rullst_orm::chrono`): native `DATE`/`TIME`/`TIMESTAMP`/`TIMESTAMPTZ` on
+`date()`, `time()`, `timestamp()` and `timestamp_tz()` hold `Date`, `Time`,
+`DateTime` and `Timestamp` fields (`rullst_orm::temporal`, also
+`rullst_orm::*`). Each wraps the `jiff` 1 type of the same role
+(`jiff::civil::Date`, `civil::Time`, `civil::DateTime`, `jiff::Timestamp`;
+`rullst_orm::jiff` re-exports the crate), converts to and from it and
+dereferences to it. Since 13.0.0-alpha.6 they replace `chrono`'s
+`NaiveDate`, `NaiveTime`, `NaiveDateTime` and `DateTime<Utc>` and write the
+same bytes, so stored data needs no migration. The columns are
+native `DATE`/`TIME`/`TIMESTAMP`/`TIMESTAMPTZ` on
 PostgreSQL, `DATE`/`TIME(6)`/`DATETIME(6)` (UTC) on MySQL/MariaDB and ISO-8601
 text that sorts by time on SQLite. `table.timestamps()` adds nullable
 `created_at`/`updated_at` `timestamp_tz()` columns that default to the current

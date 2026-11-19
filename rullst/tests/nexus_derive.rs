@@ -184,26 +184,41 @@ fn derive_nexus_declares_composite_primary_keys() {
         .expect("a derived composite key passes registry validation");
 }
 
-/// Chrono fields get the matching date/time widget.
+/// Application types that share the ORM date/time types' names.
+mod app {
+    pub struct Date;
+    pub struct Timestamp(#[allow(dead_code)] pub i64);
+}
+
+/// The ORM's jiff-based date/time fields get their widgets by type, under
+/// any path or alias; an application type with the same name stays text.
 #[derive(Nexus)]
 #[allow(dead_code)]
-#[nexus(table = "appointments")]
-struct Appointment {
+#[nexus(table = "jiff_events")]
+struct JiffEvent {
     id: i64,
-    due_on: rullst::orm::chrono::NaiveDate,
-    opens_at: Option<rullst::orm::chrono::NaiveTime>,
-    starts_at: rullst::orm::chrono::NaiveDateTime,
-    paid_at: rullst::orm::chrono::DateTime<rullst::orm::chrono::Utc>,
+    starts_at: rullst::orm::Timestamp,
+    local_start: Option<rullst::db::DateTime>,
+    day: rullst::orm::Date,
+    opens: Option<rullst::orm::Time>,
+    code: app::Date,
+    sequence: app::Timestamp,
 }
 
 #[test]
-fn derive_nexus_maps_chrono_fields_to_date_and_time_widgets() {
-    let kinds = Appointment::nexus_fields()
-        .into_iter()
-        .map(|field| (field.name, field.kind))
-        .collect::<Vec<_>>();
-    assert_eq!(kinds[1], ("due_on", FieldKind::Date));
-    assert_eq!(kinds[2], ("opens_at", FieldKind::Time));
-    assert_eq!(kinds[3], ("starts_at", FieldKind::DateTime));
-    assert_eq!(kinds[4], ("paid_at", FieldKind::DateTimeUtc));
+fn derive_nexus_infers_jiff_date_time_widgets_by_type() {
+    let fields = JiffEvent::nexus_fields();
+    let kind = |name: &str| {
+        fields
+            .iter()
+            .find(|field| field.name == name)
+            .map(|field| field.kind.clone())
+            .unwrap_or_else(|| panic!("{name} metadata"))
+    };
+    assert_eq!(kind("starts_at"), FieldKind::DateTimeUtc);
+    assert_eq!(kind("local_start"), FieldKind::DateTime);
+    assert_eq!(kind("day"), FieldKind::Date);
+    assert_eq!(kind("opens"), FieldKind::Time);
+    assert_eq!(kind("code"), FieldKind::Text);
+    assert_eq!(kind("sequence"), FieldKind::Text);
 }

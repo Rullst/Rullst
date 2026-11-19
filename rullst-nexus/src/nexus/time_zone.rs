@@ -3,7 +3,9 @@
 
 use std::fmt;
 
-use rullst_orm::chrono::{DateTime, NaiveDateTime, TimeDelta, Utc};
+use jiff::civil::DateTime;
+
+use super::instant::{Instant, date_time_text};
 
 /// The time zone of the `datetime-local` inputs of `DateTimeUtc` fields.
 ///
@@ -107,11 +109,11 @@ impl NexusTimeZone {
     /// The offset from UTC, in seconds, of `instant` in this zone.
     // Only a named zone's offset depends on the instant.
     #[cfg_attr(not(feature = "tz"), allow(unused_variables))]
-    pub(crate) fn offset_at(&self, instant: &DateTime<Utc>) -> Option<i32> {
+    pub(crate) fn offset_at(&self, instant: &Instant) -> Option<i32> {
         match &self.rules {
             Rules::Fixed(seconds) => Some(*seconds),
             #[cfg(feature = "tz")]
-            Rules::Named(zone) => Some(zone.to_offset(timestamp(instant)?).seconds()),
+            Rules::Named(zone) => Some(zone.to_offset(instant.timestamp()?).seconds()),
         }
     }
 
@@ -120,23 +122,16 @@ impl NexusTimeZone {
     ///
     /// # Errors
     /// [`NexusTimeZoneError::NonexistentLocalTime`] when a gap skips it.
-    pub(crate) fn instant_of(
-        &self,
-        local: &NaiveDateTime,
-    ) -> Result<DateTime<Utc>, NexusTimeZoneError> {
+    pub(crate) fn instant_of(&self, local: &DateTime) -> Result<Instant, NexusTimeZoneError> {
         let offset = match &self.rules {
             Rules::Fixed(seconds) => Some(*seconds),
             #[cfg(feature = "tz")]
-            Rules::Named(zone) => named_offset(zone, local),
+            Rules::Named(zone) => named_offset(zone, *local),
         };
         offset
-            .and_then(|seconds| {
-                local
-                    .and_utc()
-                    .checked_sub_signed(TimeDelta::seconds(i64::from(seconds)))
-            })
+            .and_then(|seconds| Instant::at_offset(*local, seconds))
             .ok_or_else(|| NexusTimeZoneError::NonexistentLocalTime {
-                local: local.format("%Y-%m-%dT%H:%M:%S%.f").to_string(),
+                local: date_time_text(*local, 'T'),
                 zone: self.name.clone(),
             })
     }
@@ -145,22 +140,18 @@ impl NexusTimeZone {
 /// The offset of the wall time `local` in `zone`: `None` in a gap, the
 /// earlier instant's offset in a fold.
 #[cfg(feature = "tz")]
-fn named_offset(zone: &jiff::tz::TimeZone, local: &NaiveDateTime) -> Option<i32> {
+fn named_offset(zone: &jiff::tz::TimeZone, local: DateTime) -> Option<i32> {
     use jiff::tz::{AmbiguousOffset, Offset};
-    let civil = Offset::UTC.to_datetime(timestamp(&local.and_utc())?);
-    match zone.to_ambiguous_timestamp(civil).offset() {
+    // As before jiff 1.0, a wall time that is later than jiff's last instant
+    // (9999-12-30T22:00Z) when read as UTC has no offset.
+    Offset::UTC.to_timestamp(local).ok()?;
+    match zone.to_ambiguous_timestamp(local).offset() {
         AmbiguousOffset::Unambiguous { offset } => Some(offset.seconds()),
         // The offset before the change: clocks were ahead, so the instant is
         // the earlier of the two.
         AmbiguousOffset::Fold { before, .. } => Some(before.seconds()),
         AmbiguousOffset::Gap { .. } => None,
     }
-}
-
-#[cfg(feature = "tz")]
-fn timestamp(instant: &DateTime<Utc>) -> Option<jiff::Timestamp> {
-    let nanosecond = i32::try_from(instant.timestamp_subsec_nanos()).ok()?;
-    jiff::Timestamp::new(instant.timestamp(), nanosecond).ok()
 }
 
 /// A [`NexusTimeZone`] that cannot be built, or a local time it cannot read.

@@ -58,7 +58,11 @@ impl Invoice {
         let mut lines = vec![
             format!("{} {}", labels.title, self.invoice_id),
             format!("{}: {}", labels.billed_to, self.customer_email),
-            format!("{}: {}", labels.date, self.date.format("%Y-%m-%d")),
+            format!(
+                "{}: {}",
+                labels.date,
+                rullst_core::rfc3339::utc_date(self.date)
+            ),
             String::new(),
             format!("{} | {}", labels.description, labels.amount),
         ];
@@ -198,12 +202,16 @@ fn is_win_ansi(character: char) -> bool {
 mod tests {
     use super::*;
     use crate::invoice::InvoiceItem;
-    use chrono::Utc;
     use printpdf::PdfParseOptions;
 
     fn invoice(description: &str) -> Invoice {
-        Invoice::new("INV-2026-1", "cliente@example.com", Utc::now(), "brl")
-            .with_item(description, 4_990)
+        Invoice::new(
+            "INV-2026-1",
+            "cliente@example.com",
+            jiff::Timestamp::now(),
+            "brl",
+        )
+        .with_item(description, 4_990)
     }
 
     #[test]

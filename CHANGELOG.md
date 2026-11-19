@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
-## [13.0.0-alpha.6] - 2026-11-17
+## [13.0.0-alpha.6] - 2026-11-20
 
 Sixth v13 prerelease, for evaluation, and the 13.0 feature and public API
 freeze: 13.0.0-rc.1 will carry only fixes and documentation. It carries every
@@ -26,6 +26,17 @@ and without deprecated APIs:
   that break every few months (`opentelemetry_sdk`, `tracing-opentelemetry`
   and `utoipa`) left the public API, which keeps 25 public dependencies for
   13.x.
+- **Dates and times on `jiff`:** `chrono` was declared unmaintained
+  (`RUSTSEC-2026-0543`) while this release was prepared, so Rullst 13 no
+  longer depends on it. Database columns use Rullst's own
+  `rullst::orm::Timestamp`, `DateTime`, `Date` and `Time`, which wrap `jiff`
+  1 and write, read, serialize and display exactly as the chrono types did,
+  so stored data, JSON and rendered pages stay byte for byte the same;
+  Core's locale formatting, Mail's `send_at` and Capital's invoices take
+  `jiff` values, and an ORM `Timestamp` passes directly. New messaging
+  schedules use the scheduler's POSIX cron syntax; stored ones keep their
+  meaning. `lettre` 0.11.24 fixes six SMTP advisories, and the `rullst-ai`
+  audit trails and SIEM spools now roll back a partial write on Windows too.
 - **Security in every environment:** `Server` applies the CSRF check and the
   secure headers in development and test too; the CSRF token in pages is
   masked per response, so the generated `Caddyfile` now compresses pages;
@@ -77,7 +88,10 @@ probes' `version` field, the OpenTelemetry type that
 `DistributedTelemetry::layer` returned, `validator::ValidationErrors` read
 from `ValidationError`, an argument of `Studio::with_openapi` whose type came
 from its parameter, or a `match` without a wildcard arm or a struct
-literal of a type that became `#[non_exhaustive]` no longer compiles. At run
+literal of a type that became `#[non_exhaustive]`, or a `chrono` type where
+a Rullst API now takes the ORM's date types or `jiff` (model fields,
+`rullst::orm::chrono`, the chrono `RullstValue` variants,
+`Locale::format_*`, `Message::send_at`, `Invoice::new`) no longer compiles. At run
 time, development and test refuse a state-changing request without the CSRF
 token with `403`; a file served outside `/static/`, `/.well-known/` and the
 listed paths sets the CSRF cookie; a response that is not an HTML document
@@ -85,9 +99,11 @@ gets a policy without a nonce; code that compared the token embedded in a
 page with the cookie must submit it instead; a cron field that starts or ends
 with `,`, `-` or `/` fails with `SchedulerError::InvalidCron`; access-log
 lines reach stdout a few milliseconds after their response and are dropped,
-with a count, when stdout cannot keep up; and a video in Bunny's status 8 is
-`Playable`. `cargo rullst upgrade` has 29 rules for alpha.6, 14 of them
-must-change; while it reports a must-change finding, run it with
+with a count, when stdout cannot keep up; a video in Bunny's status 8 is
+`Playable`; and a new messaging schedule reads its expression as POSIX cron
+(Sunday is 0, and restricting both day fields matches either), while a
+stored one keeps its earlier meaning. `cargo rullst upgrade` has 34 rules for alpha.6, 19 of
+them must-change; while it reports a must-change finding, run it with
 `--keep-on-failure`, which applies the versions and keeps the failed state
 for you to fix.
 
@@ -160,12 +176,13 @@ page; the items below are specific to this release.
   to try again.
 - Mutation testing: the
   [campaign status](https://github.com/Rullst/Rullst/blob/main/docs/src/mutation-testing.md#campaign-status)
-  records a 13.0 campaign for every crate except Studio outside its remote
-  mode and the `rullst` facade. The campaigns of `rullst-auth`,
+  records a 13.0 campaign for every crate. The campaigns of `rullst-auth`,
   `rullst-security`, `rullst-privacy`, `rullst-supervision`, `rullst-labs`,
   `rullst-media`, `rullst-mail`, `rullst-iot` and `rullst-ai` ran on
-  `cdb68d3b`, this release's development source, in a maintainer's fork, and
-  found no defect in production code: their survivors got tests
+  `cdb68d3b`, and those of Studio (948 mutants) and the `rullst` facade (150)
+  on `c22b6bca` ([#752](https://github.com/Rullst/Rullst/pull/752)), this
+  release's development source, in a maintainer's fork, and found no defect
+  in production code: their survivors got tests
   ([#743](https://github.com/Rullst/Rullst/pull/743) to
   [#749](https://github.com/Rullst/Rullst/pull/749)) or are listed as
   accepted equivalents, apart from the three `rullst-ai` mutants named below,
@@ -182,9 +199,8 @@ page; the items below are specific to this release.
   budgets, production figures, macOS and Windows process files and compiled
   dependency count, and the upgrade rule files of this release other than
   `rules/alpha6_gaps.rs` and `rules/files/alpha6.rs` are not in the gate
-  either. The targeted run of `rules/alpha6_gaps.rs` reached its time limit
-  after 65 of its 109 mutants; the pull-request gate mutated every line of
-  that new file. Timeouts that turn a scan into an endless loop are
+  either. A rerun of `rules/alpha6_gaps.rs` measured all 109 of its mutants,
+  with no survivor. Timeouts that turn a scan into an endless loop are
   documented in `docs/src/mutation-testing.md`. `rullst-orm` keeps one
   unresolved mutant (the MySQL `FOR UPDATE SKIP LOCKED` claim in
   `outbox.rs`) and 17 timeouts, 29 `rullst-capital` mutants are reachable
@@ -192,9 +208,28 @@ page; the items below are specific to this release.
   peer-address, status and content-type checks of
   `EgressFetcher::fetch_bytes`) only through a live HTTPS origin.
 - `opentelemetry_sdk`, `tracing-opentelemetry` and `utoipa` became private
-  dependencies in this release and can be updated in 13.x; the other 25
-  public dependencies stay on their lines for all of 13.x (see Scope and
-  limits).
+  dependencies in this release and can be updated in 13.x, and `jiff` 1
+  replaced `chrono` 0.4; the 25 public dependencies stay on their lines for
+  all of 13.x (see Scope and limits).
+- Dates and times: a `rullst::orm::Timestamp` covers `jiff`'s range,
+  `-9999-01-02T01:59:59Z` to `9999-12-30T22:00:00.999999999Z`, which is
+  narrower than chrono's. A stored instant outside it, such as the
+  end-of-time sentinel `9999-12-31 23:59:59` in a `timestamptz` or MySQL
+  `DATETIME` column, is now a decode error that names the value and the
+  fixes (NULL in an `Option<Timestamp>`, an in-range value, or a civil
+  `DateTime` column, which keeps the full range); the migration guide has a
+  query that finds such rows. A stored leap second (`23:59:60`) reads as
+  `:59`, and a few text forms that only chrono's lenient parser read, such
+  as a space before the offset or a `UTC` suffix, are no longer read from
+  stored timestamps; Rullst never wrote them. A Nexus date-time field whose
+  instant falls in year 10000 UTC can fail with the strict PostgreSQL and
+  MySQL drivers.
+- Messaging schedules stored before alpha.6 keep the earlier `cron`-crate
+  syntax, now deprecated and planned for removal in 14.0:
+  `RecurringDefinition::syntax()` reports it and `posix_equivalent()` gives
+  the POSIX form when one exists. A definition written by alpha.6 carries a
+  syntax marker that an earlier prerelease cannot read, so rolling back
+  after creating schedules means restoring the database.
 - cargo-semver-checks has no 13.x baseline until 13.0.0 is published; until
   then the public API listings in `.github/public-api/` are the only check of
   API changes between prereleases.
@@ -325,6 +360,43 @@ page; the items below are specific to this release.
   application before 13.0.0-alpha.6 it falls back to `rullst.monitor.v1` when
   version 2 answers `404`, remembers that for ten minutes, and the two pages
   say that the application serves version 1 only.
+- `rullst-orm` has its own date/time types for model fields and query values,
+  built on `jiff` 1.0 (re-exported as `rullst_orm::jiff`, so applications use
+  the same version): `rullst_orm::Timestamp` (a UTC instant, for
+  `timestamp_tz()` columns), `DateTime` (a date and time without a zone, for
+  `timestamp()`), `Date` and `Time`, also reachable as `rullst::orm::…`. Each
+  wraps the jiff type of the same name, dereferences to it and converts to and
+  from it (results of jiff arithmetic convert back with `into()`), and
+  `Timestamp::now()` reads the clock. They replace the `chrono` types
+  `DateTime<Utc>`, `NaiveDateTime`, `NaiveDate` and `NaiveTime` without a
+  visible change: they bind and decode on SQLite, PostgreSQL and MySQL/MariaDB
+  with the same bytes on every driver, the same SQLite text and the same
+  MariaDB `DATETIME` parameter for a UTC instant in generated writes, filters
+  and `Orm::raw`, and read every stored form the `chrono` decoders read, so
+  old and new rows mix in one column; `Display`, `Debug` and serde write
+  chrono's text (`2026-10-15 09:30:00.500 UTC`, `2026-10-15T09:30:00.500Z`),
+  `FromStr` and serde read every text chrono read (and jiff's forms), and
+  `Default` is chrono's (the Unix epoch, 1970-01-01, midnight). Reading
+  differs where jiff's range ends: `DateTime`, `Date` and `Time` hold years
+  -9999 to 9999 and `Timestamp` -9999-01-02T01:59:59Z to
+  9999-12-30T22:00:00.999999999Z (chrono read years up to ±262,142), so a
+  value outside is a decode or parse error, never clamped; this includes the
+  end-of-time sentinel `9999-12-31 23:59:59` in a PostgreSQL `timestamptz` or
+  MySQL/MariaDB `DATETIME` read as a `Timestamp` (find such rows with
+  `WHERE col > '9999-12-30 22:00:00+00'` on PostgreSQL or
+  `WHERE col > '9999-12-30 22:00:00'` on MySQL/MariaDB; a `timestamp` column
+  read as `DateTime` keeps the full range). A stored leap second
+  (`23:59:60.5`) reads as `23:59:59.5`; PostgreSQL `infinity`/`-infinity` is a
+  decode error where chrono panicked; and a MySQL/MariaDB zero or truncated
+  binary date/time value is an error where chrono's decoder could panic.
+  `RullstValue` gains the `Timestamp`, `CivilDateTime`, `CivilDate` and
+  `CivilTime` variants, and `#[derive(Nexus)]` gives these fields the
+  `DateTimeUtc`, `DateTime`, `Date` and `Time` widgets by type, so an
+  application type named `Date` or `Timestamp` stays a text field. Because
+  `rullst::db::*` now also exports `DateTime`, `Date`, `Time` and `Timestamp`,
+  combining it with `use chrono::prelude::*` makes `DateTime` ambiguous;
+  import one by name. The `chrono` types keep working until they are removed
+  before 13.0.0-alpha.6 is published.
 - Server-side login sessions for `rullst_session` cookies:
   `rullst::auth::session_registry` (features `session-registry-sqlite`,
   `session-registry-postgres` and `session-registry-mysql` of `rullst-auth`;
@@ -463,6 +535,34 @@ page; the items below are specific to this release.
   change and how to compare them with a project the alpha.6 CLI generates.
   `V13-CONNECT-INFALLIBLE-NEW-REMOVED` also reports the `new` of a provider
   that the package defines with `define_provider!`, in any of its files.
+- `cargo rullst upgrade` reports where an application's chrono values meet
+  the Rullst APIs that take jiff values since 13.0.0-alpha.6, each as a
+  must-change finding on the "`chrono` replaced by `jiff`" row of the
+  migration guide: `V13-ORM-CHRONO-TYPES`, a chrono type (`DateTime<Tz>`,
+  `NaiveDateTime`, `NaiveDate`, `NaiveTime`, also inside `Option`, another
+  generic, a type alias or a `use … as` rename) in a field of a
+  `#[derive(Orm)]` or `#[derive(Nexus)]` model, a `rullst::orm::chrono`,
+  `rullst::db::chrono` or `rullst_orm::chrono` path, `sqlx::types::chrono`
+  or a bare `chrono::` path that only Rullst's dependencies made available,
+  `RullstValue`'s chrono variants, a chrono value passed to
+  `RullstValue::from` or a query method, and an SQLx read or `FromRow`
+  field that decodes chrono without SQLx's own `chrono` feature; `V13-LOCALE-JIFF-DATES`,
+  `Locale::format_date`, `format_time` and `format_datetime` calls;
+  `V13-MAIL-JIFF-TIMESTAMPS`, Mail's `send_at`, `with_scheduled_at` and the
+  `expires_at` of `PasswordResetAt` and `EmailLoginAt`; and
+  `V13-CAPITAL-INVOICE-JIFF-DATE`, Capital's `Invoice::new`. An
+  application's own chrono code is not reported.
+- `V13-MESSAGING-CRON-POSIX` reports each `RecurringDefinition::new` call
+  for review, now that messaging schedules read cron expressions with the
+  scheduler's POSIX syntax, except a string literal that means the same
+  under both syntaxes. A literal's finding gives its POSIX form for a
+  schedule not yet stored (weekday numbers moved down by one) or why there is
+  none (both day fields restricted, a field the old syntax joined with its
+  neighbour or split, a form the new syntax refuses).
+- A finding can carry a note for its location: the plan prints it as
+  `line N: …` under the finding, the Markdown report as a sub-item, and the
+  `rullst.upgrade-plan.v1` JSON adds a `note` key to each source finding
+  (`null` when there is none).
 
 ### Changed
 
@@ -544,6 +644,21 @@ page; the items below are specific to this release.
   63,200 requests per second, 37.6 to 31.3 µs of server CPU per request), as
   the `Generated stack throughput` job of `bench.yml` measures, now with a
   `static/` folder as in a generated project.
+- `cargo-rullst` uses `jiff` 1 instead of `chrono` for the times it writes:
+  migration file names, the daily animation stamp, the times of audit,
+  SBOM, compliance and footprint reports, the upgrade backup directory and
+  the HTTP dates the footprint page-weight check reads. The text is the same
+  as before, byte for byte (local `YYYYMMDDHHMMSS` migration stamps, RFC 3339
+  times with `+00:00` and 0, 3, 6 or 9 fraction digits).
+- **Breaking:** projects that `cargo rullst new` and the generators create
+  use `rullst::orm::Timestamp` (set with `Timestamp::now()`) for
+  `created_at`, `updated_at` and the other instants of the SaaS, auth, OAuth
+  and billing code instead of chrono's `DateTime<Utc>`. `make:jwt` reads the
+  clock with `std::time` and no longer adds a `chrono` dependency.
+  `make:migration:auto` maps `Timestamp`, `DateTime`, `Date` and `Time` to
+  `timestamp_tz()`, `timestamp()`, `date()` and `time()` columns, and refuses
+  a field still typed with chrono (`DateTime<Utc>` or a `Naive…` type),
+  naming `V13-ORM-CHRONO-TYPES`.
 - **Breaking:** `Scheduler::task`, `task_in_tz`, `deferrable_task` and
   `deferrable_task_in_tz` evaluate cron expressions with Core's own
   five-field evaluator instead of the `cron` crate, which leaves the
@@ -626,6 +741,37 @@ page; the items below are specific to this release.
   code and are unchanged. `cargo rullst upgrade` reports code and scripts
   that read `version` from a probe (`V13-HEALTH-FRAMEWORK-VERSION`) and uses
   of the removed field (`V13-HEALTH-PROBE-VERSION-FIELD`).
+- **Breaking:** Core, Mail and Capital use jiff 1.0 instead of chrono for
+  instants and calendar dates
+  ([RUSTSEC-2026-0543](https://rustsec.org/advisories/RUSTSEC-2026-0543.html):
+  chrono is no longer maintained). The changed signatures:
+  `Locale::format_date(&self, impl Into<jiff::civil::Date>, DateStyle)`,
+  `format_time(&self, impl Into<jiff::civil::Time>, TimeStyle)` and
+  `format_datetime(&self, impl Into<jiff::civil::DateTime>, DateStyle,
+  TimeStyle)` (they took `&impl chrono::Datelike`, `&impl chrono::Timelike` and
+  a reference to a value of both; pass civil values by value or a
+  `&jiff::ZonedDateTime`); Mail's `Message::send_at` field
+  (`Option<jiff::Timestamp>`) and method (`send_at(impl Into<jiff::Timestamp>)`),
+  the memory driver's `with_scheduled_at(impl Into<jiff::Timestamp>)` and the `expires_at:
+  jiff::Timestamp` of `AccountEvent::PasswordResetAt` and
+  `AccountEvent::EmailLoginAt`; Capital's `Invoice::date` field and
+  `Invoice::new(invoice_id, customer_email, date: impl Into<jiff::Timestamp>,
+  currency)`; the `impl Into` parameters also take the ORM's `Timestamp`.
+  Replace `chrono::Utc::now()` with `jiff::Timestamp::now()`, `Utc::now() +
+  Duration::minutes(5)` with `Timestamp::now() +
+  jiff::SignedDuration::from_mins(5)` (or `checked_add`) and `.timestamp()` with
+  `.as_second()`. What users, peers and storage see is unchanged: queued mail
+  and invoice JSON keep chrono's RFC 3339 form (`2026-10-22T15:45:30.250Z`, 0, 3,
+  6 or 9 fractional digits) and read what chrono wrote, invoices print the
+  same `YYYY-MM-DD` date, the Resend `scheduled_at` field, the account-mail
+  expiry line and the log driver's lines keep their `+00:00` (or local) offset,
+  and security event times keep three fractional digits. Core's scheduler
+  computes the same occurrences, daylight-saving rules included: the cron
+  differential tests now check golden vectors recorded from the `cron` crate,
+  which is no longer a dev-dependency. jiff becomes a non-optional Core
+  dependency (`scheduler-tz` still adds the time-zone database), and Core, Mail
+  and Capital no longer depend on chrono. `examples/mail-postmark-driver` uses
+  jiff too, with the same webhook event identifiers.
 - **Breaking:** `rullst-media`'s remaining public enums and all-public
   structs are decided for the 13.0 freeze. `PlaybackKind`, `ProviderMode`
   and `sqlite::Lifecycle` are `#[non_exhaustive]`, so a `match` on them
@@ -659,6 +805,31 @@ page; the items below are specific to this release.
   `match` on `Processing` outside `rullst-media` needs a wildcard arm;
   `cargo rullst upgrade` reports each one (`V13-MEDIA-PROCESSING-MATCH`).
   Reported by the plataforma application.
+- **Breaking:** Messaging's recurring schedules (`schedules-postgres`) read
+  new cron expressions as POSIX five-field cron, exactly as Core's
+  `Scheduler::task` does: weekdays 0-7 (0 and 7 are Sunday; it was 1 for
+  Sunday to 7 for Saturday), a day matching *either* day field when both are
+  restricted (both had to match), and each field valid on its own. Every
+  `RecurringDefinition::new` builds a POSIX definition, stored with a
+  `"syntax":"posix"` marker; an expression that only the old grammar accepts,
+  such as `1, 2 * * *`, fails with `InvalidInput("POSIX five-field UTC cron;
+  this expression uses the legacy syntax")`. Definitions stored earlier have
+  no marker and keep the old grammar (`CronSyntax::Legacy`, deprecated,
+  removal planned for 14.0), so their occurrences never change. The new
+  `CronSyntax` enum, `RecurringDefinition::syntax` and
+  `RecurringMetadata::syntax` (from `create` and `schedules`) tell them apart,
+  and `RecurringDefinition::posix_equivalent` gives the POSIX expression with
+  exactly a legacy definition's occurrences (`0 9 * * 1` gives `0 9 * * 0`),
+  or `None` when there is none (both day fields restricted, for example).
+  `PostgresRecurringStore::create` keeps a stored legacy definition: one with
+  the same expression and fields replays it, still legacy, with a `tracing`
+  warning; any other difference fails with the new
+  `RecurringError::LegacyDefinition` (cancel it and create the POSIX
+  definition under a new name; a cancelled name is never reused). An earlier
+  13.0 prerelease cannot read definitions written with the marker. The `cron`
+  crate and chrono are no longer dependencies: legacy expressions run on a
+  port of the crate's grammar checked against golden vectors recorded from
+  it.
 - The [compatibility policy](https://rullst.github.io/Rullst/book/compatibility-policy.html#minimum-supported-rust-version)
   makes MSRV changes in 13.x predictable: a minor release raises the MSRV only
   when a dependency, a security fix or a concrete need requires it, and only
@@ -671,6 +842,17 @@ page; the items below are specific to this release.
   demand the unit and integration tests of Core, the ORM on SQLite, Security,
   Auth, the two macro crates and the `rullst` facade, and the facade's
   doctests, on Rust 1.96.0. The required MSRV job only compiles the workspace.
+- `rullst-nexus` and `rullst-studio` no longer depend on `chrono`. Nexus reads
+  date, time, date-time and UTC form values with `jiff` 1.0 and binds the new
+  `rullst_orm` types (`RullstValue::CivilDate`, `CivilTime`, `CivilDateTime`
+  and `Timestamp`), which every driver receives exactly as it received the
+  `chrono` values before; its `tz` feature moves from `jiff` 0.2 to 1.0. Forms
+  accept and refuse the same values, store the same text and show the same
+  inputs in the administrator's time zone, including years 0 and 10000 UTC
+  that an offset reaches from 0001 and 9999: an instant after
+  9999-12-30T22:00Z, which a `jiff` timestamp cannot hold, is bound as the
+  RFC 3339 text the `Any` pool already sent for it. Studio's request log keeps
+  its `2026-10-15T09:30:00.500+00:00` timestamps.
 - **Breaking:** for the 13.0 public API freeze, every publicly reachable enum,
   and every struct whose fields are all public, is now either
   `#[non_exhaustive]` or documented as exhaustive on purpose, so a 13.x
@@ -941,6 +1123,16 @@ page; the items below are specific to this release.
 
 ### Removed
 
+- **Breaking:** `rullst-orm` no longer depends on `chrono` (RUSTSEC-2026-0543,
+  unmaintained). The `rullst_orm::chrono` (`rullst::orm::chrono`) re-export, the
+  `RullstValue::DateTime`, `NaiveDateTime`, `Date` and `Time` variants and the
+  SQLx codecs for `chrono` model fields are gone: use `rullst_orm::Timestamp`,
+  `DateTime`, `Date` and `Time` (and `RullstValue::Timestamp`,
+  `CivilDateTime`, `CivilDate`, `CivilTime`), which store, read, format and
+  serialize as the `chrono` types did, and `rullst_orm::jiff` for date
+  arithmetic. `#[derive(Nexus)]` no longer infers widgets from a field's
+  `chrono` spelling; the ORM's date/time types get theirs by type. Redis
+  query-cache keys of date/time values are unchanged.
 - **Breaking:** `rullst-ai`'s `AiClient::structured_prompt` and
   `GuardrailReport::is_safe`, deprecated in 12.0.0, were removed.
   `structured_prompt` took no schema and always returned
@@ -1136,9 +1328,25 @@ page; the items below are specific to this release.
   CSRF cookie, for example, was reported as a page embedding it.
   Must-change rules and the review rules whose change a test also observes
   still report test code.
+- On Windows, the durable AI audit trails (`DurableRagAuditTrail`,
+  `DurableToolAuditTrail`) and both SIEM spools (`DurableSiemSpool`,
+  `AuthenticatedSiemSpool`) could not roll back a partial write, for example
+  on a full disk. They opened their file in append mode, and a Windows append
+  handle has no write-data access, so truncating the partial frame always
+  failed: the writer reported `RecoveryFailed`, became unhealthy, and the
+  partial frame stayed in the file. On Windows they now open the file for
+  reading and writing and seek to its end before each frame, so a failed
+  write is rolled back as on Unix and the writer stays usable. The Unix open
+  flags and O_APPEND writes are unchanged, as is the single-writer contract:
+  one writer per file, and growth by anything else fails closed as an
+  external modification.
 
 ### Security
 
+- The time-bounded exception for RUSTSEC-2026-0543 (`chrono` unmaintained),
+  added on 17 November 2026, is removed: no Rullst crate, generator, example,
+  fuzz crate or fixture resolves `chrono` any more, so the supply-chain
+  audits check it again with no exception.
 - **Breaking:** the CSRF token that pages embed is masked per response, a
   defence against BREACH. `CsrfToken::as_str()` now returns
   `mask || (token XOR mask)` in URL-safe base64, with a fresh random mask
@@ -1160,6 +1368,7 @@ page; the items below are specific to this release.
   multipart `_token` field may be up to 342 bytes (was 128). Masking covers
   the CSRF token only: an application should not show other secrets in a
   compressed page next to text from the request.
+- `rullst-mail`'s SMTP transport requires `lettre` 0.11.24, which fixes RUSTSEC-2026-0560 to RUSTSEC-2026-0565 (published 2026-11-17): STARTTLS response injection by a man-in-the-middle, SMTP command injection through missing dot-stuffing after a bare CR or LF, a message for an address with a quoted local part sent to a different address, unbounded buffering of an SMTP reply, and panics on a whitespace-only `EHLO` line or a display name containing CR or LF. Applications that enable the `mail-smtp` feature get the fixed version when they update to this release.
 
 ## [13.0.0-alpha.5] - 2026-11-14
 

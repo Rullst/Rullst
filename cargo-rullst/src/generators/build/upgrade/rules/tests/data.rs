@@ -112,7 +112,7 @@ pub struct Holder {
     );
 }
 
-/// `String` timestamps of SQLx models point to the date/time row; chrono
+/// `String` timestamps of SQLx models point to the date/time row; date/time
 /// fields, other names and Turso models do not.
 #[test]
 fn text_timestamps_of_sqlx_models_are_reviewed() {
@@ -134,9 +134,9 @@ pub struct Post {
 #[derive(Debug, Orm)] #[orm(full_row_save)]
 pub struct Post {
     pub id: i32,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     #[orm(db_default)]
-    pub updated_at: Option<rullst::orm::chrono::DateTime<Utc>>,
+    pub updated_at: Option<rullst::orm::Timestamp>,
     pub published_at: String,
     pub deleted_at: Option<String>,
 }

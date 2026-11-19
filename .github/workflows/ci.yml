@@ -375,7 +375,8 @@ jobs:
           cargo test -p rullst-studio --no-default-features --features strict-mysql --test data_browser_mutation_mysql -- --test-threads=1
           cargo test -p rullst-studio --no-default-features --features strict-mysql --test data_browser_mutation_mariadb -- --test-threads=1
           cargo test -p rullst-nexus --no-default-features --test tenant_audit -- --test-threads=1
-          cargo test -p rullst-nexus --test sql_matrix_postgres --test sql_matrix_mysql -- --test-threads=1
+          cargo test -p rullst-nexus --test sql_matrix_postgres --test sql_matrix_mysql --test sql_matrix_mariadb -- --test-threads=1
+          cargo test -p rullst-nexus --no-default-features --features strict-mysql --test sql_matrix_mysql --test sql_matrix_mariadb -- --test-threads=1
           cargo test -p rullst-ai --features sql-memory --test sql_chat_memory_postgres --test sql_chat_memory_mysql --test sql_chat_memory_mariadb -- --test-threads=1
           cargo test -p rullst-capital --features quota-sql,webhook-sql --test quota_sql_postgres --test quota_sql_mysql --test quota_sql_mariadb -- --test-threads=1
 
@@ -447,8 +448,12 @@ jobs:
                 --test quota_sql_postgres --locked -- --test-threads=1
               ;;
             strict-mysql)
+              # MariaDB too: the strict pool sends instants to it as DATETIME
+              # parameters (bind_field.rs), which only a strict MariaDB run
+              # exercises; the library tests check that wire in this build.
               cargo test -p rullst-orm --no-default-features \
-                --features strict-mysql --test matrix_mysql -- --test-threads=1
+                --features strict-mysql --test matrix_mysql --test matrix_mariadb -- --test-threads=1
+              cargo test -p rullst-orm --no-default-features --features strict-mysql --lib
               cargo test -p rullst-capital --features quota-sql,webhook-sql,rullst-orm/strict-mysql \
                 --test quota_sql_mysql --test quota_sql_mariadb --locked -- --test-threads=1
               ;;

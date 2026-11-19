@@ -156,61 +156,45 @@ fn unwrapped_type_name(field_type: &Type) -> String {
     type_name
 }
 
-/// The chrono date/time widget of a field, by path segment rather than by
-/// spelling: `DateTime<Utc>` under any `chrono::` prefix is a UTC instant,
-/// `NaiveDateTime` a date-time, `NaiveDate` a date and `NaiveTime` a time.
-fn chrono_field_kind(field_type: &Type) -> Option<TokenStream2> {
-    let mut field_type = field_type;
-    if let Some(inner) = option_inner(field_type) {
-        field_type = inner;
-    }
-    let Type::Path(path) = field_type else {
-        return None;
-    };
-    let segment = path.path.segments.last()?;
-    match segment.ident.to_string().as_str() {
-        "NaiveDateTime" => Some(quote!(::rullst::nexus::FieldKind::DateTime)),
-        "NaiveDate" => Some(quote!(::rullst::nexus::FieldKind::Date)),
-        "NaiveTime" => Some(quote!(::rullst::nexus::FieldKind::Time)),
-        "DateTime" => {
-            let syn::PathArguments::AngleBracketed(arguments) = &segment.arguments else {
-                return None;
-            };
-            let utc = matches!(
-                arguments.args.first(),
-                Some(syn::GenericArgument::Type(Type::Path(zone)))
-                    if zone.path.segments.last().is_some_and(|zone| zone.ident == "Utc")
-            );
-            utc.then(|| quote!(::rullst::nexus::FieldKind::DateTimeUtc))
-        }
-        _ => None,
-    }
-}
-
-/// `T` of an `Option<T>` field type.
-fn option_inner(field_type: &Type) -> Option<&Type> {
-    let Type::Path(path) = field_type else {
-        return None;
-    };
-    let segment = path.path.segments.last()?;
-    let syn::PathArguments::AngleBracketed(arguments) = &segment.arguments else {
-        return None;
-    };
-    match arguments.args.first() {
-        Some(syn::GenericArgument::Type(inner)) if segment.ident == "Option" => Some(inner),
-        _ => None,
-    }
-}
-
 fn inferred_field_kind(field_type: &Type) -> TokenStream2 {
-    if let Some(kind) = chrono_field_kind(field_type).or_else(|| integer_field_kind(field_type)) {
+    if let Some(kind) = integer_field_kind(field_type) {
         return kind;
     }
     match unwrapped_type_name(field_type).as_str() {
         "bool" => quote!(::rullst::nexus::FieldKind::Boolean),
         "f32" | "f64" => quote!(::rullst::nexus::FieldKind::Number),
-        _ => quote!(::rullst::nexus::FieldKind::Text),
+        "String" => quote!(::rullst::nexus::FieldKind::Text),
+        _ => temporal_or_text(field_type),
     }
+}
+
+/// The widget of a field whose spelling names none: by type, the ORM's
+/// `Timestamp`, `DateTime`, `Date` and `Time` (or an `Option` of one, under
+/// any path, import or alias) are `DateTimeUtc`, `DateTime`, `Date` and
+/// `Time`; every other type, such as an application type spelled `Date`, is
+/// `Text`. The compiler decides through `rullst_orm::__field_kind`, which
+/// Nexus re-exports, because the derive only sees the type's tokens.
+fn temporal_or_text(field_type: &Type) -> TokenStream2 {
+    quote! {{
+        use ::rullst::nexus::__orm_field_kind::{Other as _, Temporal as _};
+        match (&::rullst::nexus::__orm_field_kind::Probe::<#field_type>::new())
+            .__rullst_temporal_kind()
+        {
+            ::core::option::Option::Some(::rullst::nexus::__orm_field_kind::TemporalKind::Timestamp) => {
+                ::rullst::nexus::FieldKind::DateTimeUtc
+            }
+            ::core::option::Option::Some(::rullst::nexus::__orm_field_kind::TemporalKind::DateTime) => {
+                ::rullst::nexus::FieldKind::DateTime
+            }
+            ::core::option::Option::Some(::rullst::nexus::__orm_field_kind::TemporalKind::Date) => {
+                ::rullst::nexus::FieldKind::Date
+            }
+            ::core::option::Option::Some(::rullst::nexus::__orm_field_kind::TemporalKind::Time) => {
+                ::rullst::nexus::FieldKind::Time
+            }
+            ::core::option::Option::None => ::rullst::nexus::FieldKind::Text,
+        }
+    }}
 }
 
 /// How the ORM's confidentiality markers constrain a field in Nexus.

@@ -20,7 +20,7 @@ impl MeteredBillingProvider for StripeProvider {
             self.usage_api_key(),
             STRIPE_METER_EVENTS_ENDPOINT,
             request,
-            chrono::Utc::now().timestamp(),
+            jiff::Timestamp::now().as_second(),
         )
         .await
     }

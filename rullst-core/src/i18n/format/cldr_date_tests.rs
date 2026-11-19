@@ -5,10 +5,10 @@
 
 use super::*;
 use crate::i18n::Locale;
-use chrono::NaiveDate;
+use jiff::civil::DateTime;
 
 const LOCALES: usize = 27;
-const DATES: [(i32, u32, u32, u32, u32, u32); 12] = [
+const DATES: [(i16, i8, i8, i8, i8, i8); 12] = [
     (2026, 1, 5, 0, 5, 9),
     (2025, 2, 28, 12, 0, 0),
     (1999, 3, 1, 23, 59, 59),
@@ -241,9 +241,7 @@ fn dates_and_times_match_cldr() {
     let samples: Vec<_> = DATES
         .iter()
         .map(|&(year, month, day, hour, minute, second)| {
-            NaiveDate::from_ymd_opt(year, month, day)
-                .and_then(|date| date.and_hms_opt(hour, minute, second))
-                .unwrap()
+            DateTime::new(year, month, day, hour, minute, second, 0).unwrap()
         })
         .collect();
     let date_styles = [
@@ -260,7 +258,7 @@ fn dates_and_times_match_cldr() {
             for (sample, expected) in samples.iter().zip(outputs(joined, samples.len())) {
                 let date = sample.date();
                 assert_eq!(
-                    locale.format_date(&date, *style),
+                    locale.format_date(date, *style),
                     expected,
                     "{tag} {style:?} {sample}"
                 );
@@ -270,7 +268,7 @@ fn dates_and_times_match_cldr() {
             for (sample, expected) in samples.iter().zip(outputs(joined, samples.len())) {
                 let time = sample.time();
                 assert_eq!(
-                    locale.format_time(&time, *style),
+                    locale.format_time(time, *style),
                     expected,
                     "{tag} {style:?} {sample}"
                 );
@@ -280,7 +278,7 @@ fn dates_and_times_match_cldr() {
             for (date_style, joined) in date_styles.iter().zip(groups(joined_styles, 4)) {
                 for (sample, expected) in samples.iter().zip(outputs(joined, samples.len())) {
                     assert_eq!(
-                        locale.format_datetime(sample, *date_style, *time_style),
+                        locale.format_datetime(*sample, *date_style, *time_style),
                         expected,
                         "{tag} {date_style:?} {time_style:?} {sample}"
                     );

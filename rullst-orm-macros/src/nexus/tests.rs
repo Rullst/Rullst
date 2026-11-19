@@ -351,49 +351,103 @@ fn only_integer_keys_are_treated_as_database_generated() {
     assert!(sku.contains("hidden = false") && sku.contains("readonly = false"));
 }
 
+/// Explicit temporal widgets apply to any field; a field spelled like a
+/// date/time type gets its widget only by type, through the probe.
 #[test]
-fn infers_chrono_widgets_from_any_path_spelling() {
+fn explicit_temporal_widgets_and_spelling_alone_give_no_widget() {
     let input: DeriveInput = parse_quote! {
         struct Event {
             id: i64,
-            published_at: chrono::DateTime<Utc>,
-            edited_at: DateTime<chrono::Utc>,
-            archived_at: Option<chrono::DateTime<chrono::offset::Utc>>,
-            starts_at: chrono::NaiveDateTime,
-            ends_at: Option<NaiveDateTime>,
-            day: chrono::NaiveDate,
-            opens_at: Option<chrono::NaiveTime>,
-            local_at: DateTime<chrono::FixedOffset>,
+            published_at: DateTime<Utc>,
+            day: NaiveDate,
             #[nexus(kind = "time")]
             closes_at: String,
             #[nexus(kind = "datetime_utc")]
             settled_at: String,
+            #[nexus(kind = "datetime")]
+            starts_at: String,
+            #[nexus(kind = "date")]
+            due_on: String,
         }
     };
     let output = expand_nexus(&input)
         .expect("valid Nexus derive")
         .to_string();
-    // A UTC instant is shown and accepted as UTC.
-    for name in ["published_at", "edited_at", "archived_at", "settled_at"] {
+    for (name, kind) in [
+        ("closes_at", "Time"),
+        ("settled_at", "DateTimeUtc"),
+        ("starts_at", "DateTime"),
+        ("due_on", "Date"),
+    ] {
         let meta = field_meta(&output, name).expect("field metadata");
         assert!(
-            meta.contains("FieldKind :: DateTimeUtc ,"),
+            meta.contains(&format!("FieldKind :: {kind} ,")),
             "{name}: {meta}"
         );
+        assert!(!meta.contains("Probe"), "{name}: {meta}");
     }
-    for name in ["starts_at", "ends_at"] {
+    for name in ["published_at", "day"] {
         let meta = field_meta(&output, name).expect("field metadata");
-        assert!(meta.contains("FieldKind :: DateTime ,"), "{name}: {meta}");
+        assert!(meta.contains("__orm_field_kind :: Probe"), "{name}: {meta}");
     }
-    for name in ["opens_at", "closes_at"] {
+}
+
+/// The ORM's date/time types are recognized by type, not spelling: the
+/// generated code asks `__orm_field_kind` at compile time, so an application
+/// type spelled `Date` or `Timestamp` stays a text field.
+#[test]
+fn infers_orm_date_time_widgets_by_type() {
+    let input: DeriveInput = parse_quote! {
+        struct Event {
+            id: i64,
+            at: Timestamp,
+            maybe: Option<rullst::orm::Date>,
+            title: String,
+            note: Option<String>,
+            #[nexus(kind = "text")]
+            code: Time,
+        }
+    };
+    let output = expand_nexus(&input)
+        .expect("valid Nexus derive")
+        .to_string();
+    let probe = "match (& :: rullst :: nexus :: __orm_field_kind :: Probe :: <";
+    let at = field_meta(&output, "at").expect("at metadata");
+    assert!(at.contains(&format!("{probe} Timestamp >")), "{at}");
+    assert!(
+        at.contains(
+            "use :: rullst :: nexus :: __orm_field_kind :: { Other as _ , Temporal as _ } ;"
+        ),
+        "{at}"
+    );
+    for (kind, widget) in [
+        ("Timestamp", "DateTimeUtc"),
+        ("DateTime", "DateTime"),
+        ("Date", "Date"),
+        ("Time", "Time"),
+    ] {
+        let arm = format!(
+            ":: core :: option :: Option :: Some (:: rullst :: nexus :: __orm_field_kind :: TemporalKind :: {kind}) => {{ :: rullst :: nexus :: FieldKind :: {widget} }}"
+        );
+        assert!(at.contains(&arm), "{kind}: {at}");
+    }
+    assert!(
+        at.contains(
+            ":: core :: option :: Option :: None => :: rullst :: nexus :: FieldKind :: Text"
+        ),
+        "{at}"
+    );
+    let maybe = field_meta(&output, "maybe").expect("maybe metadata");
+    assert!(
+        maybe.contains(&format!("{probe} Option < rullst :: orm :: Date > >")),
+        "{maybe}"
+    );
+    // Strings need no probe, and an explicit widget wins.
+    for name in ["title", "note", "code"] {
         let meta = field_meta(&output, name).expect("field metadata");
-        assert!(meta.contains("FieldKind :: Time ,"), "{name}: {meta}");
+        assert!(!meta.contains("Probe"), "{name}: {meta}");
+        assert!(meta.contains("FieldKind :: Text ,"), "{name}: {meta}");
     }
-    let day = field_meta(&output, "day").expect("day metadata");
-    assert!(day.contains("FieldKind :: Date ,"), "{day}");
-    // An offset other than UTC is not a datetime-local value.
-    let local = field_meta(&output, "local_at").expect("local metadata");
-    assert!(local.contains("FieldKind :: Text"), "{local}");
 }
 
 #[test]

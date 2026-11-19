@@ -10,9 +10,7 @@ use std::time::Duration;
 const NEW_YORK: &str = "America/New_York";
 
 fn at(text: &str) -> i64 {
-    DateTime::parse_from_rfc3339(text)
-        .unwrap()
-        .timestamp_millis()
+    text.parse::<Timestamp>().unwrap().as_millisecond()
 }
 
 fn deferral(hours: u64, windows: &[(u8, u8, u8, u8)]) -> ScheduleDeferral {
@@ -35,8 +33,13 @@ fn zoned(deferral: ScheduleDeferral, zone: &str) -> TaskDeferral {
 /// The start of the run due at `tick`, as RFC 3339 UTC, and its reason.
 fn start(deferral: &TaskDeferral, tick: &str) -> (String, &'static str) {
     let (start_ms, reason) = deferral.start_for(at(tick));
-    let start = DateTime::from_timestamp_millis(start_ms).unwrap();
-    (start.to_rfc3339(), reason.as_str())
+    let start = Timestamp::from_millisecond(start_ms).unwrap();
+    (rfc3339(start), reason.as_str())
+}
+
+/// `instant` as chrono's `to_rfc3339` wrote it.
+fn rfc3339(instant: Timestamp) -> String {
+    crate::rfc3339::format_with_offset(instant, 0)
 }
 
 fn expect(start: &str, reason: &'static str) -> (String, &'static str) {
@@ -184,11 +187,11 @@ fn deferrable_task_in_tz_registers_a_zoned_tick_and_zoned_windows() {
     // 18:00 EDT on 8 March is 22:00 UTC; its run waits for 22:00 EDT.
     let tick = task
         .schedule
-        .next_after(&DateTime::from_timestamp_millis(at("2026-03-08T12:00:00Z")).unwrap())
+        .next_after(&Timestamp::from_millisecond(at("2026-03-08T12:00:00Z")).unwrap())
         .unwrap();
-    assert_eq!(tick.to_rfc3339(), "2026-03-08T22:00:00+00:00");
+    assert_eq!(rfc3339(tick), "2026-03-08T22:00:00+00:00");
     let run = super::super::deferred_start(task, tick).unwrap();
-    assert_eq!(run.to_rfc3339(), "2026-03-09T02:00:00+00:00");
+    assert_eq!(rfc3339(run), "2026-03-09T02:00:00+00:00");
 }
 
 #[test]

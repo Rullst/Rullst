@@ -129,12 +129,16 @@ fn test_revenue_metrics_and_dashboard() {
 
 #[test]
 fn test_invoice_html_generation() {
-    use chrono::Utc;
     use rullst_capital::invoice::Invoice;
 
-    let invoice = Invoice::new("INV-2026-0042", "billing@client.com", Utc::now(), "USD")
-        .with_item("Rullst Enterprise License (Monthly)", 49_900)
-        .with_item("Priority 24/7 SLA Support", 19_900);
+    let invoice = Invoice::new(
+        "INV-2026-0042",
+        "billing@client.com",
+        jiff::Timestamp::now(),
+        "USD",
+    )
+    .with_item("Rullst Enterprise License (Monthly)", 49_900)
+    .with_item("Priority 24/7 SLA Support", 19_900);
 
     let html = invoice.generate_html();
     assert!(html.contains("INV-2026-0042"));

@@ -54,7 +54,9 @@ rullst-core = { workspace = true }
 clap = { version = "4.6.1", features = ["derive"] }
 clap_complete = "4.6.11"
 colored = "3.1.1"
-chrono = { workspace = true, features = ["clock"] }
+# The system time zone for migration stamps (`tz-system`); IANA names from
+# the system database, bundled on Windows, where there is none.
+jiff = { workspace = true, features = ["tz-system", "tzdb-zoneinfo", "tzdb-bundle-platform"] }
 dialoguer = "0.12.0"
 ratatui = "0.30.2"
 crossterm = "0.29.0"
@@ -99,6 +101,9 @@ rustix = { version = "1.1.6", features = ["fs", "param", "process"] }
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_NetworkManagement_IpHelper", "Win32_Security", "Win32_Security_Authorization", "Win32_Storage_FileSystem", "Win32_System_ProcessStatus", "Win32_System_Threading"] }
 
 [dev-dependencies]
+# `scheduler::__test_hooks::cron_next_after`: checks `V13-MESSAGING-CRON-POSIX`
+# notes against messaging's recorded cron occurrences.
+rullst-core = { workspace = true, features = ["test-util"] }
 # Keeps the generated Tera blueprint dependency locked and cached for the
 # packaged-distribution compile gate without adding it to the CLI runtime graph.
 tera = "2.4.0"

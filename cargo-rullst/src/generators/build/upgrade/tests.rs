@@ -49,6 +49,7 @@ fn a_failed_gate_repeats_the_guidance_of_removed_api_findings() {
         rule,
         path: root.join(path),
         line,
+        note: None,
     };
     let capital = rules::REMOVED_API_RULES
         .iter()
@@ -99,6 +100,7 @@ fn selected_scan(current: Option<&str>, all_rules: bool) -> SourceScan {
         rule,
         path: Path::new("/project/src/main.rs").to_path_buf(),
         line,
+        note: None,
     };
     let page = rules::CATALOG
         .iter()
@@ -246,6 +248,7 @@ fn findings_reach_the_plan_text_with_the_guide_link() {
         rule: handler,
         path: root.join("src/view.rs"),
         line: 7,
+        note: None,
     });
     assert_eq!(
         findings_hint(root, &mixed),
@@ -518,6 +521,7 @@ fn a_failed_gate_names_no_other_review_finding() {
             rule: page,
             path: Path::new("/project/src/main.rs").to_path_buf(),
             line: 2,
+            note: None,
         }],
         ..SourceScan::default()
     };

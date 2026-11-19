@@ -78,6 +78,15 @@ próxima) estão nas "Known limitations" dessa versão no
 - Colunas nativas de data/hora do `Schema` precisam de uma feature de driver
   estrito (`strict-postgres`, `strict-mysql`, `strict-sqlite`). No pool `Any`
   do SQLx, `timestamps()` mantém colunas `TEXT`.
+- Os tipos de data e hora do ORM (`rullst::orm::Timestamp`, `DateTime`, `Date`
+  e `Time`) envolvem os do `jiff` 1. Um `Timestamp` guarda instantes de
+  `-9999-01-02T01:59:59Z` a `9999-12-30T22:00:00.999999999Z`; um instante
+  gravado fora desse intervalo, como o marcador de "nunca expira"
+  `9999-12-31 23:59:59` numa coluna `timestamptz` ou `DATETIME` do MySQL, dá
+  um erro de leitura que mostra o valor. Para "sem fim", grave NULL num campo
+  `Option<Timestamp>`, ou use uma coluna `DateTime` sem fuso, que mantém o
+  intervalo completo. Segundos intercalares não são representados: um `:60`
+  gravado é lido como `:59`.
 - No modo WAL (`sqlite_journal_mode = "wal"`), o arquivo do banco sozinho não
   é mais um backup (use `sqlite3 ".backup"`), todos os processos precisam
   rodar no mesmo host, e o WAL não deve ser usado num sistema de arquivos de

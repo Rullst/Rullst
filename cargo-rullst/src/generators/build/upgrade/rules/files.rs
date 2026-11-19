@@ -56,6 +56,7 @@ fn finding(rule: &'static Rule, path: PathBuf, line: usize) -> SourceFinding {
         rule,
         path,
         line: line.max(1),
+        note: None,
     }
 }
 

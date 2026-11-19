@@ -72,6 +72,32 @@ pub(crate) fn cell_html(cell: &StudioCell) -> String {
 }
 
 #[cfg(test)]
+mod rendering_tests {
+    use super::*;
+
+    #[test]
+    fn cells_render_as_text_and_as_distinct_markup() {
+        assert_eq!(StudioCell::Null.into_text(), "NULL");
+        assert_eq!(StudioCell::Value("7".to_string()).into_text(), "7");
+        assert_eq!(StudioCell::Unreadable.into_text(), "unreadable");
+
+        assert_eq!(
+            cell_html(&StudioCell::Null),
+            "<td class=\"px-6 py-4 text-sm truncate max-w-xs text-slate-600 font-mono italic\">NULL</td>"
+        );
+        assert_eq!(
+            cell_html(&StudioCell::Unreadable),
+            "<td class=\"px-6 py-4 text-sm truncate max-w-xs text-amber-400 font-mono italic\" \
+             title=\"The stored value is not text, a number or a Boolean\">unreadable</td>"
+        );
+        assert_eq!(
+            cell_html(&StudioCell::Value("<b>".to_string())),
+            "<td class=\"px-6 py-4 text-sm truncate max-w-xs text-slate-300\">&lt;b&gt;</td>"
+        );
+    }
+}
+
+#[cfg(test)]
 #[cfg(not(miri))]
 #[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 mod tests {

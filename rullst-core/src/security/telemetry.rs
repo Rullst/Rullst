@@ -442,7 +442,7 @@ impl SecurityStore {
 
 // Timestamp format of the telemetry store's events.
 fn current_timestamp_str() -> String {
-    chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
+    crate::rfc3339::format_utc(jiff::Timestamp::now(), crate::rfc3339::Fraction::Millis)
 }
 
 fn unix_timestamp_secs() -> u64 {

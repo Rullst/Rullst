@@ -74,6 +74,14 @@ release's source, work scheduled for the next one) are in that release's
 - Native date/time `Schema` columns need a strict driver feature
   (`strict-postgres`, `strict-mysql`, `strict-sqlite`). On the SQLx `Any` pool
   `timestamps()` keeps `TEXT` columns.
+- The ORM's date and time types (`rullst::orm::Timestamp`, `DateTime`, `Date`
+  and `Time`) wrap `jiff` 1. A `Timestamp` holds instants from
+  `-9999-01-02T01:59:59Z` to `9999-12-30T22:00:00.999999999Z`, so an instant
+  stored outside that range, such as the end-of-time sentinel
+  `9999-12-31 23:59:59` in a `timestamptz` or MySQL `DATETIME` column, is a
+  decode error that names the value. Store NULL in an `Option<Timestamp>` for
+  "no end", or use a civil `DateTime` column, which keeps the full range.
+  Leap seconds are not represented: a stored `:60` reads as `:59`.
 - In WAL mode (`sqlite_journal_mode = "wal"`) the database file alone is no
   longer a backup (use `sqlite3 ".backup"`), every process must run on one
   host, and WAL must not be used on a network filesystem (NFS, SMB, Azure

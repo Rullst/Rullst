@@ -47,7 +47,7 @@ hmac = { workspace = true }
 rand = { workspace = true }
 subtle = { workspace = true }
 hex = { workspace = true }
-chrono = { workspace = true, features = ["clock", "serde"] }
+jiff = { workspace = true }
 thiserror = { workspace = true }
 axum = { workspace = true, optional = true }
 actix-web = { version = "4", optional = true, default-features = false }

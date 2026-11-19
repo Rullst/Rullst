@@ -105,10 +105,9 @@ fn delivery_key(invoice: &Invoice, receipt: &ChargeReceipt) -> String {
 mod tests {
     use super::*;
     use crate::ChargeStatus;
-    use chrono::Utc;
 
     fn invoice() -> Invoice {
-        Invoice::new("INV-42", "owner@example.com", Utc::now(), "BRL")
+        Invoice::new("INV-42", "owner@example.com", jiff::Timestamp::now(), "BRL")
             .with_item("Subscription", 4_990)
     }
 
@@ -204,8 +203,13 @@ mod tests {
     #[test]
     fn zero_and_three_decimal_currencies_bind_in_provider_minor_units() {
         for (currency, amount_minor) in [("JPY", 2_500), ("KWD", 12_340)] {
-            let invoice = Invoice::new("INV-42", "owner@example.com", Utc::now(), currency)
-                .with_item("Subscription", amount_minor);
+            let invoice = Invoice::new(
+                "INV-42",
+                "owner@example.com",
+                jiff::Timestamp::now(),
+                currency,
+            )
+            .with_item("Subscription", amount_minor);
             let receipt = ChargeReceipt::from_verified_provider_response(
                 "fixture",
                 "charge_42",

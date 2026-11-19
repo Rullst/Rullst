@@ -235,17 +235,22 @@ async fn optional_provider_settings_are_consumed_without_live_requests() {
 
 #[test]
 fn schedule_conversion_rejects_pre_epoch_values() {
-    let epoch = chrono::DateTime::<chrono::Utc>::from_timestamp(0, 123).unwrap();
+    let epoch = jiff::Timestamp::new(0, 123).unwrap();
     assert_eq!(
         datetime_to_system_time(&epoch).unwrap(),
         UNIX_EPOCH + Duration::from_nanos(123)
     );
 
-    let before_epoch = chrono::DateTime::<chrono::Utc>::from_timestamp(-1, 0).unwrap();
-    assert!(matches!(
-        datetime_to_system_time(&before_epoch),
-        Err(MailError::ValidationError(message)) if message.contains("predates")
-    ));
+    // Half a second before the epoch is second -1, not second 0.
+    for before_epoch in [
+        jiff::Timestamp::new(-1, 0).unwrap(),
+        jiff::Timestamp::new(0, -500_000_000).unwrap(),
+    ] {
+        assert!(matches!(
+            datetime_to_system_time(&before_epoch),
+            Err(MailError::ValidationError(message)) if message.contains("predates")
+        ));
+    }
 }
 
 #[derive(Default)]
@@ -323,7 +328,7 @@ async fn explicit_queue_preserves_tenant_and_schedule_and_maps_driver_errors() {
     }));
     Mail::enqueue(&queue, valid_message()).await.unwrap();
 
-    let scheduled_at = chrono::Utc::now() + chrono::Duration::seconds(30);
+    let scheduled_at = jiff::Timestamp::now() + jiff::SignedDuration::from_secs(30);
     Mail::enqueue_for_tenant(&queue, "tenant_acme", valid_message().send_at(scheduled_at))
         .await
         .unwrap();

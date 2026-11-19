@@ -99,7 +99,6 @@ enabled automatically. See the
 
 ```rust,no_run
 use rullst_mail::{Mail, Message};
-use chrono::{Utc, Duration};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

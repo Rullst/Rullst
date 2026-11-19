@@ -12,8 +12,9 @@ registration; it does not discover an arbitrary database schema automatically.
 The `Nexus` derive generates `NexusModel` metadata for named-field structs. It
 infers booleans, integers (`FieldKind::Integer` bounded by the Rust type, with
 `u64`/`usize` capped at `i64::MAX`, so a fraction or out-of-range value is
-rejected), floating-point numbers, dates (`chrono` `NaiveDate`; `DateTime<Utc>` and
-`NaiveDateTime` under any path spelling, optional or not) and ordinary text;
+rejected), floating-point numbers, dates and times (the ORM's `Timestamp`,
+`DateTime`, `Date` and `Time` under any path, import or alias, optional or
+not) and ordinary text;
 semantic widgets that Rust's type alone cannot reveal are selected explicitly:
 
 ```rust
@@ -56,10 +57,10 @@ field.
 
 | Kind (derived from) | Input | Accepted value | Stored in a text column |
 | :--- | :--- | :--- | :--- |
-| `date` (`NaiveDate`) | `date` | `YYYY-MM-DD`, year 0001 to 9999 | `YYYY-MM-DD` |
-| `time` (`NaiveTime`) | `time` | `HH:MM`, `HH:MM:SS` or with a fraction of up to 9 digits | `HH:MM:SS[.fraction]` |
-| `datetime` (`NaiveDateTime`) | `datetime-local` | a local `YYYY-MM-DDTHH:MM[:SS[.fraction]]` (or a space for `T`) | `YYYY-MM-DD HH:MM:SS[.fraction]` |
-| `datetime_utc` (`DateTime<Utc>`) | `datetime-local`, labelled with the panel's time zone, `(UTC)` by default | as `datetime`, read as a wall time in the panel's time zone; `Z`, `±HH:MM` or `±HH` is converted to UTC | RFC 3339, `2026-10-15T09:30:00+00:00` |
+| `date` (`Date`) | `date` | `YYYY-MM-DD`, year 0001 to 9999 | `YYYY-MM-DD` |
+| `time` (`Time`) | `time` | `HH:MM`, `HH:MM:SS` or with a fraction of up to 9 digits | `HH:MM:SS[.fraction]` |
+| `datetime` (`DateTime`) | `datetime-local` | a local `YYYY-MM-DDTHH:MM[:SS[.fraction]]` (or a space for `T`) | `YYYY-MM-DD HH:MM:SS[.fraction]` |
+| `datetime_utc` (`Timestamp`) | `datetime-local`, labelled with the panel's time zone, `(UTC)` by default | as `datetime`, read as a wall time in the panel's time zone; `Z`, `±HH:MM` or `±HH` is converted to UTC | RFC 3339, `2026-10-15T09:30:00+00:00` |
 
 A `datetime-local` input has no time zone, so a `datetime_utc` field shows and
 accepts wall times in the panel's time zone, which is UTC unless the

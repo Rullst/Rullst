@@ -73,6 +73,8 @@ impl Alpha6Manifests {
             builds_rullst_ed25519(package, |names| has_feature(declaration, names));
         let major = minimum(declaration).map(|(major, _)| major);
         match package {
+            "chrono" => facts.chrono_dependency = true,
+            "sqlx" => facts.sqlx_chrono |= has_feature(declaration, &["chrono"]),
             "jsonwebtoken" => facts.jsonwebtoken_below_12 |= major.is_some_and(|major| major < 12),
             "ed25519-dalek" if major.is_some_and(|major| major < 3) => self
                 .ed25519_below_3
@@ -92,6 +94,10 @@ impl Alpha6Manifests {
     ) {
         facts.session_registry |= feature_reference(document, text, packages, |package, name| {
             registry_features(package).contains(&name).then_some(())
+        })
+        .is_some();
+        facts.sqlx_chrono |= feature_reference(document, text, packages, |package, name| {
+            (package == "sqlx" && name == "chrono").then_some(())
         })
         .is_some();
         self.rullst_ed25519 |= feature_reference(document, text, packages, |package, name| {

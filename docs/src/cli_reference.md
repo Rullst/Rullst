@@ -550,8 +550,9 @@ rule anyway.
 `update project verify`/`review`/`apply` refuse a preparation with must-change
 findings; preparations apply every rule. In JSON, each
 `source_findings` element keeps `path`, `line`, `code`, `severity` (`BLOCKER`
-or `REVIEW`) and `message` and adds `kind`, `introduced_in`, `migration_row`
-and `migration_url`; the root adds `finding_counts`, `unscanned_sources`,
+or `REVIEW`) and `message` and adds `kind`, `introduced_in`, `migration_row`,
+`migration_url` and `note` (what the location needs beyond the rule's
+guidance, or `null`); the root adds `finding_counts`, `unscanned_sources`,
 `migration_guide` and `rule_selection` (`current_version`, `all_rules`,
 `skipped_rules`, `hidden_findings`). See the [tutorial](tutorials/36-assisted-framework-upgrades.md#v12-to-v13-source-findings)
 and its [rule classification](tutorials/36-assisted-framework-upgrades.md#v12--v13-rule-classification).
@@ -1048,8 +1049,13 @@ additive changes (new tables or columns), with drops of model-less tables or
 columns included as commented-out code for review. When only such destructive
 differences remain, it lists them and writes no migration. Column types follow
 the field's Rust type: `i8`/`i16`/`i32` use `integer`, `i64` `big_integer`,
-`f32`/`f64` `float`, `bool` `boolean`, and `String`, `SecretString`, chrono
-date/time types and `Json` use `string`. A new table declares non-`Option`
+`f32`/`f64` `float`, `bool` `boolean`, `String`, `SecretString` and `Json`
+use `string`, and the ORM's date/time types `Timestamp`, `DateTime`, `Date`
+and `Time` (matched by the last path segment, also inside `Option`) use
+`timestamp_tz`, `timestamp`, `date` and `time`. A `DateTime` with generic
+arguments, such as a `chrono` `DateTime<Utc>` left in a model, is declared as
+`timestamp_tz` with a warning that points to `V13-ORM-CHRONO-TYPES`. A new
+table declares non-`Option`
 fields `NOT NULL`. A required field added to an existing table is declared
 `NOT NULL DEFAULT 0`, `0.0` or `''` (a commented backfill to review); a
 required date, encrypted or JSON field added to an existing table has no

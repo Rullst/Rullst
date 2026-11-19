@@ -1,5 +1,5 @@
 use rullst::db::{Orm, RowSnapshot};
-use rullst::orm::chrono::{DateTime, Utc};
+use rullst::orm::Timestamp;
 
 #[derive(Debug, Clone, Orm)]
 #[orm(table = "billing_customers")]
@@ -8,8 +8,8 @@ pub struct BillingCustomer {
     pub __FOREIGN_KEY__: i32,
     pub email: String,
     pub customer_id: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
     // Remembers the loaded values, so `save()` writes only the columns this
     // record changed. Build new records with `snapshot: RowSnapshot::default()`.
     #[sqlx(skip)]

@@ -13,7 +13,8 @@ cargo rullst make:jwt
 ```
 
 This creates `src/middlewares/jwt_middleware.rs`, registers its module, and adds
-the direct `jsonwebtoken`, `chrono`, and `serde` dependencies when missing.
+the direct `jsonwebtoken` and `serde` dependencies when missing. The middleware
+reads the clock with `std::time::SystemTime`, so it needs no date crate.
 
 Configure a high-entropy secret plus exact issuer and audience values:
 

@@ -103,8 +103,16 @@ pub(super) fn scan(
         out,
         facts: TokenFacts::default(),
         names: CodeNames::of(stream.clone()),
+        chrono: super::alpha6_jiff::ChronoBindings::of(stream.clone()),
     };
     scanner.level(stream, None);
+    // SQLx reads that decode a chrono type need SQLx's `chrono` feature,
+    // which Rullst no longer enables.
+    if !context.facts.sqlx_chrono {
+        for line in scanner.chrono.decodes() {
+            scanner.out.add(&ORM_CHRONO_TYPES, *line);
+        }
+    }
     scanner.facts
 }
 
@@ -113,6 +121,7 @@ struct Scanner<'a, 'b> {
     out: &'b mut Collector,
     facts: TokenFacts,
     names: CodeNames,
+    chrono: super::alpha6_jiff::ChronoBindings,
 }
 
 fn line(tree: &TokenTree) -> usize {
@@ -250,6 +259,11 @@ impl Scanner<'_, '_> {
                             }
                             if let Some(rule) =
                                 super::alpha6_defaults::field_rule(&name, self.context.text)
+                            {
+                                self.hit(rule, line(tree));
+                            }
+                            if let Some(rule) =
+                                super::alpha6_jiff::field_rule(&name, self.context.text)
                             {
                                 self.hit(rule, line(tree));
                             }
@@ -399,6 +413,9 @@ impl Scanner<'_, '_> {
         {
             self.hit(rule, at);
         }
+        if let Some(rule) = super::alpha6_jiff::path_rule(segments, tokens.get(end), facts) {
+            self.hit(rule, at);
+        }
         for pair in segments.windows(2) {
             match (pair[0].as_str(), pair[1].as_str()) {
                 ("FieldKind", "Number") if comparison_macro || compared(tokens, start, end) => {
@@ -429,6 +446,16 @@ impl Scanner<'_, '_> {
         }
         if let Some(rule) = super::alpha6_public_deps::call_rule(&names, &args) {
             self.hit(rule, at);
+        }
+        if let Some(rule) =
+            super::alpha6_jiff::call_rule(&names, &args, self.context.text, &self.chrono)
+        {
+            self.hit(rule, at);
+        }
+        match super::alpha6_cron::call_rule(&names, &args, self.context.text) {
+            Some((rule, Some(note))) => self.out.add_note(rule, at, note),
+            Some((rule, None)) => self.hit(rule, at),
+            None => {}
         }
         match names.as_slice() {
             [.., "Storage", "r2"] => self.hit(&R2_PUBLIC_URL, at),
@@ -502,6 +529,16 @@ impl Scanner<'_, '_> {
         if let Some(rule) =
             super::alpha6_deprecated::method_rule(name, args.is_empty(), self.context.text)
         {
+            self.hit(rule, at);
+        }
+        if let Some(rule) = super::alpha6_jiff::method_rule(
+            name,
+            chain,
+            &args,
+            self.context.text,
+            &self.chrono,
+            self.context.facts,
+        ) {
             self.hit(rule, at);
         }
         let arguments: Vec<TokenTree> = args.clone().into_iter().collect();

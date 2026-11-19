@@ -25,7 +25,7 @@ and Qdrant have no Rullst adapter since 13.0.0-alpha.5: the
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | SQLite | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Every starter; the default (`--database sqlite`) | No server (in-process): `matrix_sqlite`, `differential` (the reference), Studio `data_browser_mutation_sqlite`, Nexus `tenant_audit` |
 | PostgreSQL | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Every starter (`--database postgres`) | `matrix_postgres`, `differential`, Studio `data_browser_mutation_postgres`, Nexus `sql_matrix_postgres` |
-| MySQL / MariaDB | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes, but DDL commits implicitly (note 4) | Every starter (`--database mysql` or `--database mariadb`) | `matrix_mysql` (MySQL 8.0), `matrix_mariadb`, `differential` (MySQL 8.4, MariaDB 11.4), Studio `data_browser_mutation_mysql` and `_mariadb`, Nexus `sql_matrix_mysql` (MySQL only) |
+| MySQL / MariaDB | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes, but DDL commits implicitly (note 4) | Every starter (`--database mysql` or `--database mariadb`) | `matrix_mysql` (MySQL 8.0), `matrix_mariadb`, `differential` (MySQL 8.4, MariaDB 11.4), Studio `data_browser_mutation_mysql` and `_mariadb`, Nexus `sql_matrix_mysql` and `_mariadb` |
 | Turso / libSQL | Blank starter only (note 1) | No: a separate model API (note 2) | No: SQL `TursoMigration`s (note 3) | No `artisan!`; the Blank starter answers `db:migrate`, `db:rollback` and `db:status` itself (note 3) | No | No | No (note 5) | Statement batches only (`TursoStore::transaction`) | Primary: Blank, web page or `--api` (`--database turso`). Side store: `--turso` with any starter | `matrix_turso` against `libsql-server` v0.24.32 |
 | MongoDB | No | No (application code: [recipe](recipes/mongodb.md)) | No | No | No | No | No | No | No flag; adapter removed in 13.0.0-alpha.5 | None in Rullst; the recipe shows a container test |
 | DuckDB | No | No (application code: [recipe](recipes/duckdb.md)) | No | No | No | No | No | No | No flag; adapter removed in 13.0.0-alpha.5 | None in Rullst; the recipe tests in memory |
@@ -69,7 +69,8 @@ Notes:
 The live tests start the database in a container (Testcontainers) in the
 **Run provider matrices** step of the Rust CI workflow's Linux workspace
 shard. `matrix_postgres`, `matrix_mysql` and `matrix_sqlite` also run in the
-**ORM strict-postgres**, **ORM strict-mysql** and **ORM strict-sqlite** jobs.
+**ORM strict-postgres**, **ORM strict-mysql** and **ORM strict-sqlite** jobs, and
+`matrix_mariadb` in the **ORM strict-mysql** job too.
 The tests live in `rullst-orm/tests/`, `rullst-studio/tests/` and
 `rullst-nexus/tests/`, and each pins its container image. A live test proves
 the adapter's contract against that server version; it does not certify a

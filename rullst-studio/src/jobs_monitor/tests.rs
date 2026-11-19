@@ -252,3 +252,48 @@ async fn large_payloads_render_bounded_previews() {
     assert!(html.contains(&payload));
     assert!(html.contains(&format!("<div>{}…</div>", "ü".repeat(512))));
 }
+
+#[tokio::test]
+async fn dashboard_counts_each_status_and_the_table_lists_the_jobs() {
+    let driver = SqliteDriver::new("sqlite::memory:")
+        .await
+        .unwrap()
+        .try_with_completed_history_limit(10)
+        .unwrap();
+    for id in ["failed-job", "running-job", "waiting-job"] {
+        driver
+            .push(id, "report", r#"{"scope":"daily"}"#)
+            .await
+            .unwrap();
+    }
+    let failed = driver.pop().await.unwrap().unwrap();
+    driver.mark_failed(&failed.id, "boom").await.unwrap();
+    let _processing = driver.pop().await.unwrap().unwrap();
+    let app = router(Queue::custom(Box::new(driver)));
+
+    let html = snapshot_html(&app).await;
+    assert!(html.contains("<dt>Pending jobs in the queue</dt><dd>1</dd>"));
+    assert!(html.contains("<dt>Marked failed among the 50 most recent records</dt><dd>1</dd>"));
+    assert!(html.contains("<dt>Marked processing among the 50 most recent records</dt><dd>1</dd>"));
+    assert!(html.contains("<dt>Completed among the 50 most recent records</dt><dd>0</dd>"));
+
+    let table = app
+        .oneshot(
+            Request::builder()
+                .uri("/jobs-table")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(table.status(), StatusCode::OK);
+    let body = to_bytes(table.into_body(), 128 * 1024).await.unwrap();
+    let rows = String::from_utf8(body.to_vec()).unwrap();
+    for id in [
+        "<code>failed-j…</code>",
+        "<code>running-…</code>",
+        "<code>waiting-…</code>",
+    ] {
+        assert!(rows.contains(id), "{id}: {rows}");
+    }
+}

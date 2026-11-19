@@ -59,7 +59,8 @@ registration, step-up MFA, verified age or guardian authorization.
    available, apply per-client and per-target ingress limits, and let users
    disable email login if it is abused against them.
 4. A trusted worker calls `claim_notice`, constructs Mail `AccountEvent::EmailLoginAt`
-   with `ActionLink`, the server-configured origin and `expires_at`, then sends
+   with `ActionLink`, the server-configured origin and `expires_at` (a
+   `jiff::Timestamp`), then sends
    with the stable `delivery_id`. Use the recorded locale, with explicit fallback.
    Call `complete_notice` or `fail_notice` with a redacted delivery outcome. Claims
    last at most 60 seconds, allow six attempts and use bounded backoff. Delivery

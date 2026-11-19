@@ -16,13 +16,13 @@ pub(super) enum DriverType {
     Double,
     /// A `bool` column: PostgreSQL has no implicit integer/boolean casts.
     Boolean,
-    /// A calendar date (`chrono::NaiveDate`).
+    /// A calendar date ([`crate::Date`]).
     Date,
-    /// A time of day (`chrono::NaiveTime`).
+    /// A time of day ([`crate::Time`]).
     Time,
-    /// A date and time without a zone (`chrono::NaiveDateTime`).
+    /// A date and time without a zone ([`crate::DateTime`]).
     Timestamp,
-    /// A UTC instant (`chrono::DateTime<Utc>`).
+    /// A UTC instant ([`crate::Timestamp`]).
     TimestampTz,
     /// `timestamps()`: a [`DriverType::TimestampTz`] with a strict driver, and
     /// the alpha.1 `TEXT` column with the SQLx `Any` pool, which cannot read

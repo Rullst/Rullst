@@ -54,10 +54,10 @@ fn every_value_binds_exactly_one_parameter() {
         RullstValue::Bool(true),
         RullstValue::I64(5_000_000_000),
         RullstValue::Null,
-        RullstValue::DateTime(instant()),
-        RullstValue::NaiveDateTime(instant().naive_utc()),
-        RullstValue::Date(instant().date_naive()),
-        RullstValue::Time(instant().time()),
+        RullstValue::Timestamp("2026-10-15T09:30:00.5Z".parse().unwrap()),
+        RullstValue::CivilDateTime("2026-10-15T09:30:00.5".parse().unwrap()),
+        RullstValue::CivilDate("2026-10-15".parse().unwrap()),
+        RullstValue::CivilTime("09:30:00.5".parse().unwrap()),
     ];
     let mut query = sqlx::query::<crate::RullstDatabase>(sqlx::AssertSqlSafe("SELECT 1"));
     let mut query_as =
@@ -70,59 +70,8 @@ fn every_value_binds_exactly_one_parameter() {
     assert_eq!(query_as.take_arguments().unwrap().unwrap().len(), 10);
 }
 
-fn instant() -> chrono::DateTime<chrono::Utc> {
-    use chrono::TimeZone;
-    chrono::Utc
-        .with_ymd_and_hms(2026, 10, 15, 9, 30, 0)
-        .single()
-        .unwrap()
-        + chrono::Duration::milliseconds(500)
-}
-
-#[test]
-fn chrono_values_convert_to_their_own_variants() {
-    let at = instant();
-    assert!(matches!(RullstValue::from(at), RullstValue::DateTime(value) if value == at));
-    assert!(
-        matches!(RullstValue::from(at.naive_utc()), RullstValue::NaiveDateTime(value) if value == at.naive_utc())
-    );
-    assert!(
-        matches!(RullstValue::from(at.date_naive()), RullstValue::Date(value) if value == at.date_naive())
-    );
-    assert!(matches!(RullstValue::from(at.time()), RullstValue::Time(value) if value == at.time()));
-    assert!(matches!(
-        RullstValue::from(Some(at)),
-        RullstValue::DateTime(_)
-    ));
-    assert!(matches!(
-        RullstValue::from(None::<chrono::NaiveDate>),
-        RullstValue::Null
-    ));
-}
-
-/// The `Any` pool binds the ISO-8601 text SQLx writes to SQLite.
-#[cfg(not(any(
-    feature = "strict-postgres",
-    feature = "strict-mysql",
-    feature = "strict-sqlite"
-)))]
-#[test]
-fn the_any_pool_binds_dates_as_iso_text() {
-    let at = instant();
-    assert_eq!(
-        super::temporal::date_time(&at),
-        "2026-10-15T09:30:00.500+00:00"
-    );
-    assert_eq!(
-        super::temporal::naive_date_time(&at.naive_utc()),
-        "2026-10-15 09:30:00.500"
-    );
-    assert_eq!(super::temporal::date(&at.date_naive()), "2026-10-15");
-    assert_eq!(super::temporal::time(&at.time()), "09:30:00.500");
-}
-
-/// Strict pools bind SQLx's own `chrono` codecs; a UTC instant goes through
-/// `__bind_field::wire` (its UTC wall time on MySQL/MariaDB).
+/// Strict pools bind each type with its own codec; a UTC instant goes through
+/// `__bind_field::timestamp_wire` (its UTC wall time on MySQL/MariaDB).
 #[cfg(any(
     feature = "strict-postgres",
     feature = "strict-mysql",
@@ -130,15 +79,130 @@ fn the_any_pool_binds_dates_as_iso_text() {
 ))]
 #[test]
 fn strict_pools_bind_dates_natively() {
-    let at = instant();
+    let at: crate::Timestamp = "2026-10-15T09:30:00.5Z".parse().unwrap();
     assert_eq!(
-        super::temporal::date_time(&at),
-        crate::__bind_field::wire(at)
+        format!("{:?}", super::temporal::timestamp(at)),
+        format!("{:?}", crate::__bind_field::timestamp_wire(at))
     );
+    let civil: crate::DateTime = "2026-10-15T09:30:00.5".parse().unwrap();
+    assert_eq!(super::temporal::civil_date_time(civil), civil);
+    let day: crate::Date = "2026-10-15".parse().unwrap();
+    assert_eq!(super::temporal::civil_date(day), day);
+    let clock: crate::Time = "09:30:00.5".parse().unwrap();
+    assert_eq!(super::temporal::civil_time(clock), clock);
+}
+
+/// The parameters a query receives for one value, in a form tests compare.
+fn bound(value: &RullstValue) -> String {
+    use sqlx::Execute;
+
+    let mut query = sqlx::query::<crate::RullstDatabase>(sqlx::AssertSqlSafe("SELECT 1"))
+        .bind_rullst_value(value);
+    // MySQL/MariaDB refuse a negative year, whichever type holds it.
+    let Ok(arguments) = query.take_arguments() else {
+        return "refused".to_string();
+    };
+    let arguments = arguments.unwrap();
+    #[cfg(any(
+        feature = "strict-postgres",
+        feature = "strict-mysql",
+        feature = "strict-sqlite"
+    ))]
+    return format!("{arguments:?}");
+    #[cfg(not(any(
+        feature = "strict-postgres",
+        feature = "strict-mysql",
+        feature = "strict-sqlite"
+    )))]
+    return format!("{:?}", arguments.values.0);
+}
+
+/// On a strict pool each variant binds its type's own parameter (the
+/// golden corpora check those encodings against SQLx's `chrono` codecs).
+#[cfg(any(
+    feature = "strict-postgres",
+    feature = "strict-mysql",
+    feature = "strict-sqlite"
+))]
+mod same_parameters_as_the_codecs {
+    use proptest::prelude::*;
+
+    use super::bound;
+    use crate::RullstValue;
+    use crate::temporal::test_support::{date, date_time, instant, time};
+
+    fn bound_directly<T>(value: T) -> String
+    where
+        T: for<'q> sqlx::Encode<'q, crate::RullstDatabase>
+            + sqlx::Type<crate::RullstDatabase>
+            + Send
+            + 'static,
+    {
+        use sqlx::Execute;
+        let mut query =
+            sqlx::query::<crate::RullstDatabase>(sqlx::AssertSqlSafe("SELECT 1")).bind(value);
+        match query.take_arguments() {
+            Ok(arguments) => format!("{:?}", arguments.unwrap()),
+            Err(_) => "refused".to_string(),
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(512))]
+
+        #[test]
+        fn for_every_value(at in instant(), civil in date_time(), day in date(), clock in time()) {
+            prop_assert_eq!(
+                bound(&RullstValue::Timestamp(at)),
+                bound_directly(crate::__bind_field::timestamp_wire(at))
+            );
+            prop_assert_eq!(bound(&RullstValue::CivilDateTime(civil)), bound_directly(civil));
+            prop_assert_eq!(bound(&RullstValue::CivilDate(day)), bound_directly(day));
+            prop_assert_eq!(bound(&RullstValue::CivilTime(clock)), bound_directly(clock));
+        }
+    }
+
+    #[test]
+    fn and_never_the_null_parameter() {
+        let at: crate::Timestamp = "2026-10-15T09:30:00.5Z".parse().unwrap();
+        assert_ne!(
+            bound(&RullstValue::Timestamp(at)),
+            bound(&RullstValue::Null)
+        );
+        let day: crate::Date = "2026-10-15".parse().unwrap();
+        assert_ne!(
+            bound(&RullstValue::CivilDate(day)),
+            bound(&RullstValue::Null)
+        );
+    }
+}
+
+/// The `Any` pool binds the same ISO-8601 text for the jiff-based variants.
+#[cfg(not(any(
+    feature = "strict-postgres",
+    feature = "strict-mysql",
+    feature = "strict-sqlite"
+)))]
+#[test]
+fn the_any_pool_binds_jiff_dates_as_the_same_iso_text() {
+    let at: crate::Timestamp = "2026-10-15T09:30:00.5Z".parse().unwrap();
     assert_eq!(
-        super::temporal::naive_date_time(&at.naive_utc()),
-        at.naive_utc()
+        bound(&RullstValue::Timestamp(at)),
+        r#"[Text("2026-10-15T09:30:00.500+00:00")]"#
     );
-    assert_eq!(super::temporal::date(&at.date_naive()), at.date_naive());
-    assert_eq!(super::temporal::time(&at.time()), at.time());
+    let civil: crate::DateTime = "2026-10-15T09:30:00.5".parse().unwrap();
+    assert_eq!(
+        bound(&RullstValue::CivilDateTime(civil)),
+        r#"[Text("2026-10-15 09:30:00.500")]"#
+    );
+    let day: crate::Date = "2026-10-15".parse().unwrap();
+    assert_eq!(
+        bound(&RullstValue::CivilDate(day)),
+        r#"[Text("2026-10-15")]"#
+    );
+    let clock: crate::Time = "09:30:00.5".parse().unwrap();
+    assert_eq!(
+        bound(&RullstValue::CivilTime(clock)),
+        r#"[Text("09:30:00.500")]"#
+    );
 }

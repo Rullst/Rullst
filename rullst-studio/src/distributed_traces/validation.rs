@@ -139,4 +139,68 @@ mod tests {
             Err(TraceIngestionError::InvalidBatch)
         );
     }
+
+    #[test]
+    fn bounds_are_inclusive_at_their_documented_values() {
+        assert_eq!(MAX_TRACE_BATCH_BYTES, 131_072);
+        assert_eq!(MAX_SPAN_DURATION_US, 86_400_000_000);
+        assert_eq!(MAX_SPAN_AGE_SECS, 86_400);
+
+        let now = 1_800_000_000;
+        let check =
+            |span: DistributedTraceSpanV1| validate_batch(&TraceBatchV1::new(vec![span]), now);
+        let rejected = Err(TraceIngestionError::InvalidBatch);
+
+        let unique = |count: u64| {
+            (1..=count)
+                .map(|index| {
+                    let mut span = span(now);
+                    span.span_id = format!("{index:016x}");
+                    span
+                })
+                .collect::<Vec<_>>()
+        };
+        assert!(validate_batch(&TraceBatchV1::new(unique(128)), now).is_ok());
+        assert_eq!(
+            validate_batch(&TraceBatchV1::new(unique(129)), now),
+            rejected
+        );
+
+        let mut operation = span(now);
+        operation.operation = "o".repeat(160);
+        assert!(check(operation.clone()).is_ok());
+        operation.operation.push('o');
+        assert_eq!(check(operation), rejected);
+        let mut empty = span(now);
+        empty.operation = String::new();
+        assert_eq!(check(empty), rejected);
+
+        let mut duration = span(now);
+        duration.duration_us = 86_400_000_000;
+        assert!(check(duration.clone()).is_ok());
+        duration.duration_us += 1;
+        assert_eq!(check(duration), rejected);
+
+        let mut started = span(now);
+        started.started_at_unix_us = (now - 86_400) * 1_000_000;
+        assert!(check(started.clone()).is_ok());
+        started.started_at_unix_us = (now - 86_401) * 1_000_000;
+        assert_eq!(check(started.clone()), rejected);
+        started.started_at_unix_us = (now + 300) * 1_000_000 + 999_999;
+        assert!(check(started.clone()).is_ok());
+        started.started_at_unix_us = (now + 301) * 1_000_000;
+        assert_eq!(check(started), rejected);
+
+        let mut child = span(now);
+        child.parent_span_id = Some("fedcba9876543210".to_string());
+        assert!(check(child.clone()).is_ok());
+        child.parent_span_id = Some("FEDCBA9876543210".to_string());
+        assert_eq!(check(child.clone()), rejected);
+        child.parent_span_id = Some(child.span_id.clone());
+        assert_eq!(check(child), rejected);
+
+        let mut short_span_id = span(now);
+        short_span_id.span_id = "0123456789abcde".to_string();
+        assert_eq!(check(short_span_id), rejected);
+    }
 }

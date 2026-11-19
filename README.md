@@ -374,7 +374,7 @@ These results are evidence for their stated scope, not a security certification
 of every application built with Rullst.
 
 <details>
-<summary><strong>🛡️ Open the verification dashboard (35 workflows)</strong></summary>
+<summary><strong>🛡️ Open the verification dashboard (36 workflows)</strong></summary>
 
 <p align="center">
   Badges are pinned to the <code>main</code> branch; they report the latest matching run, not a certification or deployment guarantee.
@@ -389,7 +389,7 @@ of every application built with Rullst.
 | **End-to-end smoke** | [![E2E](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/e2e-smoke.yml?branch=main&style=flat-square&label=E2E)](https://github.com/Rullst/Rullst/actions/workflows/e2e-smoke.yml?query=branch%3Amain) | Boots the release blog example and verifies HTTP, security headers, form flow, and SQLite persistence. |
 | **Codecov — whole repository** | [![Whole-repository coverage](https://codecov.io/github/Rullst/Rullst/branch/main/graph/badge.svg)](https://codecov.io/gh/Rullst/Rullst) | The badge reports the current branch aggregate. The enforced repository floor is **≥90%** with zero tolerance. For reference, the [LLVM run](https://github.com/Rullst/Rullst/actions/runs/34895523751) on the v12.0.0 release commit `eb11f892` measured **90.3220%** (79,813/88,365 lines) before Codecov upload. |
 | **Codecov — framework libraries** | [![Framework library coverage](https://codecov.io/github/Rullst/Rullst/branch/main/graph/badge.svg?component=framework_libraries)](https://codecov.io/gh/Rullst/Rullst) | Runtime libraries are enforced separately at **≥90%**. CLI and proc-macro components stay separately visible; [Coverage CI](https://github.com/Rullst/Rullst/actions/workflows/coverage.yml?query=branch%3Amain) uploads their real LCOV evidence with OIDC. |
-| **Supply chain** | [![Supply Chain](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/supply-chain.yml?branch=main&style=flat-square&label=Supply%20Chain)](https://github.com/Rullst/Rullst/actions/workflows/supply-chain.yml?query=branch%3Amain) | Cargo Deny's advisory, license, ban and source policy; a RustSec Cargo Audit of the production and fuzz locks; and a check that every advisory exception has an owner and an expiry in the ledger. Runs on every push and pull request and daily. |
+| **Supply chain** | [![Supply Chain](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/supply-chain.yml?branch=main&style=flat-square&label=Supply%20Chain)](https://github.com/Rullst/Rullst/actions/workflows/supply-chain.yml?query=branch%3Amain) | Cargo Deny's advisory, license, ban and source policy; a RustSec Cargo Audit of the production and fuzz locks; and a check that every advisory exception has an owner and an expiry in the ledger. Runs on every push and pull request and twice a day; a failed scheduled run opens an issue. |
 | **CodeQL SAST** | [![CodeQL](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/codeql.yml?branch=main&style=flat-square&label=CodeQL)](https://github.com/Rullst/Rullst/actions/workflows/codeql.yml?query=branch%3Amain) | Rust semantic analysis after an all-target/all-feature build, plus JavaScript/TypeScript analysis. |
 | **OpenSSF Scorecard** | [![OpenSSF Scorecard](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.scorecard.dev%2Fprojects%2Fgithub.com%2FRullst%2FRullst&query=%24.score&label=OpenSSF%20Scorecard&style=flat-square)](https://scorecard.dev/viewer/?uri=github.com/Rullst/Rullst) | The badge renders the score from the official public Scorecard JSON report; the pinned [Scorecard workflow](https://github.com/Rullst/Rullst/actions/workflows/scorecards.yml) publishes OIDC-authenticated results on each `main` push and weekly. A score is evidence, not a security certification. [Evidence and improvements](https://rullst.github.io/Rullst/book/openssf-scorecard.html). |
 | **Cargo Machete** | [![Machete](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/machete.yml?branch=main&style=flat-square&label=Machete)](https://github.com/Rullst/Rullst/actions/workflows/machete.yml?query=branch%3Amain) | Unused direct dependency detection. |
@@ -419,6 +419,7 @@ green main gates:
 | [OWASP ZAP](https://github.com/Rullst/Rullst/actions/workflows/dast-zap.yml) | Manual baseline over four release surfaces: the generated REST API, the generated SaaS starter (public pages, then signed-in pages with a disposable account) and the LMS example are blocking with no ignored alerts; the deliberately CDN-backed blog showcase remains an explicitly informational boundary. |
 | [Kani](https://github.com/Rullst/Rullst/actions/workflows/kani.yml), [Miri](https://github.com/Rullst/Rullst/actions/workflows/miri.yml) | Weekly on `main` and dispatched for release admission: the selected Kani harnesses and Miri scopes are strict. Only the dispatched run on the exact candidate commit counts as release evidence. The Miri run also has informational `cargo careful test` jobs. |
 | [Mutation testing](https://github.com/Rullst/Rullst/actions/workflows/mutants.yml), [cargo-udeps](https://github.com/Rullst/Rullst/actions/workflows/udeps.yml) | Manual mutation campaigns and weekly unused-dependency scans; their findings remain explicitly informational. |
+| [Public dependency health](https://github.com/Rullst/Rullst/actions/workflows/dependency-health.yml) | Monthly/manual informational report on the crates the public API exposes: stale releases, newer incompatible lines, RustSec advisories (unmaintained ones included) and archived repositories; a flagged crate opens or updates an issue. |
 | [v13 Verus pilot](https://github.com/Rullst/Rullst/blob/main/.github/workflows/verus.yml) | Optional production-linked age-policy proof with pinned tooling and three negative controls. Hosted registration/acceptance remains pending; no framework-wide correctness claim. |
 | [GitHub Pages](https://github.com/Rullst/Rullst/actions/workflows/pages.yml) | Deploys development documentation and the benchmark dashboards from `main` under `/Rullst/`; the [rullst.win](https://rullst.win/) landing page is built from the same `docs/` sources by `Rullst/Rullst.github.io`. It is not a code-quality gate. |
 | [Release and provenance](https://github.com/Rullst/Rullst/actions/workflows/release.yml) | Exact version tags only: exact-SHA admission of the full CI matrix, package-all, evidence bundle, checksums, GitHub build-provenance attestation, changelog-derived release notes, and ordered crates.io publication. This does **not** claim a project-wide SLSA level or independent certification. |
@@ -426,13 +427,13 @@ green main gates:
 Scheduled events use the repository's default branch, so scheduled and
 continuous development evidence refer to `main`; the frozen v12 line has its own branch.
 The branch-protection profiles and the exact scope of all
-35 workflow definitions in this source branch are documented in
+36 workflow definitions in this source branch are documented in
 [WORKFLOWS.md](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md).
 
 </details>
 
 - 📖 **[CI/CD and security workflows](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md)**:
-  the exact scope of all 35 workflow definitions and the branch-protection profiles.
+  the exact scope of all 36 workflow definitions and the branch-protection profiles.
 - 🧰 **[How the repository is maintained](https://github.com/Rullst/Rullst/blob/main/MAINTAINING.md)**:
   workstation rules, CI gates, fuzzing evidence and release admission.
 - 📋 [Capability status](https://rullst.github.io/Rullst/book/capability-status.html)
