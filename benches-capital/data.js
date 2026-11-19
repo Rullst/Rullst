@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795069035370,
+  "lastUpdate": 1795070616664,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -19065,6 +19065,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/e9338b13792f87f55ddf6bad683217b3f3b02f91"
         },
         "date": 1795069034200,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9feff71f4b89de6f091c912968673e31ab8b3bef",
+          "message": "Merge pull request #770 from Rullst/docs/v13-chrono-jiff-cheat-sheet\n\ndocs(migration): chrono→jiff cheat sheet; review glob-imported literals and moved Caddyfiles",
+          "timestamp": "2026-11-19T03:27:19-03:00",
+          "tree_id": "aac5498666e37292640de9bd73249b4b57dc3ae5",
+          "url": "https://github.com/Rullst/Rullst/commit/9feff71f4b89de6f091c912968673e31ab8b3bef"
+        },
+        "date": 1795070615829,
         "tool": "cargo",
         "benches": [
           {
