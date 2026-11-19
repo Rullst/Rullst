@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795063086079,
+  "lastUpdate": 1795065471274,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -22100,6 +22100,54 @@ window.BENCHMARK_DATA = {
           {
             "name": "ai_pii_masking/mask_pii",
             "value": 284,
+            "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ae533e2478882f264b27c92a092c28a090117b1d",
+          "message": "Merge pull request #755 from Rullst/feat/v13-jiff-docs\n\ndocs(v13): document the move from chrono to jiff",
+          "timestamp": "2026-11-19T02:00:14-03:00",
+          "tree_id": "ced36ea665aaba734552b54bda4b099e46ac5cfb",
+          "url": "https://github.com/Rullst/Rullst/commit/ae533e2478882f264b27c92a092c28a090117b1d"
+        },
+        "date": 1795065470956,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1190,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 235,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 279,
             "range": "± 1",
             "unit": "ns/iter"
           }
