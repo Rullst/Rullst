@@ -125,9 +125,9 @@ impl core::panic::unwind_safe::RefUnwindSafe for rullst_labs::ExecutionLimits
 impl core::panic::unwind_safe::UnwindSafe for rullst_labs::ExecutionLimits
 #[non_exhaustive] pub enum rullst_labs::ExecutionProfile
 pub rullst_labs::ExecutionProfile::Simulation
-pub rullst_labs::ExecutionProfile::LinuxExperimental { .. }
-pub rullst_labs::ExecutionProfile::LinuxExperimental::tools: rullst_labs::ToolIdentity
-pub rullst_labs::ExecutionProfile::LinuxExperimental::receipt_key: rullst_labs::ContentHash
+pub rullst_labs::ExecutionProfile::PinnedRunner { .. }
+pub rullst_labs::ExecutionProfile::PinnedRunner::tools: rullst_labs::ToolIdentity
+pub rullst_labs::ExecutionProfile::PinnedRunner::receipt_key: rullst_labs::ContentHash
 impl rullst_labs::ExecutionProfile
 pub fn rullst_labs::ExecutionProfile::digest(&self) -> core::result::Result<rullst_labs::ContentHash, rullst_labs::LabError>
 impl core::clone::Clone for rullst_labs::ExecutionProfile
@@ -601,9 +601,9 @@ impl core::panic::unwind_safe::RefUnwindSafe for rullst_labs::sqlite::LeasedJob
 impl core::panic::unwind_safe::UnwindSafe for rullst_labs::sqlite::LeasedJob
 #[non_exhaustive] pub enum rullst_labs::sqlite::ResultEvidence
 pub rullst_labs::sqlite::ResultEvidence::Simulation
-pub rullst_labs::sqlite::ResultEvidence::Experimental { .. }
-pub rullst_labs::sqlite::ResultEvidence::Experimental::receipt: rullst_labs::ContentHash
-pub rullst_labs::sqlite::ResultEvidence::Experimental::observations: rullst_labs::ContentHash
+pub rullst_labs::sqlite::ResultEvidence::SignedReceipt { .. }
+pub rullst_labs::sqlite::ResultEvidence::SignedReceipt::receipt: rullst_labs::ContentHash
+pub rullst_labs::sqlite::ResultEvidence::SignedReceipt::observations: rullst_labs::ContentHash
 impl core::clone::Clone for rullst_labs::sqlite::ResultEvidence
 impl core::cmp::Eq for rullst_labs::sqlite::ResultEvidence
 impl core::cmp::PartialEq for rullst_labs::sqlite::ResultEvidence

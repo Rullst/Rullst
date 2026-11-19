@@ -565,52 +565,6 @@ impl core::marker::Sync for rullst_iot::SensorTelemetry
 impl core::marker::Unpin for rullst_iot::SensorTelemetry
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::SensorTelemetry
 impl core::panic::unwind_safe::UnwindSafe for rullst_iot::SensorTelemetry
-#[non_exhaustive] pub struct rullst_iot::SimulatedHsmDevice
-impl rullst_iot::SimulatedHsmDevice
-pub fn rullst_iot::SimulatedHsmDevice::derive_fixture_bytes(&self) -> [u8; 32]
-pub fn rullst_iot::SimulatedHsmDevice::digest_fixture(&self, payload: &[u8]) -> [u8; 32]
-pub fn rullst_iot::SimulatedHsmDevice::new(profile: rullst_iot::SimulatedHsmProfile, serial: impl core::convert::Into<alloc::string::String>) -> Self
-pub fn rullst_iot::SimulatedHsmDevice::profile(&self) -> rullst_iot::SimulatedHsmProfile
-pub fn rullst_iot::SimulatedHsmDevice::serial(&self) -> &str
-impl core::marker::Send for rullst_iot::SimulatedHsmDevice
-impl core::marker::Sync for rullst_iot::SimulatedHsmDevice
-impl core::marker::Unpin for rullst_iot::SimulatedHsmDevice
-impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::SimulatedHsmDevice
-impl core::panic::unwind_safe::UnwindSafe for rullst_iot::SimulatedHsmDevice
-#[non_exhaustive] pub enum rullst_iot::SimulatedHsmProfile
-pub rullst_iot::SimulatedHsmProfile::Atecc608A
-pub rullst_iot::SimulatedHsmProfile::Tpm2
-pub rullst_iot::SimulatedHsmProfile::Stsafe
-pub rullst_iot::SimulatedHsmProfile::Software
-impl core::clone::Clone for rullst_iot::SimulatedHsmProfile
-impl core::cmp::Eq for rullst_iot::SimulatedHsmProfile
-impl core::cmp::PartialEq for rullst_iot::SimulatedHsmProfile
-impl core::fmt::Debug for rullst_iot::SimulatedHsmProfile
-impl core::marker::Copy for rullst_iot::SimulatedHsmProfile
-impl core::marker::Send for rullst_iot::SimulatedHsmProfile
-impl core::marker::Sync for rullst_iot::SimulatedHsmProfile
-impl core::marker::Unpin for rullst_iot::SimulatedHsmProfile
-impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::SimulatedHsmProfile
-impl core::panic::unwind_safe::UnwindSafe for rullst_iot::SimulatedHsmProfile
-pub struct rullst_iot::SimulatedMqttPayloadFormatter;
-impl rullst_iot::SimulatedMqttPayloadFormatter
-pub fn rullst_iot::SimulatedMqttPayloadFormatter::format_value(telemetry: &rullst_iot::SensorTelemetry) -> alloc::string::String
-impl core::marker::Send for rullst_iot::SimulatedMqttPayloadFormatter
-impl core::marker::Sync for rullst_iot::SimulatedMqttPayloadFormatter
-impl core::marker::Unpin for rullst_iot::SimulatedMqttPayloadFormatter
-impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::SimulatedMqttPayloadFormatter
-impl core::panic::unwind_safe::UnwindSafe for rullst_iot::SimulatedMqttPayloadFormatter
-#[non_exhaustive] pub struct rullst_iot::SimulatedPqcFixture
-impl rullst_iot::SimulatedPqcFixture
-pub fn rullst_iot::SimulatedPqcFixture::derive_ciphertext_fixture(&self, input: &[u8]) -> [u8; 32]
-pub fn rullst_iot::SimulatedPqcFixture::derive_output_fixture(&self, input: &[u8]) -> [u8; 32]
-pub fn rullst_iot::SimulatedPqcFixture::from_seed(seed: &[u8]) -> Self
-pub fn rullst_iot::SimulatedPqcFixture::public_fixture(&self) -> [u8; 32]
-impl core::marker::Send for rullst_iot::SimulatedPqcFixture
-impl core::marker::Sync for rullst_iot::SimulatedPqcFixture
-impl core::marker::Unpin for rullst_iot::SimulatedPqcFixture
-impl core::panic::unwind_safe::RefUnwindSafe for rullst_iot::SimulatedPqcFixture
-impl core::panic::unwind_safe::UnwindSafe for rullst_iot::SimulatedPqcFixture
 pub struct rullst_iot::TwinJsonError(_)
 impl core::error::Error for rullst_iot::TwinJsonError
 impl core::fmt::Debug for rullst_iot::TwinJsonError
@@ -647,9 +601,6 @@ pub mod rullst_iot::gpio
 pub use rullst_iot::gpio::GpioPin = struct rullst_iot::GpioPin
 pub use rullst_iot::gpio::PinMode = enum rullst_iot::PinMode
 pub use rullst_iot::gpio::PinState = enum rullst_iot::PinState
-pub mod rullst_iot::hsm
-pub use rullst_iot::hsm::SimulatedHsmDevice = struct rullst_iot::SimulatedHsmDevice
-pub use rullst_iot::hsm::SimulatedHsmProfile = enum rullst_iot::SimulatedHsmProfile
 pub mod rullst_iot::i2c
 pub use rullst_iot::i2c::I2cFrameError = enum rullst_iot::I2cFrameError
 pub use rullst_iot::i2c::I2cHelper = struct rullst_iot::I2cHelper
@@ -666,7 +617,6 @@ pub use rullst_iot::mqtt::MAX_MQTT_PACKET_BYTES = constant rullst_iot::MAX_MQTT_
 pub use rullst_iot::mqtt::MqttCodecError = enum rullst_iot::MqttCodecError
 pub use rullst_iot::mqtt::MqttPublish = struct rullst_iot::MqttPublish
 pub use rullst_iot::mqtt::MqttQos = enum rullst_iot::MqttQos
-pub use rullst_iot::mqtt::SimulatedMqttPayloadFormatter = struct rullst_iot::SimulatedMqttPayloadFormatter
 pub mod rullst_iot::ota
 pub use rullst_iot::ota::BootPartition = enum rullst_iot::BootPartition
 pub use rullst_iot::ota::OtaCommit = struct rullst_iot::OtaCommit
@@ -681,8 +631,6 @@ pub mod rullst_iot::power
 pub use rullst_iot::power::HarvesterState = enum rullst_iot::HarvesterState
 pub use rullst_iot::power::PowerGovernor = struct rullst_iot::PowerGovernor
 pub use rullst_iot::power::PowerMode = enum rullst_iot::PowerMode
-pub mod rullst_iot::pqc
-pub use rullst_iot::pqc::SimulatedPqcFixture = struct rullst_iot::SimulatedPqcFixture
 pub mod rullst_iot::twin
 pub use rullst_iot::twin::DigitalTwin = struct rullst_iot::DigitalTwin
 pub use rullst_iot::twin::TwinJsonError = struct rullst_iot::TwinJsonError
