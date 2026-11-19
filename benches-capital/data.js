@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795070616664,
+  "lastUpdate": 1795081295348,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -19112,6 +19112,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_active",
             "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ef28c0e0fb3f9ddbfc9d9da4cb200e3bf613fd7b",
+          "message": "Merge pull request #736 from Rullst/chore/v13-release-13.0.0-alpha.6\n\nchore(release): 13.0.0-alpha.6",
+          "timestamp": "2026-11-19T06:25:46-03:00",
+          "tree_id": "f5473eacb1dc4c7743a0a81f6592493007f6fbbc",
+          "url": "https://github.com/Rullst/Rullst/commit/ef28c0e0fb3f9ddbfc9d9da4cb200e3bf613fd7b"
+        },
+        "date": 1795081294439,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 13,
             "range": "± 0",
             "unit": "ns/iter"
           },
