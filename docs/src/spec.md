@@ -1835,16 +1835,12 @@ statement runs.
 `time`, and the orphan rule keeps the ORM from implementing SQLx's traits for
 jiff's types. Each wraps the `jiff` 1 type of the same role
 (`jiff::civil::Date`, `civil::Time`, `civil::DateTime`, `jiff::Timestamp`),
-converts to and from it with `From`, dereferences to it, and implements
-`Display`/`FromStr` (jiff's ISO 8601 and RFC 3339 forms, `Err =
-jiff::Error`), transparent serde in jiff's format, `Default` (the values
-`chrono` gave: 1970-01-01, 1970-01-01T00:00:00, the Unix epoch, midnight),
-`Copy`, `Ord` and `Hash`; `Timestamp::now()` reads the system clock.
-`rullst_orm::jiff` (`rullst::orm::jiff`) re-exports the crate, and
-`rullst_orm::chrono` no longer exists. They write exactly the bytes the
-`chrono` codecs wrote and read every form those read, so stored data needs no
-migration; jiff limits years to -9999..=9999 (a stored value outside fails to
-decode) and reads a leap second as second 59. They map to `DATE`, `TIME`,
+converts to and from it with `From`, dereferences to it and is `Copy`, `Ord`
+and `Hash`; `Timestamp::now()` reads the system clock. `rullst_orm::jiff`
+(`rullst::orm::jiff`) re-exports the crate, and `rullst_orm::chrono` no longer
+exists. They write exactly the bytes the `chrono` codecs wrote and read every
+form those read, so stored data needs no migration (text, defaults and range
+below). They map to `DATE`, `TIME`,
 `TIMESTAMP` and `TIMESTAMPTZ` on
 PostgreSQL; `DATE`, `TIME(6)` and `DATETIME(6)` (a UTC instant for
 `timestamp_tz`, because `TIMESTAMP` ends in 2038, with SQLx setting the session
@@ -1870,14 +1866,14 @@ parameter (a civil `DateTime`), because
 MariaDB turns SQLx's `TIMESTAMP` parameter into `NULL` outside 1970–2038
 (since 13.0.0-alpha.5).
 
-Since 13.0.0-alpha.6 the ORM has its own date/time types for these columns,
-built on `jiff` 1.0 (`rullst_orm::jiff`): `Timestamp` (`timestamp_tz()`),
-`DateTime` (`timestamp()`), `Date` and `Time`, in `rullst_orm::temporal` and at
-the crate root. Each wraps the jiff type of the same name (`Deref`, `From` both
-ways; `Display`, `Debug` and serde write chrono's text, `FromStr` and serde
-read every text chrono read and jiff's forms; `Default` as chrono's: the Unix
-epoch, 1970-01-01 and midnight) and binds and decodes with a strict driver
-feature, as the `chrono` types do: the same
+The four types keep what applications observed of the `chrono` types:
+`Display`, `Debug` and serde write chrono's text byte for byte (a `Timestamp`
+displays as `2026-10-15 09:30:00.500 UTC` and serializes as
+`"2026-10-15T09:30:00.500Z"`; the jiff value behind `Deref` formats in jiff's
+style), `FromStr` and serde read every text chrono read first and then jiff's
+forms (`FromStr::Err` is `jiff::Error`), and `Default` is chrono's (the Unix
+epoch, 1970-01-01T00:00:00, 1970-01-01 and midnight). They bind and decode with
+a strict driver feature as the `chrono` types did: the same
 PostgreSQL and MySQL/MariaDB binary parameters (PostgreSQL microseconds since
 2000 truncated toward 2000; the MySQL/MariaDB length-prefixed date and time
 fields), the same SQLite text, the same `DATETIME` parameter for an instant in
@@ -1889,14 +1885,18 @@ in one column. Reading differs at the ends of jiff's range, without clamping:
 -9999-01-02T01:59:59Z to 9999-12-30T22:00:00.999999999Z, so a value outside
 (including the sentinel `9999-12-31 23:59:59` in a `timestamptz` or `DATETIME`
 read as a `Timestamp`; `WHERE col > '9999-12-30 22:00:00+00'` finds such rows)
-is a decode or parse error; a leap second reads as second 59 with its
-fraction; PostgreSQL `infinity` is an error, where `chrono` panicked; and a
-MySQL/MariaDB zero or truncated binary value is an error, where SQLx's
-`chrono` decoder could panic. `rullst::db::*` also exports the four names, so
-together with `use chrono::prelude::*` the name `DateTime` is ambiguous. `RullstValue` gains `Timestamp`,
-`CivilDateTime`, `CivilDate` and `CivilTime`, bound as the `chrono` variants
-bind the same value (as text on the `Any` pool, which decodes neither type), and
-Redis query-cache keys are the same for an equal value of either type.
+is a decode or parse error whose message suggests NULL in an
+`Option<Timestamp>` field, a value within the range, or reading the column as a
+civil `DateTime`, which keeps the full range; a leap second reads as second 59
+with its fraction; a few lenient forms that only `chrono` read from stored
+text (a space before the offset, a `UTC` suffix) no longer decode; PostgreSQL
+`infinity` is an error, where `chrono` panicked; and a MySQL/MariaDB zero or
+truncated binary value is an error, where SQLx's `chrono` decoder could panic.
+None of these is a value Rullst writes. `rullst::db::*` also exports the four
+names, so together with `use chrono::prelude::*` the name `DateTime` is
+ambiguous. The `RullstValue` variants bind as the `chrono` variants bound the
+same value (as text on the `Any` pool, which decodes neither type), and Redis
+query-cache keys are those of an equal `chrono` value.
 `soft_deletes()` keeps a `TEXT` `deleted_at` column. The Turso adapter
 (`TursoMigration`, `TursoModel`) writes its own SQL, so none of these builders
 or date/time codecs apply to it; its timestamps stay text.
@@ -4044,8 +4044,10 @@ explicit application work.
 
 Since 13.0.0-alpha.5 `Invoice` and `InvoiceItem` are `#[non_exhaustive]` and
 hold integer amounts in the currency's smallest unit, like `ChargeReceipt`:
-`Invoice::new(invoice_id, customer_email, date, currency)` (`date` is a
-`jiff::Timestamp` since 13.0.0-alpha.6, `chrono::DateTime<Utc>` before) plus
+`Invoice::new(invoice_id, customer_email, date, currency)` (since
+13.0.0-alpha.6 `date` is any `impl Into<jiff::Timestamp>`, an ORM `Timestamp`
+included, stored in `Invoice.date: jiff::Timestamp`; `chrono::DateTime<Utc>`
+before) plus
 `with_item(description, amount_minor)`. There is no stored total:
 `total_minor()` is the sum of the items. `Invoice::generate_html` renders
 without validation; trusted paths use `validate`/`try_generate_html`, which

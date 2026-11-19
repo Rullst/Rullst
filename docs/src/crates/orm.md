@@ -756,34 +756,35 @@ Each type wraps the [`jiff`](https://docs.rs/jiff/1) 1 type beside it,
 converts to and from it with `From` and dereferences to it, so jiff's
 arithmetic, formatting and time zones apply (`event.starts_at.as_second()`);
 `rullst_orm::jiff` (`rullst::orm::jiff`) re-exports the crate.
-`Timestamp::now()` reads the system clock. `Display`, `FromStr` and serde use
-jiff's ISO 8601 and RFC 3339 forms (`2026-10-15T09:30:00.5Z` for a
-`Timestamp`), which are not the database text forms in the table. The types
+`Timestamp::now()` reads the system clock, and the result of jiff arithmetic
+converts back with `.into()`. `Display`, `Debug`, serde and `FromStr` are
+byte for byte those of the `chrono` types they replace (a `Timestamp`
+displays as `2026-10-15 09:30:00.500 UTC` and serializes as
+`"2026-10-15T09:30:00.500Z"`); parsing accepts every form `chrono` accepted,
+then jiff's own forms. The jiff value behind `Deref` formats in jiff's style
+(`2026-10-15T09:30:00.5Z`). `Default` is chrono's: the Unix epoch,
+1970-01-01T00:00:00, 1970-01-01 and midnight. The types
 exist because SQLx has date/time codecs only for `chrono` and `time`, and
 Rust's orphan rule keeps the ORM from adding them to jiff's types. Up to
 13.0.0-alpha.5 these columns held `chrono` values; the new types write the
 same bytes and read every form the `chrono` types read, so existing rows need
 no migration (see [moving off `chrono`](../migration-v13.md#moving-off-chrono)).
-Years run from -9999 to 9999: a stored value outside that range fails to
-decode. A leap second (`:60`) reads as second 59.
+`RullstValue` has a variant for each (`Timestamp`, `CivilDateTime`,
+`CivilDate`, `CivilTime`).
 
-Since 13.0.0-alpha.6 the same columns also hold the ORM's own jiff-based
-types, `rullst_orm::Date`, `Time`, `DateTime` and `Timestamp` (in the facade
-`rullst::orm::Date` and so on; `rullst_orm::jiff` is the jiff 1.0 crate they
-wrap). They dereference to and convert from `jiff::civil::{Date, Time,
-DateTime}` and `jiff::Timestamp`, write the same bytes and text as the `chrono`
-types in the table and read everything those read, so a column may hold rows
-written by either; their `Display`, `Debug`, serde and `FromStr` are chrono's
-too (the jiff value behind `Deref` formats in jiff's style, and arithmetic on
-it converts back with `into()`). jiff's range ends sooner than chrono's:
-`DateTime`, `Date` and `Time` hold years -9999 to 9999, and `Timestamp`
--9999-01-02T01:59:59Z to 9999-12-30T22:00:00.999999999Z, so a `timestamp_tz`
-row holding the end-of-time sentinel `9999-12-31 23:59:59` is a decode error
-for a `Timestamp` (find such rows with `WHERE col > '9999-12-30 22:00:00+00'`
-on PostgreSQL or `WHERE col > '9999-12-30 22:00:00'` on MySQL/MariaDB). A leap
-second reads as second 59. `RullstValue` has a variant for each (`Timestamp`,
-`CivilDateTime`, `CivilDate`, `CivilTime`). The `chrono` types are removed
-before 13.0.0-alpha.6 is published.
+jiff's range ends sooner than chrono's, and a value outside it is a decode
+error, never a clamped value: `DateTime`, `Date` and `Time` hold years -9999 to
+9999, and `Timestamp` `-9999-01-02T01:59:59Z..=9999-12-30T22:00:00.999999999Z`.
+A `timestamp_tz` row holding the end-of-time sentinel `9999-12-31 23:59:59`
+does not read as a `Timestamp`; the error suggests NULL in an
+`Option<Timestamp>` field for "no end", a value within the range, or reading
+the column as a civil `DateTime`, which keeps the full range. Find such rows
+with `WHERE col > '9999-12-30 22:00:00+00'` on PostgreSQL or
+`WHERE col > '9999-12-30 22:00:00'` on MySQL/MariaDB. A leap second (`:60`)
+reads as second 59, and a few lenient text forms that only `chrono` read from
+stored timestamps (a space before the offset, a `UTC` suffix) no longer
+decode; Rullst writes none of these values. `rullst::db::*` exports the four
+names, so a module that also has `use chrono::prelude::*` imports them by name.
 
 MySQL/MariaDB store a UTC instant in `DATETIME(6)` because their `TIMESTAMP`
 ends in 2038; SQLx sets the session time zone to `+00:00`, so values and

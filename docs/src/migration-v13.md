@@ -326,8 +326,8 @@ before those.
 | Distributed tracing layer type | **Breaking**, from 13.0.0-alpha.6: `DistributedTelemetry::layer` returns `impl tracing_subscriber::Layer<S> + Send + Sync + 'static` instead of `tracing_opentelemetry::OpenTelemetryLayer<S, opentelemetry_sdk::trace::SdkTracer>`, so `opentelemetry_sdk` and `tracing-opentelemetry`, which break every few months, are no longer public dependencies and a 13.x release can update them. `registry().with(runtime.layer())`, `.with_filter(..)` and `.boxed()` keep working, and the exported spans and `TraceParent` are unchanged. Code that writes the layer's type writes `impl Layer<S>` or boxes it (`Box<dyn Layer<S> + Send + Sync>`). `OpenTelemetryLayer`'s own builder methods (`with_location`, `with_threads`, `with_level`, `with_target`, `with_tracked_inactivity`, `with_context_activation`, the `with_error_*` methods, `with_counting_event_filter` and `with_tracer`) no longer compile on it; drop them, because the minimized pipeline removes the span attributes and events they add before export. The subscriber type `S` must be `Send + Sync`, as every subscriber installed with `set_global_default` or `with_default` already is. |
 | Validation field errors | **Breaking**, from 13.0.0-alpha.6: `ValidationError::ValidationError { errors, is_htmx }` carries `rullst::FieldErrors` (also `rullst::validation::FieldErrors`) instead of `validator::ValidationErrors`, so the error type of the `validator` crate is no longer part of Rullst's API. `errors.messages()` and `errors.codes()` return each field path's messages and validator codes as a `BTreeMap<String, Vec<String>>` (nested paths read `address.zip` and `items[0].name`), `errors.is_empty()` tells whether any field failed, and `errors.as_any().downcast_ref::<validator::ValidationErrors>()` reaches the `validator` errors with their parameters. Build the variant from `FieldErrors::validate(&payload)`, which runs the payload's constraints, or from `FieldErrors::default()`, and add a failure that only the handler can see with `errors.add(field, code, message)`. The JSON response (`{"errors": {"<path>": ["<message>"]}}`), the HTMX fragment, `Display` and `Debug` are unchanged. `rullst::Validate` and the bound of `ValidatedForm` and `ValidatedJson` stay those of `validator` 0.21, which the application's `#[derive(Validate)]` implements, so `validator` stays a public dependency. |
 | Studio OpenAPI documents | From 13.0.0-alpha.6, `Studio::with_openapi` and `rullst::studio::api_playground::router` take any `serde::Serialize` document instead of utoipa 6's `OpenApi`: the `OpenApi` of utoipa 5, 6 or a later release, or a `serde_json::Value` read from a file. `utoipa` is no longer a public dependency, and `.with_openapi(ApiDoc::openapi())` compiles as before. **Breaking** only for an argument whose type came from the parameter: write the type for `Default::default()`, a `serde_json::from_str(..)` without one, or `.into()` (`utoipa::openapi::OpenApi::default()`, `serde_json::from_str::<serde_json::Value>(..)`). Studio serializes the document once and serves those bytes at `/studio/api/openapi.json`. `/studio/api` renders a utoipa document exactly as before, lists the operations of any OpenAPI 3.1 or 3.2 document, and for another one (such as 3.0) says that it cannot list them and links the JSON. |
-| `chrono` replaced by `jiff` | **Breaking**, from 13.0.0-alpha.6: RustSec marked `chrono` unmaintained (RUSTSEC-2026-0543), so Rullst no longer depends on it and uses `jiff` 1. The ORM's date and time types are `rullst::orm::Timestamp` (for `chrono::DateTime<Utc>`), `rullst::orm::DateTime` (`NaiveDateTime`), `rullst::orm::Date` (`NaiveDate`) and `rullst::orm::Time` (`NaiveTime`), also as `rullst::db::*`: they wrap and dereference to jiff's types, convert to and from them, and store the same bytes in the same columns, so existing rows need no data migration. `rullst::orm::chrono` is gone and `rullst::orm::jiff` re-exports jiff; `RullstValue`'s chrono variants are replaced by `Timestamp`, `CivilDateTime`, `CivilDate` and `CivilTime`, and model fields and query values take the new types (`Timestamp::now()` for `Utc::now()`). `Locale::format_date`, `format_time` and `format_datetime` take jiff civil values by value (or a `&jiff::ZonedDateTime`); Mail's `Message::send_at` and `send_at` field, `MailAssertion::with_scheduled_at` and the `expires_at` of `AccountEvent::PasswordResetAt` and `EmailLoginAt`, and Capital's `Invoice::new` date and `Invoice.date`, take a `jiff::Timestamp`. Queued messages and invoices serialize as before. An application may keep chrono for its own code by declaring it; its own SQLx queries that bind or read chrono values then need SQLx's `chrono` feature on its own `sqlx` dependency. `cargo rullst upgrade` reports chrono where it meets these APIs (`V13-ORM-CHRONO-TYPES`, `V13-LOCALE-JIFF-DATES`, `V13-MAIL-JIFF-TIMESTAMPS`, `V13-CAPITAL-INVOICE-JIFF-DATE`). |
-| Messaging schedules use the scheduler's cron syntax | **Breaking**, from 13.0.0-alpha.6: `RecurringDefinition::new` (`rullst-messaging`, feature `schedules-postgres`) reads its five-field UTC cron expression with Core's POSIX syntax, as `Scheduler::task` does, instead of the `cron` crate's. Weekdays run from 0 to 7 (0 and 7 are Sunday) instead of 1 (Sunday) to 7 (Saturday), so `2-6` now means Tuesday to Saturday and Monday to Friday is `1-5`; names such as `MON-FRI` keep their meaning. When both the day of the month and the weekday are restricted, a day that matches either one runs the schedule, instead of a day that matches both. Each field must be valid on its own, so a field that starts or ends with `,`, `-` or `/` (`1, 2 * * *`, `/5 * * * *`), which the `cron` crate joined with its neighbour, or that runs a number into a name (`1jan`), which it split, is refused with `RecurringError::InvalidInput`. Definitions stored before the upgrade keep the meaning they were created with (deprecated until 14.0), and `PostgresRecurringStore::create` refuses to change one in place (`RecurringError::LegacyDefinition`): keep a stored schedule's expression as it is (its `RecurringMetadata::syntax()` is `CronSyntax::Legacy`), or cancel it and create the POSIX expression under a new name. `cargo rullst upgrade` reports each `RecurringDefinition::new` call whose expression is not a string literal that means the same under both syntaxes (`V13-MESSAGING-CRON-POSIX`), for review, with a literal's POSIX form for a schedule not yet stored where the rewrite is mechanical. |
+| `chrono` replaced by `jiff` | **Breaking**, from 13.0.0-alpha.6: RustSec marked `chrono` unmaintained (RUSTSEC-2026-0543), so Rullst no longer depends on it and uses `jiff` 1. The ORM's date and time types are `rullst::orm::Timestamp` (for `chrono::DateTime<Utc>`), `rullst::orm::DateTime` (`NaiveDateTime`), `rullst::orm::Date` (`NaiveDate`) and `rullst::orm::Time` (`NaiveTime`), also as `rullst::db::*`: they wrap and dereference to jiff's types, convert to and from them, and store the same bytes in the same columns, so existing rows need no data migration. `rullst::orm::chrono` is gone and `rullst::orm::jiff` re-exports jiff; `RullstValue`'s chrono variants are replaced by `Timestamp`, `CivilDateTime`, `CivilDate` and `CivilTime`, and model fields and query values take the new types (`Timestamp::now()` for `Utc::now()`). `Locale::format_date`, `format_time` and `format_datetime` take jiff civil values by value (or a `&jiff::ZonedDateTime`); Mail's `Message::send_at` and `send_at` field, `MailAssertion::with_scheduled_at` and the `expires_at` of `AccountEvent::PasswordResetAt` and `EmailLoginAt`, and Capital's `Invoice::new` date and `Invoice.date`, take a `jiff::Timestamp`. Queued messages and invoices serialize as before. An application may keep chrono for its own code by declaring it; its own SQLx queries that bind or read chrono values then need SQLx's `chrono` feature on its own `sqlx` dependency. `cargo rullst upgrade` reports chrono where it meets these APIs (`V13-ORM-CHRONO-TYPES`, `V13-LOCALE-JIFF-DATES`, `V13-MAIL-JIFF-TIMESTAMPS`, `V13-CAPITAL-INVOICE-JIFF-DATE`). Details: [moving off `chrono`](#moving-off-chrono). |
+| Messaging schedules use the scheduler's cron syntax | **Breaking**, from 13.0.0-alpha.6: `RecurringDefinition::new` (`rullst-messaging`, feature `schedules-postgres`) reads its five-field UTC cron expression with Core's POSIX syntax, as `Scheduler::task` does, instead of the `cron` crate's. Weekdays run from 0 to 7 (0 and 7 are Sunday) instead of 1 (Sunday) to 7 (Saturday), so `2-6` now means Tuesday to Saturday and Monday to Friday is `1-5`; names such as `MON-FRI` keep their meaning. When both the day of the month and the weekday are restricted, a day that matches either one runs the schedule, instead of a day that matches both. Each field must be valid on its own, so a field that starts or ends with `,`, `-` or `/` (`1, 2 * * *`, `/5 * * * *`), which the `cron` crate joined with its neighbour, or that runs a number into a name (`1jan`), which it split, is refused with `RecurringError::InvalidInput`. Definitions stored before the upgrade keep the meaning they were created with (deprecated until 14.0), and `PostgresRecurringStore::create` refuses to change one in place (`RecurringError::LegacyDefinition`): keep a stored schedule's expression as it is (its `RecurringMetadata::syntax()` is `CronSyntax::Legacy`), or cancel it and create the POSIX expression under a new name. `cargo rullst upgrade` reports each `RecurringDefinition::new` call whose expression is not a string literal that means the same under both syntaxes (`V13-MESSAGING-CRON-POSIX`), for review, with a literal's POSIX form for a schedule not yet stored where the rewrite is mechanical. Details: [Messaging schedules and POSIX cron](#messaging-schedules-and-posix-cron). |
 
 The [12.0→12.1 guide](migration-v12-1.md) still applies to applications that have
 not adopted the 12.1 account, payment and deployment changes. Skipping directly
@@ -432,9 +432,14 @@ for jiff's types. The ORM therefore owns four column types in
 | `NaiveTime` | `rullst::orm::Time` | `jiff::civil::Time` | `time()` |
 
 Each type converts to and from the jiff type with `From` and dereferences to
-it, so jiff's methods apply (`at.as_second()`). It also implements `Display`
-and `FromStr` (jiff's ISO 8601 and RFC 3339 forms, `Err = jiff::Error`),
-transparent serde in jiff's format, `Copy`, `Ord` and `Hash`.
+it, so jiff's methods apply (`at.as_second()`); the result of jiff arithmetic
+converts back with `.into()`. `Display`, `Debug`, serde and `FromStr` are
+byte for byte those of the `chrono` type it replaces (a `Timestamp` displays
+as `2026-10-15 09:30:00.500 UTC` and serializes as
+`"2026-10-15T09:30:00.500Z"`), and parsing accepts every form `chrono`
+accepted first, then jiff's own forms (`FromStr::Err` is `jiff::Error`). The
+jiff value behind `Deref` formats in jiff's style
+(`2026-10-15T09:30:00.5Z`). The types are also `Copy`, `Ord` and `Hash`, and
 `Timestamp::now()` reads the system clock. `rullst::orm::chrono`
 (`rullst_orm::chrono`) is removed, and `rullst::orm::jiff` re-exports the jiff
 crate that these types use. Use the new types in model fields (also inside
@@ -445,18 +450,37 @@ SQLx queries can bind and read the new types on the strict pools; the SQLx
 `Any` pool has no codec for them, as it had none for `chrono`. If your own
 SQLx code binds or reads `chrono` values (or names `sqlx::types::chrono`),
 enable the `chrono` feature on your own `sqlx` dependency, because Rullst no
-longer enables it.
+longer enables it. `rullst::db::*` glob-exports `DateTime`, `Date`, `Time` and
+`Timestamp`, so a module that also has `use chrono::prelude::*` gets
+ambiguous names: import the types it uses by name.
 
 **Stored data needs no migration.** On SQLite, PostgreSQL, MySQL and MariaDB
 the new types write exactly the bytes that the `chrono` types wrote, and they
 read every form those types read. Existing rows need no data migration, and
 old and new rows can share a column. `Default` gives the same values as
 before: 1970-01-01 for `Date`, 1970-01-01T00:00:00 for `DateTime`, the Unix
-epoch for `Timestamp` and midnight for `Time`. jiff sets two limits:
+epoch for `Timestamp` and midnight for `Time`.
 
-- years run from -9999 to 9999, so a stored value outside that range no
-  longer decodes (`chrono` accepted a far wider range);
-- a leap second (`:60`) reads as second 59.
+jiff's range is narrower than `chrono`'s. A value outside it is a decode or
+parse error, never a panic or a clamped value:
+
+- `DateTime`, `Date` and `Time` hold years -9999 to 9999.
+- `Timestamp` holds `-9999-01-02T01:59:59Z..=9999-12-30T22:00:00.999999999Z`.
+  The common end-of-time sentinel `9999-12-31 23:59:59` in a `timestamp_tz()`
+  column no longer reads: the error names the range and suggests NULL in an
+  `Option<Timestamp>` field for "no end", a value within the range, or reading
+  the column as a civil `DateTime`, which keeps the full range. Find such
+  rows before upgrading:
+  `SELECT id FROM events WHERE ends_at > '9999-12-30 22:00:00+00'` on
+  PostgreSQL, or `> '9999-12-30 22:00:00'` on MySQL/MariaDB.
+
+A few stored values read differently; none of them is a value Rullst writes:
+
+- a leap second (`:60`) reads as second 59, with the same fraction;
+- a few lenient text forms that only `chrono` read from a stored timestamp,
+  such as a space before the offset or a `UTC` suffix, no longer decode;
+- a Nexus date-time whose UTC instant falls in the year 10000 may fail on the
+  strict PostgreSQL or MySQL/MariaDB pools.
 
 **APIs outside the database take jiff's own types:**
 
@@ -466,22 +490,25 @@ epoch for `Timestamp` and midnight for `Time`. jiff sets two limits:
   time_style)` used to take `&impl chrono::Datelike` and `Timelike`. Pass a
   civil value by value: an ORM `Date`, `Time` or `DateTime` converts as it
   is, and `*value` turns an ORM `DateTime` into the civil date-time that
-  `format_date` and `format_time` also accept. For an instant, pass
+  `format_date` and `format_time` also accept. Each also accepts a
+  `&jiff::ZonedDateTime`, so for an instant pass
   `&jiff::ZonedDateTime` in the reader's zone
   (`at.in_tz("America/Sao_Paulo")?`); looking a zone up by name needs jiff's
   time zone database, which `jiff = "1"` with its default features in your
   own `Cargo.toml` provides. The formatted text is unchanged. Every
   Core build now depends on `jiff`. The scheduler's API is unchanged, and the
   `scheduler-tz` feature still adds the IANA time zone database.
-- **Mail.** `Message.send_at` is an `Option<jiff::Timestamp>`, and so are the
-  arguments of `Message::send_at(timestamp: jiff::Timestamp)` and of the
-  memory driver's assertion `with_scheduled_at(expected: jiff::Timestamp)`.
-  The `expires_at` field of `AccountEvent::PasswordResetAt` and
-  `AccountEvent::EmailLoginAt` is also a `jiff::Timestamp`.
-- **Capital.** `Invoice.date` is a `jiff::Timestamp`:
-  `Invoice::new(invoice_id, customer_email, date: jiff::Timestamp, currency)`.
-- Mail and Capital take the plain `jiff::Timestamp`, so convert an ORM
-  `Timestamp` with `.into()` or `*at`.
+- **Mail.** `Message.send_at` is an `Option<jiff::Timestamp>`, and
+  `Message::send_at(timestamp: impl Into<jiff::Timestamp>)` and the memory
+  driver's assertion `MailAssertion::with_scheduled_at(expected: impl
+  Into<jiff::Timestamp>)` take one. The `expires_at` field of
+  `AccountEvent::PasswordResetAt` and `AccountEvent::EmailLoginAt` is also a
+  `jiff::Timestamp`.
+- **Capital.** `Invoice.date` is a `jiff::Timestamp`, and
+  `Invoice::new(invoice_id, customer_email, date: impl
+  Into<jiff::Timestamp>, currency)`.
+- An ORM `Timestamp` passes to these methods as it is; assign one to the
+  fields with `.into()`.
 - Messaging, Security and Auth have no public change. The serialized forms
   do not change: messages queued as JSON before the upgrade deliver at their
   time, and an invoice's JSON is byte for byte the same.
@@ -509,10 +536,15 @@ let created_at = Timestamp::now();
 let expires_at = created_at.checked_add(SignedDuration::from_mins(5))?;
 assert_eq!(expires_at.as_second() - created_at.as_second(), 300);
 
-// A `date()` field, and the plain jiff types that Mail and Capital take.
+// `Display` keeps chrono's text; the jiff value behind `Deref` has jiff's.
+let at: Timestamp = "2026-10-15T09:30:00.5Z".parse()?;
+assert_eq!(at.to_string(), "2026-10-15 09:30:00.500 UTC");
+assert_eq!((*at).to_string(), "2026-10-15T09:30:00.5Z");
+
+// A `date()` field. Mail and Capital take an ORM `Timestamp` or a jiff one.
 let due: Date = civil::Date::new(2026, 10, 22)?.into();
 assert_eq!(due.to_string(), "2026-10-22");
-let invoice = rullst::capital::Invoice::new("INV-1", "ana@example.com", created_at.into(), "BRL");
+let invoice = rullst::capital::Invoice::new("INV-1", "ana@example.com", created_at, "BRL");
 let reminder = rullst::mail::Message::new().send_at(expires_at);
 # let _ = (invoice, reminder);
 # Ok::<(), Box<dyn std::error::Error>>(())
@@ -569,10 +601,19 @@ which definitions are legacy. The legacy syntax is deprecated: reading such
 definitions is planned for removal in 14.0. An expression that only the
 legacy syntax accepted, such as `1, 2 * * *`, is refused by
 `RecurringDefinition::new` with its own `InvalidInput` message, while a stored
-definition with it keeps running.
+definition with it keeps running. A legacy definition deserialized from JSON
+exported before the upgrade keeps its syntax, and `create` accepts it, so an
+export and import moves schedules without changing their meaning.
+`RecurringDefinition::posix_equivalent()` returns the POSIX expression whose
+occurrences are exactly those of a definition (`0 9 * * 1`, Sundays in the
+legacy syntax, gives `0 9 * * 0`), or `None` when there is none: both day
+fields restricted, tokens that joined into another field, or a result over 128
+bytes. A POSIX definition returns its own expression.
 
-`cargo rullst upgrade` reports `V13-MESSAGING-CRON-POSIX` where your code
-builds a definition. What to do depends on whether that schedule is already
+`cargo rullst upgrade` reports `V13-MESSAGING-CRON-POSIX` at each
+`RecurringDefinition::new` call whose expression is not a string literal that
+means the same in both syntaxes, and gives a literal's POSIX form when the
+rewrite is mechanical. What to do depends on whether that schedule is already
 stored:
 
 - **A schedule already stored** (created before the upgrade). Calling
@@ -581,9 +622,12 @@ stored:
   CronSyntax::Legacy`, logs a warning and keeps the old meaning (`0 9 * * 1`
   stays Sundays), so startup does not fail. Leave the code as it is to keep
   the legacy schedule until 14.0. To move it to POSIX, cancel it and create
-  the rewritten expression under a new name: any other definition under a
-  legacy name, the rewritten expression included (`0 9 * * 0`), fails with
-  `RecurringError::LegacyDefinition`, and a cancelled name can never be
+  the POSIX expression (`posix_equivalent()` of the stored definition, when it
+  has one) under a new name. Any other definition under a legacy name, the
+  rewritten expression included (`0 9 * * 0`), fails with
+  `RecurringError::LegacyDefinition`: "schedule name is held by a legacy cron
+  definition; keep its expression to keep it running, or cancel it and create
+  the POSIX definition under a new name". A cancelled name can never be
   reused.
 - **A new schedule.** Write the expression in the POSIX syntax: subtract one
   from each weekday number, or use weekday names, and where an expression
@@ -1530,6 +1574,8 @@ Work through the steps in order.
     Code that keeps chrono for its own work declares `chrono` itself and
     converts where it meets Rullst; its own SQLx queries that bind or read
     chrono values need the `chrono` feature on its own `sqlx` dependency.
+    See [moving off `chrono`](#moving-off-chrono) for the type table, the
+    range limits and examples.
 21. **Review messaging schedules for POSIX cron** (Messaging schedules use
     the scheduler's cron syntax row, `V13-MESSAGING-CRON-POSIX`).
     `RecurringDefinition::new` now reads a new definition's expression as
@@ -1554,6 +1600,7 @@ Work through the steps in order.
     `-` or `/` (`1, 2 * * *`, `/5 * * * *`) or runs a number into a name
     (`1jan`), stored or not: stop creating such a schedule in code, or cancel
     it and create a POSIX expression under a new name.
+    See [Messaging schedules and POSIX cron](#messaging-schedules-and-posix-cron).
 22. **Dependencies and feature graphs** (no rule).
     - `cargo rullst make:cors-jwt` middleware generated earlier keeps the
       `jsonwebtoken` 11 its project declares. To move it to 12, the version
