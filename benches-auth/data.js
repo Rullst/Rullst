@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795081023744,
+  "lastUpdate": 1795125664111,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -24885,6 +24885,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3675,
             "range": "± 15",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "58438b64caa847ef7ffdcc08653ce26cb5a8a8a0",
+          "message": "Merge pull request #773 from Rullst/fix/v13-miri-admission-scopes\n\nci(miri): enable passkeys and keep jsonschema's layout in strict scopes",
+          "timestamp": "2026-11-19T13:43:34-03:00",
+          "tree_id": "2571ab81773dc82a634bfc930a952bfed1b146f7",
+          "url": "https://github.com/Rullst/Rullst/commit/58438b64caa847ef7ffdcc08653ce26cb5a8a8a0"
+        },
+        "date": 1795125663429,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1002,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 713,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1754,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4210,
+            "range": "± 52",
             "unit": "ns/iter"
           }
         ]
