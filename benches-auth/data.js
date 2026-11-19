@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795055924132,
+  "lastUpdate": 1795059456526,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -24597,6 +24597,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3132,
             "range": "± 183",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4d6c3a2fef5f96124b01366e4e430813830d7cf3",
+          "message": "Merge pull request #756 from Rullst/feat/v13-jiff-cli-upgrade-docs\n\nfeat(cli): chrono-to-jiff upgrade rules and the CLI's own clock on jiff",
+          "timestamp": "2026-11-19T00:21:51-03:00",
+          "tree_id": "2ae5e722fb3bc57d51c5141508c93281d4c515c3",
+          "url": "https://github.com/Rullst/Rullst/commit/4d6c3a2fef5f96124b01366e4e430813830d7cf3"
+        },
+        "date": 1795059455980,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 699,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 545,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1252,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1940,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
