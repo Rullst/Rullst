@@ -1,0 +1,131 @@
+name: Public Dependency Health
+
+# A monthly report on the crates Rullst's public API exposes
+# (.github/public-dependencies.json): an abandoned public dependency forces a
+# breaking change, as chrono did. .github/public-dependency-health.py reads
+# crates.io, the rustsec/advisory-db repository and the GitHub API, and flags
+# a crate with no release for a year, a newer incompatible line, an advisory
+# (unmaintained and unsound ones included) that its newest release in
+# Rullst's line does not escape, or an archived repository. A run from main
+# opens or updates one issue while something is flagged and closes it when
+# nothing is. It never blocks anything.
+
+on:
+  schedule:
+    # 09:23 UTC on the 3rd of each month.
+    - cron: '23 9 3 * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  health:
+    name: Check public dependency health
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      flagged: ${{ steps.check.outputs.flagged }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Test the report offline
+        run: python3 .github/test-public-dependency-health.py
+
+      - name: Read crates.io, RustSec and GitHub
+        id: check
+        env:
+          # Read-only: public repository metadata and the advisory database.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          report="$RUNNER_TEMP/public-dependency-health.md"
+          set +e
+          python3 .github/public-dependency-health.py > "$report"
+          status=$?
+          set -e
+          if [ -f "$report" ]; then
+            cat "$report" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          # 0: nothing flagged; 1: something flagged; 2: a source could not
+          # be read, which fails the run instead of reporting a partial result.
+          case "$status" in
+            0) echo "flagged=false" >> "$GITHUB_OUTPUT" ;;
+            1) echo "flagged=true" >> "$GITHUB_OUTPUT" ;;
+            *) exit "$status" ;;
+          esac
+
+      - name: Keep the report
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: public-dependency-health
+          path: ${{ runner.temp }}/public-dependency-health.md
+          if-no-files-found: error
+          retention-days: 90
+
+  issue:
+    name: Open, update or close the health issue
+    # Only for main, so a run dispatched from a branch tries the report
+    # without touching issues. The only job with issues: write; it checks out
+    # no code and reads the report from the artifact.
+    needs: health
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Download the report
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: public-dependency-health
+          path: ${{ runner.temp }}/report
+
+      - name: Open, update or close the issue
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          FLAGGED: ${{ needs.health.outputs.flagged }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TITLE: Public dependency health needs review
+          LABEL: dependency-health
+        run: |
+          set -euo pipefail
+          report="$RUNNER_TEMP/report/public-dependency-health.md"
+          printf '\nFrom %s.\n' "$RUN_URL" >> "$report"
+          issue="$(gh issue list --label "$LABEL" --state open --limit 100 \
+            --json number,title \
+            --jq '[.[] | select(.title == env.TITLE)] | sort_by(.number) | .[0].number // empty')"
+
+          if [ "$FLAGGED" != true ]; then
+            if [ -n "$issue" ]; then
+              gh issue close "$issue" --comment "$RUN_URL flagged nothing, so this issue is resolved."
+            fi
+            exit 0
+          fi
+          if [ -z "$issue" ]; then
+            gh label create "$LABEL" --color FBCA04 \
+              --description 'A public dependency needs review (dependency-health.yml)' --force
+            gh issue create --title "$TITLE" --label "$LABEL" --body-file "$report"
+            exit 0
+          fi
+          # The description always shows the latest report. A comment, which
+          # notifies watchers, is added only when the flags changed: the
+          # report's last line lists them without their ages and dates.
+          previous="$(gh issue view "$issue" --json body --jq .body |
+            grep -oE '<!-- flags: .* -->' || true)"
+          current="$(grep -oE '<!-- flags: .* -->' "$report")"
+          gh issue edit "$issue" --body-file "$report"
+          if [ "$previous" != "$current" ]; then
+            gh issue comment "$issue" \
+              --body "The flags changed in $RUN_URL; the description shows the new report."
+          fi

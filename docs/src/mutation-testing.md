@@ -189,7 +189,17 @@ received a test or is listed under
   bounds that only very large projects reach (hundreds of mebibytes, or 10,000
   to 250,000 files): upgrade snapshot 6, upgrade source walk 3, project
   snapshot 13, replacement and verification totals 2 and 2, and the 64 MiB
-  preparation report 4.
+  preparation report 4. In 13.0.0-rc.1, `build/upgrade/rules/alpha6_gaps.rs`
+  ([PR #740](https://github.com/Rullst/Rullst/pull/740), already listed),
+  whose first targeted run (43871101055) stopped at its time limit after 65
+  of its 109 mutants, was measured again on `c22b6bca`
+  ([PR #752](https://github.com/Rullst/Rullst/pull/752)) in eight shards with
+  a 900-second timeout in the maintainer's fork (runs
+  [44077418794](https://github.com/venelouis/rullst-ci/actions/runs/44077418794)
+  to [44077505621](https://github.com/venelouis/rullst-ci/actions/runs/44077505621)):
+  109 mutants, 103 caught, 6 unviable, no survivor. The CLI's library tests
+  now take longer than the default 300-second timeout, which a targeted run
+  also applies to its unmutated baseline.
 - **`green` (now `footprint`), `deploy` and guided update** (13.0.0-alpha.4):
   the nine `green` files, `generators/deploy.rs` and `update/guided.rs` gave 337 mutants, 93
   missed and no timeout. New library tests (a loopback test server, fake app
@@ -202,8 +212,47 @@ received a test or is listed under
   not listed yet. In 13.0.0-alpha.6 `startup.rs` (the start-up time) was
   measured with a targeted run on the library tests (run 43809422834): 34
   mutants, 30 caught and 4 unviable, no survivor, so it is listed too.
-- **Studio remote mode** (20 files, measured with the `cargo-rullst` campaign):
-  no survivor left.
+- **`rullst-studio`**: the remote mode (20 files) was measured with the
+  `cargo-rullst` campaign in 13.0.0-alpha.3 and left no survivor. A
+  `mutants::skip` on each local Studio module, on the Studio builder, on
+  `build_rows_html` and on the logger page kept the rest of the crate out of
+  every mutation run and of the pull-request gate until the 13.0.0-rc.1
+  campaign ([PR #752](https://github.com/Rullst/Rullst/pull/752), runs in the
+  maintainer's fork
+  [venelouis/rullst-ci](https://github.com/venelouis/rullst-ci/actions/workflows/mutants.yml)),
+  which removed them (the Kani proofs keep theirs). Measured on `c22b6bca`
+  (`main` at `e911dcb9` without those skips), targeted runs of the 41 local
+  Studio files and the 8 remote files added after 13.0.0-alpha.3 (5 have no
+  mutants) gave 949 mutants: 557 caught, 111 unviable, 2 timeouts and 279
+  missed. Most misses were data-browser paths that need a database: the
+  all-feature build selects the PostgreSQL pool, and the PostgreSQL
+  data-browser matrix (`tests/data_browser_mutation_postgres.rs`) did not
+  compile in it; it now runs there, as the Nexus one does. With it, new matrix
+  checks (the 16 KiB key and 64 KiB form bounds of the row actions, search
+  filtering and row counts, NULL cells, an empty database, feature flags, the
+  engine label and the ER key marks) and new unit and integration tests (the
+  trace ingestion bounds, signatures, store counts and errors, the API
+  reference, the security page and its provider detection, the logger stream,
+  the cache inspector, the jobs monitor, the radar's threat level,
+  `run_studio` and the legacy `resolve_db_url`) killed 256 of the misses, and
+  the SQLite test-pool helper became plain test code. Reruns of the 28 changed
+  files leave 19 of 697 mutants missed and 1 timeout. The crate's 948 mutants
+  now leave 22 missed and 2 timeouts: 18 accepted equivalents listed below
+  (most are SQLite and MySQL branches that the all-feature PostgreSQL pool
+  never takes), 4 mutants of two redundant conditions, and the two timeouts
+  listed with the timeouts. A follow-up removed both conditions and their
+  mutants: the ban count in the radar's threat level (the store bans only
+  when it counts a trap and records an event, and its event list never
+  empties) and the forget token's empty and length pre-check (only a
+  43-character token decodes to the 32-byte signature, so that check already
+  answers `400`).
+- **`rullst`** (the facade; 13.0.0-rc.1 campaign on `c22b6bca`,
+  [PR #752](https://github.com/Rullst/Rullst/pull/752), same fork): targeted
+  runs of the 6 files with mutants (the account-mail worker and the IoT
+  ingestion receiver, directory, configuration, token and error files;
+  `lib.rs`, `iot_ingest/mod.rs` and the doctest-only `book_doctests.rs` have
+  none) gave 150 mutants: 125 caught, 25 unviable, no timeout and no
+  survivor.
 - **`rullst-labs`** (13.0.0-rc.1 campaign on `cdb68d3b`,
   [PR #744](https://github.com/Rullst/Rullst/pull/744), runs in the
   maintainer's fork
@@ -243,6 +292,30 @@ choice-code decoding and, in `passkey-postgres` and `auth-recovery-postgres`,
 most branches of `manager.rs` and the recovery files have unit tests: a
 contract run reports those mutants as missed, and a targeted run of the file
 catches them.
+
+## Pull-request gate timeouts
+
+`.github/mutants-pr.sh` gives cargo-mutants explicit timeouts. An explicit
+`--timeout` also bounds the unmutated baseline, so it must exceed the slowest
+baseline a hosted runner takes, while a mutant that loops forever still stops
+in bounded time.
+
+| Pass | Test timeout | Build timeout | Measured baseline tests (hosted, 15–17 November 2026) |
+| --- | --- | --- | --- |
+| Workspace (each mutated package's whole suite) | 300 s | 300 s | 0–77 s |
+| CLI (`cargo test --lib` of `cargo-rullst`, every feature) | 900 s | 300 s | 112–309 s in about 50 runs; two targeted runs exceeded 300 s |
+
+Until November 2026 both passes used 300 s. The same CLI shard took 146 s on
+one runner and 309 s on another, so 300 s failed baselines (twice in targeted
+`mutants.yml` runs, which take the same value by default) and turned ordinary
+test runs into timeouts, which the gate accepts as detections: in one shard
+whose baseline took 299 s, 6 of 21 mutants timed out at 300 s while the
+caught ones took 263–300 s. Within one runner a mutant's tests take about as
+long as its baseline, so 900 s, about three times the slowest baseline seen,
+leaves room for slower runners and a growing suite, and a mutant that never
+finishes (the CLI's accepted timeouts below) costs 15 minutes. Raise it when
+a CLI baseline passes 450 s. Targeted runs of CLI files with
+`test_scope=lib` should pass `-f timeout_seconds=900` too.
 
 ## Accepted equivalent mutants
 
@@ -286,7 +359,10 @@ package's tests), the `rullst-macros` campaign (targeted runs of every
 file with the package's unit and stand-in integration tests) and the 13.0
 `rullst-mail`, `rullst-media` and `rullst-ai` campaigns (targeted runs of every
 file with the package's tests, and the `mail-postgres` contract run for the
-mail PostgreSQL adapter) gave every missed mutant in their files a test, except these.
+mail PostgreSQL adapter) and the 13.0 `rullst-studio` campaign (targeted runs of
+every local Studio file and of the remote files added after 13.0.0-alpha.3,
+with the package's tests and the PostgreSQL data-browser matrix) gave every
+missed mutant in their files a test, except these.
 Each change has no observable effect in the all-feature Linux build the
 campaign measures, so a test cannot tell it apart. Keep this list short: a new
 entry needs the same one-line justification. The pull-request gate (`mutants-pr.yml`) skips an
@@ -325,6 +401,12 @@ entry only when its exact cargo-mutants name is also listed in
 | `cargo-rullst/src/generators/deploy_doctor/input.rs`: `linked` with `false` and its Windows reparse-point test; in `read`, the ancestor `linked(..) \|\| !is_dir()`, the file `!is_file() \|\| linked(..) \|\| len > MAX_FILE` and the opened-file re-check with `&&`, `NOFOLLOW \| NONBLOCK` with `&` or `^`, and `MAX_FILE + 1` with `*` | On Linux `lstat` never reports a symlink as a file or directory, and the Windows test is not compiled. A non-directory ancestor fails the final lookup with `NotADirectory`, and a directory, FIFO or oversized file that passes a weakened check is refused after opening or reading with the same `File` error. The open flags, the re-check and the extra byte matter only when the file is replaced or grows between `lstat`, `open` and the read, which a test cannot arrange. |
 | `cargo-rullst/src/update/project/snapshot.rs`: the non-Windows `linked` with `false`; in `read`, `NOFOLLOW \| NONBLOCK` with `&` or `^`, the opened-file re-check `!opened.is_file() \|\| linked(..) \|\| len != ...` with `&&`, and `MAX_FILE + 1` with `*` | `lstat` never reports a symlink as a file or directory, so the type checks refuse links either way. `read` has already refused links, special files and files over 64 MiB, so the open flags, the re-check after opening and the extra byte matter only when the file is replaced or grows between `lstat`, `open` and the read, which a test cannot arrange. |
 | `rullst-studio/src/remote/history.rs`: `Sample::from_outcome`, `window.requests > 0` with `>=` | With no request the rate is `0 / 0`, which `finite` drops, so the sample stores no rate either way. |
+| `rullst-studio/src/data_browser/db.rs`: `fetch_table_schema`, delete the `"mysql"` arm, and the SQLite nullability `!row_flag(&row, "notnull") && !primary_key` with `\|\|` or without either `!`; `row_flag`, the `i64` reading's `!= 0` with `==`; `rullst-studio/src/er_diagram.rs`: `get_sqlite_schema` and `get_mysql_schema` with `Ok(String::new())` or `Ok("xyzzy".into())`, delete the `"mysql" \| "mariadb"` or `"sqlite" \| "libsql" \| "turso"` arm of `schema_for_driver`, and `row_is_primary_key`, the `i64` reading's `!= 0` with `==` | The all-feature build selects the PostgreSQL pool, so the driver is always `postgres`, whose key and nullability flags are `int4` values that the `i32` reading decodes. The SQLite matrix of default-feature builds and the MySQL and MariaDB matrices of `strict-mysql` builds run these branches. |
+| `rullst-studio/src/data_browser/portable.rs`: `build_for_driver`, `driver != "postgres"` with `==` | With `strict-postgres` the `QueryBuilder` already writes `$n` markers, which `replace_placeholders` leaves unchanged, so both branches build the same statement; the PostgreSQL matrix of default-feature builds (`sqlx::Any`) checks the renumbering. |
+| `rullst-studio/src/data_browser/handlers/telemetry.rs`: `capital_not_enabled_page` with `""` or `"xyzzy"` | It exists only without the `capital` feature; `the_capital_page_explains_how_to_enable_the_revenue_dashboard` checks it in such builds. |
+| `rullst-studio/src/feature_flags.rs`: `render_flag_rows`, the integer `enabled` reading `v != 0` with `==` | Only an integer `enabled` column reaches it. The PostgreSQL matrix of the all-feature build creates the documented `BOOLEAN` column, which decodes as `bool`, and cannot read the table again with another column type on the same connection (PostgreSQL refuses a cached plan whose result type changed); the SQLite matrix of default-feature builds reads an integer column and checks `DISABLED` and `ENABLED`. |
+| `rullst-studio/src/data_browser/handlers/table.rs`: `handle_table`, `supports_mutations && column.primary_key` with `\|\|` | It only lets the database return up to 16,385 instead of 257 characters of a non-key cell (or of a key cell of a read-only table), which `display_cell` cuts to the same 256 characters. |
+| `rullst-studio/src/distributed_traces/auth.rs`: `TraceBatchSigner::sign`, `(u128::from(high) << 64) \| u128::from(low)` with `^` | The two halves occupy disjoint bits, so OR and XOR build the same nonce. |
 | `rullst-iot/src/coap.rs` (`CoapRequest::write_to` twice, `write_option`), `rullst-iot/src/mqtt.rs` (`MqttPublish::encode`) and `rullst-iot/src/i2c.rs` (`I2cHelper::try_build_read_frame`): `\|` with `^` | The operands occupy disjoint bits, so OR and XOR build the same byte. |
 | `rullst-iot/src/coap.rs`: `CoapRequest::encode`, `payload.len() > MAX_COAP_DATAGRAM_BYTES` with `==` or `>=` | `CoapRequest::payload` already bounds the payload, and the measured datagram length, which adds at least the header and the payload marker, rejects the same lengths with the same error. |
 | `rullst-iot/src/mqtt.rs`: `MqttPublish::encode`, `remaining_length > MQTT_MAX_VARIABLE_BYTE_INTEGER` with `==` or `>=` | The builders keep topic and payload far below that limit, and `variable_byte_integer` repeats the check with the same error. |
@@ -389,7 +471,7 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-capital/src/invoice/pdf.rs`: `render_pdf`, `bytes.len() > MAX_PDF_BYTES` with `==` or `>=`, and the `\|\|` with `&&` | The embedded font is at most 8 MiB and a bounded invoice adds well under 1 MiB, so the document never reaches 16 MiB, and printpdf always writes the `%PDF-` header. |
 | `rullst-capital/src/providers/mod.rs`: `http_client` with a leaked default client | Adapters only build requests with it; `execute` always sends them through the bounded client from `http::client`. |
 | `rullst-capital/src/providers/stripe.rs`: `create_customer_portal`, `\|\|` with `&&` | `require_mock_operation` accepts the same empty and `mock_*` keys and the same fixture URL is returned; every other key fails there with the same error. |
-| `rullst-orm/src/value.rs`: the SQLx `Any` pool's `temporal::date_time`, `naive_date_time`, `date` and `time` with `String::new()` or `"xyzzy".into()` | They exist only without a strict driver feature, and the all-feature build selects the PostgreSQL pool; `the_any_pool_binds_dates_as_iso_text` checks their exact text in default-feature builds. |
+| `rullst-orm/src/bind_field.rs`: the MySQL/MariaDB `timestamp_wire` with `Default::default()` | It exists only with `strict-mysql` and without `strict-postgres`, and the all-feature build selects the PostgreSQL pool. The ORM strict-mysql CI job runs the library tests with `strict-mysql`, where `jiff_instants_take_the_pool_encoding_too` checks it, and `matrix_mariadb`, whose `driver_contract/jiff_temporal.rs` writes post-2038 instants through it (MariaDB stores `NULL` for the `TIMESTAMP` parameter it replaces). |
 | `rullst-orm/src/schema/schema_builder.rs`: `prepare_postgres_enums`, delete `!` in the `!definitions.is_empty()` guard | That guard exists only without `strict-postgres`, which the all-feature build enables; `postgres_enum_preparation_validates_before_any_statement` covers it in default-feature builds. |
 | `rullst-orm/src/pool/dsn.rs`: `percent_decode_utf8`, `(high << 4) \| low` with `^` | The high and low hex digits occupy disjoint bits, so OR and XOR build the same byte. |
 | `rullst-orm/src/privacy.rs`: the default `ComplianceModel::personal_fields` with `vec![]` | The default already returns an empty vector. |
@@ -413,12 +495,12 @@ entry only when its exact cargo-mutants name is also listed in
 | `rullst-mail/src/security.rs`: `redact_labelled_private_keys`, `MAX_PEM_LABEL_BYTES + 1` with `*` | Reading at most 64 label bytes cuts a longer label inside its run of label bytes, so the `-----` check that follows fails as the length check would. |
 | `rullst-mail/src/security.rs`: `href_values`, `value_start + length + 1` with `-` or `*` | The scan resumes on the closing quote or the byte before it (the opening quote for an empty value), and no `href` match can contain a quote. |
 | `rullst-mail/src/inspection/sniff.rs`: `root_element`, `open < close` with `<=` | Both are positions just after one byte, a `[` and a `>`, so they are never equal. |
-| `rullst-mail/src/pipeline.rs`: `DeliveryPipeline::require_due`, `send_at > now`, and `DeliveryPipeline::prepare_with_context`, the 366-day bound `send_at > now + 366 days`, each with `>=` | They differ only when the schedule equals a `Utc::now()` reading taken inside the call to the nanosecond, which a caller cannot arrange. |
+| `rullst-mail/src/pipeline.rs`: `DeliveryPipeline::require_due`, `send_at > now`, and `DeliveryPipeline::prepare_with_context`, the 366-day bound `send_at - now > 366 days`, each with `>=` | They differ only when the schedule equals a `Timestamp::now()` reading taken inside the call (plus 366 days) to the nanosecond, which a caller cannot arrange. |
 | `rullst-mail/src/suppression/mod.rs`: `ascii_domain`, either `&&` with `\|\|` | `recipient_address` rejects `:` and `ascii_domain` refuses `/`, `?`, `#`, `%` and `\` before parsing, so `http://{domain}/` never parses with a port or a path other than `/`, and the URL parser refuses an empty host: all three tests always hold. |
 | `rullst-mail/src/drivers/failover.rs`: `FailoverDriver::is_tripped`, `elapsed() < self.cooldown` with `<=` | An `Instant` reading would have to equal the last failure plus the cooldown to the nanosecond. |
 | `rullst-mail/src/drivers/memory.rs`: `MailTrap::driver` with `Default::default()` | `MemoryDriver::default()` is `MemoryDriver::new()`, the driver connected to the global trap. |
 | `rullst-mail/src/error.rs`: `bounded_message`, `boundary > 0` with `>=` | `is_char_boundary(0)` is always true, so the loop stops at 0 either way. |
-| `rullst-mail/src/worker.rs`: `prepare_claimed_message`, `send_at > now + CLAIM_CLOCK_SKEW`, and `rullst-mail/src/drivers/resend.rs`: `ResendDriver::send_request`, `send_at > now + MAX_PROVIDER_SCHEDULE`, each with `>=` | They differ only when the schedule equals a `Utc::now()` reading taken inside the call, plus 300 s or 30 days, to the nanosecond. |
+| `rullst-mail/src/worker.rs`: `prepare_claimed_message`, `send_at - now > CLAIM_CLOCK_SKEW`, and `rullst-mail/src/drivers/resend.rs`: `ResendDriver::send_request`, `send_at - now > MAX_PROVIDER_SCHEDULE`, each with `>=` | They differ only when the schedule equals a `Timestamp::now()` reading taken inside the call, plus 300 s or 30 days, to the nanosecond. |
 | `rullst-ai/src/ai/egress.rs`: `EgressPolicy::strict` with `Default::default()` | `strict` already returns `Self::default()`. |
 | `rullst-ai/src/ai/egress.rs`: `is_public_ipv6`, `is_unspecified() \|\| is_loopback()` with `&&` | `::` and `::1` lie outside `2000::/3`, which the next clause rejects. |
 | `rullst-ai/src/ai/guardrails/markdown_inline.rs`: `open_tag_end`, the self-closing `then_some(index + 1)` with `-` or `*` | The tag then ends on or just before its `/`; the byte before that `/` is whitespace, a quote or a name byte, never a bracket. |
@@ -472,6 +554,12 @@ every test of the file reaches, so no single test can fail first:
 - `rullst-core/src/server/dev_telemetry/recorder.rs`: `push_bounded` with
   `entries.len() >= capacity` replaced by `<` pops an empty queue forever, in
   code every recorded request or query reaches.
+- `rullst-studio/src/remote/notify.rs`: `Inner::push` with
+  `queue.len() > MAX_QUEUED` replaced by `<`, and
+  `rullst-studio/src/distributed_traces/store.rs`:
+  `DistributedTraceStore::insert_batch` with `spans.len() >= capacity`
+  replaced by `<`, pop an empty queue forever, in code every notification or
+  trace-ingestion test reaches.
 - `rullst-core/src/scheduler.rs`: `shutdown_requested` returning `true` or
   `false`, and `wait_for_shutdown` returning at once or without its `!`, so a
   task loop never runs or never sees shutdown, and the scheduler, server and

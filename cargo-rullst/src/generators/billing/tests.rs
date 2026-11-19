@@ -102,7 +102,7 @@ fn generated_billing_rows_get_real_timestamps() {
         2
     );
     assert!(!source.contains("__UTC_TIMESTAMP_FN__") && !source.contains("__UPDATED_AT__"));
-    // `timestamps()` columns hold `chrono` instants on SQLx pools.
+    // `timestamps()` columns hold `rullst::orm::Timestamp` instants on SQLx pools.
     assert_eq!(source.matches("updated_at: created_at,").count(), 2);
     // New rows start an empty dirty-tracking snapshot.
     assert_eq!(
@@ -114,7 +114,7 @@ fn generated_billing_rows_get_real_timestamps() {
         2
     );
     assert!(source.contains(
-        "fn utc_timestamp() -> rullst::orm::chrono::DateTime<rullst::orm::chrono::Utc> {\n    rullst::orm::chrono::Utc::now()\n}"
+        "fn utc_timestamp() -> rullst::orm::Timestamp {\n    rullst::orm::Timestamp::now()\n}"
     ));
     assert!(!source.contains("{year:04}"));
 }

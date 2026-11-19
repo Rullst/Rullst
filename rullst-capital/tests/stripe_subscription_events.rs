@@ -20,7 +20,7 @@ fn snapshot() -> Value {
 
 fn signed(value: &Value) -> Result<rullst_capital::WebhookEvent, CapitalError> {
     let bytes = serde_json::to_vec(value).unwrap();
-    let timestamp = chrono::Utc::now().timestamp();
+    let timestamp = jiff::Timestamp::now().as_second();
     let mut context = hmac::Hmac::<sha2::Sha256>::new_from_slice(b"whsec_fixture").unwrap();
     context.update(format!("{timestamp}.").as_bytes());
     context.update(&bytes);

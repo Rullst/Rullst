@@ -136,6 +136,9 @@ fn skip_meta_value(meta: &syn::meta::ParseNestedMeta<'_>) -> syn::Result<()> {
     Ok(())
 }
 
+/// The `rust_type` of a chrono `DateTime<Tz>` field.
+pub(crate) const CHRONO_DATE_TIME: &str = "DateTime<Tz>";
+
 #[cfg_attr(mutants, mutants::skip)]
 fn extract_type_name(ty: &syn::Type) -> (String, bool) {
     if let syn::Type::Path(type_path) = ty
@@ -148,6 +151,11 @@ fn extract_type_name(ty: &syn::Type) -> (String, bool) {
         {
             let (inner_name, _) = extract_type_name(inner_ty);
             return (inner_name, true);
+        }
+        // chrono's `DateTime<Tz>`, which Rullst's argument-less
+        // `DateTime` is not.
+        if type_name == "DateTime" && !segment.arguments.is_empty() {
+            return (CHRONO_DATE_TIME.to_string(), false);
         }
         return (type_name, false);
     }
@@ -233,6 +241,28 @@ mod tests {
             tables[1].fields.len(),
             2,
             "the skipped field must be omitted"
+        );
+    }
+
+    #[test]
+    fn chrono_date_times_are_told_apart_from_the_orms() {
+        let tables = tables_in(
+            "#[derive(Orm)]\nstruct Event { id: i64, a: DateTime<Utc>, b: Option<rullst::orm::DateTime>, c: Option<chrono::DateTime<chrono::Utc>>, d: rullst::orm::Timestamp }\n",
+        );
+        let types: Vec<_> = tables[0]
+            .fields
+            .iter()
+            .map(|field| (field.rust_type.as_str(), field.is_option))
+            .collect();
+        assert_eq!(
+            types,
+            [
+                ("i64", false),
+                (CHRONO_DATE_TIME, false),
+                ("DateTime", true),
+                (CHRONO_DATE_TIME, true),
+                ("Timestamp", false)
+            ]
         );
     }
 }

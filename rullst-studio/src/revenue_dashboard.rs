@@ -195,6 +195,28 @@ mod tests {
         assert_eq!(html.matches("PROCESSED").count(), 20);
     }
 
+    #[test]
+    fn only_processed_events_get_the_success_badge() {
+        let manager = RevenueDashboardManager::new();
+        for (id, status) in [("evt_ok", "processed"), ("evt_bad", "failed")] {
+            manager.record_event(rullst_capital::WebhookEventRecord::new(
+                id,
+                "stripe",
+                "invoice.paid",
+                status,
+                1_700_000_000,
+                "{}",
+            ));
+        }
+        let html = render_revenue_dashboard_for(&manager);
+        assert!(html.contains(
+            "border bg-emerald-500/10 text-emerald-400 border-emerald-500/20\">PROCESSED</span>"
+        ));
+        assert!(
+            html.contains("border bg-rose-500/10 text-rose-400 border-rose-500/20\">FAILED</span>")
+        );
+    }
+
     #[tokio::test]
     async fn test_revenue_dashboard_endpoint() {
         let app = router();

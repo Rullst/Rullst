@@ -98,6 +98,11 @@ mod redis_connection;
 /// Network and service resilience (rate limits, traffic shield, load shedding).
 pub mod resilience;
 #[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+/// RFC 3339 text as chrono wrote and read it; shared by the Rullst crates,
+/// not part of the public API.
+pub mod rfc3339;
+#[cfg(not(target_arch = "wasm32"))]
 /// High-performance application routers built on Axum.
 pub mod routing;
 #[cfg(not(target_arch = "wasm32"))]

@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "policy": "MAINTAINING.md section 4, Public dependency health: a reviewed flag is reported but does not open the health issue; advisories can never be reviewed, and a review lasts at most 12 months",
+  "reviews": [
+    {
+      "crate": "secrecy",
+      "flags": ["stale"],
+      "reason": "A small, stable security primitive with an active repository and no advisory.",
+      "reviewer": "maintainer",
+      "reviewed": "2026-11-17",
+      "expires": "2027-05-17"
+    },
+    {
+      "crate": "tower-layer",
+      "flags": ["stale"],
+      "reason": "The foundational Layer trait shared with axum, hyper and tower-http: finished rather than abandoned, with an active repository.",
+      "reviewer": "maintainer",
+      "reviewed": "2026-11-17",
+      "expires": "2027-05-17"
+    },
+    {
+      "crate": "tower-service",
+      "flags": ["stale"],
+      "reason": "The foundational Service trait shared with axum, hyper and tower-http: finished rather than abandoned, with an active repository.",
+      "reviewer": "maintainer",
+      "reviewed": "2026-11-17",
+      "expires": "2027-05-17"
+    }
+  ]
+}

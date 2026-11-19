@@ -6,7 +6,7 @@ pub(super) fn name(value: &str) -> Result<()> {
     crate::validation::validate_route_identifier("schedule name", value, 128)
         .map_err(|_| RecurringError::InvalidInput("schedule name"))
 }
-pub(super) fn metadata(row: &PgRow) -> Result<RecurringMetadata> {
+pub(super) fn metadata(row: &PgRow, syntax: CronSyntax) -> Result<RecurringMetadata> {
     Ok(RecurringMetadata {
         name: row.try_get("name").map_err(|_| RecurringError::Storage)?,
         generation: row
@@ -21,10 +21,41 @@ pub(super) fn metadata(row: &PgRow) -> Result<RecurringMetadata> {
         cancelled: row
             .try_get("cancelled")
             .map_err(|_| RecurringError::Storage)?,
+        syntax,
     })
+}
+/// The stored definition of a row with `generation` and `content` columns.
+pub(super) fn stored_definition<C>(
+    store: &PostgresRecurringStore<C>,
+    row: &PgRow,
+) -> Result<RecurringDefinition> {
+    let generation: String = row
+        .try_get("generation")
+        .map_err(|_| RecurringError::Storage)?;
+    let bytes: Vec<u8> = row
+        .try_get("content")
+        .map_err(|_| RecurringError::Storage)?;
+    serde_json::from_slice(&crypto::open(
+        &store.keys,
+        store.config.namespace(),
+        "definition",
+        &generation,
+        &bytes,
+    )?)
+    .map_err(|_| RecurringError::Encryption)
 }
 impl<C: Clock> PostgresRecurringStore<C> {
     /// Idempotently stores an immutable definition. A cancelled name cannot be reactivated.
+    ///
+    /// When the name is taken, an equal definition replays the stored one and
+    /// returns its metadata, and a different one fails with
+    /// [`RecurringError::Conflict`]. A stored [`CronSyntax::Legacy`] definition
+    /// stays legacy: a definition that differs from it only in its syntax
+    /// (the same expression and fields, built with
+    /// [`RecurringDefinition::new`]) replays it, keeping its legacy
+    /// occurrences, with metadata whose [`RecurringMetadata::syntax`] is
+    /// `Legacy` and a `tracing` warning; any other difference fails with
+    /// [`RecurringError::LegacyDefinition`].
     pub async fn create(&self, definition: RecurringDefinition) -> Result<RecurringMetadata> {
         definition.validate()?;
         bounded(async {
@@ -39,20 +70,15 @@ impl<C: Clock> PostgresRecurringStore<C> {
             .await
             .map_err(|_| RecurringError::Storage)?
             {
-                let metadata = metadata(&row)?;
-                let bytes: Vec<u8> = row
-                    .try_get("content")
-                    .map_err(|_| RecurringError::Storage)?;
-                let stored: RecurringDefinition = serde_json::from_slice(&crypto::open(
-                    &self.keys,
-                    self.config.namespace(),
-                    "definition",
-                    &metadata.generation,
-                    &bytes,
-                )?)
-                .map_err(|_| RecurringError::Encryption)?;
-                if stored != definition {
-                    return Err(RecurringError::Conflict);
+                let stored = stored_definition(self, &row)?;
+                let metadata = metadata(&row, stored.syntax)?;
+                if stored.replays(&definition)? {
+                    tracing::warn!(
+                        schedule = %definition.name,
+                        "recurring schedule keeps its legacy cron syntax (deprecated, removal \
+                         planned for 14.0); keeping its expression keeps it running, or cancel it \
+                         and create the POSIX definition under a new name"
+                    );
                 }
                 self.commit(tx, now, None).await?;
                 return Ok(metadata);
@@ -99,6 +125,7 @@ impl<C: Clock> PostgresRecurringStore<C> {
                 created: now,
                 next_due,
                 cancelled: false,
+                syntax: definition.syntax,
             })
         })
         .await

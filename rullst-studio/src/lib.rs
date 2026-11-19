@@ -23,9 +23,6 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 extern crate rullst_core as rullst;
-// Mutation testing covers only the remote-projects mode (`remote`), whose
-// tokens, outbound client, escaping and alerts are security relevant. The
-// local Studio pages and their wiring keep the `mutants::skip` below.
 #[cfg(feature = "local")]
 use axum::Router;
 #[cfg(feature = "local")]
@@ -33,62 +30,45 @@ use rullst_core::Queue;
 #[cfg(feature = "local")]
 use std::sync::Arc;
 
-#[cfg_attr(mutants, mutants::skip)]
 pub mod access;
 #[cfg(feature = "local")]
-#[cfg_attr(mutants, mutants::skip)]
 pub mod ai_playground;
 #[cfg(feature = "local")]
-#[cfg_attr(mutants, mutants::skip)]
 pub mod api_playground;
 pub use access::{LocalStudioAccess, StudioBuildError};
 #[cfg(any(feature = "local", feature = "remote"))]
-#[cfg_attr(mutants, mutants::skip)]
 mod assets;
 #[cfg(feature = "local")]
-#[cfg_attr(mutants, mutants::skip)]
 pub mod cache_inspector;
 #[cfg(feature = "local")]
-#[cfg_attr(mutants, mutants::skip)]
 pub mod data_browser;
 #[cfg(feature = "local")]
 pub use data_browser::run_studio;
 #[cfg(feature = "local")]
-#[cfg_attr(mutants, mutants::skip)]
 pub mod distributed_traces;
 #[cfg(feature = "local")]
-#[cfg_attr(mutants, mutants::skip)]
 pub mod env_viewer;
 #[cfg(feature = "local")]
-#[cfg_attr(mutants, mutants::skip)]
 pub mod er_diagram;
 #[cfg(feature = "local")]
-#[cfg_attr(mutants, mutants::skip)]
 pub mod feature_flags;
 #[cfg(feature = "local")]
-#[cfg_attr(mutants, mutants::skip)]
 pub mod jobs_monitor;
 #[cfg(feature = "local")]
-#[cfg_attr(mutants, mutants::skip)]
 pub mod logger;
 #[cfg(feature = "local")]
-#[cfg_attr(mutants, mutants::skip)]
 pub mod migration_manager;
 #[cfg(feature = "local")]
-#[cfg_attr(mutants, mutants::skip)]
 pub mod radar_visualizer;
 #[cfg(feature = "remote")]
 pub mod remote;
 /// The revenue dashboard (feature `capital`, on by default; the `rullst`
 /// facade enables it with its own `capital` feature).
 #[cfg(feature = "capital")]
-#[cfg_attr(mutants, mutants::skip)]
 pub mod revenue_dashboard;
 #[cfg(feature = "local")]
-#[cfg_attr(mutants, mutants::skip)]
 pub mod security_radar;
 #[cfg(feature = "local")]
-#[cfg_attr(mutants, mutants::skip)]
 pub mod traces_visualizer;
 
 /// The local Studio builder (feature `local`, which every driver profile
@@ -102,7 +82,6 @@ pub struct Studio {
 }
 
 #[cfg(feature = "local")]
-#[cfg_attr(mutants, mutants::skip)]
 impl Default for Studio {
     fn default() -> Self {
         Self::new()
@@ -110,7 +89,6 @@ impl Default for Studio {
 }
 
 #[cfg(feature = "local")]
-#[cfg_attr(mutants, mutants::skip)]
 impl Studio {
     pub fn new() -> Self {
         Self {

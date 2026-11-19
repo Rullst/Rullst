@@ -9,6 +9,16 @@ pub enum RecurringError {
     Configuration,
     #[error("schedule name was reused with a different definition")]
     Conflict,
+    /// The name belongs to a stored [`CronSyntax::Legacy`](super::CronSyntax::Legacy)
+    /// definition and the requested one differs in more than its syntax.
+    /// Creating it again with the same expression and fields keeps the legacy
+    /// schedule running (deprecated, removal planned for 14.0); to adopt
+    /// POSIX, cancel it and create the POSIX definition under a new name.
+    /// Since 13.0.0-alpha.6.
+    #[error(
+        "schedule name is held by a legacy cron definition; keep its expression to keep it running, or cancel it and create the POSIX definition under a new name"
+    )]
+    LegacyDefinition,
     #[error("recurring-publication capacity is exhausted")]
     Capacity,
     #[error("schedule or occurrence does not exist in this namespace")]

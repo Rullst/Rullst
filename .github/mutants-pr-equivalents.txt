@@ -28,14 +28,9 @@ rullst-ai/src/ai/guardrails/tax_ids.rs:97:20: replace && with || in is_valid_tax
 # rullst-orm: compiled only without a strict driver feature (SQLx Any pool), so
 # absent from the gate's --all-features build; default-feature tests cover them.
 rullst-orm/src/schema/schema_builder.rs:78:8: delete ! in prepare_postgres_enums
-rullst-orm/src/value.rs:78:9: replace temporal::date_time -> String with String::new()
-rullst-orm/src/value.rs:78:9: replace temporal::date_time -> String with "xyzzy".into()
-rullst-orm/src/value.rs:82:9: replace temporal::naive_date_time -> String with String::new()
-rullst-orm/src/value.rs:82:9: replace temporal::naive_date_time -> String with "xyzzy".into()
-rullst-orm/src/value.rs:86:9: replace temporal::date -> String with String::new()
-rullst-orm/src/value.rs:86:9: replace temporal::date -> String with "xyzzy".into()
-rullst-orm/src/value.rs:90:9: replace temporal::time -> String with String::new()
-rullst-orm/src/value.rs:90:9: replace temporal::time -> String with "xyzzy".into()
+# The MySQL/MariaDB wire of a jiff-based instant is compiled only with
+# strict-mysql and without strict-postgres, which the all-feature build enables.
+rullst-orm/src/bind_field.rs:30:5: replace timestamp_wire -> TimestampWire with Default::default()
 
 # rullst-orm-macros feature gates: with every feature, redis() and ai() emit
 # no attribute, which is what Default::default() returns.
@@ -193,6 +188,28 @@ cargo-rullst/src/generators/footprint/target.rs:240:79: replace < with <= in Own
 # tests): see docs/src/mutation-testing.md "Accepted equivalent mutants".
 rullst-studio/src/remote/history.rs:72:51: replace > with >= in Sample::from_outcome
 
+# rullst-studio local Studio (13.0 campaign, targeted runs with the package's
+# tests and the PostgreSQL data-browser matrix): each name below has a row in
+# docs/src/mutation-testing.md "Accepted equivalent mutants".
+rullst-studio/src/data_browser/db.rs:231:9: delete match arm "mysql" in fetch_table_schema
+rullst-studio/src/data_browser/db.rs:261:13: delete ! in fetch_table_schema
+rullst-studio/src/data_browser/db.rs:261:40: replace && with || in fetch_table_schema
+rullst-studio/src/data_browser/db.rs:261:43: delete ! in fetch_table_schema
+rullst-studio/src/data_browser/db.rs:281:70: replace != with == in row_flag
+rullst-studio/src/er_diagram.rs:36:70: replace != with == in row_is_primary_key
+rullst-studio/src/er_diagram.rs:96:5: replace get_sqlite_schema -> Result<String, sqlx::Error> with Ok(String::new())
+rullst-studio/src/er_diagram.rs:96:5: replace get_sqlite_schema -> Result<String, sqlx::Error> with Ok("xyzzy".into())
+rullst-studio/src/er_diagram.rs:200:5: replace get_mysql_schema -> Result<String, sqlx::Error> with Ok(String::new())
+rullst-studio/src/er_diagram.rs:200:5: replace get_mysql_schema -> Result<String, sqlx::Error> with Ok("xyzzy".into())
+rullst-studio/src/er_diagram.rs:244:9: delete match arm "mysql" | "mariadb" in schema_for_driver
+rullst-studio/src/er_diagram.rs:245:9: delete match arm "sqlite" | "libsql" | "turso" in schema_for_driver
+rullst-studio/src/data_browser/portable.rs:22:15: replace != with == in build_for_driver
+rullst-studio/src/data_browser/handlers/telemetry.rs:36:5: replace capital_not_enabled_page -> &'static str with ""
+rullst-studio/src/data_browser/handlers/telemetry.rs:36:5: replace capital_not_enabled_page -> &'static str with "xyzzy"
+rullst-studio/src/feature_flags.rs:106:24: replace != with == in render_flag_rows
+rullst-studio/src/data_browser/handlers/table.rs:137:47: replace && with || in handle_table
+rullst-studio/src/distributed_traces/auth.rs:124:47: replace | with ^ in TraceBatchSigner::sign
+
 # rullst-messaging (alpha.6 campaign, targeted runs with the package's tests):
 # each name below has a row in docs/src/mutation-testing.md "Accepted
 # equivalent mutants".
@@ -238,18 +255,18 @@ rullst-connect/src/provider/id_token.rs:121:13: replace || with && in validate_c
 # rullst-mail (13.0 campaign, targeted runs with the package's tests): each
 # name below has a row in docs/src/mutation-testing.md "Accepted equivalent
 # mutants".
-rullst-mail/src/pipeline.rs:96:44: replace > with >= in DeliveryPipeline::require_due
-rullst-mail/src/pipeline.rs:160:21: replace > with >= in DeliveryPipeline::prepare_with_context
+rullst-mail/src/pipeline.rs:97:44: replace > with >= in DeliveryPipeline::require_due
+rullst-mail/src/pipeline.rs:163:83: replace > with >= in DeliveryPipeline::prepare_with_context
 rullst-mail/src/suppression/mod.rs:419:24: replace && with || in ascii_domain
 rullst-mail/src/suppression/mod.rs:419:48: replace && with || in ascii_domain
 rullst-mail/src/drivers/failover.rs:89:68: replace < with <= in FailoverDriver::is_tripped
 rullst-mail/src/inspection/sniff.rs:283:36: replace < with <= in root_element
 rullst-mail/src/drivers/memory.rs:130:9: replace MailTrap::driver -> MemoryDriver with Default::default()
 rullst-mail/src/error.rs:213:24: replace > with >= in bounded_message
-rullst-mail/src/worker.rs:61:41: replace > with >= in prepare_claimed_message
+rullst-mail/src/worker.rs:61:79: replace > with >= in prepare_claimed_message
 rullst-mail/src/facade/driver.rs:67:9: replace <impl Hasher for DigestHasher>::finish -> u64 with 1
 rullst-mail/src/facade/driver.rs:215:9: delete match arm (Some(_), Some(_)) in ses_credentials
-rullst-mail/src/drivers/resend.rs:68:45: replace > with >= in ResendDriver::send_request
+rullst-mail/src/drivers/resend.rs:66:60: replace > with >= in ResendDriver::send_request
 rullst-mail/src/security.rs:128:39: replace + with * in redact_labelled_private_keys
 rullst-mail/src/security.rs:214:52: replace + with - in href_values
 rullst-mail/src/security.rs:214:52: replace + with * in href_values

@@ -24,7 +24,7 @@ fn snapshot() -> Value {
 }
 
 fn headers(payload: &[u8]) -> HashMap<String, String> {
-    let now = chrono::Utc::now().timestamp();
+    let now = jiff::Timestamp::now().as_second();
     let mut context = hmac::Hmac::<sha2::Sha256>::new_from_slice(b"whsec_envelope").unwrap();
     context.update(format!("{now}.").as_bytes());
     context.update(payload);

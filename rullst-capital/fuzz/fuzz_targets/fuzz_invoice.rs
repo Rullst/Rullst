@@ -1,12 +1,12 @@
 #![no_main]
 
-use chrono::Utc;
+use jiff::Timestamp;
 use libfuzzer_sys::fuzz_target;
 use rullst_capital::invoice::{Invoice, InvoiceLocale};
 
 fuzz_target!(|data: &[u8]| {
     if let Ok(s) = std::str::from_utf8(data) {
-        let mut invoice = Invoice::new("INV-100", s, Utc::now(), "USD")
+        let mut invoice = Invoice::new("INV-100", s, Timestamp::now(), "USD")
             .with_item(s, 9_900)
             .with_locale(InvoiceLocale::from_tag(s).unwrap_or_default());
         invoice.labels.title = s.to_string();

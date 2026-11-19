@@ -143,13 +143,13 @@ Enable `capital-mail` on the umbrella crate (or `invoice-pdf` on Capital plus
 then bind it to the returned receipt:
 
 ```rust,no_run
-use chrono::Utc;
+use jiff::Timestamp;
 use rullst::capital::{ChargeReceipt, Invoice, InvoiceLocale};
 use rullst::mail::PaidInvoiceDelivery;
 
 async fn deliver_invoice(receipt: &ChargeReceipt) -> Result<(), Box<dyn std::error::Error>> {
     // Amounts are integers in the currency's smallest unit: 2_500 is R$ 25.00.
-    let invoice = Invoice::new("INV-2026-0001", "customer@example.com", Utc::now(), "BRL")
+    let invoice = Invoice::new("INV-2026-0001", "customer@example.com", Timestamp::now(), "BRL")
         .with_item("Pro subscription", 2_500)
         // "Recibo" labels; Capital issues no tax invoice (nota fiscal).
         .with_locale(InvoiceLocale::PtBr);

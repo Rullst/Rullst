@@ -184,8 +184,9 @@ fn entries(
 
 /// Whether `text` names the crate: `rullst_<name>`, or `<name>::` after a
 /// character that cannot end an identifier, as in `rullst::<name>::...` (so
-/// `openai::` does not name `ai`). Core's types are at the root of the
-/// facade, so any `rullst` path counts for them.
+/// `openai::` does not name `ai`), but not after `crate::`, `self::` or
+/// `super::`, which name a module of the application. Core's types are at
+/// the root of the facade, so any `rullst` path counts for them.
 fn names_crate(text: &str, name: &str) -> bool {
     if name == "core" {
         return text.contains("rullst");
@@ -193,7 +194,11 @@ fn names_crate(text: &str, name: &str) -> bool {
     let path = format!("{name}::");
     text.contains(&format!("rullst_{name}"))
         || text.match_indices(&path).any(|(at, _)| {
-            !text[..at]
+            let before = &text[..at];
+            let own = ["crate::", "self::", "super::"]
+                .iter()
+                .any(|module| before.ends_with(module));
+            !own && !before
                 .chars()
                 .next_back()
                 .is_some_and(|before| before.is_alphanumeric() || before == '_')

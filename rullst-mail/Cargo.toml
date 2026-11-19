@@ -46,7 +46,9 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 async-trait = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
-chrono = { workspace = true, features = ["clock", "serde"] }
+# `Message::send_at` and other instants; `tz-system` and the zoneinfo database
+# give the log driver's console line its local time.
+jiff = { workspace = true, features = ["tz-system", "tzdb-zoneinfo", "tzdb-bundle-platform"] }
 tracing = { workspace = true }
 base64 = { workspace = true }
 hmac = { workspace = true }

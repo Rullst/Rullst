@@ -1,4 +1,4 @@
-//! Date/time columns: with a strict driver feature `chrono` fields round-trip,
+//! Date/time columns: with a strict driver feature date/time fields round-trip,
 //! filter and order on every driver; the SQLx `Any` pool keeps SQLite's ISO
 //! text and refuses native PostgreSQL and MySQL/MariaDB date/time columns.
 
@@ -39,25 +39,24 @@ pub(super) async fn exercise() {
 ))]
 mod native {
     use rullst_orm::Orm;
-    use rullst_orm::chrono::{
-        DateTime, Duration, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc,
-    };
+    use rullst_orm::jiff::SignedDuration;
     use rullst_orm::schema::Schema;
+    use rullst_orm::{Date, DateTime, Time, Timestamp};
 
     #[derive(Debug, Clone, PartialEq, Orm)]
     #[orm(table = "contract_calendar", full_row_save)]
     struct CalendarEntry {
         id: i32,
         title: String,
-        starts_at: DateTime<Utc>,
-        local_start: NaiveDateTime,
-        day: NaiveDate,
-        opens: NaiveTime,
-        ends_at: Option<DateTime<Utc>>,
+        starts_at: Timestamp,
+        local_start: DateTime,
+        day: Date,
+        opens: Time,
+        ends_at: Option<Timestamp>,
         #[orm(db_default)]
-        created_at: Option<DateTime<Utc>>,
+        created_at: Option<Timestamp>,
         #[orm(db_default)]
-        updated_at: Option<DateTime<Utc>>,
+        updated_at: Option<Timestamp>,
     }
 
     fn titles(entries: &[CalendarEntry]) -> Vec<&str> {
@@ -69,17 +68,18 @@ mod native {
             .await
             .unwrap_or_else(|error| panic!("{driver} date/time columns: {error}"));
 
-        let starts_at = Utc
-            .with_ymd_and_hms(2026, 10, 15, 9, 30, 0)
-            .single()
-            .expect("instant")
-            + Duration::microseconds(123_456);
-        let day = NaiveDate::from_ymd_opt(2026, 2, 28).expect("date");
-        let local_start = day
-            .and_hms_micro_opt(6, 30, 0, 250_000)
-            .expect("local time");
-        let opens = NaiveTime::from_hms_micro_opt(8, 15, 30, 500_000).expect("time");
-        let before = Utc::now();
+        let starts_at: Timestamp = "2026-10-15T09:30:00.123456Z".parse().expect("instant");
+        let day: Date = "2026-02-28".parse().expect("date");
+        let local_start: DateTime = "2026-02-28T06:30:00.25".parse().expect("local time");
+        let opens: Time = "08:15:30.5".parse().expect("time");
+        // Instant arithmetic is jiff's; its results convert back.
+        let plus = |at: Timestamp, duration: SignedDuration| -> Timestamp {
+            at.checked_add(duration).expect("in range").into()
+        };
+        let plus_civil = |at: DateTime, duration: SignedDuration| -> DateTime {
+            at.checked_add(duration).expect("in range").into()
+        };
+        let before = Timestamp::now();
         let mut entry = CalendarEntry {
             id: 0,
             title: "launch".to_string(),
@@ -92,7 +92,7 @@ mod native {
             updated_at: None,
         };
         entry.save().await.expect("insert date/time values");
-        let after = Utc::now();
+        let after = Timestamp::now();
 
         let stored = CalendarEntry::find(entry.id)
             .await
@@ -108,7 +108,8 @@ mod native {
         // zone's offset.
         let created = stored.created_at.expect("database default");
         assert!(
-            created > before - Duration::minutes(10) && created < after + Duration::minutes(10),
+            created > plus(before, SignedDuration::from_mins(-10))
+                && created < plus(after, SignedDuration::from_mins(10)),
             "{driver}: created_at {created} outside {before}..{after}"
         );
         assert!(stored.updated_at.is_some(), "{driver}");
@@ -127,11 +128,11 @@ mod native {
         let mut later = CalendarEntry {
             id: 0,
             title: "later".to_string(),
-            starts_at: starts_at + Duration::days(1),
-            local_start: local_start + Duration::hours(1),
-            day: day.succ_opt().expect("next day"),
+            starts_at: plus(starts_at, SignedDuration::from_hours(24)),
+            local_start: plus_civil(local_start, SignedDuration::from_hours(1)),
+            day: day.tomorrow().expect("next day").into(),
             opens,
-            ends_at: Some(starts_at + Duration::days(2)),
+            ends_at: Some(plus(starts_at, SignedDuration::from_hours(48))),
             created_at: None,
             updated_at: None,
         };
@@ -155,7 +156,10 @@ mod native {
             .expect("filter by a date");
         assert_eq!(titles(&on_day), ["launch"], "{driver}");
         let early = CalendarEntry::query()
-            .where_lt("local_start", local_start + Duration::minutes(1))
+            .where_lt(
+                "local_start",
+                plus_civil(local_start, SignedDuration::from_mins(1)),
+            )
             .get()
             .await
             .expect("filter by a local date and time");
@@ -168,7 +172,7 @@ mod native {
         assert_eq!(titles(&ended), ["later"], "{driver}");
 
         // Writes never send `#[orm(db_default)]` columns.
-        let ends_at = starts_at + Duration::hours(2);
+        let ends_at = plus(starts_at, SignedDuration::from_hours(2));
         entry
             .update_partial()
             .ends_at(Some(ends_at))
@@ -216,11 +220,10 @@ mod native {
     feature = "strict-sqlite"
 )))]
 mod any_pool {
-    use rullst_orm::chrono::{TimeZone, Utc};
     use rullst_orm::schema::Schema;
     use rullst_orm::{Error, Orm};
 
-    /// SQLx `Any` decodes no `chrono` type, so the fields are text.
+    /// SQLx `Any` decodes no date/time type, so the fields are text.
     #[derive(Debug, Clone, Orm)]
     #[orm(table = "contract_calendar", full_row_save)]
     struct CalendarText {
@@ -268,11 +271,8 @@ mod any_pool {
         assert_eq!(stored.starts_at, entry.starts_at);
         assert_eq!(stored.day, entry.day);
         assert!(stored.created_at.is_some_and(|value| !value.is_empty()));
-        // A `chrono` filter binds the same RFC 3339 text.
-        let earlier = Utc
-            .with_ymd_and_hms(2026, 10, 15, 9, 30, 0)
-            .single()
-            .expect("instant");
+        // An instant filter binds the same RFC 3339 text.
+        let earlier: rullst_orm::Timestamp = "2026-10-15T09:30:00Z".parse().expect("instant");
         let upcoming = CalendarText::query()
             .where_gt("starts_at", earlier)
             .get()

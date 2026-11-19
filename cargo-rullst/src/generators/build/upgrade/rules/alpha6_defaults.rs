@@ -35,10 +35,12 @@ pub(super) fn struct_rule(last: &str) -> Option<&'static Rule> {
 }
 
 /// The rule for a string literal: the key `"version"` in a file that also
-/// names a probe path in a string, such as a test that reads
-/// `body["version"]` after `get("/health")`.
+/// names one of Rullst's probe paths in a string, such as a test that reads
+/// `body["version"]` after `get("/health")`. The path ends the string
+/// (`"/health"`, `"{base}/ready"`), so an application's own `/healthz` does
+/// not count.
 pub(super) fn string_rule(value: &str, text: &str) -> Option<&'static Rule> {
-    (value == "version" && (text.contains("\"/health") || text.contains("\"/ready")))
+    (value == "version" && (text.contains("/health\"") || text.contains("/ready\"")))
         .then_some(&HEALTH_FRAMEWORK_VERSION)
 }
 

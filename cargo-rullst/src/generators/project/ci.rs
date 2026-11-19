@@ -81,11 +81,14 @@ pub(crate) fn assert_pinned_like_rullst(name: &str, workflow: &str) {
             "{name}: `{value}` has no version comment"
         );
         if let Some(own) = &own {
-            // When a Rullst workflow bumps a pin, update the generated one too.
+            // Dependabot bumps only Rullst's own workflows; the script copies
+            // their pins into the generated ones.
             assert!(
                 own.iter()
                     .any(|(used, used_comment)| *used == value && *used_comment == comment),
-                "{name}: `{value} # {comment}` is not a pin of Rullst's own .github/workflows"
+                "{name}: `{value} # {comment}` is not a pin of Rullst's own .github/workflows; \
+                 run `python3 .github/sync-template-action-pins.py` from the repository root \
+                 and commit the result"
             );
         }
     }

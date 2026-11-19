@@ -1,6 +1,6 @@
 use rullst::db::{Orm, RowSnapshot};
 use rullst::nexus::{FieldKind, FieldMeta, NexusModel};
-use rullst::orm::chrono::{DateTime, Utc};
+use rullst::orm::Timestamp;
 
 #[derive(Debug, Clone, Orm)]
 #[orm(table = "lesson_progress")]
@@ -10,8 +10,8 @@ pub struct LessonProgress {
     pub lesson_id: i32,
     pub progress_percent: i32,
     pub completed: i32,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
     // Remembers the loaded values, so `save()` writes only the columns this
     // record changed. Build new records with `snapshot: RowSnapshot::default()`.
     #[sqlx(skip)]

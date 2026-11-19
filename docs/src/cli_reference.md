@@ -550,8 +550,9 @@ rule anyway.
 `update project verify`/`review`/`apply` refuse a preparation with must-change
 findings; preparations apply every rule. In JSON, each
 `source_findings` element keeps `path`, `line`, `code`, `severity` (`BLOCKER`
-or `REVIEW`) and `message` and adds `kind`, `introduced_in`, `migration_row`
-and `migration_url`; the root adds `finding_counts`, `unscanned_sources`,
+or `REVIEW`) and `message` and adds `kind`, `introduced_in`, `migration_row`,
+`migration_url` and `note` (what the location needs beyond the rule's
+guidance, or `null`); the root adds `finding_counts`, `unscanned_sources`,
 `migration_guide` and `rule_selection` (`current_version`, `all_rules`,
 `skipped_rules`, `hidden_findings`). See the [tutorial](tutorials/36-assisted-framework-upgrades.md#v12-to-v13-source-findings)
 and its [rule classification](tutorials/36-assisted-framework-upgrades.md#v12--v13-rule-classification).

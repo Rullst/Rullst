@@ -39,7 +39,7 @@ pub fn brl_request() -> Option<OneOffCheckoutRequest> {
 
 /// Stripe's `t=<unix>,v1=<HMAC-SHA256("<t>.<body>")>` signature.
 pub fn stripe_signed(payload: &str, secret: &str) -> WebhookDelivery {
-    let now = chrono::Utc::now().timestamp();
+    let now = jiff::Timestamp::now().as_second();
     let mut mac = hmac::Hmac::<sha2::Sha256>::new_from_slice(secret.as_bytes()).unwrap();
     mac.update(format!("{now}.{payload}").as_bytes());
     let tag = mac.finalize().into_bytes();

@@ -52,7 +52,7 @@ pub async fn logger_middleware(
     let method = req.method().to_string();
     let uri = req.uri().to_string();
     let start = Instant::now();
-    let timestamp = chrono::Utc::now().to_rfc3339();
+    let timestamp = rfc3339(jiff::Timestamp::now());
 
     let res = next.run(req).await;
 
@@ -72,6 +72,32 @@ pub async fn logger_middleware(
     res
 }
 
+/// `instant` as RFC 3339 text in UTC with `+00:00` and no fraction or 3, 6
+/// or 9 fraction digits, whichever shows every non-zero digit: the form
+/// `RequestLog::timestamp` has always had (chrono's `to_rfc3339`).
+fn rfc3339(instant: jiff::Timestamp) -> String {
+    let wall = jiff::tz::Offset::UTC.to_datetime(instant);
+    let nanos = wall.subsec_nanosecond();
+    let fraction = if nanos == 0 {
+        String::new()
+    } else if nanos % 1_000_000 == 0 {
+        format!(".{:03}", nanos / 1_000_000)
+    } else if nanos % 1_000 == 0 {
+        format!(".{:06}", nanos / 1_000)
+    } else {
+        format!(".{nanos:09}")
+    };
+    format!(
+        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}{fraction}+00:00",
+        wall.year(),
+        wall.month(),
+        wall.day(),
+        wall.hour(),
+        wall.minute(),
+        wall.second()
+    )
+}
+
 pub fn router(state: Arc<LoggerState>) -> Router {
     Router::new()
         .route("/", get(logger_dashboard))
@@ -79,7 +105,6 @@ pub fn router(state: Arc<LoggerState>) -> Router {
         .with_state(state)
 }
 
-#[cfg_attr(mutants, mutants::skip)]
 async fn logger_dashboard() -> Html<String> {
     Html(r#"<!DOCTYPE html>
 <html lang="en" class="h-full bg-slate-950 text-slate-100">
@@ -158,6 +183,68 @@ mod tests {
         });
     }
 
+    #[tokio::test]
+    async fn the_middleware_passes_the_response_through_and_logs_it() {
+        let state = Arc::new(LoggerState::new());
+        let mut logs = state.tx.subscribe();
+        let app = Router::new()
+            .route("/teapot", get(|| async { StatusCode::IM_A_TEAPOT }))
+            .layer(axum::middleware::from_fn_with_state(
+                state,
+                logger_middleware,
+            ));
+        let before = jiff::Timestamp::now();
+
+        let req = Request::builder()
+            .method("GET")
+            .uri("/teapot?x=1")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::IM_A_TEAPOT);
+
+        let log = logs.try_recv().expect("one request log");
+        assert_eq!(log.method, "GET");
+        assert_eq!(log.uri, "/teapot?x=1");
+        assert_eq!(log.status, 418);
+        let logged = log
+            .timestamp
+            .strip_suffix("+00:00")
+            .expect("UTC offset")
+            .parse::<jiff::civil::DateTime>()
+            .expect("RFC 3339 wall time");
+        let logged = jiff::tz::Offset::UTC.to_timestamp(logged).unwrap();
+        assert!(before <= logged && logged <= jiff::Timestamp::now());
+    }
+
+    #[test]
+    fn request_timestamps_keep_their_rfc3339_form() {
+        let at = |second, nanosecond| {
+            rfc3339(jiff::Timestamp::new(second, nanosecond).expect("valid instant"))
+        };
+        assert_eq!(at(1_792_056_600, 0), "2026-10-15T09:30:00+00:00");
+        assert_eq!(
+            at(1_792_056_600, 500_000_000),
+            "2026-10-15T09:30:00.500+00:00"
+        );
+        assert_eq!(
+            at(1_792_056_600, 1_000_000),
+            "2026-10-15T09:30:00.001+00:00"
+        );
+        assert_eq!(
+            at(1_792_056_600, 120_000),
+            "2026-10-15T09:30:00.000120+00:00"
+        );
+        assert_eq!(at(1_792_056_600, 1_000), "2026-10-15T09:30:00.000001+00:00");
+        assert_eq!(
+            at(1_792_056_600, 123_456_789),
+            "2026-10-15T09:30:00.123456789+00:00"
+        );
+        assert_eq!(at(1_792_056_600, 7), "2026-10-15T09:30:00.000000007+00:00");
+        assert_eq!(at(-62_135_596_800, 0), "0001-01-01T00:00:00+00:00");
+        assert_eq!(at(253_402_207_199, 0), "9999-12-30T21:59:59+00:00");
+    }
+
     #[test]
     fn request_log_markup_escapes_untrusted_method_and_uri() {
         let html = render_log_entry(
@@ -175,5 +262,61 @@ mod tests {
         assert!(html.contains("&lt;img src=x onerror=alert(1)&gt;"));
         assert!(!html.contains("<script>"));
         assert!(!html.contains("<img"));
+    }
+
+    #[tokio::test]
+    async fn the_dashboard_loads_its_script_and_the_stream_colors_each_status_class() {
+        let state = Arc::new(LoggerState::new());
+        let page = router(state.clone())
+            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let page = axum::body::to_bytes(page.into_body(), 64 * 1024)
+            .await
+            .unwrap();
+        let page = String::from_utf8(page.to_vec()).unwrap();
+        assert!(page.contains(
+            "<h1 class=\"text-3xl font-bold mb-4 text-emerald-400\">Request Logger</h1>"
+        ));
+        assert!(page.contains("<script src=\"/studio/assets/logger.js\" defer></script>"));
+
+        let stream = router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .uri("/stream")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let mut events = stream.into_body().into_data_stream();
+        for (status, color) in [
+            (204, "text-green-400"),
+            (302, "text-yellow-400"),
+            (404, "text-orange-400"),
+            (503, "text-red-400"),
+            (101, "text-slate-400"),
+        ] {
+            state
+                .tx
+                .send(RequestLog {
+                    method: "GET".to_string(),
+                    uri: format!("/status/{status}"),
+                    status,
+                    latency_ms: 1,
+                    timestamp: "2026-11-17T00:00:00Z".to_string(),
+                })
+                .expect("a subscribed stream");
+            let frame = tokio::time::timeout(std::time::Duration::from_secs(10), events.next())
+                .await
+                .expect("an event before the deadline")
+                .expect("an open stream")
+                .expect("a data frame");
+            let frame = String::from_utf8(frame.to_vec()).unwrap();
+            assert!(
+                frame.contains(&format!("<span class=\"font-bold {color}\">GET</span>")),
+                "{status}: {frame}"
+            );
+        }
     }
 }

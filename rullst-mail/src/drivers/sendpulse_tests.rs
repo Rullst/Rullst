@@ -78,7 +78,7 @@ async fn offline_fallback_and_future_rejection_need_no_network() {
             .unwrap();
     }
     assert!(SendPulseDriver::try_new("bad\r\nkey").is_err());
-    let scheduled = message.send_at(chrono::Utc::now() + chrono::Duration::minutes(5));
+    let scheduled = message.send_at(jiff::Timestamp::now() + jiff::SignedDuration::from_mins(5));
     assert!(
         SendPulseDriver::try_new("fixture_sendpulse")
             .unwrap()

@@ -6,7 +6,7 @@ fn authenticated_incomplete_events_cannot_grant_active_access() {
     use std::collections::HashMap;
     let payload = b"{}";
     let secret = "secret";
-    let now = chrono::Utc::now().timestamp();
+    let now = jiff::Timestamp::now().as_second();
     let sign = |bytes: &[u8]| {
         let mut mac =
             <hmac::Hmac<sha2::Sha256> as hmac::KeyInit>::new_from_slice(secret.as_bytes()).unwrap();

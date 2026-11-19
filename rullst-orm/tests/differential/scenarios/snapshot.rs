@@ -2,7 +2,7 @@
 //! `mark_all_dirty()` and database-managed timestamps refreshed after an
 //! update.
 
-use rullst_orm::chrono::{DateTime, Utc};
+use rullst_orm::Timestamp;
 use rullst_orm::{Error, Orm, RowSnapshot};
 use serde_json::{Value, json};
 
@@ -17,9 +17,9 @@ struct Profile {
     bio: String,
     visits: i64,
     #[orm(db_default)]
-    created_at: Option<DateTime<Utc>>,
+    created_at: Option<Timestamp>,
     #[orm(db_default)]
-    updated_at: Option<DateTime<Utc>>,
+    updated_at: Option<Timestamp>,
     #[sqlx(skip)]
     snapshot: RowSnapshot,
 }

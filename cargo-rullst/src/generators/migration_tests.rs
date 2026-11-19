@@ -170,10 +170,10 @@ fn auto_migration_columns_follow_the_rust_field_types() {
             field("rank", "i32", true),
             field("score", "f64", false),
             field("published", "bool", false),
-            field("published_at", "NaiveDateTime", true),
-            field("seen_at", "DateTime", true),
-            field("born_on", "NaiveDate", false),
-            field("opens", "NaiveTime", true),
+            field("published_at", "DateTime", true),
+            field("seen_at", "Timestamp", true),
+            field("born_on", "Date", false),
+            field("opens", "Time", true),
         ],
     );
     let source = render_auto_migration(
@@ -236,7 +236,7 @@ fn auto_migration_columns_follow_the_rust_field_types() {
                     field("id_ref", "Uuid", true),
                 ],
             ),
-            table("posts", vec![field("archived_at", "NaiveDateTime", false)]),
+            table("posts", vec![field("archived_at", "DateTime", false)]),
         ],
         &db_schema,
     )
@@ -251,9 +251,49 @@ fn auto_migration_columns_follow_the_rust_field_types() {
         "{message}"
     );
     assert!(
-        message.contains("`posts.archived_at` is a required `NaiveDateTime`"),
+        message.contains("`posts.archived_at` is a required `DateTime`"),
         "{message}"
     );
+}
+
+/// A model part way through the 13.0.0-alpha.6 upgrade still has chrono
+/// types: its `DateTime<Utc>` is not the civil `DateTime`, so no column is
+/// guessed for any of them.
+#[test]
+fn chrono_fields_are_refused_with_the_upgrade_rule() {
+    use super::super::schema_diff::{ParsedField, ParsedTable};
+    let field = |name: &str, rust_type: &str, is_option: bool| ParsedField {
+        name: name.to_string(),
+        rust_type: rust_type.to_string(),
+        is_option,
+    };
+    let table = |name: &str, fields: Vec<ParsedField>| ParsedTable {
+        table_name: name.to_string(),
+        struct_name: "Model".to_string(),
+        fields,
+    };
+    for (rust_type, shown) in [
+        (
+            crate::generators::schema_diff::CHRONO_DATE_TIME,
+            "DateTime<Tz>",
+        ),
+        ("NaiveDateTime", "NaiveDateTime"),
+        ("NaiveDate", "NaiveDate"),
+        ("NaiveTime", "NaiveTime"),
+    ] {
+        let error = render_auto_migration(
+            "m0_auto_sync",
+            &[table("posts", vec![field("at", rust_type, true)])],
+            &std::collections::HashMap::new(),
+        )
+        .expect_err("chrono types are refused");
+        let message = error.to_string();
+        assert!(
+            message.contains(&format!("`posts.at` has chrono's `{shown}`"))
+                && message.contains("V13-ORM-CHRONO-TYPES"),
+            "{message}"
+        );
+    }
 }
 
 /// Every SQLx migration the CLI writes, like `make:migration`, imports through

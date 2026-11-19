@@ -220,7 +220,7 @@ mod tests {
             "        session_epoch: 0,\n        // A new record: `save()` inserts every column.\n        snapshot: rullst::db::RowSnapshot::default(),\n    };"
         ));
         assert!(source.contains(
-            "pub(crate) fn utc_timestamp() -> rullst::orm::chrono::DateTime<rullst::orm::chrono::Utc> {\n    rullst::orm::chrono::Utc::now()\n}"
+            "pub(crate) fn utc_timestamp() -> rullst::orm::Timestamp {\n    rullst::orm::Timestamp::now()\n}"
         ));
         assert!(source.contains("fn registration_timestamps_are_current_utc_instants()"));
     }

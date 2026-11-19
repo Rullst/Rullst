@@ -93,8 +93,10 @@ fn collect_stats() -> ThreatRadarStats {
         .saturating_add(idor_warnings)
         .saturating_add(timing_guard_protected)
         .saturating_add(prompt_injections_blocked);
-    let local_activity_recorded =
-        active_ip_bans > 0 || !events.is_empty() || observed_counter_total > 0;
+    // An active ban needs no term of its own: the store bans only in
+    // `record_honeypot_event`, which counts the trap before the ban and then
+    // records an event, and the event list never empties.
+    let local_activity_recorded = !events.is_empty() || observed_counter_total > 0;
 
     ThreatRadarStats {
         honeypot_traps_blocked,

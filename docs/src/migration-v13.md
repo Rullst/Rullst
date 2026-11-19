@@ -326,6 +326,8 @@ before those.
 | Distributed tracing layer type | **Breaking**, from 13.0.0-alpha.6: `DistributedTelemetry::layer` returns `impl tracing_subscriber::Layer<S> + Send + Sync + 'static` instead of `tracing_opentelemetry::OpenTelemetryLayer<S, opentelemetry_sdk::trace::SdkTracer>`, so `opentelemetry_sdk` and `tracing-opentelemetry`, which break every few months, are no longer public dependencies and a 13.x release can update them. `registry().with(runtime.layer())`, `.with_filter(..)` and `.boxed()` keep working, and the exported spans and `TraceParent` are unchanged. Code that writes the layer's type writes `impl Layer<S>` or boxes it (`Box<dyn Layer<S> + Send + Sync>`). `OpenTelemetryLayer`'s own builder methods (`with_location`, `with_threads`, `with_level`, `with_target`, `with_tracked_inactivity`, `with_context_activation`, the `with_error_*` methods, `with_counting_event_filter` and `with_tracer`) no longer compile on it; drop them, because the minimized pipeline removes the span attributes and events they add before export. The subscriber type `S` must be `Send + Sync`, as every subscriber installed with `set_global_default` or `with_default` already is. |
 | Validation field errors | **Breaking**, from 13.0.0-alpha.6: `ValidationError::ValidationError { errors, is_htmx }` carries `rullst::FieldErrors` (also `rullst::validation::FieldErrors`) instead of `validator::ValidationErrors`, so the error type of the `validator` crate is no longer part of Rullst's API. `errors.messages()` and `errors.codes()` return each field path's messages and validator codes as a `BTreeMap<String, Vec<String>>` (nested paths read `address.zip` and `items[0].name`), `errors.is_empty()` tells whether any field failed, and `errors.as_any().downcast_ref::<validator::ValidationErrors>()` reaches the `validator` errors with their parameters. Build the variant from `FieldErrors::validate(&payload)`, which runs the payload's constraints, or from `FieldErrors::default()`, and add a failure that only the handler can see with `errors.add(field, code, message)`. The JSON response (`{"errors": {"<path>": ["<message>"]}}`), the HTMX fragment, `Display` and `Debug` are unchanged. `rullst::Validate` and the bound of `ValidatedForm` and `ValidatedJson` stay those of `validator` 0.21, which the application's `#[derive(Validate)]` implements, so `validator` stays a public dependency. |
 | Studio OpenAPI documents | From 13.0.0-alpha.6, `Studio::with_openapi` and `rullst::studio::api_playground::router` take any `serde::Serialize` document instead of utoipa 6's `OpenApi`: the `OpenApi` of utoipa 5, 6 or a later release, or a `serde_json::Value` read from a file. `utoipa` is no longer a public dependency, and `.with_openapi(ApiDoc::openapi())` compiles as before. **Breaking** only for an argument whose type came from the parameter: write the type for `Default::default()`, a `serde_json::from_str(..)` without one, or `.into()` (`utoipa::openapi::OpenApi::default()`, `serde_json::from_str::<serde_json::Value>(..)`). Studio serializes the document once and serves those bytes at `/studio/api/openapi.json`. `/studio/api` renders a utoipa document exactly as before, lists the operations of any OpenAPI 3.1 or 3.2 document, and for another one (such as 3.0) says that it cannot list them and links the JSON. |
+| `chrono` replaced by `jiff` | **Breaking**, from 13.0.0-alpha.6: RustSec marked `chrono` unmaintained (RUSTSEC-2026-0543), so Rullst no longer depends on it and uses `jiff` 1. The ORM's date and time types are `rullst::orm::Timestamp` (for `chrono::DateTime<Utc>`), `rullst::orm::DateTime` (`NaiveDateTime`), `rullst::orm::Date` (`NaiveDate`) and `rullst::orm::Time` (`NaiveTime`), also as `rullst::db::*`: they wrap and dereference to jiff's types, convert to and from them, and store the same bytes in the same columns, so existing rows need no data migration. `rullst::orm::chrono` is gone and `rullst::orm::jiff` re-exports jiff; `RullstValue`'s chrono variants are replaced by `Timestamp`, `CivilDateTime`, `CivilDate` and `CivilTime`, and model fields and query values take the new types (`Timestamp::now()` for `Utc::now()`). `Locale::format_date`, `format_time` and `format_datetime` take jiff civil values by value (or a `&jiff::ZonedDateTime`); Mail's `Message::send_at` and `send_at` field, `MailAssertion::with_scheduled_at` and the `expires_at` of `AccountEvent::PasswordResetAt` and `EmailLoginAt`, and Capital's `Invoice::new` date and `Invoice.date`, take a `jiff::Timestamp`. Queued messages and invoices serialize as before. An application may keep chrono for its own code by declaring it; its own SQLx queries that bind or read chrono values then need SQLx's `chrono` feature on its own `sqlx` dependency. `cargo rullst upgrade` reports chrono where it meets these APIs (`V13-ORM-CHRONO-TYPES`, `V13-LOCALE-JIFF-DATES`, `V13-MAIL-JIFF-TIMESTAMPS`, `V13-CAPITAL-INVOICE-JIFF-DATE`). |
+| Messaging schedules use the scheduler's cron syntax | **Breaking**, from 13.0.0-alpha.6: `RecurringDefinition::new` (`rullst-messaging`, feature `schedules-postgres`) reads its five-field UTC cron expression with Core's POSIX syntax, as `Scheduler::task` does, instead of the `cron` crate's. Weekdays run from 0 to 7 (0 and 7 are Sunday) instead of 1 (Sunday) to 7 (Saturday), so `2-6` now means Tuesday to Saturday and Monday to Friday is `1-5`; names such as `MON-FRI` keep their meaning. When both the day of the month and the weekday are restricted, a day that matches either one runs the schedule, instead of a day that matches both. Each field must be valid on its own, so a field that starts or ends with `,`, `-` or `/` (`1, 2 * * *`, `/5 * * * *`), which the `cron` crate joined with its neighbour, or that runs a number into a name (`1jan`), which it split, is refused with `RecurringError::InvalidInput`. Definitions stored before the upgrade keep the meaning they were created with (deprecated until 14.0), and `PostgresRecurringStore::create` refuses to change one in place (`RecurringError::LegacyDefinition`): keep a stored schedule's expression as it is (its `RecurringMetadata::syntax()` is `CronSyntax::Legacy`), or cancel it and create the POSIX expression under a new name. `cargo rullst upgrade` reports each `RecurringDefinition::new` call whose expression is not a string literal that means the same under both syntaxes (`V13-MESSAGING-CRON-POSIX`), for review, with a literal's POSIX form for a schedule not yet stored where the rewrite is mechanical. |
 
 The [12.0→12.1 guide](migration-v12-1.md) still applies to applications that have
 not adopted the 12.1 account, payment and deployment changes. Skipping directly
@@ -1222,7 +1224,9 @@ passkeys behind a feature, stops the health probes from reporting the
 framework version, and changes the security baseline (CSRF and the secure headers in
 every environment, a CSRF token masked per response, static files by path
 and a CSP nonce only on HTML responses). It also keeps the OpenTelemetry
-crates, utoipa and the `validator` error type out of the public API. The
+crates, utoipa and the `validator` error type out of the public API,
+replaces chrono with jiff in Rullst's date and time APIs, and reads
+messaging schedules with the scheduler's cron syntax. The
 access log is written by a
 background thread, cron fields are checked one by one, and `cargo rullst
 auth` sets up server-side login sessions. Each item below names the
@@ -1245,9 +1249,12 @@ Work through the steps in order.
      `V13-ORM-SAVE-MODE` (step 6), `V13-AUTH-PASSKEYS-FEATURE` (step 7),
      `V13-HEALTH-PROBE-VERSION-FIELD` (step 8),
      `V13-MEDIA-PROCESSING-MATCH` (step 17), `V13-NON-EXHAUSTIVE-MATCH`
-     and `V13-NON-EXHAUSTIVE-LITERAL` (step 18), and
+     and `V13-NON-EXHAUSTIVE-LITERAL` (step 18),
      `V13-TELEMETRY-LAYER-TYPE`, `V13-VALIDATION-FIELD-ERRORS` and
-     `V13-STUDIO-OPENAPI-INFERRED` (step 19).
+     `V13-STUDIO-OPENAPI-INFERRED` (step 19), `V13-ORM-CHRONO-TYPES`,
+     `V13-LOCALE-JIFF-DATES`, `V13-MAIL-JIFF-TIMESTAMPS` and
+     `V13-CAPITAL-INVOICE-JIFF-DATE` (step 20), and
+     `V13-MESSAGING-CRON-POSIX` (step 21).
    - `REVIEW`: `V13-IOT-OTA-LEGACY-REMOVED`,
      `V13-NEXUS-INFALLIBLE-BUILD-REMOVED`, `V13-AI-DEPRECATED-REMOVED` and
      `V13-QUEUE-PURGE-COMPLETED-REMOVED` (step 5, review findings because
@@ -1257,18 +1264,18 @@ Work through the steps in order.
      `V13-CSRF-STATIC-PREFIXES` (step 11), `V13-CSRF-COOKIE-IN-PAGE` and
      `V13-CSRF-TOKEN-COMPARED` (step 12), `V13-DEPLOY-CADDY-ENCODE` (step 15),
      `V13-AUTH-SESSION-REGISTRY` (step 16), `V13-JSONWEBTOKEN-12` and
-     `V13-ED25519-DALEK-3` (step 20), and `V13-SQLITE-WAL-AVAILABLE` (the
+     `V13-ED25519-DALEK-3` (step 22), and `V13-SQLITE-WAL-AVAILABLE` (the
      optional WAL step at the end).
 
    The changes of steps 13 and 14 have no rule, and parts of steps 9, 10, 12
-   and 20 have none: read them even when the plan is empty.
+   and 22 have none: read them even when the plan is empty.
 4. **Apply, keeping a failed state.** Code that uses the removed APIs, a
    model without a save mode, passkeys without the feature, or a `match` or
    struct literal of a type that became `#[non_exhaustive]` does not compile
    against alpha.6. Run `cargo rullst upgrade --keep-on-failure`: it pins
    every Rullst dependency to `=13.0.0-alpha.6`, runs `cargo fix` and
    `cargo check --locked`, and, when they fail, keeps the edited files and
-   names the must-change findings. Fix what steps 5 to 8 and 17 to 19 name; without a
+   names the must-change findings. Fix what steps 5 to 8 and 17 to 21 name; without a
    `MUST-CHANGE` finding, a plain `cargo rullst upgrade` is enough.
 5. **Replace the removed deprecated APIs.** Each was deprecated in 12.0.0
    (`schema_diff` in 13.0.0-alpha.5) and has a replacement that reports a
@@ -1502,7 +1509,52 @@ Work through the steps in order.
     where it had none (`V13-STUDIO-OPENAPI-INFERRED`). Studio now accepts a
     utoipa 5 document, so an application held on utoipa 6 only for Studio
     may choose either.
-20. **Dependencies and feature graphs** (no rule).
+20. **Move dates and times from chrono to jiff** (`chrono` replaced by
+    `jiff` row). Rullst's APIs take jiff values instead of chrono's:
+    - ORM (`V13-ORM-CHRONO-TYPES`): make model fields `rullst::orm::Timestamp`
+      instead of `DateTime<Utc>`, `rullst::orm::DateTime` instead of
+      `NaiveDateTime`, `rullst::orm::Date` instead of `NaiveDate` and
+      `rullst::orm::Time` instead of `NaiveTime` (inside `Option` too), set
+      them with `Timestamp::now()` or from jiff values (`.into()`, `.parse()`),
+      and pass them as query values. Replace `rullst::orm::chrono` paths with
+      `rullst::orm::jiff` or your own `jiff = "1"`. The columns keep their
+      bytes, so no data migration runs.
+    - Core (`V13-LOCALE-JIFF-DATES`): pass a jiff civil value, or
+      `&zoned` for a `jiff::ZonedDateTime` in the visitor's zone, to
+      `format_date`, `format_time` and `format_datetime`.
+    - Mail and Capital (`V13-MAIL-JIFF-TIMESTAMPS`,
+      `V13-CAPITAL-INVOICE-JIFF-DATE`): pass a `jiff::Timestamp` to
+      `send_at`, `with_scheduled_at`, the `expires_at` of
+      `PasswordResetAt` and `EmailLoginAt`, and `Invoice::new`.
+
+    Code that keeps chrono for its own work declares `chrono` itself and
+    converts where it meets Rullst; its own SQLx queries that bind or read
+    chrono values need the `chrono` feature on its own `sqlx` dependency.
+21. **Review messaging schedules for POSIX cron** (Messaging schedules use
+    the scheduler's cron syntax row, `V13-MESSAGING-CRON-POSIX`).
+    `RecurringDefinition::new` now reads a new definition's expression as
+    Core's `Scheduler` does. Review each finding:
+    - A schedule an earlier version already stored keeps its old meaning
+      (deprecated until 14.0). Leave its expression exactly as it is:
+      creating it again under the same name with a changed expression fails
+      with `RecurringError::LegacyDefinition`. To migrate it, cancel it and
+      create the POSIX expression under a new name; a cancelled name is never
+      reused. `RecurringDefinition::posix_equivalent()` of the stored
+      definition (deserialized from its JSON) gives that expression when
+      one exists.
+    - For a schedule first created after the upgrade, write POSIX: move each
+      weekday number down by one (`2-6`, Monday to Friday, becomes `1-5`;
+      names stay) and, where the expression restricts both the day of the
+      month and the weekday, restrict one and check the other when the
+      message is handled, because a day that matches either one now runs it.
+      The finding's note gives a string literal's POSIX form when the rewrite
+      is mechanical.
+
+    `RecurringDefinition::new` refuses a field that starts or ends with `,`,
+    `-` or `/` (`1, 2 * * *`, `/5 * * * *`) or runs a number into a name
+    (`1jan`), stored or not: stop creating such a schedule in code, or cancel
+    it and create a POSIX expression under a new name.
+22. **Dependencies and feature graphs** (no rule).
     - `cargo rullst make:cors-jwt` middleware generated earlier keeps the
       `jsonwebtoken` 11 its project declares. To move it to 12, the version
       `rullst-connect` and `rullst-auth` (`jwt`) now use, handle the
@@ -1527,13 +1579,13 @@ Work through the steps in order.
       them. An application whose own code makes rustls connections and
       relied on `orm` installing aws-lc-rs as the process default enables
       the facade's `tls` feature (TLS stack of SQLite-only builds row).
-21. **Update scripts, CI and other tools.** Where a workflow or script
+23. **Update scripts, CI and other tools.** Where a workflow or script
     installs a pinned CLI (`cargo install cargo-rullst --version
     =13.0.0-alpha.5`), pin `=13.0.0-alpha.6`. Check the health-probe scripts
     of step 8 and any client that posts to the development server (step 10).
-22. **Validate.** Run `cargo rullst upgrade` again. It makes no further version
+24. **Validate.** Run `cargo rullst upgrade` again. It makes no further version
     edits and checks the result with `cargo fix` and `cargo check --locked`.
-23. **Verify** with the production feature set: `cargo build`, `cargo test`
+25. **Verify** with the production feature set: `cargo build`, `cargo test`
     and `cargo clippy --all-targets -- -D warnings`; then, on staging, sign-in
     and sign-out, every form and htmx request (CSRF), every page with the
     browser's developer console open to catch CSP violations, the health

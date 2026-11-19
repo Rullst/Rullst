@@ -29,10 +29,9 @@
 
 pub use sqlx;
 
-/// The `chrono` crate whose `DateTime<Utc>`, `NaiveDateTime`, `NaiveDate` and
-/// `NaiveTime` model fields and [`RullstValue`] variants the ORM binds and
-/// decodes (with a strict driver feature; see `Blueprint::timestamp_tz`).
-pub use chrono;
+/// The `jiff` crate that the date/time types ([`Timestamp`], [`DateTime`],
+/// [`Date`], [`Time`]) wrap, so an application uses the same version.
+pub use jiff;
 
 /// Auto-Healing Database Migrations & SQL Interceptor (Milestone 21).
 pub mod auto_healing;
@@ -139,6 +138,7 @@ pub mod snapshot;
 // Used by `#[derive(Orm)]`.
 #[doc(hidden)]
 pub mod telemetry;
+pub mod temporal;
 pub mod tenant;
 pub mod types;
 pub mod value;
@@ -195,6 +195,7 @@ pub use schema::{DatabaseEnum, JoinClause, SubqueryBuilder};
 pub use scout::{AlgoliaEngine, ElasticsearchEngine, MeilisearchEngine};
 pub use scout::{MockSearchEngine, SearchEngine, get_search_engine, set_search_engine};
 pub use snapshot::RowSnapshot;
+pub use temporal::{Date, DateTime, Time, Timestamp};
 pub use tenant::{get_tenant_id, with_tenant};
 pub use types::Json;
 pub use value::RullstValue;
@@ -218,6 +219,11 @@ pub mod __relation_key;
 #[doc(hidden)]
 #[path = "bind_field.rs"]
 pub mod __bind_field;
+
+// Used by `#[derive(Nexus)]`, through `rullst-nexus`.
+#[doc(hidden)]
+#[path = "field_kind.rs"]
+pub mod __field_kind;
 
 tokio::task_local! {
     // The transaction that `Orm::transaction` scopes; generated model code and

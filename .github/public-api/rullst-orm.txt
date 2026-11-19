@@ -105,6 +105,72 @@ pub fn rullst_orm::ComplianceModel::personal_fields() -> alloc::vec::Vec<&'stati
 pub trait rullst_orm::DatabaseEnum
 pub const rullst_orm::DatabaseEnum::TYPE_NAME: &'static str
 pub const rullst_orm::DatabaseEnum::VARIANTS: &'static [&'static str]
+pub struct rullst_orm::Date(_)
+impl core::clone::Clone for rullst_orm::Date
+impl core::cmp::Eq for rullst_orm::Date
+impl core::cmp::Ord for rullst_orm::Date
+impl core::cmp::PartialEq for rullst_orm::Date
+impl core::cmp::PartialOrd for rullst_orm::Date
+impl core::convert::From<jiff::civil::date::Date> for rullst_orm::Date
+impl core::convert::From<rullst_orm::Date> for jiff::civil::date::Date
+impl core::convert::From<rullst_orm::Date> for rullst_orm::RullstValue
+impl core::default::Default for rullst_orm::Date
+impl core::fmt::Debug for rullst_orm::Date
+impl core::fmt::Display for rullst_orm::Date
+impl core::hash::Hash for rullst_orm::Date
+impl core::marker::Copy for rullst_orm::Date
+impl core::ops::deref::Deref for rullst_orm::Date { type Target = jiff::civil::date::Date }
+impl core::str::traits::FromStr for rullst_orm::Date { type Err = jiff::error::Error }
+impl serde_core::ser::Serialize for rullst_orm::Date
+impl sqlx_core::encode::Encode<'_, sqlx_mysql::database::MySql> for rullst_orm::Date
+impl sqlx_core::encode::Encode<'_, sqlx_postgres::database::Postgres> for rullst_orm::Date
+impl sqlx_core::encode::Encode<'_, sqlx_sqlite::database::Sqlite> for rullst_orm::Date
+impl sqlx_core::types::Type<sqlx_mysql::database::MySql> for rullst_orm::Date
+impl sqlx_core::types::Type<sqlx_postgres::database::Postgres> for rullst_orm::Date
+impl sqlx_core::types::Type<sqlx_sqlite::database::Sqlite> for rullst_orm::Date
+impl sqlx_postgres::types::array::PgHasArrayType for rullst_orm::Date
+impl<'de> serde_core::de::Deserialize<'de> for rullst_orm::Date
+impl<'r> sqlx_core::decode::Decode<'r, sqlx_mysql::database::MySql> for rullst_orm::Date
+impl<'r> sqlx_core::decode::Decode<'r, sqlx_postgres::database::Postgres> for rullst_orm::Date
+impl<'r> sqlx_core::decode::Decode<'r, sqlx_sqlite::database::Sqlite> for rullst_orm::Date
+impl core::marker::Send for rullst_orm::Date
+impl core::marker::Sync for rullst_orm::Date
+impl core::marker::Unpin for rullst_orm::Date
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::Date
+impl core::panic::unwind_safe::UnwindSafe for rullst_orm::Date
+pub struct rullst_orm::DateTime(_)
+impl core::clone::Clone for rullst_orm::DateTime
+impl core::cmp::Eq for rullst_orm::DateTime
+impl core::cmp::Ord for rullst_orm::DateTime
+impl core::cmp::PartialEq for rullst_orm::DateTime
+impl core::cmp::PartialOrd for rullst_orm::DateTime
+impl core::convert::From<jiff::civil::datetime::DateTime> for rullst_orm::DateTime
+impl core::convert::From<rullst_orm::DateTime> for jiff::civil::datetime::DateTime
+impl core::convert::From<rullst_orm::DateTime> for rullst_orm::RullstValue
+impl core::default::Default for rullst_orm::DateTime
+impl core::fmt::Debug for rullst_orm::DateTime
+impl core::fmt::Display for rullst_orm::DateTime
+impl core::hash::Hash for rullst_orm::DateTime
+impl core::marker::Copy for rullst_orm::DateTime
+impl core::ops::deref::Deref for rullst_orm::DateTime { type Target = jiff::civil::datetime::DateTime }
+impl core::str::traits::FromStr for rullst_orm::DateTime { type Err = jiff::error::Error }
+impl serde_core::ser::Serialize for rullst_orm::DateTime
+impl sqlx_core::encode::Encode<'_, sqlx_mysql::database::MySql> for rullst_orm::DateTime
+impl sqlx_core::encode::Encode<'_, sqlx_postgres::database::Postgres> for rullst_orm::DateTime
+impl sqlx_core::encode::Encode<'_, sqlx_sqlite::database::Sqlite> for rullst_orm::DateTime
+impl sqlx_core::types::Type<sqlx_mysql::database::MySql> for rullst_orm::DateTime
+impl sqlx_core::types::Type<sqlx_postgres::database::Postgres> for rullst_orm::DateTime
+impl sqlx_core::types::Type<sqlx_sqlite::database::Sqlite> for rullst_orm::DateTime
+impl sqlx_postgres::types::array::PgHasArrayType for rullst_orm::DateTime
+impl<'de> serde_core::de::Deserialize<'de> for rullst_orm::DateTime
+impl<'r> sqlx_core::decode::Decode<'r, sqlx_mysql::database::MySql> for rullst_orm::DateTime
+impl<'r> sqlx_core::decode::Decode<'r, sqlx_postgres::database::Postgres> for rullst_orm::DateTime
+impl<'r> sqlx_core::decode::Decode<'r, sqlx_sqlite::database::Sqlite> for rullst_orm::DateTime
+impl core::marker::Send for rullst_orm::DateTime
+impl core::marker::Sync for rullst_orm::DateTime
+impl core::marker::Unpin for rullst_orm::DateTime
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::DateTime
+impl core::panic::unwind_safe::UnwindSafe for rullst_orm::DateTime
 pub struct rullst_orm::DocumentEntry<T>
 impl<T> rullst_orm::DocumentEntry<T>
 pub fn rullst_orm::DocumentEntry::entity(&self) -> &T
@@ -757,21 +823,21 @@ pub rullst_orm::RullstValue::Float(f64)
 pub rullst_orm::RullstValue::Bool(bool)
 pub rullst_orm::RullstValue::I64(i64)
 pub rullst_orm::RullstValue::Null
-pub rullst_orm::RullstValue::DateTime(chrono::datetime::DateTime<chrono::offset::utc::Utc>)
-pub rullst_orm::RullstValue::NaiveDateTime(chrono::naive::datetime::NaiveDateTime)
-pub rullst_orm::RullstValue::Date(chrono::naive::date::NaiveDate)
-pub rullst_orm::RullstValue::Time(chrono::naive::time::NaiveTime)
+pub rullst_orm::RullstValue::Timestamp(rullst_orm::Timestamp)
+pub rullst_orm::RullstValue::CivilDateTime(rullst_orm::DateTime)
+pub rullst_orm::RullstValue::CivilDate(rullst_orm::Date)
+pub rullst_orm::RullstValue::CivilTime(rullst_orm::Time)
 impl core::clone::Clone for rullst_orm::RullstValue
 impl core::convert::From<&str> for rullst_orm::RullstValue
 impl core::convert::From<alloc::string::String> for rullst_orm::RullstValue
 impl core::convert::From<bool> for rullst_orm::RullstValue
-impl core::convert::From<chrono::datetime::DateTime<chrono::offset::utc::Utc>> for rullst_orm::RullstValue
-impl core::convert::From<chrono::naive::date::NaiveDate> for rullst_orm::RullstValue
-impl core::convert::From<chrono::naive::datetime::NaiveDateTime> for rullst_orm::RullstValue
-impl core::convert::From<chrono::naive::time::NaiveTime> for rullst_orm::RullstValue
 impl core::convert::From<f64> for rullst_orm::RullstValue
 impl core::convert::From<i32> for rullst_orm::RullstValue
 impl core::convert::From<i64> for rullst_orm::RullstValue
+impl core::convert::From<rullst_orm::Date> for rullst_orm::RullstValue
+impl core::convert::From<rullst_orm::DateTime> for rullst_orm::RullstValue
+impl core::convert::From<rullst_orm::Time> for rullst_orm::RullstValue
+impl core::convert::From<rullst_orm::Timestamp> for rullst_orm::RullstValue
 impl core::convert::From<u32> for rullst_orm::RullstValue
 impl core::convert::TryFrom<rullst_orm::RullstValue> for alloc::string::String { type Error = &'static str }
 impl core::convert::TryFrom<rullst_orm::RullstValue> for bool { type Error = &'static str }
@@ -843,6 +909,74 @@ pub fn rullst_orm::SubqueryBuilder::bindings(&self) -> &alloc::vec::Vec<rullst_o
 pub fn rullst_orm::SubqueryBuilder::ordered_bindings(&self) -> alloc::vec::Vec<rullst_orm::RullstValue>
 pub fn rullst_orm::SubqueryBuilder::to_sql(&self) -> alloc::string::String
 pub fn rullst_orm::SubqueryBuilder::validation_error(&self) -> core::option::Option<rullst_orm::Error>
+pub struct rullst_orm::Time(_)
+impl core::clone::Clone for rullst_orm::Time
+impl core::cmp::Eq for rullst_orm::Time
+impl core::cmp::Ord for rullst_orm::Time
+impl core::cmp::PartialEq for rullst_orm::Time
+impl core::cmp::PartialOrd for rullst_orm::Time
+impl core::convert::From<jiff::civil::time::Time> for rullst_orm::Time
+impl core::convert::From<rullst_orm::Time> for jiff::civil::time::Time
+impl core::convert::From<rullst_orm::Time> for rullst_orm::RullstValue
+impl core::default::Default for rullst_orm::Time
+impl core::fmt::Debug for rullst_orm::Time
+impl core::fmt::Display for rullst_orm::Time
+impl core::hash::Hash for rullst_orm::Time
+impl core::marker::Copy for rullst_orm::Time
+impl core::ops::deref::Deref for rullst_orm::Time { type Target = jiff::civil::time::Time }
+impl core::str::traits::FromStr for rullst_orm::Time { type Err = jiff::error::Error }
+impl serde_core::ser::Serialize for rullst_orm::Time
+impl sqlx_core::encode::Encode<'_, sqlx_mysql::database::MySql> for rullst_orm::Time
+impl sqlx_core::encode::Encode<'_, sqlx_postgres::database::Postgres> for rullst_orm::Time
+impl sqlx_core::encode::Encode<'_, sqlx_sqlite::database::Sqlite> for rullst_orm::Time
+impl sqlx_core::types::Type<sqlx_mysql::database::MySql> for rullst_orm::Time
+impl sqlx_core::types::Type<sqlx_postgres::database::Postgres> for rullst_orm::Time
+impl sqlx_core::types::Type<sqlx_sqlite::database::Sqlite> for rullst_orm::Time
+impl sqlx_postgres::types::array::PgHasArrayType for rullst_orm::Time
+impl<'de> serde_core::de::Deserialize<'de> for rullst_orm::Time
+impl<'r> sqlx_core::decode::Decode<'r, sqlx_mysql::database::MySql> for rullst_orm::Time
+impl<'r> sqlx_core::decode::Decode<'r, sqlx_postgres::database::Postgres> for rullst_orm::Time
+impl<'r> sqlx_core::decode::Decode<'r, sqlx_sqlite::database::Sqlite> for rullst_orm::Time
+impl core::marker::Send for rullst_orm::Time
+impl core::marker::Sync for rullst_orm::Time
+impl core::marker::Unpin for rullst_orm::Time
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::Time
+impl core::panic::unwind_safe::UnwindSafe for rullst_orm::Time
+pub struct rullst_orm::Timestamp(_)
+impl rullst_orm::Timestamp
+pub fn rullst_orm::Timestamp::now() -> Self
+impl core::clone::Clone for rullst_orm::Timestamp
+impl core::cmp::Eq for rullst_orm::Timestamp
+impl core::cmp::Ord for rullst_orm::Timestamp
+impl core::cmp::PartialEq for rullst_orm::Timestamp
+impl core::cmp::PartialOrd for rullst_orm::Timestamp
+impl core::convert::From<jiff::timestamp::Timestamp> for rullst_orm::Timestamp
+impl core::convert::From<rullst_orm::Timestamp> for jiff::timestamp::Timestamp
+impl core::convert::From<rullst_orm::Timestamp> for rullst_orm::RullstValue
+impl core::default::Default for rullst_orm::Timestamp
+impl core::fmt::Debug for rullst_orm::Timestamp
+impl core::fmt::Display for rullst_orm::Timestamp
+impl core::hash::Hash for rullst_orm::Timestamp
+impl core::marker::Copy for rullst_orm::Timestamp
+impl core::ops::deref::Deref for rullst_orm::Timestamp { type Target = jiff::timestamp::Timestamp }
+impl core::str::traits::FromStr for rullst_orm::Timestamp { type Err = jiff::error::Error }
+impl serde_core::ser::Serialize for rullst_orm::Timestamp
+impl sqlx_core::encode::Encode<'_, sqlx_mysql::database::MySql> for rullst_orm::Timestamp
+impl sqlx_core::encode::Encode<'_, sqlx_postgres::database::Postgres> for rullst_orm::Timestamp
+impl sqlx_core::encode::Encode<'_, sqlx_sqlite::database::Sqlite> for rullst_orm::Timestamp
+impl sqlx_core::types::Type<sqlx_mysql::database::MySql> for rullst_orm::Timestamp
+impl sqlx_core::types::Type<sqlx_postgres::database::Postgres> for rullst_orm::Timestamp
+impl sqlx_core::types::Type<sqlx_sqlite::database::Sqlite> for rullst_orm::Timestamp
+impl sqlx_postgres::types::array::PgHasArrayType for rullst_orm::Timestamp
+impl<'de> serde_core::de::Deserialize<'de> for rullst_orm::Timestamp
+impl<'r> sqlx_core::decode::Decode<'r, sqlx_mysql::database::MySql> for rullst_orm::Timestamp
+impl<'r> sqlx_core::decode::Decode<'r, sqlx_postgres::database::Postgres> for rullst_orm::Timestamp
+impl<'r> sqlx_core::decode::Decode<'r, sqlx_sqlite::database::Sqlite> for rullst_orm::Timestamp
+impl core::marker::Send for rullst_orm::Timestamp
+impl core::marker::Sync for rullst_orm::Timestamp
+impl core::marker::Unpin for rullst_orm::Timestamp
+impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::Timestamp
+impl core::panic::unwind_safe::UnwindSafe for rullst_orm::Timestamp
 pub use rullst_orm::TursoModel = proc_derive rullst_orm_macros::TursoModel
 pub use rullst_orm::Vector = struct pgvector::vector::Vector
 pub mod rullst_orm::admin
@@ -943,7 +1077,6 @@ impl core::marker::Sync for rullst_orm::auto_healing::SuggestedMigration
 impl core::marker::Unpin for rullst_orm::auto_healing::SuggestedMigration
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_orm::auto_healing::SuggestedMigration
 impl core::panic::unwind_safe::UnwindSafe for rullst_orm::auto_healing::SuggestedMigration
-pub use rullst_orm::chrono = module chrono
 pub mod rullst_orm::collection
 pub use rullst_orm::collection::RullstCollection = trait rullst_orm::RullstCollection
 pub fn rullst_orm::dashboard_html() -> &'static str
@@ -964,6 +1097,7 @@ pub fn rullst_orm::get_search_engine() -> core::option::Option<&'static dyn rull
 pub fn rullst_orm::get_tenant_id() -> core::option::Option<rullst_orm::RullstValue>
 pub mod rullst_orm::intent
 pub use rullst_orm::intent::IntentAnalyzer = struct rullst_orm::IntentAnalyzer
+pub use rullst_orm::jiff = module jiff
 pub mod rullst_orm::outbox
 pub use rullst_orm::outbox::ClaimedOutboxEvent = struct rullst_orm::ClaimedOutboxEvent
 pub use rullst_orm::outbox::EnqueuedOutboxEvent = struct rullst_orm::EnqueuedOutboxEvent
@@ -1540,6 +1674,11 @@ pub fn rullst_orm::set_search_engine(engine: impl rullst_orm::SearchEngine + 'st
 pub mod rullst_orm::snapshot
 pub use rullst_orm::snapshot::RowSnapshot = struct rullst_orm::RowSnapshot
 pub use rullst_orm::sqlx = module sqlx
+pub mod rullst_orm::temporal
+pub use rullst_orm::temporal::Date = struct rullst_orm::Date
+pub use rullst_orm::temporal::DateTime = struct rullst_orm::DateTime
+pub use rullst_orm::temporal::Time = struct rullst_orm::Time
+pub use rullst_orm::temporal::Timestamp = struct rullst_orm::Timestamp
 pub mod rullst_orm::tenant
 pub use rullst_orm::tenant::get_tenant_id = function rullst_orm::get_tenant_id
 pub use rullst_orm::tenant::with_tenant = function rullst_orm::with_tenant

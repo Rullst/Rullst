@@ -15,7 +15,7 @@ pub fn create_new_migration(name: &str) -> Result<(), Box<dyn std::error::Error>
     }
 
     let snake_name = migration_snake_name(name)?;
-    let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
+    let timestamp = crate::clock::local_migration_stamp()?;
     let file_stem = format!("m{}_{}", timestamp, snake_name);
 
     println!(
@@ -262,7 +262,7 @@ pub async fn create_auto_migration() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
+    let timestamp = crate::clock::local_migration_stamp()?;
     let file_stem = format!("m{}_{}", timestamp, "auto_sync");
     // Nothing to add is a success without a migration, so no next step
     // tells the user to apply one.

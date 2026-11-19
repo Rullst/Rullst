@@ -24,7 +24,13 @@ use support::*;
 #[test]
 fn public_inputs_are_bounded_and_deserialization_cannot_bypass_validation() {
     let clock = ManualClock::new();
-    for cron in ["* * * * * *", "bad cron", "* * * * 0", "0 0 31 2 *"] {
+    for cron in [
+        "* * * * * *",
+        "bad cron",
+        "* * * * 8",
+        "0 0 31 2 *",
+        "1, 2 * * *",
+    ] {
         assert!(
             RecurringDefinition::new(
                 "one",
@@ -36,6 +42,16 @@ fn public_inputs_are_bounded_and_deserialization_cannot_bypass_validation() {
             .is_err()
         );
     }
+    // POSIX since 13.0.0-alpha.6: weekday 0 is Sunday.
+    let sunday = RecurringDefinition::new(
+        "one",
+        "* * * * 0",
+        1_800_000_000_000,
+        MissedRunPolicy::CatchUp,
+        ScheduledMessage::new("jobs", "ready", []).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(sunday.syntax(), CronSyntax::Posix);
     assert!(ScheduledMessage::new("jobs", "ready", vec![0; 16385]).is_err());
     assert!(RecurringConfig::new("one", 0, 1).is_err());
     assert!(config("one").with_lease(Duration::from_secs(301)).is_err());
@@ -54,6 +70,7 @@ fn public_inputs_are_bounded_and_deserialization_cannot_bypass_validation() {
 async fn postgres_recurring_contract() {
     let url = url();
     lifecycle::run(&url).await;
+    lifecycle::run_legacy(&url).await;
     failures::run(&url).await;
     skew::run(&url).await;
     rotation::run(&url).await;

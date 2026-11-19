@@ -31,7 +31,7 @@ impl StripeMeterEvent {
         value: u64,
         identifier: impl Into<String>,
     ) -> Result<Self, CapitalError> {
-        let now = chrono::Utc::now().timestamp();
+        let now = jiff::Timestamp::now().as_second();
         Self::new_at(customer_id, event_name, value, now, identifier, now)
     }
 

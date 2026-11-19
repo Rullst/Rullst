@@ -19,7 +19,6 @@ type HmacSha256 = Hmac<Sha256>;
 const TOKEN_DOMAIN: &[u8] = b"rullst.studio.cache-entry.v1";
 const TOKEN_KEY_BYTES: usize = 32;
 const INSPECTION_LIMIT: usize = 100;
-const MAX_TOKEN_TEXT_BYTES: usize = 64;
 
 #[derive(Clone)]
 struct CacheInspectorState {
@@ -142,9 +141,9 @@ async fn forget_cache_entry(
     let Some(cache) = state.cache.as_ref() else {
         return StatusCode::SERVICE_UNAVAILABLE.into_response();
     };
-    if request.token.is_empty() || request.token.len() > MAX_TOKEN_TEXT_BYTES {
-        return StatusCode::BAD_REQUEST.into_response();
-    }
+    // Only a 43-character token decodes to the 32 bytes of a signature, so
+    // this check also refuses an empty or overlong token; the 2 KiB body
+    // limit bounds the decoding.
     let signature = match URL_SAFE_NO_PAD.decode(&request.token) {
         Ok(signature) if signature.len() == 32 => signature,
         _ => return StatusCode::BAD_REQUEST.into_response(),
@@ -281,5 +280,54 @@ mod tests {
             .expect("forged response");
         assert_eq!(forged.status(), StatusCode::NOT_FOUND);
         assert!(cache.get("key").await.expect("cache read").is_some());
+    }
+
+    #[tokio::test]
+    async fn body_limit_and_signature_length_are_enforced_before_lookup() {
+        let cache = Cache::memory();
+        cache
+            .put("key", "value", None)
+            .await
+            .expect("cache fixture");
+        let app = router(Some(cache)).expect("cache router");
+        let forget = |token: String| {
+            with_verified_access(
+                Request::builder()
+                    .method("POST")
+                    .uri("/forget")
+                    .header("content-type", "application/x-www-form-urlencoded")
+                    .body(Body::from(format!("token={token}")))
+                    .expect("forget request"),
+            )
+        };
+        let status = |token: String| {
+            let app = app.clone();
+            async move {
+                app.oneshot(forget(token))
+                    .await
+                    .expect("forget response")
+                    .status()
+            }
+        };
+
+        // A 2048-byte body passes the limit and is refused for its token.
+        assert_eq!(status("A".repeat(2042)).await, StatusCode::BAD_REQUEST);
+        assert_eq!(
+            status("A".repeat(2043)).await,
+            StatusCode::PAYLOAD_TOO_LARGE
+        );
+        // 42 characters decode to 31 bytes, which no entry token has.
+        assert_eq!(status("A".repeat(42)).await, StatusCode::BAD_REQUEST);
+        // Empty (0 bytes), 64 characters (48 bytes) and 65 characters (not
+        // base64) are refused the same way, without a lookup.
+        for length in [0, 64, 65] {
+            assert_eq!(
+                status("A".repeat(length)).await,
+                StatusCode::BAD_REQUEST,
+                "{length}"
+            );
+        }
+        // A well-formed signature of no entry is looked up and not found.
+        assert_eq!(status("A".repeat(43)).await, StatusCode::NOT_FOUND);
     }
 }

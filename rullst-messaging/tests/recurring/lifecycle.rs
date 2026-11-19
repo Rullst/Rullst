@@ -114,3 +114,38 @@ pub async fn run(url: &str) {
     right.close().await;
     admin.close().await;
 }
+
+/// A definition stored before 13.0.0-alpha.6 (no syntax marker) keeps its
+/// legacy grammar: the same fields replay it, anything else is refused.
+pub async fn run_legacy(url: &str) {
+    let namespace = unique();
+    let clock = ManualClock::new();
+    let store = open(url, &namespace, &clock).await;
+    let posix = |expression: &str| {
+        RecurringDefinition::new(
+            "weekly",
+            expression,
+            clock.now_millis().unwrap(),
+            MissedRunPolicy::CatchUp,
+            ScheduledMessage::new("scheduled", "weekly.report", b"{}".to_vec()).unwrap(),
+        )
+        .unwrap()
+    };
+    let mut stored = serde_json::to_value(posix("0 9 * * 1")).unwrap();
+    stored.as_object_mut().unwrap().remove("syntax");
+    let legacy: RecurringDefinition = serde_json::from_value(stored).unwrap();
+    assert_eq!(legacy.syntax(), CronSyntax::Legacy);
+    let created = store.create(legacy).await.unwrap();
+    assert_eq!(created.syntax(), CronSyntax::Legacy);
+    // 1_800_000_000_000 is Friday 2027-01-15T08:00:00Z: legacy weekday 1 is
+    // Sunday the 17th, POSIX weekday 1 would be Monday the 18th.
+    assert_eq!(created.next_due_at_ms(), Some(1_800_176_400_000));
+    let replayed = store.create(posix("0 9 * * 1")).await.unwrap();
+    assert_eq!(replayed, created);
+    assert_eq!(
+        store.create(posix("0 9 * * 0")).await,
+        Err(RecurringError::LegacyDefinition)
+    );
+    let listed = store.schedules(None, 10).await.unwrap();
+    assert_eq!(listed, vec![created]);
+}

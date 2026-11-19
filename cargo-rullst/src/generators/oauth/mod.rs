@@ -157,7 +157,7 @@ pub(crate) fn run(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>
         .get_one::<String>("provider")
         .ok_or_else(|| invalid("the provider is required"))?;
     let root = std::env::current_dir()?;
-    let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
+    let timestamp = crate::clock::local_migration_stamp()?;
     let plan = plan(&root, name, &timestamp)?;
     writes::apply(&plan.edits)?;
     for note in plan.notes {

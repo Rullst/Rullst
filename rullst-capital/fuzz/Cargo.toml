@@ -13,7 +13,7 @@ members = ["."]
 [dependencies]
 libfuzzer-sys = "0.4"
 rullst-capital = { path = ".." }
-chrono = { version = "0.4.45", features = ["clock", "serde"] }
+jiff = { version = "1.0.0", default-features = false, features = ["std"] }
 
 [[bin]]
 name = "fuzz_invoice"
