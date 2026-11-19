@@ -102,7 +102,7 @@ lines reach stdout a few milliseconds after their response and are dropped,
 with a count, when stdout cannot keep up; a video in Bunny's status 8 is
 `Playable`; and a new messaging schedule reads its expression as POSIX cron
 (Sunday is 0, and restricting both day fields matches either), while a
-stored one keeps its earlier meaning. `cargo rullst upgrade` has 34 rules for alpha.6, 19 of
+stored one keeps its earlier meaning. `cargo rullst upgrade` has 35 rules for alpha.6, 19 of
 them must-change; while it reports a must-change finding, run it with
 `--keep-on-failure`, which applies the versions and keeps the failed state
 for you to fix.
@@ -263,6 +263,12 @@ page; the items below are specific to this release.
   `OneOffCheckout::with_notification_url_sent`, and the billing conformance
   kit's new `checkout.notification_url` case fails an adapter that neither
   sends nor refuses it. Reported by the vene.win application.
+- Connect's `DeviceAuthorizationResponse::new(device_code, user_code,
+  verification_uri, expires_in)`, so a custom `Provider::request_device_code`
+  can build the response that became `#[non_exhaustive]` in 13.0.0-alpha.6
+  without going through serde; `verification_uri_complete` and `interval` are
+  public fields set after it. `ExchangeParams` documents that an optional
+  nonce is assigned to its public `expected_nonce` field.
 - The book has a Brazilian Portuguese version of the first-hour path
   ([Primeira hora com o Rullst](https://rullst.github.io/Rullst/book/pt-BR/index.html)):
   the README quickstart, Getting Started, tutorials 01, 02, 03, 05 and 11 and
@@ -397,6 +403,23 @@ page; the items below are specific to this release.
   combining it with `use chrono::prelude::*` makes `DateTime` ambiguous;
   import one by name. The `chrono` types keep working until they are removed
   before 13.0.0-alpha.6 is published.
+- `rullst_orm::{Timestamp, DateTime, Date}` have arithmetic that returns the
+  ORM types instead of jiff's: `checked_add`, `checked_sub`, `saturating_add`,
+  `saturating_sub` (with a `jiff::SignedDuration`, a `jiff::Span` or a
+  `std::time::Duration`, as jiff accepts), `duration_until` and
+  `duration_since` (taking the ORM type or jiff's), and `tomorrow`/`yesterday`
+  on `DateTime` and `Date`. These methods replace the jiff methods of the same
+  names that `Deref` reached before. There are no `+`/`-` operators, which
+  would panic on overflow. `Date::days_until` and `Date::days_since` count
+  whole days.
+- `DateTime::date()` and `DateTime::time()` return `rullst_orm::Date` and
+  `rullst_orm::Time`.
+- `Timestamp::to_rfc3339()` writes the same text as chrono's
+  `DateTime<Utc>::to_rfc3339()`: a `+00:00` offset and 0, 3, 6 or 9 fraction
+  digits (`2026-10-15T09:30:00.500+00:00`).
+- A reference to any of the four types converts into its jiff type
+  (`From<&rullst_orm::Date> for jiff::civil::Date`, and so on), so
+  `locale.format_date(&model.due_on, style)` compiles.
 - Server-side login sessions for `rullst_session` cookies:
   `rullst::auth::session_registry` (features `session-registry-sqlite`,
   `session-registry-postgres` and `session-registry-mysql` of `rullst-auth`;
@@ -563,6 +586,16 @@ page; the items below are specific to this release.
   `line N: …` under the finding, the Markdown report as a sub-item, and the
   `rullst.upgrade-plan.v1` JSON adds a `note` key to each source finding
   (`null` when there is none).
+- `cargo rullst upgrade` reports, for review, a struct literal or tuple-struct
+  call with the name and fields of a Rullst type that became
+  `#[non_exhaustive]` in a file that names no Rullst crate but imports a glob
+  (`use super::*;`), which can bring the type in unnamed
+  (`V13-NON-EXHAUSTIVE-LITERAL-GLOB`). `V13-DEPLOY-CADDY-ENCODE` and
+  `V13-DEPLOY-CADDY-HEALTH` also read a `Caddyfile` in `deploy/`, `ops/`,
+  `infra/` or `docker/`, besides the project root.
+- The alpha.5 to alpha.6 checklist maps chrono's methods to jiff's and to
+  the ORM types' own `to_rfc3339`, checked and saturating arithmetic,
+  `tomorrow`/`yesterday`, `days_until`/`days_since` and `date`/`time`.
 
 ### Changed
 
