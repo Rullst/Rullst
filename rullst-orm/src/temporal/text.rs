@@ -100,9 +100,9 @@ pub(crate) fn timestamp_nanos(instant: Timestamp) -> String {
 #[cfg(feature = "redis")]
 pub(crate) fn date_time_nanos(value: DateTime) -> String {
     let mut text = String::with_capacity(29);
-    push_date(&mut text, value.date());
+    push_date(&mut text, value.0.date());
     text.push(' ');
-    push_clock(&mut text, value.time());
+    push_clock(&mut text, value.0.time());
     push_nine_digits(&mut text, value.subsec_nanosecond());
     text
 }

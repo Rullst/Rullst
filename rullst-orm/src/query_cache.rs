@@ -462,14 +462,14 @@ mod tests {
 
     #[test]
     fn date_and_time_values_have_their_own_cache_keys() {
-        use crate::{Date, DateTime, Time, Timestamp};
+        use crate::{Date, DateTime, Timestamp};
         let key = |value: RullstValue| {
             build_key("academy", None, "users", "SELECT *", &[value]).expect("cache key")
         };
         let civil: DateTime = "2026-10-15T09:30:00.000000005".parse().expect("date-time");
         let instant = Timestamp::from(jiff::tz::Offset::UTC.to_timestamp(*civil).expect("instant"));
-        let date = Date::from(civil.date());
-        let time = Time::from(civil.time());
+        let date = civil.date();
+        let time = civil.time();
         let keys = [
             key(RullstValue::Timestamp(instant)),
             key(RullstValue::CivilDateTime(civil)),
@@ -488,10 +488,7 @@ mod tests {
             Timestamp::from(jiff::tz::Offset::UTC.to_timestamp(*later).expect("instant"));
         assert_ne!(keys[0], key(RullstValue::Timestamp(later_instant)));
         assert_ne!(keys[1], key(RullstValue::CivilDateTime(later)));
-        assert_ne!(
-            keys[3],
-            key(RullstValue::CivilTime(Time::from(later.time())))
-        );
+        assert_ne!(keys[3], key(RullstValue::CivilTime(later.time())));
         let next_day: Date = "2026-10-16".parse().expect("date");
         assert_ne!(keys[2], key(RullstValue::CivilDate(next_day)));
     }

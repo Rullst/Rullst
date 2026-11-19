@@ -442,7 +442,10 @@ jiff value behind `Deref` formats in jiff's style
 (`2026-10-15T09:30:00.5Z`). The types are also `Copy`, `Ord` and `Hash`, and
 `Timestamp::now()` reads the system clock. `rullst::orm::chrono`
 (`rullst_orm::chrono`) is removed, and `rullst::orm::jiff` re-exports the jiff
-crate that these types use. Use the new types in model fields (also inside
+crate that these types use. Step 20 of the
+[alpha.5 to alpha.6 checklist](#upgrading-an-alpha5-application-to-alpha6)
+maps chrono's methods to jiff's (`format` to `strftime`, `parse_from_str` to
+`strptime`, `timestamp` to `as_second`, …). Use the new types in model fields (also inside
 `Option`), in `#[derive(Nexus)]` models and as query values. In
 `RullstValue`, the variants `Timestamp`, `CivilDateTime`, `CivilDate` and
 `CivilTime` replace `DateTime`, `NaiveDateTime`, `Date` and `Time`. Your own
@@ -1307,6 +1310,7 @@ Work through the steps in order.
      (step 9), `V13-ROUTER-BASELINE-LAYERS` (step 10),
      `V13-CSRF-STATIC-PREFIXES` (step 11), `V13-CSRF-COOKIE-IN-PAGE` and
      `V13-CSRF-TOKEN-COMPARED` (step 12), `V13-DEPLOY-CADDY-ENCODE` (step 15),
+     `V13-NON-EXHAUSTIVE-LITERAL-GLOB` (step 18),
      `V13-AUTH-SESSION-REGISTRY` (step 16), `V13-JSONWEBTOKEN-12` and
      `V13-ED25519-DALEK-3` (step 22), and `V13-SQLITE-WAL-AVAILABLE` (the
      optional WAL step at the end).
@@ -1520,7 +1524,8 @@ Work through the steps in order.
     HLS or MP4 playback, or use `processing.allows(kind)`. `MediaService`
     now publishes a `Playable` video; `Ready` still means finished.
 18. **Add wildcard arms and use the constructors** (Non-exhaustive enums and
-    structs row, `V13-NON-EXHAUSTIVE-MATCH`, `V13-NON-EXHAUSTIVE-LITERAL`).
+    structs row, `V13-NON-EXHAUSTIVE-MATCH`, `V13-NON-EXHAUSTIVE-LITERAL`,
+    `V13-NON-EXHAUSTIVE-LITERAL-GLOB`).
     The public enums and structs that a 13.x release may extend are
     `#[non_exhaustive]`. Give each `match` on one of these enums a wildcard
     arm (`_ => ...`) that treats an unknown error generically and an unknown
@@ -1540,6 +1545,11 @@ Work through the steps in order.
     `VideoProvider`), and the others the row lists.
     Reading and assigning public fields keeps working. The decision enums of
     Labs and Privacy stay exhaustive, so they need no wildcard.
+    A file that reaches a Rullst type through a glob import (`use super::*;`
+    in a test module) may not name the type's crate, so the rules cannot tell
+    the literal from an application type of the same name: they report it
+    for review (`V13-NON-EXHAUSTIVE-LITERAL-GLOB`), and `cargo check` names
+    any that still build a Rullst type (E0639).
 19. **Use Rullst's types where a dependency left the API** (Distributed
     tracing layer type, Validation field errors and Studio OpenAPI documents
     rows). Write `impl tracing_subscriber::Layer<S>` (or box the layer) where
@@ -1565,7 +1575,10 @@ Work through the steps in order.
       bytes, so no data migration runs.
     - Core (`V13-LOCALE-JIFF-DATES`): pass a jiff civil value, or
       `&zoned` for a `jiff::ZonedDateTime` in the visitor's zone, to
-      `format_date`, `format_time` and `format_datetime`.
+      `format_date`, `format_time` and `format_datetime`. Pass an ORM value
+      itself or a reference to it (`locale.format_date(&day,
+      DateStyle::Short)` with `day: rullst::orm::Date`), or the jiff value
+      behind it (`*day`).
     - Mail and Capital (`V13-MAIL-JIFF-TIMESTAMPS`,
       `V13-CAPITAL-INVOICE-JIFF-DATE`): pass a `jiff::Timestamp` to
       `send_at`, `with_scheduled_at`, the `expires_at` of
@@ -1576,6 +1589,26 @@ Work through the steps in order.
     chrono values need the `chrono` feature on its own `sqlx` dependency.
     See [moving off `chrono`](#moving-off-chrono) for the type table, the
     range limits and examples.
+
+    Code moved from chrono to jiff mostly changes method names. The ORM
+    types have the common operations themselves, returning ORM types, and
+    dereference to the jiff value (`*at`) for the rest of jiff's methods.
+    They have no `+` or `-` operators, because jiff's panic on overflow; the
+    checked and saturating methods report it instead:
+
+    | chrono | jiff |
+    | :--- | :--- |
+    | `value.format("%d/%m/%Y")` | `value.strftime("%d/%m/%Y")`, with the same `%` specifiers |
+    | `NaiveDate::parse_from_str(text, "%Y-%m-%d")` | `jiff::civil::Date::strptime("%Y-%m-%d", text)`: the format comes first |
+    | `at.timestamp()` | `at.as_second()` (`as_millisecond()` for `timestamp_millis()`) |
+    | `day.month0()`, `day.month()` | `day.month() - 1`, `day.month()`: `year()` is an `i16` and `month()`, `day()`, `hour()` are `i8`, so cast where code expected `i32` or `u32` |
+    | `NaiveDate::from_ymd_opt(2026, 11, 19)` | `jiff::civil::Date::new(2026, 11, 19)`, which returns a `Result` (`i16`, `i8`, `i8` arguments) |
+    | `day.iter_days()` | `day.series(1.day())` (`use jiff::ToSpan`) |
+    | `day + Duration::days(n)` | `day.saturating_add(n.days())` or `day.checked_add(n.days())?` on a `Date` or `DateTime` (`use jiff::ToSpan`); a `Timestamp` has no calendar, so `at.checked_add(SignedDuration::from_hours(24 * n))?`, and its `saturating_add` returns a `Result` that is an error for a `Span` with units above hours. `checked_sub` and `saturating_sub` subtract |
+    | `day.succ_opt()`, `day.pred_opt()` | `day.tomorrow()?`, `day.yesterday()?` on a `Date` or `DateTime` |
+    | `(later - earlier).num_days()` | `later.days_since(earlier)` or `earlier.days_until(later)` on a `Date` (whole calendar days, an `i64`); `later.duration_since(earlier)` and `duration_until` on every ORM type give a `SignedDuration` |
+    | `at.date()`, `at.time()` | `rullst::orm::DateTime`'s `date()` and `time()`, which return `rullst::orm::Date` and `Time` |
+    | `at.to_rfc3339()` | `rullst::orm::Timestamp::to_rfc3339()`, byte for byte chrono's output (`2026-10-15T09:30:00.500+00:00`); jiff's own `Display` writes `Z` and the shortest fraction |
 21. **Review messaging schedules for POSIX cron** (Messaging schedules use
     the scheduler's cron syntax row, `V13-MESSAGING-CRON-POSIX`).
     `RecurringDefinition::new` now reads a new definition's expression as

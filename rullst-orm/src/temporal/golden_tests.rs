@@ -191,11 +191,12 @@ mod checks {
             match line[0].as_str() {
                 // chrono's `DateTime<Utc>` hinted its own size on MySQL.
                 Some("timestamp") => {
-                    check_written(
-                        &line,
-                        Timestamp::from(key.parse::<jiff::Timestamp>().unwrap()),
-                        false,
-                    );
+                    let value = Timestamp::from(key.parse::<jiff::Timestamp>().unwrap());
+                    check_written(&line, value, false);
+                    // chrono's SQLite text was its `to_rfc3339()`.
+                    let rfc3339 =
+                        format!("SqliteArgumentsBuffer([Text({:?})])", value.to_rfc3339());
+                    assert_eq!(Some(rfc3339), string(&line[5]));
                 }
                 Some("date_time") => {
                     check_written(

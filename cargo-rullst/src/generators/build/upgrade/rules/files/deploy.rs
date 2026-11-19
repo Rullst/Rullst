@@ -32,6 +32,16 @@ pub(super) fn dockerfile_without_database_url(root: &Path) -> Option<usize> {
     Some(runtime.map_or(1, |(index, _)| index + 1))
 }
 
+/// Where a project keeps the `Caddyfile` that `cargo rullst deploy` writes:
+/// the project root, or a deployment folder it was moved to.
+pub(super) const CADDYFILES: [&str; 5] = [
+    "Caddyfile",
+    "deploy/Caddyfile",
+    "ops/Caddyfile",
+    "infra/Caddyfile",
+    "docker/Caddyfile",
+];
+
 /// The `reverse_proxy app:3000` line of a `Caddyfile` that lacks the
 /// `health_uri` or `lb_try_duration` directive `deploy` writes since
 /// 13.0.0-alpha.4: without them Caddy keeps routing to an app that is

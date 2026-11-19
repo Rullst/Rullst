@@ -185,6 +185,20 @@ fn a_caddyfile_without_encode_is_reviewed_at_its_proxy() {
         "\treverse_proxy",
         "\tencode /api/* zstd gzip\n\treverse_proxy",
     );
+    // A Caddyfile moved to a deployment folder, beside one at the root.
+    for folder in ["deploy", "ops", "infra", "docker"] {
+        let project = Project::new();
+        project.write(&format!("{folder}/Caddyfile"), alpha5);
+        project.write("Caddyfile", crate::blueprints::deploy::CADDYFILE);
+        assert_eq!(
+            project.findings(PACKAGE),
+            [(format!("{folder}/Caddyfile"), ENCODE, 3)],
+            "{folder}"
+        );
+    }
+    let project = Project::new();
+    project.write("elsewhere/Caddyfile", alpha5);
+    assert_eq!(project.findings(PACKAGE), []);
     for caddyfile in [
         crate::blueprints::deploy::CADDYFILE,
         api_only.as_str(),
