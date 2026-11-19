@@ -63,8 +63,8 @@ fn contract_source() -> String {
     // `timestamps()` columns hold `rullst::orm::Timestamp` instants.
     let (now, customer_stamps, subscription_stamps) = (
         "rullst::orm::Timestamp::now()",
-        "assert!(first.created_at.timestamp() > 1_767_225_599 && first.updated_at == first.created_at, \"customer timestamps\");",
-        "assert!(subscription.created_at.timestamp() > 1_767_225_599 && subscription.updated_at == subscription.created_at, \"subscription timestamps\");",
+        "assert!(first.created_at.as_second() > 1_767_225_599 && first.updated_at == first.created_at, \"customer timestamps\");",
+        "assert!(subscription.created_at.as_second() > 1_767_225_599 && subscription.updated_at == subscription.created_at, \"subscription timestamps\");",
     );
     let execute_sql = r#"rullst::db::sqlx::query(rullst::db::sqlx::AssertSqlSafe(statement)).execute(rullst::db::Orm::pool()?).await?;"#;
     format!(
