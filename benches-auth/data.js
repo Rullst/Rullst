@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795068707438,
+  "lastUpdate": 1795070351145,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -24789,6 +24789,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3737,
             "range": "± 23",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9feff71f4b89de6f091c912968673e31ab8b3bef",
+          "message": "Merge pull request #770 from Rullst/docs/v13-chrono-jiff-cheat-sheet\n\ndocs(migration): chrono→jiff cheat sheet; review glob-imported literals and moved Caddyfiles",
+          "timestamp": "2026-11-19T03:27:19-03:00",
+          "tree_id": "aac5498666e37292640de9bd73249b4b57dc3ae5",
+          "url": "https://github.com/Rullst/Rullst/commit/9feff71f4b89de6f091c912968673e31ab8b3bef"
+        },
+        "date": 1795070350340,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 893,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 663,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1538,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3690,
+            "range": "± 90",
             "unit": "ns/iter"
           }
         ]
