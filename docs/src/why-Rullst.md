@@ -289,7 +289,7 @@ remains application code: review it, test it, and keep it under version control.
 ### 10. Ambition is separated from evidence
 
 Rullst keeps ambitious ideas, but labels them as implemented, partial,
-experimental, offline mock, roadmap, or not recommended. Benchmarks are
+fixture only, offline mock, roadmap, or not recommended. Benchmarks are
 reported for their measured workload instead of becoming universal
 performance slogans. Hardware, provider, regulatory, and certification claims
 remain incomplete until the corresponding external evidence exists.
@@ -324,7 +324,7 @@ Rullst may not be the best choice when:
 - long production history, a very large plugin ecosystem, or commercial
   support matters more than Rust-native integration;
 - the application requires a capability that the ledger still marks partial,
-  experimental, or roadmap;
+  fixture only, or roadmap;
 - the team does not want the maintenance surface of a batteries-included
   framework.
 

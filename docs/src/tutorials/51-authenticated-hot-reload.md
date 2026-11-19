@@ -118,7 +118,8 @@ Remove legacy `HOT_RELOAD` entries from `.env` as well: application-owned dotenv
 loading can otherwise restore them. A newly generated project has no DLL
 layout; already edited application code may need application-specific migration.
 
-The existing library loader is retained only as a legacy experimental boundary.
+The existing library loader is retained only as a legacy boundary for old
+generated projects; it is not the supported reload workflow.
 Passing Rust, Axum, Tokio or SQLx objects across a library ABI does not provide a
 stable interoperability contract. Do not reintroduce cross-library ORM pools.
 

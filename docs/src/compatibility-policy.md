@@ -107,15 +107,13 @@ instead of comparing it.
 
 ### Maturity tiers (v13)
 
-From `13.0.0`, each package has a [maturity tier](maturity.md). Core and
-Extension packages are supported and follow the contract above for the whole
-13.x line. Experimental packages, experimental CLI generators and facade
-features that re-export an experimental crate are the exception: their public
-APIs, features, schemas and generated output may change between 13.x releases.
-Since 13.0.0-alpha.5 no package or CLI generator is Experimental; the exception
-covers the parts of a package that its documentation marks experimental, such
-as the `s3` adapter of `rullst-media`. Every such break is still listed in the
-changelog and migration guide. Security handling is the same for every tier.
+From `13.0.0`, each package has a [maturity tier](maturity.md), Core or
+Extension. Both are supported and follow the contract above for the whole 13.x
+line, and so does every part of a package, its opt-in adapters and Cargo
+features included. There is no Experimental exception: the tier that allowed
+breaking changes within 13.x was dropped on 19 November 2026
+([maturity tiers](maturity.md#no-experimental-tier-since-19-november-2026)).
+Security handling is the same for every tier.
 
 ## Minimum Supported Rust Version
 

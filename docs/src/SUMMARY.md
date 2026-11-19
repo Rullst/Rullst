@@ -10,7 +10,7 @@
 - [An AI Assistant's Evaluation](ai-evaluation.md)
 - [💡 The Rullst Philosophy](philosophy.md)
 - [Simple Capability Status](capability-status.md)
-- [Maturity Tiers: Core, Extension, Experimental](maturity.md)
+- [Maturity Tiers: Core and Extension](maturity.md)
 - [Scope and Limits](scope-and-limits.md)
 
 # 🍳 Rullst Cookbook & Tutorials

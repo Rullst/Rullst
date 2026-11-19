@@ -73,7 +73,7 @@ neither release readiness nor remaining effort.
 | ID | Pillar and capability | Honest status and recommendation | Target window |
 | :---: | :--- | :--- | :---: |
 | **M1** | DX: CLI empowerment and `make:*` generators | `[~] Partial` *(worth finishing — the commands exist, but every generator/blueprint combination still needs a compiling temp-project matrix)* | v12 hardening |
-| **M2** | DX: fast linkers, build tuning, and responsible hot reload | `[~] Partial` *(v12 uses supervised process restart with build coalescing, retained service on compile failure and a development-only browser-refresh probe. The retained experimental DLL loader is not the public v12 workflow or a stable Rust ABI. Further build-latency improvements and optional state handoff need reproducible cross-platform evidence; universal sub-100ms reloads must not be promised)* | Continuous / v13 research |
+| **M2** | DX: fast linkers, build tuning, and responsible hot reload | `[~] Partial` *(v12 uses supervised process restart with build coalescing, retained service on compile failure and a development-only browser-refresh probe. The retained legacy DLL loader is not the public v12 workflow or a stable Rust ABI. Further build-latency improvements and optional state handoff need reproducible cross-platform evidence; universal sub-100ms reloads must not be promised)* | Continuous / v13 research |
 | **M3** | DX: Axum/SQLx escape hatches, granular features, proc-macro diagnostics, and ejection | `[~] Partial` *(worth improving as migration tooling — bare Core is now runtime-only, ORM/SQLite queues are explicit features, and the umbrella maps them; universal “zero lock-in” is still not worth promising because optional subsystems carry migration cost)* | Next SemVer cycle |
 | **M4** | DX: `make:resource` and Ignition-style error console | `[x] Implemented (scoped)` — resource scaffolding and a local developer error console exist; autonomous mutation is evaluated separately in M37 | v12 hardening |
 | **M5** | DX: documentation hub (mdBook), OpenAPI, and AST TypeScript generation | `[~] Partial` *(worth finishing — generators exist, but generated-project and serialization contract tests are still needed; AST inference is not a complete API contract)* | v13 |
@@ -524,6 +524,12 @@ alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
   [maturity tiers](docs/src/maturity.md) state which packages the 13.x
   promise covers. After rc.1, changes are limited to defects found in the
   release candidate.
+- **Maturity** (decided 19 November 2026): no Experimental tier or label. The
+  opt-in `s3` adapter of `rullst-media`, the `rullst-iot` fixtures behind
+  `experimental-simulators` and `#[memoize]` now have the tier of their
+  package, and the documentation keeps stating what each part is tested
+  against and what never ran against a live service
+  ([maturity tiers](docs/src/maturity.md#no-experimental-tier-since-19-november-2026)).
 - **Then 13.0.0**, once rc.1 leaves no open defect in the stability scope.
 
 ### Published and planned release lines

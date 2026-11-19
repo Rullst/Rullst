@@ -80,8 +80,9 @@ then streams the image through the returned verifier. See the
 code and the trust, persistence, and bootloader requirements that remain the
 integrator's responsibility.
 
-## Experimental fixtures
+## Test fixtures
 
-The opt-in `experimental-simulators` feature contains explicitly named
+The opt-in `experimental-simulators` feature (a name kept for compatibility,
+not a maturity label) contains explicitly named
 `Simulated*` fixtures. They are deterministic test data generators, not hardware
 or protocol implementations.

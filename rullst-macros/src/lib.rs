@@ -4,7 +4,7 @@
 //!
 //! **Maturity: Core**
 //! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). `#[memoize]`
-//! is an experimental compatibility surface with a weaker promise.
+//! caches in process memory only; the README lists its bounds and limits.
 //!
 //! Use these macros through the `rullst` facade rather than this crate: the
 //! expansions call `rullst::…` paths, `#[require_role]` needs the facade's
@@ -12,6 +12,15 @@
 //! has no Cargo features of its own. The
 //! [README](https://github.com/Rullst/Rullst/blob/main/rullst-macros/README.md)
 //! lists the contract and the limits of each macro.
+//!
+//! # Reporting problems
+//!
+//! If this crate does not behave as documented, open an issue at
+//! <https://github.com/Rullst/Rullst/issues/new/choose> with the Rullst version,
+//! enabled features, platform and a minimal reproduction, without secrets or
+//! private data. Report security vulnerabilities privately as described in
+//! [`SECURITY.md`](https://github.com/Rullst/Rullst/blob/main/SECURITY.md),
+//! never in a public issue.
 extern crate proc_macro;
 
 use memoize::expand_memoize;

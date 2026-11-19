@@ -15,9 +15,9 @@ cargo install cargo-rullst --version =13.0.0-alpha.6 --locked
 
 `cargo-rullst` is a Core package. Three commands carry their own **Maturity**
 label below the command name, *Extension*: `make:iot`, `iot:keygen` and
-`iot:sign`, which build on `rullst-iot`. Since 13.0.0-alpha.5 no command is
-Experimental. The [maturity tiers](maturity.md#cli-generators) page explains
-what each label promises.
+`iot:sign`, which build on `rullst-iot`. The
+[maturity tiers](maturity.md#cli-generators) page explains what each tier
+promises.
 
 ## Machine-readable output
 

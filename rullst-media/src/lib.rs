@@ -9,8 +9,9 @@
 //! 13.0.0-alpha.5: optional, and supported for its documented scope. A
 //! production application uses the Bunny adapter with a real Bunny Stream
 //! library; transcoding and CDN edge cases are not covered by Rullst's own
-//! tests. The opt-in `s3` adapter is experimental: it is validated against
-//! the offline mock only and may change between 13.x releases.
+//! tests. The opt-in `s3` adapter has the same tier and is tested offline
+//! only, against the offline mock and a loopback protocol fixture; no
+//! automated test runs against a live S3, R2 or MinIO service.
 //!
 //! No feature is enabled by default; the default build holds the validated
 //! identities, the [`Authorization`] and [`VideoProvider`] contracts and
@@ -22,6 +23,15 @@
 //! an application-owned [`VideoProvider`]. See the
 //! [private video guide](https://rullst.github.io/Rullst/book/managed-video.html)
 //! and the [README](https://github.com/Rullst/Rullst/blob/main/rullst-media/README.md).
+//!
+//! # Reporting problems
+//!
+//! If this crate does not behave as documented, open an issue at
+//! <https://github.com/Rullst/Rullst/issues/new/choose> with the Rullst version,
+//! enabled features, platform and a minimal reproduction, without secrets or
+//! private data. Report security vulnerabilities privately as described in
+//! [`SECURITY.md`](https://github.com/Rullst/Rullst/blob/main/SECURITY.md),
+//! never in a public issue.
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![forbid(unsafe_code)]
 

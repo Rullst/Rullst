@@ -141,3 +141,12 @@ cargo test -p rullst-orm-macros --all-features
 Backend runtime behavior is verified in `rullst-orm` against the corresponding
 SQLite, PostgreSQL, MySQL/MariaDB, Turso, Redis, vector, and search matrices.
 This crate alone does not prove those external protocols.
+
+## Reporting problems
+
+If this crate does not behave as documented, open an issue at
+<https://github.com/Rullst/Rullst/issues/new/choose> with the Rullst version,
+enabled features, platform and a minimal reproduction, without secrets or
+private data. Report security vulnerabilities privately as described in
+[`SECURITY.md`](https://github.com/Rullst/Rullst/blob/main/SECURITY.md),
+never in a public issue.

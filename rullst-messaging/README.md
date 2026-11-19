@@ -247,3 +247,12 @@ documents host authorization, receiver replay protection, storage custody and
 protocol details. Native owned HTTP/TLS and process-restart tests passed locally,
 and combined hosted and extracted-package source admission passed in PR #239;
 final release admission remains outstanding.
+
+## Reporting problems
+
+If this crate does not behave as documented, open an issue at
+<https://github.com/Rullst/Rullst/issues/new/choose> with the Rullst version,
+enabled features, platform and a minimal reproduction, without secrets or
+private data. Report security vulnerabilities privately as described in
+[`SECURITY.md`](https://github.com/Rullst/Rullst/blob/main/SECURITY.md),
+never in a public issue.

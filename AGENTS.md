@@ -17,12 +17,15 @@ How the repository is maintained day to day (workstation limits, packaging work,
 
 The Rullst framework is organized into decoupled, high-performance crates. The
 **Tier** column records the v13 maturity decision in
-[`docs/src/maturity.md`](docs/src/maturity.md): **Core** (every application),
-**Extension** (optional, supported) or **Experimental** (optional; may change
-between 13.x releases; not validated in every scenario). No crate has been
-Experimental since 13.0.0-alpha.5; a part of a crate can be (the `s3` adapter of
-`rullst-media`). A `rullst` facade feature has the tier of the crate it
-re-exports. Update both places when a tier changes.
+[`docs/src/maturity.md`](docs/src/maturity.md): **Core** (every application)
+or **Extension** (optional, supported). Since 19 November 2026 there is no
+Experimental tier, and no package, adapter, feature or generator is labelled
+experimental (`rullst-iot`'s `experimental-simulators` feature only keeps its
+name for compatibility). Write facts instead: what a part is tested against,
+what was validated in real use and what has never run against a live service
+(for example, the `s3` adapter of `rullst-media` is tested offline only). A
+`rullst` facade feature has the tier of the crate it re-exports. Update both
+places when a tier changes.
 
 | Crate | Tier | Responsibilities |
 | :--- | :--- | :--- |
@@ -44,7 +47,7 @@ re-exports. Update both places when a tier changes.
 | **`rullst-orm-macros`** | Core | `#[derive(Orm)]` (which also implements `sqlx::FromRow` since 13.0.0-alpha.4, so models derive no `FromRow` and no Rullst crate enables SQLx macros), `Enum`, `Nexus` and `PersonalData` derives and the `#[rullst_orm::test]` sandbox attribute. |
 | **`cargo-rullst`** | Core | Developer CLI: `new` wizard (generated page smoke tests and CI) and `make:*` generators, `add` (`tailwind`, `alpine`, `browser-tests`, …), `ui add` components, `dev`/`dash`, `doctor`, assisted `upgrade`, the `footprint` report (Core since 13.0.0-alpha.5), AST IDOR scanner and guided deployment helpers. |
 | **`rullst-labs`** *(v13 prerelease, first published in 13.0.0-alpha.1)* | Extension (since 13.0.0-alpha.5) | Bring your own runner: trusted bounded exercise/authorization/grading contracts, optional encrypted shared-local SQLite jobs, fenced leases/cancellation/retention and pinned controller receipts. A runner that stops an attempt at the wall limit reports `ExecutionFailure::TimeLimit` (a `Failed` job, not `Cancelled`); the result and profile enums are `#[non_exhaustive]` since 13.0.0-alpha.5. It never executes learner code; an application-owned, separately deployed runner implements the documented controller contract (`docs/src/labs-runner-contract.md`, non-executing `byo_runner_controller` example). The `rullst-labs-runner` candidate was removed from the 13.0 workspace and remains in git history. Labs is in the 13.0 release inventory and was first published in 13.0.0-alpha.1; final release acceptance remains outstanding. |
-| **`rullst-media`** *(v13 prerelease, first published in 13.0.0-alpha.1)* | Extension (since 13.0.0-alpha.5) | Optional Bunny Stream lifecycle (full or upload-only credentials, library listing), scoped upload/playback grants, exact-body notifications, shared-local SQLite reconciliation, browser upload module and an opt-in S3/R2 adapter tested offline only (still experimental). The `conformance` feature checks an application-owned `VideoProvider`, which builds its own grants with `UploadGrant::new`/`PlaybackGrant::new`. Bunny Stream is used by production applications, but no automated test runs against a live account or CDN; no final release admission or blueprint/facade default is implied. |
+| **`rullst-media`** *(v13 prerelease, first published in 13.0.0-alpha.1)* | Extension (since 13.0.0-alpha.5) | Optional Bunny Stream lifecycle (full or upload-only credentials, library listing), scoped upload/playback grants, exact-body notifications, shared-local SQLite reconciliation, browser upload module and an opt-in S3/R2 adapter tested offline only (an offline mock and a loopback protocol fixture; no live S3, R2 or MinIO service). The `conformance` feature checks an application-owned `VideoProvider`, which builds its own grants with `UploadGrant::new`/`PlaybackGrant::new`. Bunny Stream is used by production applications, but no automated test runs against a live account or CDN; no final release admission or blueprint/facade default is implied. |
 | **`rullst-supervision`** *(v13 prerelease, first published in 13.0.0-alpha.1)* | Extension (since 13.0.0-alpha.5) | Optional exam/parental contracts, exact collection acknowledgement, typed browser/capture observations, bounded camera-presence/audio-activity adapter orchestration (since 13.0.0-alpha.5 also `camera_obscured` and statistics-only samples: `LuminanceStatistics` for a frame, `LoudnessStatistics` for microphone input) and shared-local SQLite authority/session/retention state. A parental `CoursePolicy` is one absolute UTC window of at most 30 days; recurring daily hours are the host's job. The host owns authenticated membership, capture permission, models, reviewer workflow and verified relationships. No media model, automatic grading or device-wide control is included. PR #226 is merged; hosted checks and retrospective installed-archive validation passed. Final release admission remains separate. |
 
 ---

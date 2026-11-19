@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/Rullst/Rullst/blob/main/SECURITY.md
+    about: Report vulnerabilities privately, by email or GitHub private vulnerability reporting, never in a public issue.

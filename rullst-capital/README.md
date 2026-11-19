@@ -940,3 +940,12 @@ an outbox, idempotent consumers, and reconciliation.
 - **Explicit Verification Mode**: A provider without an explicitly declared webhook verification mode cannot be mounted behind the canonical middleware.
 - **Freshness and Replay Protection**: Timestamped protocols have a configurable five-minute window, and middleware records provider-scoped payload hashes in a bounded 24-hour TTL store. `webhook-sql` adds bounded durable claims; stable semantic event IDs can share a transaction with the domain mutation.
 - **Unsigned Notifications Prove Nothing**: A `ConfirmedAtSource` notification never becomes a `WebhookEvent`; only `confirm_one_off_payment`, which queries the provider and compares the paid amount with the server-side request, reports a payment. InfinitePay's adapter works this way; an empty or `mock_*` handle operates offline and never reports a paid payment.
+
+## Reporting problems
+
+If this crate does not behave as documented, open an issue at
+<https://github.com/Rullst/Rullst/issues/new/choose> with the Rullst version,
+enabled features, platform and a minimal reproduction, without secrets or
+private data. Report security vulnerabilities privately as described in
+[`SECURITY.md`](https://github.com/Rullst/Rullst/blob/main/SECURITY.md),
+never in a public issue.

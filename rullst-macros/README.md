@@ -6,10 +6,8 @@ generated paths and matching runtime features stay aligned: the expansions
 call `rullst::…` paths, `#[require_role]` needs the facade's `auth` feature and
 `#[derive(Billable)]` its `capital` feature.
 
-**Maturity: Core** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)).
-The surface listed under
-[Experimental compatibility surface](#experimental-compatibility-surface)
-carries its own, weaker promise.
+**Maturity: Core** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)),
+every macro below included.
 
 ## Stable bounded contracts
 
@@ -20,7 +18,7 @@ carries its own, weaker promise.
 | `#[require_role("Role")]` | Requires an async handler binding named `user`, checks `HasRole` before the body, and returns HTTP 403 on denial. | Authentication, user extraction, role persistence, tenant policy, and ownership checks remain application responsibilities. |
 | `#[derive(Billable)]` | Implements the bounded Capital `Billable` facade for a named-field struct containing `email: String`; optional subscription, tier, and paired grace-period fields are recognized. | It does not charge by itself or invent provider/payment/authorization data. |
 
-## Experimental compatibility surface
+## Process-local memoization and removed attributes
 
 `#[island]`, `#[live_component]`, `#[live_event]` and the typed browser RPC
 attribute were removed in 13.0.0-alpha.5; see the
@@ -56,3 +54,12 @@ cargo test -p rullst-macros
 
 The macros deliberately avoid runtime reflection. Expansion errors should be
 reported as `syn::Error` diagnostics instead of panicking the compiler.
+
+## Reporting problems
+
+If this crate does not behave as documented, open an issue at
+<https://github.com/Rullst/Rullst/issues/new/choose> with the Rullst version,
+enabled features, platform and a minimal reproduction, without secrets or
+private data. Report security vulnerabilities privately as described in
+[`SECURITY.md`](https://github.com/Rullst/Rullst/blob/main/SECURITY.md),
+never in a public issue.
