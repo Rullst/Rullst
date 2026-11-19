@@ -48,7 +48,7 @@ async fn fixed_verdict_receipt_is_accepted_and_never_graded_as_executed() {
         Some(JobResult::Rejected {
             failure: ExecutionFailure::Isolation,
             diagnostics: None,
-            evidence: ResultEvidence::Experimental { .. },
+            evidence: ResultEvidence::SignedReceipt { .. },
         })
     ));
 }
