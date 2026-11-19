@@ -8,14 +8,18 @@
 use super::super::alpha6_cron::advice;
 use super::*;
 
+/// The occurrences recorded after one start: Unix milliseconds, `None` when
+/// none followed.
+type Recorded = (i64, Vec<Option<i64>>);
+
 /// Messaging's corpus (`cron_expression_vectors.txt`): expressions the
 /// `cron` crate accepted, each with the occurrences it recorded after a few
 /// starts. Packaged crates do not ship it.
-fn corpus() -> Option<Vec<(String, Vec<(i64, Vec<Option<i64>>)>)>> {
+fn corpus() -> Option<Vec<(String, Vec<Recorded>)>> {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../rullst-messaging/src/schedules/cron_expression_vectors.txt");
     let text = std::fs::read_to_string(path).ok()?;
-    let mut corpus: Vec<(String, Vec<(i64, Vec<Option<i64>>)>)> = Vec::new();
+    let mut corpus: Vec<(String, Vec<Recorded>)> = Vec::new();
     let mut accepted = false;
     for line in text
         .lines()
