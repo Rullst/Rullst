@@ -1,0 +1,2 @@
+### Security
+- `rullst-mail`'s SMTP transport requires `lettre` 0.11.24, which fixes RUSTSEC-2026-0560 to RUSTSEC-2026-0565 (published 2026-11-17): STARTTLS response injection by a man-in-the-middle, SMTP command injection through missing dot-stuffing after a bare CR or LF, a message for an address with a quoted local part sent to a different address, unbounded buffering of an SMTP reply, and panics on a whitespace-only `EHLO` line or a display name containing CR or LF. Applications that enable the `mail-smtp` feature get the fixed version when they update to this release.
