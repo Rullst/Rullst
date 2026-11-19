@@ -12,7 +12,6 @@ Last reviewed: **2026-11-17**.
 | --- | --- | --- | --- | --- | --- |
 | `RUSTSEC-2026-0459` | `libsqlite3-sys` 0.37.0 (bundled SQLite 3.53) ← `sqlx-sqlite` 0.9.0 ← every Rullst SQLite feature | See below | Maintainer (Venelouis) | 2027-01-28 | An `sqlx` release that accepts `libsqlite3-sys` ≥ 0.39, then required by `rullst-orm` |
 | `RUSTSEC-2026-0440` | `astral-tokio-tar` 0.6.4 ← `testcontainers` 0.27.3 ← dev-dependency of the integration tests | See below | Maintainer (Venelouis) | 2027-01-28 | A `testcontainers` release without `astral-tokio-tar`, or the tests move to another container client |
-| `RUSTSEC-2026-0543` | `chrono` 0.4.45 ← `rullst-orm`, `rullst-core`, `rullst-mail`, `rullst-capital`, `rullst-studio`, `cargo-rullst`, the `rullst` facade, `sqlx`'s `chrono` feature and the `cron` dev-dependency | See below | Maintainer (Venelouis) | 2026-12-17 | `chrono` is no longer in the resolved dependency graph; the pull request that removes it also removes this exception |
 
 **`RUSTSEC-2026-0459`** (medium; CVE-2026-119375, published 2026-10-30): SQLite
 before 3.54.0 can return uninitialized page-cache memory when it opens a
@@ -43,18 +42,18 @@ moving to it would not end the exception. The tests stay on 0.27.3 until
 `testcontainers-modules`, whose PostgreSQL, MySQL, MariaDB and SurrealDB images
 they use, publishes a release for 0.28: 0.15.0, the newest, requires 0.27.
 
-**`RUSTSEC-2026-0543`** (unmaintained, no known vulnerability; published
-2026-11-17): the maintainer of `chrono` is winding down its maintenance and
-recommends `jiff` or `time`; no patched version exists. `chrono` is a public
-dependency of Rullst 13 (`rullst::orm::chrono`, Core date formatting, Mail and
-Capital). This is a bridge, not a lasting exception: it lets the replacement
-land in several pull requests while CI keeps checking every other advisory.
-13.0.0-alpha.6 is not published while it exists, so no Rullst release ships
-with `chrono` after the advisory. The compensating control is that release
-gate and the 30-day expiry.
-
 ## Remediation history
 
+- On 2026-11-19, the bridge exception for `RUSTSEC-2026-0543` (`chrono`
+  unmaintained, approved on 2026-11-17 until 2026-12-17) was removed after
+  Rullst 13 replaced `chrono` with `jiff` 1 in every crate, generator and
+  example before 13.0.0-alpha.6. `cargo tree -i chrono` is empty for the
+  workspace (all features, all targets, dev and build dependencies), every
+  fuzz crate and every fixture lockfile. `Cargo.lock` still lists `chrono`
+  0.4.45 only because `serde_with`, a dependency of the `testcontainers`
+  dev-dependency, names it in a weak `chrono_0_4?/alloc` feature: Cargo
+  records such an optional dependency in the lockfile without enabling or
+  building it, and `cargo audit` reports it as an allowed warning.
 - On 2026-10-22, the time-bounded exception for `RUSTSEC-2026-0367`,
   `RUSTSEC-2026-0368` and `RUSTSEC-2026-0369` (`zip` 6.0.0 as a build
   dependency of `libduckdb-sys`, approved on 2026-10-17 until 2026-10-31) was
