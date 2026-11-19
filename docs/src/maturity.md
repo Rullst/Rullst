@@ -165,16 +165,23 @@ told readers, and the AI assistants that advise them, to stay away from a part
 without saying what had actually been tested. The documentation already
 records those facts, so they now carry the message on their own.
 
-The three parts that still carried the label have the tier of their package:
+Three parts still carried the label. Two have the tier of their package, and
+13.0.0-rc.1 removed the third:
 
 | Part | Tier now | What is tested, and what is not |
 | :--- | :--- | :--- |
 | The opt-in `s3` adapter of `rullst-media` (AWS S3, Cloudflare R2, MinIO) | Extension | Tested offline only: the offline mock, and a loopback HTTP fixture that checks request signing and payload digests. No automated test runs against a live S3, R2 or MinIO service, so provider interoperability is not validated. See [S3-compatible object storage](managed-video.md#s3-compatible-object-storage-s3-r2-minio). |
-| The fixtures behind the `experimental-simulators` feature of `rullst-iot` (`SimulatedHsmDevice`, `SimulatedPqcFixture`, `SimulatedMqttPayloadFormatter`) | Extension | Deterministic test data for tests and demos, covered by unit tests. They are not a hardware security module, post-quantum cryptography or an MQTT client, and are not for production. The feature keeps its name for compatibility; the name is not a label. |
+| The fixtures behind the `experimental-simulators` feature of `rullst-iot` (`SimulatedHsmDevice`, `SimulatedPqcFixture`, `SimulatedMqttPayloadFormatter`) | Removed in 13.0.0-rc.1 | They only hashed bytes or formatted a number, and their tests only tested themselves, so the feature and the types were removed instead of being supported. Cargo refuses the feature; see the [migration guide](migration-v13.md#changes-from-the-published-1210-source). |
 | `#[memoize]` in `rullst-macros` | Core | A process-local, bounded cache covered by unit tests of its key, bounds and expiry; not tenant-aware, distributed or invalidation-aware (see the [crate README](../../rullst-macros/README.md)). |
 
-Like every Core and Extension part, they follow the
+Like every Core and Extension part, the two that remain follow the
 [compatibility policy](compatibility-policy.md) from `13.0.0`.
+
+Two public names of `rullst-labs` also carried the word. Since 13.0.0-rc.1,
+`ExecutionProfile::LinuxExperimental` is `ExecutionProfile::PinnedRunner` and
+`ResultEvidence::Experimental` is `ResultEvidence::SignedReceipt`. Their
+serialized names are unchanged, so stores, jobs and digests written before the
+rename keep working.
 
 The [v13 maintenance scope](v13-maintenance-scope.md) explains the investment
 decisions behind these tiers. For the two Core security crates, see

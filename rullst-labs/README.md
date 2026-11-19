@@ -6,7 +6,7 @@ or spawns learner code. An application-owned, separately deployed and isolated
 runner claims leased jobs and returns signed receipts through the documented
 [controller contract](https://github.com/Rullst/Rullst/blob/main/docs/src/labs-runner-contract.md).
 
-The experimental `rullst-labs-runner` candidate (a Linux Rust-to-Wasm/Wasmi
+The `rullst-labs-runner` candidate (a Linux Rust-to-Wasm/Wasmi
 executor) passed source admission in [PR #228](https://github.com/Rullst/Rullst/pull/228)
 but was removed from the workspace for 13.0; its source remains in git history.
 Final release acceptance of this crate remains outstanding. Neither the

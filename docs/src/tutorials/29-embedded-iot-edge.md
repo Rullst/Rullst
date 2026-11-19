@@ -80,9 +80,9 @@ then streams the image through the returned verifier. See the
 code and the trust, persistence, and bootloader requirements that remain the
 integrator's responsibility.
 
-## Test fixtures
+## No simulators
 
-The opt-in `experimental-simulators` feature (a name kept for compatibility,
-not a maturity label) contains explicitly named
-`Simulated*` fixtures. They are deterministic test data generators, not hardware
-or protocol implementations.
+`rullst-iot` ships no hardware, HSM, post-quantum or broker simulators. The
+`experimental-simulators` feature and its `Simulated*` fixtures, which only
+hashed bytes or formatted a number, were removed in 13.0.0-rc.1; a test that
+needs fixed bytes builds its own.

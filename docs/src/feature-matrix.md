@@ -341,7 +341,6 @@ Default feature: `std`.
 | Feature | Enables |
 | --- | --- |
 | `std` | Standard-library support in serialization and Ed25519 dependencies; disabling it makes the crate `no_std` + `alloc` |
-| `experimental-simulators` | Deterministic MQTT formatting, HSM, and PQC fixtures; not live transports, hardware-backed keys, or production PQC |
 
 ### `rullst-capital`
 
@@ -506,15 +505,4 @@ Embedded IoT model without the standard library:
 
 ```toml
 rullst-iot = { version = "=13.0.0-alpha.6", default-features = false }
-```
-
-The IoT test fixtures are deliberately separate (the feature keeps its
-`experimental-simulators` name for compatibility; it is not a maturity label):
-
-```toml
-rullst-iot = {
-    version = "=13.0.0-alpha.6",
-    default-features = false,
-    features = ["experimental-simulators"]
-}
 ```
