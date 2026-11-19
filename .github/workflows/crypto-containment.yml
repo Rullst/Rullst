@@ -1,8 +1,9 @@
 name: IoT and Vault Crypto Containment
 
-# Signed OTA and simulator-fixture tests for rullst-iot, the Vault encryption
-# tests, a RustSec audit and a no-unsafe check of those files. Nothing here is
-# post-quantum: until 13.0.0-alpha.4 this file was pqc-compliance.yml.
+# Signed OTA tests for rullst-iot, the Vault encryption tests, a RustSec audit
+# and a no-unsafe check of those files. Nothing here is post-quantum: until
+# 13.0.0-alpha.4 this file was pqc-compliance.yml, and until 13.0.0-rc.1 it
+# also scanned the simulator fixtures that release removed.
 
 on:
   push:
@@ -37,7 +38,7 @@ env:
 
 jobs:
   crypto-containment:
-    name: Signed OTA & Simulator Boundary Checks
+    name: Signed OTA & Vault Containment Checks
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -48,7 +49,7 @@ jobs:
         with:
           toolchain: 1.100.0
 
-      - name: Test signed OTA and explicit simulator fixtures
+      - name: Test signed OTA and the IoT encoders
         run: cargo test -p rullst-iot --all-features -- --nocapture
 
       - name: Run Vault encryption tests
@@ -62,10 +63,10 @@ jobs:
       - name: Run cargo-audit (CVE scan on crypto deps)
         run: cargo audit --ignore RUSTSEC-2026-0459 --ignore RUSTSEC-2026-0440
 
-      - name: Verify no unsafe blocks in OTA and fixture modules
+      - name: Verify no unsafe blocks in OTA, MQTT and Vault modules
         run: |
-          echo "Scanning OTA, simulator, and vault files for unsafe blocks..."
-          if grep -rn "unsafe" rullst-iot/src/ota.rs rullst-iot/src/pqc.rs rullst-iot/src/hsm.rs rullst-iot/src/mqtt.rs rullst-security/src/vault.rs; then
+          echo "Scanning OTA, MQTT, and vault files for unsafe blocks..."
+          if grep -rn "unsafe" rullst-iot/src/ota.rs rullst-iot/src/mqtt.rs rullst-security/src/vault.rs; then
             echo "Unsafe blocks detected. Manual review required."
             exit 1
           else
