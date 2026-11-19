@@ -1157,6 +1157,8 @@ pub rullst_connect::user::DeviceAuthorizationResponse::verification_uri: alloc::
 pub rullst_connect::user::DeviceAuthorizationResponse::verification_uri_complete: core::option::Option<alloc::string::String>
 pub rullst_connect::user::DeviceAuthorizationResponse::expires_in: u64
 pub rullst_connect::user::DeviceAuthorizationResponse::interval: core::option::Option<u64>
+impl rullst_connect::user::DeviceAuthorizationResponse
+pub fn rullst_connect::user::DeviceAuthorizationResponse::new(device_code: impl core::convert::Into<alloc::string::String>, user_code: impl core::convert::Into<alloc::string::String>, verification_uri: impl core::convert::Into<alloc::string::String>, expires_in: u64) -> Self
 impl core::clone::Clone for rullst_connect::user::DeviceAuthorizationResponse
 impl core::fmt::Debug for rullst_connect::user::DeviceAuthorizationResponse
 impl serde_core::ser::Serialize for rullst_connect::user::DeviceAuthorizationResponse
