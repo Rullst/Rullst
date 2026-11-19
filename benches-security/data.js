@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795068893573,
+  "lastUpdate": 1795070492924,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -25119,6 +25119,60 @@ window.BENCHMARK_DATA = {
             "name": "html_sanitizer/sanitize_text_escape",
             "value": 443,
             "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 11,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9feff71f4b89de6f091c912968673e31ab8b3bef",
+          "message": "Merge pull request #770 from Rullst/docs/v13-chrono-jiff-cheat-sheet\n\ndocs(migration): chrono→jiff cheat sheet; review glob-imported literals and moved Caddyfiles",
+          "timestamp": "2026-11-19T03:27:19-03:00",
+          "tree_id": "aac5498666e37292640de9bd73249b4b57dc3ae5",
+          "url": "https://github.com/Rullst/Rullst/commit/9feff71f4b89de6f091c912968673e31ab8b3bef"
+        },
+        "date": 1795070492115,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 4210,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 440,
+            "range": "± 3",
             "unit": "ns/iter"
           },
           {
