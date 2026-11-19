@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795065379668,
+  "lastUpdate": 1795068893573,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -25082,6 +25082,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e9338b13792f87f55ddf6bad683217b3f3b02f91",
+          "message": "Merge pull request #772 from Rullst/feat/v13-orm-temporal-ergonomics\n\nfeat(orm): return the ORM date/time types from arithmetic",
+          "timestamp": "2026-11-19T02:55:43-03:00",
+          "tree_id": "663dc51bdf0f3dc8276dc046eca476c75148bece",
+          "url": "https://github.com/Rullst/Rullst/commit/e9338b13792f87f55ddf6bad683217b3f3b02f91"
+        },
+        "date": 1795068892539,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 4265,
+            "range": "± 53",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 443,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 11,
             "range": "± 0",
             "unit": "ns/iter"
           }
