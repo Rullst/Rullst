@@ -239,11 +239,13 @@ received a test or is listed under
   files leave 19 of 697 mutants missed and 1 timeout. The crate's 948 mutants
   now leave 22 missed and 2 timeouts: 18 accepted equivalents listed below
   (most are SQLite and MySQL branches that the all-feature PostgreSQL pool
-  never takes), 4 mutants of two redundant conditions left for a follow-up
-  (the ban count in the radar's threat level, since every ban is also
-  recorded as an event and a counter, and the forget token's empty and length
-  pre-check, which the 32-byte signature check repeats with the same `400`),
-  and the two timeouts listed with the timeouts.
+  never takes), 4 mutants of two redundant conditions, and the two timeouts
+  listed with the timeouts. A follow-up removed both conditions and their
+  mutants: the ban count in the radar's threat level (the store bans only
+  when it counts a trap and records an event, and its event list never
+  empties) and the forget token's empty and length pre-check (only a
+  43-character token decodes to the 32-byte signature, so that check already
+  answers `400`).
 - **`rullst`** (the facade; 13.0.0-rc.1 campaign on `c22b6bca`,
   [PR #752](https://github.com/Rullst/Rullst/pull/752), same fork): targeted
   runs of the 6 files with mutants (the account-mail worker and the IoT

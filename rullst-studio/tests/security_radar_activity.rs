@@ -42,4 +42,12 @@ async fn a_counter_or_an_event_alone_marks_local_activity() {
     ));
     assert_eq!(store.active_banned_count(), 0);
     assert_eq!(threat_level().await, "LOCAL_ACTIVITY_RECORDED");
+
+    // The radar has no term for active bans because a ban always comes with
+    // its trap count and its event.
+    store.record_honeypot_trap("192.0.2.9", "/wp-login.php");
+    assert_eq!(store.active_banned_count(), 1);
+    assert_eq!(store.honeypot_traps_count.load(Ordering::Relaxed), 1);
+    assert_eq!(store.live_events()[0].event_type, "HONEYPOT_TRAP_TRIGGERED");
+    assert_eq!(threat_level().await, "LOCAL_ACTIVITY_RECORDED");
 }
