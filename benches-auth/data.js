@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795065226963,
+  "lastUpdate": 1795068707438,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -24741,6 +24741,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1935,
             "range": "± 12",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e9338b13792f87f55ddf6bad683217b3f3b02f91",
+          "message": "Merge pull request #772 from Rullst/feat/v13-orm-temporal-ergonomics\n\nfeat(orm): return the ORM date/time types from arithmetic",
+          "timestamp": "2026-11-19T02:55:43-03:00",
+          "tree_id": "663dc51bdf0f3dc8276dc046eca476c75148bece",
+          "url": "https://github.com/Rullst/Rullst/commit/e9338b13792f87f55ddf6bad683217b3f3b02f91"
+        },
+        "date": 1795068706424,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 891,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 673,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1561,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3737,
+            "range": "± 23",
             "unit": "ns/iter"
           }
         ]
