@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795052225066,
+  "lastUpdate": 1795055304193,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -37069,6 +37069,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1464,
             "range": "± 21",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dadfa7fdd6a6646119b8623f3e3e2b55510810f2",
+          "message": "Merge pull request #767 from Rullst/refactor/v13-studio-redundant-checks\n\nrefactor(studio): drop two redundant conditions",
+          "timestamp": "2026-11-18T23:24:35-03:00",
+          "tree_id": "817fd3ea81ba69b8e9eff2be8337f2c253f73a3e",
+          "url": "https://github.com/Rullst/Rullst/commit/dadfa7fdd6a6646119b8623f3e3e2b55510810f2"
+        },
+        "date": 1795055300752,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 387,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 532,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 254,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 976,
+            "range": "± 28",
             "unit": "ns/iter"
           }
         ]
