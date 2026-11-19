@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795059634212,
+  "lastUpdate": 1795063086079,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -22052,6 +22052,54 @@ window.BENCHMARK_DATA = {
           {
             "name": "ai_pii_masking/mask_pii",
             "value": 277,
+            "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0ac7fe3be8a0f2cec11c7ee1feba533e55d05304",
+          "message": "Merge pull request #768 from Rullst/feat/v13-orm-remove-chrono\n\nfeat(orm)!: remove chrono from rullst-orm and rullst-orm-macros",
+          "timestamp": "2026-11-19T01:19:00-03:00",
+          "tree_id": "99d76f3b7d4c9ace3d65d06b8290436450d1c9ba",
+          "url": "https://github.com/Rullst/Rullst/commit/0ac7fe3be8a0f2cec11c7ee1feba533e55d05304"
+        },
+        "date": 1795063085298,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1422,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 255,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 284,
             "range": "± 1",
             "unit": "ns/iter"
           }
