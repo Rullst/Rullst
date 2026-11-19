@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795059456526,
+  "lastUpdate": 1795062819469,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -24645,6 +24645,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1940,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0ac7fe3be8a0f2cec11c7ee1feba533e55d05304",
+          "message": "Merge pull request #768 from Rullst/feat/v13-orm-remove-chrono\n\nfeat(orm)!: remove chrono from rullst-orm and rullst-orm-macros",
+          "timestamp": "2026-11-19T01:19:00-03:00",
+          "tree_id": "99d76f3b7d4c9ace3d65d06b8290436450d1c9ba",
+          "url": "https://github.com/Rullst/Rullst/commit/0ac7fe3be8a0f2cec11c7ee1feba533e55d05304"
+        },
+        "date": 1795062818689,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 871,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 669,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1547,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3725,
+            "range": "± 20",
             "unit": "ns/iter"
           }
         ]
