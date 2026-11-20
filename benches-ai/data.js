@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795189474481,
+  "lastUpdate": 1795192118498,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -22389,6 +22389,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 392,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "24ec542c58f8a26e4eea81c599447d7f9265343b",
+          "message": "Merge pull request #774 from Rullst/docs/v13-compare-leptos-dioxus-scope-link\n\ndocs(site): explain Leptos and Dioxus on the comparison page and link Scope and limits",
+          "timestamp": "2026-11-20T13:08:13-03:00",
+          "tree_id": "8b9d2292e3d7dd9306e8b871c7f18a02fb4ee1a7",
+          "url": "https://github.com/Rullst/Rullst/commit/24ec542c58f8a26e4eea81c599447d7f9265343b"
+        },
+        "date": 1795192117609,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 947,
+            "range": "± 243",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 164,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 0,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 191,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
