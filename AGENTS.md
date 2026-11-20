@@ -19,9 +19,10 @@ The Rullst framework is organized into decoupled, high-performance crates. The
 **Tier** column records the v13 maturity decision in
 [`docs/src/maturity.md`](docs/src/maturity.md): **Core** (every application)
 or **Extension** (optional, supported). Since 19 November 2026 there is no
-Experimental tier, and no package, adapter, feature or generator is labelled
-experimental (`rullst-iot`'s `experimental-simulators` feature only keeps its
-name for compatibility). Write facts instead: what a part is tested against,
+Experimental tier, and no package, adapter, feature, generator or public API
+name is labelled experimental (13.0.0-rc.1 removed `rullst-iot`'s
+`experimental-simulators` feature and renamed the two Labs variants). Write
+facts instead: what a part is tested against,
 what was validated in real use and what has never run against a live service
 (for example, the `s3` adapter of `rullst-media` is tested offline only). A
 `rullst` facade feature has the tier of the crate it re-exports. Update both

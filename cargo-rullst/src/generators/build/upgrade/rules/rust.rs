@@ -478,6 +478,10 @@ impl<'ast> Visit<'ast> for Visitor<'_, '_> {
             if let Some(rule) = super::alpha6_jiff::path_rule(&path, None, facts) {
                 self.hit(rule, at);
             }
+            // `use rullst_labs::sqlite::ResultEvidence::{Experimental}`.
+            if let Some(rule) = super::rc1_experimental::path_rule(&path) {
+                self.hit(rule, at);
+            }
         }
         visit::visit_item_use(self, item);
     }

@@ -93,7 +93,7 @@ impl<C: Clock> SqliteLabs<C> {
         signed: &SignedReceipt,
         retry: bool,
     ) -> Result<JobView, Error> {
-        let ExecutionProfile::LinuxExperimental { receipt_key, .. } = &self.config.profile else {
+        let ExecutionProfile::PinnedRunner { receipt_key, .. } = &self.config.profile else {
             return Err(Error::Unsupported);
         };
         signed.verify(receipt_key)?;

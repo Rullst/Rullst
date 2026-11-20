@@ -525,11 +525,15 @@ alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
   promise covers. After rc.1, changes are limited to defects found in the
   release candidate.
 - **Maturity** (decided 19 November 2026): no Experimental tier or label. The
-  opt-in `s3` adapter of `rullst-media`, the `rullst-iot` fixtures behind
-  `experimental-simulators` and `#[memoize]` now have the tier of their
-  package, and the documentation keeps stating what each part is tested
+  opt-in `s3` adapter of `rullst-media` and `#[memoize]` now have the tier of
+  their package, and the documentation keeps stating what each part is tested
   against and what never ran against a live service
   ([maturity tiers](docs/src/maturity.md#no-experimental-tier-since-19-november-2026)).
+  The maintainer approved two API changes for rc.1 on the same grounds:
+  `rullst-iot` loses the `experimental-simulators` feature and its fixtures,
+  and `rullst-labs` renames `ExecutionProfile::LinuxExperimental` to
+  `PinnedRunner` and `ResultEvidence::Experimental` to `SignedReceipt`,
+  keeping their stored form.
 - **Then 13.0.0**, once rc.1 leaves no open defect in the stability scope.
 
 ### Published and planned release lines

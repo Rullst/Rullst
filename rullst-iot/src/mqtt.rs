@@ -9,11 +9,6 @@ extern crate alloc;
 use alloc::{string::String, vec::Vec};
 use core::{fmt, num::NonZeroU16};
 
-#[cfg(feature = "experimental-simulators")]
-use crate::SensorTelemetry;
-#[cfg(feature = "experimental-simulators")]
-use alloc::string::ToString;
-
 /// Local allocation ceiling for one encoded MQTT packet.
 pub const MAX_MQTT_PACKET_BYTES: usize = 1024 * 1024;
 
@@ -282,19 +277,6 @@ fn variable_byte_integer(mut value: usize) -> Result<([u8; 4], usize), MqttCodec
     }
     // Unreachable: the range check above admits at most four bytes.
     Err(MqttCodecError::PacketTooLarge)
-}
-
-/// Explicitly simulated telemetry value formatter; not an MQTT client.
-#[cfg(feature = "experimental-simulators")]
-pub struct SimulatedMqttPayloadFormatter;
-
-#[cfg(feature = "experimental-simulators")]
-impl SimulatedMqttPayloadFormatter {
-    /// Formats only the numeric reading for deterministic fixture assertions.
-    #[must_use]
-    pub fn format_value(telemetry: &SensorTelemetry) -> String {
-        telemetry.value.to_string()
-    }
 }
 
 #[cfg(test)]

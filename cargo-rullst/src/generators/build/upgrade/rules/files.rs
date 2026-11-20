@@ -171,7 +171,8 @@ fn minimum(declaration: &toml::Value) -> Option<(u64, u64)> {
 
 /// The features v13 removed from a Rullst package, with their rule:
 /// `V13-POLYGLOT-FEATURE`, `V13-OFFLINE-SYNC-REMOVED`,
-/// `V13-ORM-ADAPTERS-REMOVED` and `V13-ORM-QDRANT-REMOVED`.
+/// `V13-ORM-ADAPTERS-REMOVED`, `V13-ORM-QDRANT-REMOVED` and
+/// `V13-IOT-SIMULATORS-REMOVED`.
 fn removed_features(package: &str) -> &'static [(&'static str, &'static Rule)] {
     match package {
         "rullst" => &[
@@ -182,6 +183,7 @@ fn removed_features(package: &str) -> &'static [(&'static str, &'static Rule)] {
             ("orm-qdrant", &ORM_QDRANT_REMOVED),
         ],
         "rullst-core" => &[("offline-sync", &OFFLINE_SYNC_REMOVED)],
+        "rullst-iot" => &[("experimental-simulators", &IOT_SIMULATORS_REMOVED)],
         "rullst-orm" => &[
             ("polyglot", &POLYGLOT_FEATURE),
             ("mongodb", &ORM_ADAPTERS_REMOVED),

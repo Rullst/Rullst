@@ -33,7 +33,7 @@ jobs:
           build-warnings: ""
           cache-on-failure: false
 
-      - name: Run helper, simulator-boundary, and signed OTA tests
+      - name: Run helper and signed OTA tests
         run: cargo test -p rullst-iot --all-features
 
   iot-gateway-example:

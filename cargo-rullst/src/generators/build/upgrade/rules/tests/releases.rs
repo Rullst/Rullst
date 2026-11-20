@@ -168,7 +168,12 @@ fn rules_carry_the_release_of_their_change() {
             "V13-MESSAGING-CRON-POSIX",
         ]
     );
-    assert!(codes_introduced_in("13.0.0-rc.1").is_empty());
+    // The maintainer-approved API changes of rc.1: no public name says
+    // Experimental.
+    assert_eq!(
+        codes_introduced_in("13.0.0-rc.1"),
+        ["V13-LABS-VARIANTS-RENAMED", "V13-IOT-SIMULATORS-REMOVED"]
+    );
     let alpha4 = version("13.0.0-alpha.4");
     let alpha5 = version("13.0.0-alpha.5");
     for rule in CATALOG

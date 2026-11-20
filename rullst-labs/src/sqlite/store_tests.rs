@@ -289,3 +289,29 @@ async fn metadata_changed_while_open_stops_every_operation() {
         store.close().await;
     }
 }
+
+/// A store initialized with the `LinuxExperimental` profile before 13.0.0-rc.1
+/// stored this binding; `PinnedRunner` must produce it byte for byte, or the
+/// store refuses to open with `Configuration`.
+#[test]
+fn a_pinned_runner_store_binding_is_unchanged_by_the_rename() {
+    let config = StoreConfig::new(
+        reference("ns"),
+        8,
+        8,
+        crate::profile::tests::pinned_profile(),
+    )
+    .unwrap();
+    let binding = config.binding(&ContentKey::new([7; 32]).unwrap()).unwrap();
+    assert_eq!(
+        binding,
+        format!(
+            "[1,\"ns\",8,8,{},\"4bb06f8e4e3a7715d201d573d0aa423762e55dabd61a2c02278fa56cc6d294e0\"]",
+            crate::profile::tests::PINNED_PROFILE_JSON
+        )
+    );
+    assert_eq!(
+        crate::ContentHash::of(binding.as_bytes()).as_str(),
+        "c8926a8f56c38a42626802eee53c7688d34c0e4fb3ef129df8059eeba695099d"
+    );
+}

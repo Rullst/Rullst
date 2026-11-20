@@ -2,7 +2,7 @@
 
 > **Status:** `rullst-labs` is a v13 package, first published in the
 > 13.0.0-alpha.1 prerelease and in the Extension
-> [maturity tier](maturity.md) since 13.0.0-alpha.5. The experimental
+> [maturity tier](maturity.md) since 13.0.0-alpha.5. The
 > `rullst-labs-runner` candidate (a Linux Rust-to-Wasm/Wasmi executor) was
 > removed from the workspace for 13.0. Its source remains in git history, for
 > example at `main` revision `f7909033`. Rullst no longer ships an executor.
@@ -37,10 +37,12 @@ network-filesystem database.
   `learner_jobs` or `tenant_exercises` quota) and the `ContentKey` must be
   identical to the application's. The store binds them; any difference returns
   `Configuration`.
-- Use `ExecutionProfile::LinuxExperimental { tools, receipt_key }`. It is the
-  only profile whose signed receipts `complete` and `reconcile_cleanup` accept;
-  `Simulation` returns `Unsupported` there. Despite the name, `rullst-labs`
-  checks neither Linux nor isolation. `ToolIdentity` holds seven SHA-256 digests
+- Use `ExecutionProfile::PinnedRunner { tools, receipt_key }` (named
+  `LinuxExperimental` before 13.0.0-rc.1; it is still serialized under that
+  name, so stores created earlier open unchanged). It is the only profile
+  whose signed receipts `complete` and `reconcile_cleanup` accept;
+  `Simulation` returns `Unsupported` there. `rullst-labs` checks neither the
+  platform nor isolation. `ToolIdentity` holds seven SHA-256 digests
   (`runner`, `compiler`, `wasm_toolchain`, `runtime`, `launcher`,
   `syscall_policy`, `filesystem_policy`) that the operator pins for the
   runner's installed files. They are bound into every job, not verified.

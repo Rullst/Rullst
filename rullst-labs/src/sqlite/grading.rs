@@ -11,9 +11,14 @@ pub enum ResultEvidence {
     /// Explicit local simulation; never execution evidence or academic credit.
     Simulation,
     /// A signed runner receipt, verified against the pinned key of the
-    /// `LinuxExperimental` profile. The name is part of the stored form; it is
-    /// not a maturity label.
-    Experimental {
+    /// `PinnedRunner` profile: `receipt` is the digest of the whole
+    /// [`SignedReceipt`](crate::SignedReceipt) and `observations` its
+    /// `observation_digest`.
+    ///
+    /// Named `Experimental` before 13.0.0-rc.1. Its stored name is still
+    /// `Experimental`, so results written before the rename keep reading.
+    #[serde(rename = "Experimental")]
+    SignedReceipt {
         receipt: ContentHash,
         observations: ContentHash,
     },

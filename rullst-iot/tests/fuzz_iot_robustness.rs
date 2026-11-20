@@ -2,8 +2,6 @@ use ed25519_dalek::SigningKey;
 use rullst_iot::anomaly::AnomalyDetector;
 use rullst_iot::modbus::ModbusFrame;
 use rullst_iot::ota::{OtaManager, OtaManifest};
-#[cfg(feature = "experimental-simulators")]
-use rullst_iot::pqc::SimulatedPqcFixture;
 use rullst_iot::twin::DigitalTwin;
 use rullst_iot::{
     CoapMessageType, CoapMethod, CoapRequest, MAX_COAP_DATAGRAM_BYTES, MAX_MQTT_PACKET_BYTES,
@@ -154,17 +152,4 @@ fn test_fuzz_digital_twin_and_ota() {
                 .is_err()
         );
     }
-}
-
-#[test]
-#[cfg(feature = "experimental-simulators")]
-fn test_fuzz_simulated_pqc_fixture_invariants() {
-    let fixture = SimulatedPqcFixture::from_seed(b"fuzz_pqc_fixture_sensor_01");
-    assert!(!fixture.public_fixture().is_empty());
-
-    let ciphertext = fixture.derive_ciphertext_fixture(b"sensor_telemetry_payload");
-    assert!(!ciphertext.is_empty());
-
-    let output = fixture.derive_output_fixture(&ciphertext);
-    assert!(!output.is_empty());
 }

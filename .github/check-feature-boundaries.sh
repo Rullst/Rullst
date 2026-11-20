@@ -117,7 +117,6 @@ rullst-connect|sqlite
 rullst-connect|postgres
 rullst-connect|mysql
 rullst-iot|std
-rullst-iot|experimental-simulators
 rullst-security|redis-rate-limit
 rullst-ai|sql-memory
 rullst-capital|axum

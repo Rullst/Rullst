@@ -241,14 +241,14 @@ fn random_bytes<const N: usize>() -> Result<Zeroizing<[u8; N]>, LabError> {
     Ok(bytes)
 }
 
-/// Only `LinuxExperimental` accepts signed receipts. Despite its name,
-/// rullst-labs verifies neither Linux nor isolation: it binds these values
-/// into every job and checks receipts against the pinned public key.
+/// Only `PinnedRunner` accepts signed receipts. rullst-labs verifies neither
+/// the platform nor isolation: it binds these values into every job and
+/// checks receipts against the pinned public key.
 fn profile(signer: &ReceiptSigner) -> Result<ExecutionProfile, LabError> {
     // Placeholders, not file digests: pin SHA-256 digests of the files your
     // runner actually installs and loads.
     let pinned = |what: &str| ContentHash::of(what.as_bytes());
-    Ok(ExecutionProfile::LinuxExperimental {
+    Ok(ExecutionProfile::PinnedRunner {
         tools: ToolIdentity {
             runner: pinned("placeholder: runner controller build"),
             compiler: pinned("placeholder: compiler"),

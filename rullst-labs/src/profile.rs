@@ -14,12 +14,18 @@ use serde::{Deserialize, Serialize};
 pub enum ExecutionProfile {
     /// Explicit simulation, never a real grade/execution attestation.
     Simulation,
-    /// Operator-selected candidate; actual per-job hardening is still mandatory.
-    /// The only profile whose signed receipts `complete` accepts. This crate
-    /// verifies neither the platform, the pinned tools nor any isolation; the
-    /// host-owned runner must enforce them. The name is serialized into every
-    /// stored profile and its digest, so it stays; it is not a maturity label.
-    LinuxExperimental {
+    /// A separately deployed runner whose tools and receipt key the operator
+    /// pins; actual per-job hardening is still mandatory. The only profile
+    /// whose signed receipts `complete` and `reconcile_cleanup` accept. This
+    /// crate verifies neither the platform, the pinned tools nor any
+    /// isolation; the host-owned runner must enforce them.
+    ///
+    /// Named `LinuxExperimental` before 13.0.0-rc.1. Its serialized name,
+    /// bound into every stored profile and its digest, is still
+    /// `LinuxExperimental`, so stores, jobs and receipts written before the
+    /// rename keep opening and verifying.
+    #[serde(rename = "LinuxExperimental")]
+    PinnedRunner {
         tools: ToolIdentity,
         /// Pinned Ed25519 public key; the private seed belongs only to the
         /// separately deployed trusted runner controller.
@@ -59,3 +65,7 @@ impl ExecutionProfile {
         Ok(ContentHash::of(&bytes))
     }
 }
+
+#[cfg(test)]
+#[path = "profile_tests.rs"]
+pub(crate) mod tests;

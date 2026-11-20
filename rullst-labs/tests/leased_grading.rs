@@ -20,7 +20,7 @@ fn signer(seed: u8) -> ReceiptSigner {
     ReceiptSigner::from_seed(zeroize::Zeroizing::new([seed; 32])).unwrap()
 }
 fn profile(key: &ReceiptSigner) -> ExecutionProfile {
-    ExecutionProfile::LinuxExperimental {
+    ExecutionProfile::PinnedRunner {
         receipt_key: key.public_key().unwrap(),
         tools: ToolIdentity {
             runner: ContentHash::of(b"test-runner"),
@@ -268,7 +268,7 @@ async fn lost_worker_requires_cleanup_and_a_fresh_nonce_before_one_bounded_retry
     f.store.close().await;
 }
 #[tokio::test]
-async fn pinned_receipt_key_exact_binding_and_teardown_control_experimental_grades() {
+async fn pinned_receipt_key_exact_binding_and_teardown_control_signed_receipt_grades() {
     let key = signer(4);
     let f = Fixture::with_profile(2, profile(&key)).await;
     f.store
@@ -352,7 +352,7 @@ async fn pinned_receipt_key_exact_binding_and_teardown_control_experimental_grad
         Some(JobResult::Graded {
             passed: 1,
             total: 1,
-            evidence: ResultEvidence::Experimental { .. },
+            evidence: ResultEvidence::SignedReceipt { .. },
             ..
         })
     ));

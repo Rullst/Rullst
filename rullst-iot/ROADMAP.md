@@ -56,6 +56,3 @@ cryptographic implementations.
 - [ ] OPC-UA, Sparkplug B, SocketCAN/CAN FD, J1939, and OBD-II support.
 - [ ] Independent IEC 61508/IEC 62443 assessment; no certification is currently
   claimed.
-
-The opt-in `experimental-simulators` feature is not progress toward compliance:
-its `Simulated*` types generate deterministic fixture bytes only.

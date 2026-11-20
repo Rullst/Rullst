@@ -19,8 +19,7 @@ Teaching robotics? The [Robotics and IoT in the Classroom](https://rullst.github
 
 **Working** means complete for a bounded scope and tested. **Contract** is a
 trait your platform implements. **Model only** holds in-memory state and drives
-no hardware or network. **Fixture** is deterministic test data behind
-`experimental-simulators`, never for production.
+no hardware or network.
 
 | Module | Kind | Scope |
 | :--- | :--- | :--- |
@@ -36,7 +35,6 @@ no hardware or network. **Fixture** is deterministic test data behind
 | `mesh` | Model only | Node list and strongest-RSSI relay pick. No routing or transport. |
 | `ble` | Model only | GATT data structs. No radio. |
 | `gpio` | Model only | In-memory pin state. No register access. |
-| `hsm`, `pqc` | Fixture | Deterministic hash bytes. Not an HSM and not post-quantum cryptography. |
 
 ## Implemented scope
 
@@ -278,24 +276,14 @@ has the full results; the firmware is
 [`.github/fixtures/iot-microbit-v2`](https://github.com/Rullst/Rullst/tree/main/.github/fixtures/iot-microbit-v2),
 which CI builds for `thumbv7em-none-eabihf`.
 
-## Test fixtures
+## No HSM, post-quantum or broker types
 
-The `experimental-simulators` feature exposes deterministic fixtures named
-`SimulatedHsmDevice`, `SimulatedPqcFixture`, and
-`SimulatedMqttPayloadFormatter`. The feature keeps its name for compatibility;
-it is not a maturity label, and the fixtures have the crate's Extension tier.
-They are useful only in tests and demos:
-
-```toml
-# The v13 prerelease, pinned exactly; the v12 line reached end of life.
-rullst-iot = { version = "=13.0.0-alpha.6", features = ["experimental-simulators"] }
-```
-
-They do **not** provide hardware-backed keys, signatures, ML-KEM/Kyber,
-confidentiality, quantum resistance, or broker transport. The MQTT encoder
-above is independent of the simulated numeric-value formatter and remains only
-a packet helper. There are intentionally no aliases named `HsmDevice`,
-`PqcKeyPair`, or `MqttDriver`.
+The crate has no HSM, post-quantum or MQTT client types. Up to 13.0.0-alpha.6
+the `experimental-simulators` feature exposed `SimulatedHsmDevice`,
+`SimulatedPqcFixture` and `SimulatedMqttPayloadFormatter`, which only hashed
+bytes or formatted a number; 13.0.0-rc.1 removed the feature and the types.
+There are intentionally no types named `HsmDevice`, `PqcKeyPair` or
+`MqttDriver`: the MQTT encoder above is a packet helper, not a client.
 
 ## Transports and hardware
 

@@ -9,7 +9,7 @@
 > requirements below as a reference baseline for such a runner, not as shipped
 > or currently tested software.
 
-Status: implementation decision for an **unpublished experimental candidate**.
+Status: implementation decision for an **unpublished candidate**.
 The named Linux journey has hosted evidence below; independent security review
 and production readiness are not claimed. The September 23 freeze and
 September 24–26 validation window applied when this decision was recorded.
@@ -246,7 +246,7 @@ Rust allocation failure. An allocator abort is a generic guest trap because a
 Wasm `unreachable` instruction does not reliably identify its original cause;
 it must not be relabeled as a memory-specific trap merely to fit a test.
 
-The platform matrix and named profile remain experimental until the required
+The platform matrix and named profile remain unvalidated until the required
 tests and independent isolation review exist. No claim of risk-free hostile-code
 execution, complete Rust/Rullst language support or generic secure CTF hosting
 follows from the contracts or this decision.

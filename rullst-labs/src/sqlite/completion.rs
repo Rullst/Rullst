@@ -27,7 +27,7 @@ impl<C: Clock> SqliteLabs<C> {
         id: &Reference,
         signed: &SignedReceipt,
     ) -> Result<JobView, Error> {
-        let ExecutionProfile::LinuxExperimental { receipt_key, .. } = &self.config.profile else {
+        let ExecutionProfile::PinnedRunner { receipt_key, .. } = &self.config.profile else {
             return Err(Error::Unsupported);
         };
         signed.verify(receipt_key)?;
@@ -35,7 +35,7 @@ impl<C: Clock> SqliteLabs<C> {
             return Err(Error::Uncertain);
         }
         let digest = ContentHash::of(&serde_json::to_vec(signed).map_err(|_| Error::Protocol)?);
-        let evidence = ResultEvidence::Experimental {
+        let evidence = ResultEvidence::SignedReceipt {
             receipt: digest,
             observations: signed.receipt.observation_digest.clone(),
         };
@@ -49,7 +49,7 @@ impl<C: Clock> SqliteLabs<C> {
         .await
     }
     /// Deliberate protocol testing only. A simulation store produces Simulated,
-    /// never Completed, and a `LinuxExperimental` profile rejects this method.
+    /// never Completed, and a `PinnedRunner` profile rejects this method.
     pub async fn complete_simulation(
         &self,
         scope: &Scope,

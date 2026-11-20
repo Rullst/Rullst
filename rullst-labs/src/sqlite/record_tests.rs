@@ -50,7 +50,7 @@ fn graded(cases: Vec<CaseGrade>, passed: u16, total: u16) -> JobResult {
         passed,
         total,
         artifact: ContentHash::of(b"artifact"),
-        evidence: ResultEvidence::Experimental {
+        evidence: ResultEvidence::SignedReceipt {
             receipt: ContentHash::of(b"receipt"),
             observations: ContentHash::of(b"observations"),
         },
@@ -144,4 +144,64 @@ fn every_graded_result_invariant_is_checked_on_its_own() {
     ] {
         assert!(matches!(result.validate(), Err(Error::Integrity)));
     }
+}
+
+/// `ResultEvidence::SignedReceipt` was `Experimental` before 13.0.0-rc.1. A
+/// completed record, as 13.0.0-alpha.6 sealed it into the store.
+const COMPLETED_RECORD_JSON: &str = concat!(
+    r#"{"view":{"id":"job-1","scope":{"tenant":"school","course":"rust"},"learner":"alice","#,
+    r#""exercise":{"id":"sum","revision":"v1"},"#,
+    r#""source_digest":"41cf6794ba4200b839c53531555f0f3998df4cbb01a4d5cb0b94e3ca5e23947d","#,
+    r#""exercise_digest":"f55101cb5e7453c770d2a062a242f13479743de0c24329462d3cbf3f2d6bc7e1","#,
+    r#""state":"Completed","revision":2,"created_at":1800000000,"updated_at":1800000000,"#,
+    r#""expires_at":1800000300,"cleanup_pending":false,"result":{"Graded":{"cases":["Passed"],"#,
+    r#""passed":1,"total":1,"#,
+    r#""artifact":"c7c5c1d70c5dec4416ab6158afd0b223ef40c29b1dc1f97ed9428b94d4cadb1c","#,
+    r#""evidence":{"Experimental":{"#,
+    r#""receipt":"6f32860910ca0fb2a20c7fda143666b09dbf8db5238195c90a586fb542ff0cad","#,
+    r#""observations":"bfc5a6b45b6a16128fbf94195a8b6895883b709e9ab0bf0bc5dc5a14fa18cf2f"}}}}},"#,
+    r#""request_digest":"1f58b9145b24d108d7ac38887338b3ea3229833b9c1e418250343f907bfd1047","#,
+    r#""profile_digest":"1900eab6c028483d7126599ee6f50de0d27907b5c65fa90524580b4b0f9852b0","#,
+    r#""lease":null,"attempts":0}"#,
+);
+
+#[test]
+fn signed_receipt_evidence_keeps_the_experimental_stored_name() {
+    let json = serde_json::to_string(&completed()).unwrap();
+    assert_eq!(json, COMPLETED_RECORD_JSON);
+    // The digest of the same JSON computed before the rename.
+    assert_eq!(
+        ContentHash::of(json.as_bytes()).as_str(),
+        "90ae05ba6b9c31d9e3f50b59f8e1153cd624b1ca8a82d92ca429b85039450593"
+    );
+    let stored: Record = serde_json::from_str(COMPLETED_RECORD_JSON).unwrap();
+    assert!(stored.validate(false).is_ok());
+    assert!(matches!(
+        stored.view.result.as_ref().unwrap().evidence(),
+        ResultEvidence::SignedReceipt { receipt, observations }
+            if *receipt == ContentHash::of(b"receipt")
+                && *observations == ContentHash::of(b"observations")
+    ));
+    assert_eq!(
+        serde_json::to_string(&stored).unwrap(),
+        COMPLETED_RECORD_JSON
+    );
+    let evidence = ResultEvidence::SignedReceipt {
+        receipt: ContentHash::of(b"receipt"),
+        observations: ContentHash::of(b"observations"),
+    };
+    assert_eq!(
+        serde_json::to_string(&evidence).unwrap(),
+        concat!(
+            r#"{"Experimental":{"receipt":"6f32860910ca0fb2a20c7fda143666b09dbf8db5238195c90a586fb542ff0cad","#,
+            r#""observations":"bfc5a6b45b6a16128fbf94195a8b6895883b709e9ab0bf0bc5dc5a14fa18cf2f"}}"#,
+        )
+    );
+    assert_eq!(
+        serde_json::to_string(&ResultEvidence::Simulation).unwrap(),
+        r#""Simulation""#
+    );
+    // One stored name only: the Rust name is never read.
+    let renamed = COMPLETED_RECORD_JSON.replace(r#""Experimental""#, r#""SignedReceipt""#);
+    assert!(serde_json::from_str::<Record>(&renamed).is_err());
 }
