@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795213443944,
+  "lastUpdate": 1795216229106,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -22773,6 +22773,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 256,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ec7c35c2c9c167737bfab747183e60fe40fc4797",
+          "message": "Merge pull request #787 from Rullst/docs/v13-rc1-loopback-wording\n\ndocs(studio,nexus): describe the loopback check after the forwarding refusals",
+          "timestamp": "2026-11-20T19:52:26-03:00",
+          "tree_id": "31012394bbb7a720f7eae033fc1b3c027c8222a4",
+          "url": "https://github.com/Rullst/Rullst/commit/ec7c35c2c9c167737bfab747183e60fe40fc4797"
+        },
+        "date": 1795216228454,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1665,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 401,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 378,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
