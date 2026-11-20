@@ -4,7 +4,11 @@ use super::providers::{
     openai_compatible::OpenAiCompatibleProvider,
 };
 use super::{AiClient, AiError, AiProvider, FallbackProvider, mock::ProviderMode};
+use rullst_core::config::Environment;
 use std::sync::Arc;
+
+/// The end of every label of a provider in offline mode.
+const OFFLINE_LABEL: &str = "(offline mock)";
 
 /// Labels a value offline exactly when the provider constructor selects mock mode.
 fn offline_credential(credential: &str) -> bool {
@@ -144,7 +148,48 @@ impl AutoAiConfig {
             let model = get("OLLAMA_MODEL").unwrap_or_else(|| "llama3".into());
             config.push(OpenAiCompatibleProvider::ollama(host, model)?, name);
         }
+        config.refuse_offline_fallback(|| {
+            Environment::resolve(
+                get("RULLST_ENV").as_deref(),
+                get("APP_ENV").as_deref(),
+                None,
+            )
+            .map_err(|_| {
+                AiError::ConfigError(
+                    "RULLST_ENV or APP_ENV is not a valid Rullst environment".into(),
+                )
+            })
+        })?;
         Ok(config)
+    }
+
+    /// The chain tries the next provider after any error, so an offline mock
+    /// behind a live provider answers with fixture text whenever the live one
+    /// fails, as if the request had succeeded. In staging and production that
+    /// is a leftover `mock_*` value, so the configuration is refused there.
+    /// A chain of mocks only, or of live providers only, is unaffected.
+    fn refuse_offline_fallback(
+        &self,
+        environment: impl FnOnce() -> Result<Environment, AiError>,
+    ) -> Result<(), AiError> {
+        let offline: Vec<&str> = self
+            .names
+            .iter()
+            .copied()
+            .filter(|name| name.ends_with(OFFLINE_LABEL))
+            .collect();
+        if offline.is_empty() || offline.len() == self.names.len() {
+            return Ok(());
+        }
+        let environment = environment()?;
+        if environment.requires_secure_defaults() {
+            return Err(AiError::ConfigError(format!(
+                "{} would answer with mock output whenever a live provider fails in the \
+                 {environment} environment; remove its mock_* value",
+                offline.join(", ")
+            )));
+        }
+        Ok(())
     }
 }
 
@@ -285,6 +330,60 @@ mod tests {
                 .unwrap()
                 .is_empty()
         );
+    }
+
+    #[test]
+    fn production_refuses_a_mock_behind_a_live_provider() {
+        let mixed = [
+            ("OPENAI_API_KEY", "sk-fixture-live"),
+            ("GEMINI_API_KEY", "mock_gemini"),
+        ];
+        let with = |environment: &[(&'static str, &'static str)]| {
+            let mut values = mixed.to_vec();
+            values.extend_from_slice(environment);
+            resolve(&values)
+        };
+        for environment in [("RULLST_ENV", "production"), ("APP_ENV", "staging")] {
+            let error = with(&[environment]).unwrap_err();
+            assert!(
+                matches!(&error, AiError::ConfigError(text)
+                    if text.contains("Google Gemini (offline mock)") && text.contains(environment.1)
+                        && !text.contains("mock_gemini") && !text.contains("sk-fixture")),
+                "{error}"
+            );
+        }
+        // Development and test keep the chain, and so does an unset environment.
+        for environment in [
+            &[("RULLST_ENV", "development")][..],
+            &[("APP_ENV", "test")],
+            &[],
+        ] {
+            assert_eq!(
+                with(environment).unwrap().provider_names(),
+                ["OpenAI", "Google Gemini (offline mock)"]
+            );
+        }
+        // Mocks only, or live providers only, are allowed everywhere.
+        let production = ("RULLST_ENV", "production");
+        let mocks = resolve(&[
+            ("OPENAI_API_KEY", "mock_openai"),
+            ("GEMINI_API_KEY", "mock_gemini"),
+            production,
+        ])
+        .unwrap();
+        assert_eq!(mocks.provider_names().len(), 2);
+        let live = resolve(&[
+            ("OPENAI_API_KEY", "sk-fixture-live"),
+            ("GEMINI_API_KEY", "AIza-fixture"),
+            production,
+        ])
+        .unwrap();
+        assert_eq!(live.provider_names(), ["OpenAI", "Google Gemini"]);
+        // An environment that cannot be resolved fails closed for a mixed chain.
+        assert!(matches!(
+            with(&[("RULLST_ENV", "not-an-environment")]),
+            Err(AiError::ConfigError(text)) if text.contains("RULLST_ENV")
+        ));
     }
 
     #[test]
