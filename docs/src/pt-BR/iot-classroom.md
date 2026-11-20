@@ -1,6 +1,6 @@
 # Robótica e IoT em sala de aula
 
-> **Tradução** da página em inglês [`iot-classroom.md`](../iot-classroom.md), feita a partir do commit [`09efdd525`](https://github.com/Rullst/Rullst/commit/09efdd5257db6a8b8311ea62098a7f8c4b7a25cf). Se as duas versões divergirem, vale a versão em inglês.
+> **Tradução** da página em inglês [`iot-classroom.md`](../iot-classroom.md), feita a partir do commit [`746e8b724`](https://github.com/Rullst/Rullst/commit/746e8b7245f60672ffd384c0ba6e82b486ef5ca0). Se as duas versões divergirem, vale a versão em inglês.
 
 Este guia é para professores que querem combinar placas de robótica com uma
 aplicação web Rullst em sala de aula: quais placas escolher, ideias de

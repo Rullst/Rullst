@@ -1,6 +1,6 @@
 # Escopo e limites
 
-> **Tradução** da página em inglês [`scope-and-limits.md`](../scope-and-limits.md), feita a partir do commit [`7657317db`](https://github.com/Rullst/Rullst/commit/7657317db68ae5dfc6f66a9550f2fa04ba406fa1). Se as duas versões divergirem, vale a versão em inglês.
+> **Tradução** da página em inglês [`scope-and-limits.md`](../scope-and-limits.md), feita a partir do commit [`746e8b724`](https://github.com/Rullst/Rullst/commit/746e8b7245f60672ffd384c0ba6e82b486ef5ca0). Se as duas versões divergirem, vale a versão em inglês.
 
 Esta página lista o que o Rullst não faz por decisão de projeto e o que os
 testes do próprio Rullst não conseguem comprovar, porque depende de serviços
