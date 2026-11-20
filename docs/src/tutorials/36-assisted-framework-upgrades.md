@@ -861,7 +861,7 @@ record and shows the full dependency diff with a review digest. Use the returned
 the reviewed manifests/root lockfile. The matching `recover` command restores
 only that operation and refuses unrelated edits.
 
-The [safe-update priority](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#safe-update-experience)
+The [safe-update priority](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#later-13x-no-date)
 proposes one guided flow for project preparation, validation and approved
 application. `cargo rullst update guided --to VERSION --project PATH` composes
 those commands. Each approval defaults to no and follows its complete review.

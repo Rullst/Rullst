@@ -113,8 +113,8 @@ release blockers. Assigning every partial row half credit would not establish
 a completion percentage. The
 [v12 stable record](v12.md) preserves the completed release identity; new
 capability work goes to v13. The
-[safe update experience](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#safe-update-experience) is a top v13
-priority; `cargo rullst upgrade` and the [v13 migration guide](migration-v13.md)
+[safe update experience](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#later-13x-no-date) covers
+compatible updates, and its open work is planned for 13.x; `cargo rullst upgrade` and the [v13 migration guide](migration-v13.md)
 are its current tools. The
 [26 September delivery plan](v13-delivery-plan.md) selects concrete increments
 from this wider programme and records their acceptance requirements.

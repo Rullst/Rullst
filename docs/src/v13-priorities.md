@@ -38,7 +38,7 @@ the v12.1.1 candidate. Specific restructuring remains follow-up work.
 
 ## Counting method
 
-The [canonical roadmap](../../ROADMAP.md#executive-milestone-tracker) contains
+The [canonical roadmap](../../ROADMAP.md#milestone-index) contains
 **41 top-level milestones, M1–M41**. Their detailed per-crate roadmaps overlap
 and decompose these themes; adding every checkbox would double-count work.
 This is a prioritization of those 41 themes, not a fresh audit of every source
