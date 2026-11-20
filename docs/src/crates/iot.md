@@ -26,6 +26,8 @@ Over-The-Air (OTA) firmware update state machine.
 > external flash. The [module status](#module-status) below separates working
 > implementations from data models and contracts.
 
+Teaching robotics? The [Robotics and IoT in the Classroom](../iot-classroom.md) guide compares boards and suggests class projects.
+
 ---
 
 ## ⚡ Capability & Lifecycle Matrix

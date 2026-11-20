@@ -4,9 +4,10 @@
 
 Estas páginas traduzem para o português do Brasil a trilha da primeira hora:
 instalação, `cargo rullst new`, a primeira página e a primeira API. A página
-[Escopo e limites](scope-and-limits.md) também está traduzida. O restante da
-documentação, incluindo a referência da CLI e os demais tutoriais, está em
-inglês.
+[Escopo e limites](scope-and-limits.md) e o guia
+[Robótica e IoT em sala de aula](iot-classroom.md) também estão traduzidos. O
+restante da documentação, incluindo a referência da CLI e os demais
+tutoriais, está em inglês.
 
 ## ⚡ O Rullst em 30 segundos
 

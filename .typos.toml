@@ -37,6 +37,8 @@ extend-exclude = [
 ]
 
 [default.extend-words]
+# Eclipse Mosquitto, the MQTT broker.
+Mosquitto = "Mosquitto"
 # Standard in-toto signed provenance filename suffix (.intoto.jsonl).
 intoto = "intoto"
 Ba = "Ba"
