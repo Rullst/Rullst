@@ -141,6 +141,7 @@ async fn test_matrix_mysql_crud() {
     support::migrations::exercise_runner_waits_past_one_lock_attempt().await;
     exercise_legacy_outbox_key_collation().await;
     exercise_audit_v1_upgrade().await;
+    support::pool_liveness::exercise_idle_ping_replaces_ended_connections(&connection_string).await;
 }
 
 /// Counts the columns of `table` that match `condition` in this database.
