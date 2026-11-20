@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795209356112,
+  "lastUpdate": 1795213354187,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -25713,6 +25713,60 @@ window.BENCHMARK_DATA = {
             "name": "html_sanitizer/sanitize_text_escape",
             "value": 400,
             "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 6,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 3,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "607a58c9e1656850c8c215566fdfec7534c223c0",
+          "message": "Merge pull request #784 from Rullst/docs/v13-rc1-skeptic-claims\n\ndocs: align public claims with the code, tests and CI for 13.0.0-rc.1",
+          "timestamp": "2026-11-20T19:03:55-03:00",
+          "tree_id": "70a7ea5ace6746760d8bd2040614752eadba1d3c",
+          "url": "https://github.com/Rullst/Rullst/commit/607a58c9e1656850c8c215566fdfec7534c223c0"
+        },
+        "date": 1795213353834,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 3553,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 391,
+            "range": "± 3",
             "unit": "ns/iter"
           },
           {
