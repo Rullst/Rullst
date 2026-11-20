@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795191250910,
+  "lastUpdate": 1795194259806,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -37663,6 +37663,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 973,
             "range": "± 41",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e8ce2e2a97decc3a2c7b69968fdf9d05b2cc714e",
+          "message": "Merge pull request #776 from Rullst/docs/v13-iot-classroom-guide\n\ndocs(iot): add a robotics and IoT classroom guide",
+          "timestamp": "2026-11-20T14:01:38-03:00",
+          "tree_id": "34dcd79a0ce9d264991b1079f70cfbfb93f25add",
+          "url": "https://github.com/Rullst/Rullst/commit/e8ce2e2a97decc3a2c7b69968fdf9d05b2cc714e"
+        },
+        "date": 1795194254984,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 737,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 968,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 412,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2034,
+            "range": "± 51",
             "unit": "ns/iter"
           }
         ]
