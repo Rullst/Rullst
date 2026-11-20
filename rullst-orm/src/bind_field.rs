@@ -38,7 +38,7 @@ pub fn timestamp_wire(value: crate::Timestamp) -> TimestampWire {
 /// Borrows one model field for autoref dispatch.
 pub struct Field<'a, T>(pub &'a T);
 
-/// Encodes a UTC instant for the pool ([`wire`]).
+/// Encodes a UTC instant for the pool ([`timestamp_wire`]).
 pub trait Instant {
     type Encoded;
     fn __rullst_encode(&self) -> Self::Encoded;
