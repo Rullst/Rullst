@@ -105,6 +105,14 @@ fn public_is_accepted_only_for_get_routes() {
     assert!(result[0].contains("accepted only for a recognized GET"));
 }
 
+#[test]
+fn the_printed_scope_note_says_guard_evidence_is_crate_wide() {
+    assert!(GUARD_SCOPE_NOTE.starts_with("Guard evidence is crate-wide, not per handler"));
+    for word in ["authorize_owner_or_role", "`owner`", "`role`", "`admin`"] {
+        assert!(GUARD_SCOPE_NOTE.contains(word), "{word}");
+    }
+}
+
 /// Route fixtures, including deliberately unclassified ones. The repository's
 /// own `cargo rullst audit --idor` reads this file as a standalone source, so
 /// they stay inside a top-level `#[cfg(test)]` item, which the scan skips.
