@@ -46,7 +46,12 @@ impl MailSettings {
             app_env: None,
             project,
         };
-        if (settings.driver.is_none() || settings.from.is_none())
+        // `[app] env` is needed whenever no variable names the environment:
+        // an empty provider credential fails in staging and production.
+        let environment_unset = ["RULLST_ENV", "APP_ENV"]
+            .into_iter()
+            .all(|name| matches!(settings.project.get(name), Ok(None)));
+        if (settings.driver.is_none() || settings.from.is_none() || environment_unset)
             && let Ok(content) = tokio::fs::read_to_string(project_dir.join("Rullst.toml")).await
         {
             settings.fill_from_rullst_toml(&content);
@@ -121,14 +126,16 @@ impl MailSettings {
     pub(super) fn driver_name(&self) -> Result<String, MailError> {
         match &self.driver {
             Some(driver) => Ok(driver.clone()),
-            None => {
-                let environment = self
-                    .project
-                    .environment(self.app_env.as_deref())
-                    .map_err(settings_error)?;
-                default_driver_name(environment).map(str::to_string)
-            }
+            None => default_driver_name(self.environment()?).map(str::to_string),
         }
+    }
+
+    /// The environment `Server` would resolve: `RULLST_ENV`, then `APP_ENV`,
+    /// from the process environment and then `.env`, then `[app] env`.
+    pub(super) fn environment(&self) -> Result<Environment, MailError> {
+        self.project
+            .environment(self.app_env.as_deref())
+            .map_err(settings_error)
     }
 }
 

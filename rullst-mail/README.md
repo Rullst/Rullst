@@ -651,8 +651,16 @@ offline fallback. Use `driver.delivery_mode()` and
 `OfflineMailMock::deliveries()` to assert this explicitly in tests. The
 process-wide capture keeps only the newest 1,000 deliveries and at most 64 MiB
 of their subject, body and attachment bytes, and the first capture in a process
-logs a `mail.offline_mock.active` warning, because an empty production secret
-also selects this fallback.
+logs a `mail.offline_mock.active` warning.
+
+In staging and production (the environment resolved as above), the `Mail`
+facade refuses an empty or unset `RESEND_API_KEY`, `SENDPULSE_API_KEY`, SES
+proxy token (`AWS_SES_TOKEN`/`AWS_SES_BEARER_TOKEN`, when no AWS keys select
+native SES) or `MAIL_HOST` with `MailError::ConfigError`, instead of
+capturing every message in the offline mock and reporting success. An
+explicit `mock_*` value stays allowed there, and development and test keep the
+empty-credential fallback. Drivers built directly with `try_new` do not read
+the environment and keep the empty-credential rule above (since 13.0.0-rc.1).
 
 Every real transport needs a sender that the provider account has verified:
 the message's `from`, or, for `Mail` facade sends, the `MAIL_FROM` /

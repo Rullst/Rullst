@@ -135,6 +135,34 @@ async fn the_environment_is_detected_from_dotenv_like_server() {
     assert_eq!(settings.driver_name().unwrap(), "log");
 }
 
+/// With `MAIL_DRIVER` and `MAIL_FROM` set but no variable naming the
+/// environment, `[app] env` still decides it, so an empty provider key fails
+/// in production.
+#[tokio::test]
+async fn rullst_toml_names_the_environment_when_no_variable_does() {
+    let _lock = MAIL_ENV_LOCK.lock().await;
+    let mut environment = isolated_environment();
+    environment.set("MAIL_DRIVER", "resend");
+    environment.set("MAIL_FROM", "team@acme.example");
+    let project = Project::new(
+        "",
+        Some("[app]\nenv = \"production\"\n[mail]\ndriver = \"memory\"\n"),
+    );
+    let load = || MailSettings::load_from(project.path());
+    assert!(matches!(
+        driver::DriverSpec::from_settings(&load().await.unwrap()),
+        Err(MailError::ConfigError(text)) if text.contains("RESEND_API_KEY")
+    ));
+
+    // A variable naming the environment wins, as for `Server`.
+    environment.set("RULLST_ENV", "development");
+    assert!(driver::DriverSpec::from_settings(&load().await.unwrap()).is_ok());
+
+    // An unset driver still comes from `Rullst.toml`.
+    environment.clear("MAIL_DRIVER");
+    assert_eq!(load().await.unwrap().driver_name().unwrap(), "memory");
+}
+
 #[tokio::test]
 async fn malformed_dotenv_fails_closed_without_echoing_it() {
     let _lock = MAIL_ENV_LOCK.lock().await;
