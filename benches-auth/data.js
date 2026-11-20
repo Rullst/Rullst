@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795209170838,
+  "lastUpdate": 1795213179325,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -25317,6 +25317,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1946,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "607a58c9e1656850c8c215566fdfec7534c223c0",
+          "message": "Merge pull request #784 from Rullst/docs/v13-rc1-skeptic-claims\n\ndocs: align public claims with the code, tests and CI for 13.0.0-rc.1",
+          "timestamp": "2026-11-20T19:03:55-03:00",
+          "tree_id": "70a7ea5ace6746760d8bd2040614752eadba1d3c",
+          "url": "https://github.com/Rullst/Rullst/commit/607a58c9e1656850c8c215566fdfec7534c223c0"
+        },
+        "date": 1795213179048,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 712,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 549,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1266,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1955,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
