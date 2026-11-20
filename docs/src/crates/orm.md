@@ -261,13 +261,21 @@ async fn main() -> Result<(), rullst_orm::Error> {
 }
 ```
 
-`Orm::init` and `Orm::init_with_options` hand out pooled connections. A
-PostgreSQL or MySQL pool checks each connection with a ping before handing it
-out (SQLx's `test_before_acquire`), because a server or a network may have
-closed it. Since 13.0.0-alpha.6 a SQLite pool does not: its connections are
-files the process opened itself, and the ping to the connection's worker
-thread cost about as much as a primary-key query. A connection that failed
-still fails its next query, and SQLx then closes it.
+`Orm::init` and `Orm::init_with_options` hand out pooled connections. SQLx
+pings each connection when it returns to the pool. Since 13.0.0-rc.1 a
+PostgreSQL or MySQL pool pings it again before handing it out (SQLx's
+`test_before_acquire` is off) only when it has been idle for at least 500 ms,
+because a server or a network may have closed it since; a connection that
+fails that ping is closed, and the pool takes another or opens a new one. A
+connection idle for less passed the release ping less than 500 ms earlier, so
+a one-statement request takes two round trips instead of three. A database
+restart takes longer than 500 ms, so once the server is back every old
+connection is pinged and replaced; a connection that dies less than 500 ms
+after its release fails its next query, and SQLx then closes it. Since
+13.0.0-alpha.6 a SQLite pool never pings a connection before handing it out:
+its connections are files the process opened itself, and the ping to the
+connection's worker thread cost about as much as a primary-key query. A
+connection that failed still fails its next query, and SQLx then closes it.
 
 ### SQLite journal mode (WAL)
 

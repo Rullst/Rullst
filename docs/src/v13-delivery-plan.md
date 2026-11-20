@@ -1,10 +1,13 @@
 # v13 delivery plan and evidence
 
-**13.0.0-alpha.6 prepared on November 16, 2026, for a tag on November 17
-or later.** The release-preparation pull request sets all twenty packages of
-the release order to `13.0.0-alpha.6`; the coordinator records the tag, the
-exact-SHA admission and the release run here after publication. It is the
-13.0 feature and public API freeze. It carries every pending fix and
+**13.0.0-alpha.6 published on November 20, 2026.** All twenty packages were
+published from tag `v13.0.0-alpha.6` at `58438b64`
+([release run 44753380780](https://github.com/Rullst/Rullst/actions/runs/44753380780))
+after the 23 required workflows passed on that exact commit. Admission of
+the first candidate, `ef28c0e0`, found two Miri scopes and the packaged
+distribution's email-login consumer failing;
+[#773](https://github.com/Rullst/Rullst/pull/773) fixed them before the tag.
+It is the 13.0 feature and public API freeze. It carries every pending fix and
 improvement: the Rust 1.100 toolchain and current dependency majors
 (ed25519-dalek 3, jsonwebtoken 12, jsonschema 0.61), the removal of every
 API still deprecated (in 12.x or during the 13.0 prereleases), smaller
@@ -18,7 +21,7 @@ sessions, explicit ORM save modes and the fixes the applications upgraded
 to alpha.5 reported. Next come 13.0.0-rc.1 (fixes and documentation only)
 and then 13.0.0. Work planned next is under
 [Planned after 13.0.0-alpha.6](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-after-1300-alpha6);
-the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha6---2026-11-17)
+the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha6---2026-11-20)
 lists every change and the known limitations.
 
 **13.0.0-alpha.5 published on November 14, 2026.** All twenty packages were
@@ -44,7 +47,7 @@ Experimental tier was dropped), `rullst-labs`,
 InfinitePay adapter supported and moved `cargo rullst footprint` into the
 CLI's Core tier ([maturity tiers](maturity.md#promotions-in-1300-alpha5)).
 The work planned next was delivered in
-[13.0.0-alpha.6](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha6---2026-11-17).
+[13.0.0-alpha.6](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha6---2026-11-20).
 
 **13.0.0-alpha.4 published on October 31, 2026.** All twenty packages were
 published from tag `v13.0.0-alpha.4` at `2bd3c2ad`

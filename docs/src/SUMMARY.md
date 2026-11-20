@@ -49,6 +49,7 @@
 - [26. Guided Container Deployment](tutorials/26-one-click-paas-deploy.md)
 - [27. Typed Dependency Injection](tutorials/27-zero-cost-di.md)
 - [29. Embedded IoT & Edge Systems](tutorials/29-embedded-iot-edge.md)
+  - [Robotics and IoT in the Classroom](iot-classroom.md)
 - [30. Framework Escape Hatch](tutorials/30-framework-escape-hatch.md)
 
 ## 💎 Level 4: Operational Guides & Advanced Boundaries
@@ -216,6 +217,7 @@
   - [05. Migrações e seeders](pt-BR/tutorials/05-migrations-and-seeds.md)
   - [11. Estrutura de autenticação](pt-BR/tutorials/11-authentication-system.md)
 - [Escopo e limites](pt-BR/scope-and-limits.md)
+- [Robótica e IoT em sala de aula](pt-BR/iot-classroom.md)
 
 # Historical Records
 

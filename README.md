@@ -298,6 +298,9 @@ is tested offline only. The
 defines each promise, and the
 [specification](https://rullst.github.io/Rullst/book/spec.html) records the
 detailed feature and provider boundaries.
+[Scope and limits](https://rullst.github.io/Rullst/book/scope-and-limits.html)
+lists what Rullst does not do by design and what its own tests cannot
+establish.
 
 <details>
 <summary><strong>Browse the 20 packages</strong></summary>

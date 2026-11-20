@@ -13,6 +13,8 @@ Network transports, secure elements, flashing and bootloaders are the
 application's. No other board, live broker or external flash has been tested.
 The table below shows which modules are working implementations.
 
+Teaching robotics? The [Robotics and IoT in the Classroom](https://rullst.github.io/Rullst/book/iot-classroom.html) guide compares boards and suggests class projects.
+
 ## Module status
 
 **Working** means complete for a bounded scope and tested. **Contract** is a

@@ -304,11 +304,12 @@ try {
         overflow: document.documentElement.scrollWidth > innerWidth,
         topics: document.querySelectorAll('.compare-topic').length,
         columns: [...document.querySelectorAll('.compare-topic')].every(topic => topic.querySelectorAll('dt').length === 3),
+        uiFrameworks: document.querySelectorAll('#ui-frameworks .compare-checked code').length,
         benchmarks: document.querySelectorAll('.benchmark-pending, .benchmark-rows').length,
         current: document.querySelector('.lang-switch [aria-current=page]').getAttribute('href'),
         flags: [...document.querySelectorAll('.lang-switch img')].every(image => image.complete && image.naturalWidth > 0),
       }))()`);
-      assert.deepEqual(page, { overflow: false, topics: 11, columns: true, benchmarks: 1, current: route, flags: true }, `Comparison page ${route} at ${width}px`);
+      assert.deepEqual(page, { overflow: false, topics: 11, columns: true, uiFrameworks: 2, benchmarks: 1, current: route, flags: true }, `Comparison page ${route} at ${width}px`);
     }
   }
   for (const [route, minimal] of [["/_rendered/compare/", "Rullst (minimal)"], ["/_rendered/pt-br/comparar/", "Rullst (mínimo)"]]) {
