@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795209451882,
+  "lastUpdate": 1795213443944,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -22724,6 +22724,54 @@ window.BENCHMARK_DATA = {
           {
             "name": "ai_pii_masking/mask_pii",
             "value": 274,
+            "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "607a58c9e1656850c8c215566fdfec7534c223c0",
+          "message": "Merge pull request #784 from Rullst/docs/v13-rc1-skeptic-claims\n\ndocs: align public claims with the code, tests and CI for 13.0.0-rc.1",
+          "timestamp": "2026-11-20T19:03:55-03:00",
+          "tree_id": "70a7ea5ace6746760d8bd2040614752eadba1d3c",
+          "url": "https://github.com/Rullst/Rullst/commit/607a58c9e1656850c8c215566fdfec7534c223c0"
+        },
+        "date": 1795213443619,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1176,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 252,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 256,
             "range": "± 1",
             "unit": "ns/iter"
           }
