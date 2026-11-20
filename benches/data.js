@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795194259806,
+  "lastUpdate": 1795197349168,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -37717,6 +37717,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2034,
             "range": "± 51",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "935103d4883fa43aa4d0f148526172f5b73156a2",
+          "message": "Merge pull request #775 from Rullst/docs/v13-no-experimental-tier\n\ndocs: drop the Experimental tier and document how to report problems",
+          "timestamp": "2026-11-20T14:48:04-03:00",
+          "tree_id": "95fad5a65ca60eab4c89b2cd24b51012b3f3395b",
+          "url": "https://github.com/Rullst/Rullst/commit/935103d4883fa43aa4d0f148526172f5b73156a2"
+        },
+        "date": 1795197343862,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 705,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 911,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 9,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 410,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2004,
+            "range": "± 27",
             "unit": "ns/iter"
           }
         ]
