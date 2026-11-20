@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795197349168,
+  "lastUpdate": 1795200159952,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -37771,6 +37771,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2004,
             "range": "± 27",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "84739036fb8cd27ace965e1292be7831f94e052a",
+          "message": "Merge pull request #778 from Rullst/fix/v13-rc1-no-experimental-api\n\nfix(api)!: drop experimental names from Labs and IoT public APIs",
+          "timestamp": "2026-11-20T15:39:33-03:00",
+          "tree_id": "1b0b403eed4bb294e78436075139cee54991b0a1",
+          "url": "https://github.com/Rullst/Rullst/commit/84739036fb8cd27ace965e1292be7831f94e052a"
+        },
+        "date": 1795200155477,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 712,
+            "range": "± 37",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 953,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 414,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1982,
+            "range": "± 49",
             "unit": "ns/iter"
           }
         ]
