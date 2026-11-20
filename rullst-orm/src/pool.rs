@@ -13,6 +13,7 @@ const MAX_ACQUIRE_TIMEOUT_SECS: u64 = 86_400;
 
 mod config;
 mod dsn;
+mod liveness;
 mod placeholders;
 mod savepoint;
 mod telemetry;
@@ -104,26 +105,13 @@ impl Orm {
     }
 
     /// `options` adjusted for the database `database_url` names: see
-    /// [`Self::retain_memory_database`] and [`Self::skip_sqlite_ping`].
+    /// [`Self::retain_memory_database`] and
+    /// [`liveness::check_before_acquire`].
     fn options_for(options: RullstPoolOptions, database_url: &str) -> RullstPoolOptions {
-        Self::skip_sqlite_ping(
+        liveness::check_before_acquire(
             Self::retain_memory_database(options, database_url),
             database_url,
         )
-    }
-
-    /// A SQLite connection is a file the process opened itself, not a socket
-    /// that a server or a network can close, so its pool does not ping the
-    /// connection's worker thread before handing it out (SQLx's
-    /// `test_before_acquire`). That round trip cost about as much as the
-    /// query. A connection that failed still fails its next query, and SQLx
-    /// closes it then. PostgreSQL and MySQL pools keep the check.
-    fn skip_sqlite_ping(options: RullstPoolOptions, database_url: &str) -> RullstPoolOptions {
-        if dsn::driver_for_url(database_url) == "sqlite" {
-            options.test_before_acquire(false)
-        } else {
-            options
-        }
     }
 
     /// An in-memory SQLite database exists only while one of its connections
