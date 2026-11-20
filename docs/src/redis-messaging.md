@@ -1,9 +1,9 @@
 # Redis Streams messaging
 
-The v13 candidate adds `RedisBroker` to the existing `rullst-messaging` crate.
+Since v13, `RedisBroker` is part of the existing `rullst-messaging` crate.
 Enable `redis-streams` directly, or `messaging-redis` on the `rullst` facade.
 The default messaging build remains network-free; the facade feature does not
-enable ORM, mail, cache or Core queues. Hosted workspace/platform and extracted-package source admission passed in [PR #236](v13-delivery-plan.md#six-increment-source-admission-on-september-21). Final release admission remains separate.
+enable ORM, mail, cache or Core queues. Hosted workspace/platform and extracted-package source admission passed in [PR #236](v13-delivery-plan.md#six-increment-source-admission-on-september-21).
 Acceptance uses an owned, digest-pinned Redis 7.4 service, not an
 owner's account or production data.
 
@@ -15,7 +15,7 @@ rullst = { version = "=13.0.0-alpha.6", default-features = false, features = ["m
 ```
 
 This version is the 13.0.0-alpha.6 prerelease, which `cargo add rullst` does not
-select; name it explicitly. Final release admission remains separate.
+select; name it explicitly.
 
 ```rust,no_run
 # #[cfg(feature = "messaging-redis")]

@@ -5,8 +5,10 @@
 **Maturity: Core** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)).
 
 Every control here is opt-in: `rullst-core`'s `Server` already mounts the
-runtime baseline (headers, CORS, a small WAF and CSRF) in staging and
-production, and nothing in this crate protects traffic until you mount the
+runtime baseline (headers and CSRF in every environment since 13.0.0-alpha.6,
+CORS when configured, and a small WAF that refuses requests in staging and
+production and only logs in development), and nothing in this crate protects
+traffic until you mount the
 layer or call the helper. Read
 [which security layer to use, and when](https://rullst.github.io/Rullst/book/security-layers.html)
 before combining the two. Each module's rustdoc states the risk it reduces,
@@ -22,7 +24,7 @@ how, its known limits and what you must still do.
 - **Bounded In-Memory Ban List:** Tracks verified socket peers with an explicit TTL and cardinality limit. A request checks only its own peer; expired bans are pruned in expiry order when bans are added or counted, and a full list evicts the ban that expires soonest.
 - **Exact Route Matching:** Trap paths are matched as complete paths; untrusted forwarding headers are not used as ban identities.
 - **Local, per-address bans:** A ban covers one exact IP address in one process. Rotating addresses (an IPv6 prefix, a botnet) avoids it, other instances do not see it, and a shared NAT address can be banned by one scanner behind it.
-- **Lure-Resistant Bans:** Every trap hit is refused, but only a direct request bans its peer. A load that a page initiated (`Sec-Fetch-Site` of `same-origin`, `same-site` or `cross-site`, or `Origin`/`Referer` from a browser without fetch metadata) is recorded without a ban, so an `<img src="/.env">` on another site or in user content cannot ban visitors or a shared NAT address. These headers are client-controlled: a scanner can avoid the ban, not the refusal, by sending them.
+- **Lure-Resistant Bans:** Every trap hit is refused, but only a direct request bans its peer. A load that a page initiated (`Sec-Fetch-Site` of `same-origin`, `same-site` or `cross-site`, or `Origin`/`Referer` from a browser without fetch metadata) is recorded without a ban, so an `<img src="/.env">` on another site or in user content cannot ban visitors or a shared NAT address. This holds over HTTPS: browsers send `Sec-Fetch-*` only to secure origins, so over plain HTTP an `<img referrerpolicy="no-referrer">` lure carries none of these headers and bans the visitor. These headers are client-controlled: a scanner can avoid the ban, not the refusal, by sending them.
 
 ### 🧹 2. Rullst Sanitizer (`rullst_security::sanitizer`)
 *XSS risk reduction for user-supplied HTML, and CSP nonces*
@@ -39,7 +41,7 @@ how, its known limits and what you must still do.
 ### 📜 4. Rullst Audit Log (`rullst_security::audit`)
 *HMAC-SHA256 Tamper-Evident Trail*
 - **Canonical Event Chaining:** Signs a versioned, domain-separated, length-prefixed encoding of the sequence, timestamp, event fields, and predecessor hash.
-- **Offline Integrity Checks:** `verify_record` checks one record's HMAC; `verify_sequence` additionally validates genesis, monotonic sequence IDs, and predecessor continuity.
+- **Offline Integrity Checks:** `verify_record` checks one record's HMAC; `verify_sequence` additionally validates genesis, monotonic sequence IDs, and predecessor continuity. It accepts any valid prefix, an empty list included, so removing the newest records is not detected without a trusted external count or checkpoint.
 - **Extensible Sinks:** Provides `AuditLogger` trait for database ORM logging or Cloud-Native stdout/JSON sinks.
 
 ### 🔑 5. TOTP Recovery Codes (`rullst_security::recovery_codes`)
@@ -76,7 +78,10 @@ how, its known limits and what you must still do.
   key neither share a count nor reset each other, but they share its capacity.
   `rate_limit_middleware` keys the verified socket peer per IPv4 address and
   per IPv6 /64 (IPv4-mapped IPv6 counts as IPv4), so rotating addresses inside
-  one delegated prefix shares a budget instead of filling the identity table.
+  one /64 shares a budget. The table holds at most 16,384 identities and,
+  while full, refuses every new one: a client with a /50 or larger IPv6
+  allocation (a /48 holds 65,536 /64s) can fill it, and new clients are then
+  refused until entries expire.
 - **Shared Redis limiter:** The opt-in `redis-rate-limit` feature adds
   `RedisRateLimiter`, an atomic fixed-window Lua counter with hashed client
   keys. Empty or `mock_*` URLs select a bounded process-local test mode; call
@@ -95,7 +100,9 @@ how, its known limits and what you must still do.
 - **Response DLP:** `mask_response_payload` and `DlpResponseLayer` mask
   complete PEM private-key blocks (PKCS#8 plain or encrypted, RSA, EC, DSA,
   OpenSSH and OpenPGP), AWS access-key IDs and `postgres`/`postgresql`/`mysql`/`redis`/`rediss`
-  URL passwords in bounded textual responses (at most 2 MiB). The layer treats
+  URL passwords in bounded textual responses (at most 2 MiB). Streamed,
+  unknown-size, compressed (any `Content-Encoding` other than `identity`) and
+  larger responses pass through unmasked. The layer treats
   `text/*` (except `text/event-stream`), JSON, XML (`application/xml` and
   `+xml` types such as SOAP and Atom), YAML and `application/javascript`
   (with its `x-javascript`/`ecmascript` aliases) as textual, in any ASCII

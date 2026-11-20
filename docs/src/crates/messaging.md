@@ -35,8 +35,7 @@ configuration drift and corrupt-row repair are tested. It is a durable local
 adapter, not a remote transport. The optional
 [Redis Streams transport](../redis-messaging.md) (`redis-streams` feature, added
 in v13) provides a standalone transport with Rullst-owned group and fenced-lease
-indexes; hosted source/package admission passed in PR #236 and final release
-admission remains separate. Kafka, RabbitMQ,
+indexes, tested in CI against a disposable Redis server. Kafka, RabbitMQ,
 NATS/JetStream, SQS/SNS, Google Pub/Sub and Pulsar adapters remain roadmap work.
 
 The wire codec is not a remote adapter: it neither opens broker connections nor

@@ -18,7 +18,10 @@ features, but must not be presented as current behavior.
 
 Nexus fails closed: `try_build()` requires an explicit validated access policy.
 The generated-app helper permits credential-free access only in debug builds and
-only for a loopback peer proven by Axum `ConnectInfo`. Release builds require
+only for a loopback peer proven by Axum `ConnectInfo`. That check trusts the TCP
+peer: a reverse proxy or tunnel on the same machine that connects from a
+loopback address makes every client it forwards a loopback peer, so deploy
+release builds only. Release builds require
 `NEXUS_ADMIN_USERNAME` and a unique `NEXUS_ADMIN_PASSWORD` of at least 16
 characters, each read from the process environment or else the working
 directory's `.env` (never loaded into the process environment). A malformed or

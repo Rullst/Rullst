@@ -155,10 +155,10 @@ user signs in once more; see the [migration guide](migration-v13.md#changes-from
 
 ## The recovery store
 
-The v13 candidate extends `rullst-auth::recovery::SqlRecoveryStore` with a bounded
+Since v13, session management extends `rullst-auth::recovery::SqlRecoveryStore` with a bounded
 session inventory, selective sibling logout and logout of all other sessions.
 It uses the existing authoritative account registry and opaque bearer sessions;
-it does not add another crate. Hosted workspace/platform and extracted-package source admission passed in [PR #236](v13-delivery-plan.md#six-increment-source-admission-on-september-21). Final release admission remains separate.
+it does not add another crate. Hosted workspace/platform and extracted-package source admission passed in [PR #236](v13-delivery-plan.md#six-increment-source-admission-on-september-21).
 
 Choose `recovery-sqlite` or `recovery-postgres` on Auth. The facade exposes
 `auth-sessions-sqlite` and `auth-sessions-postgres` without enabling Mail or the

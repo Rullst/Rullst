@@ -71,7 +71,11 @@ model's own limit applies, and a reply whose `finish_reason` is `length` or
 vision, embeddings, JSON mode, and JSON Schema must be declared for the exact
 endpoint/model pair. `try_local` permits unauthenticated HTTP only on a literal
 loopback IP, `try_local_with_bearer` adds explicit local authentication, and
-`try_cloud` requires HTTPS plus a Bearer credential. All three
+`try_cloud` requires HTTPS plus a Bearer credential. The `ollama` preset
+(`OpenAiCompatibleProvider::ollama`, and `OLLAMA_HOST` in `AiClient::auto()`)
+does not use these scopes: it accepts unauthenticated `http://` to any host,
+so `OLLAMA_HOST=gpu.lan:11434` sends prompts and replies over the network
+unencrypted. Use a loopback address or an `https://` URL for it. All of these
 disable redirects and environment proxies and bound response bodies. Different
 protocols use a custom public `AiProvider`, not an arbitrary-HTTP mode.
 Local runtimes such as llama.cpp server, LocalAI, LM Studio, and vLLM can use
@@ -553,7 +557,8 @@ live capabilities remain typed errors in offline mode.
 `OLLAMA_MODEL`, default `llama3`). If none is configured,
 it selects an offline OpenAI fixture; it never probes localhost implicitly. `OLLAMA_HOST` (and
 the host given to `OpenAiCompatibleProvider::ollama`) is read the way Ollama reads it: a scheme-less
-`127.0.0.1:11434` or `localhost` means `http` and port 11434 unless a port is named.
+`127.0.0.1:11434` or `localhost` means `http` and port 11434 unless a port is named. A scheme-less
+host that is not loopback also means plain `http`, which the preset accepts.
 
 ## JSON mode versus structured output
 

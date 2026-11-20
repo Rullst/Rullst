@@ -1,7 +1,7 @@
 # Rullst Labs
 
-v13 implementation candidate for trusted exercise orchestration and exact
-grading, first published in the 13.0.0-alpha.1 prerelease. **Bring your own runner:** this crate never compiles, interprets
+Trusted exercise orchestration and exact grading, first published in the
+13.0.0-alpha.1 prerelease. **Bring your own runner:** this crate never compiles, interprets
 or spawns learner code. An application-owned, separately deployed and isolated
 runner claims leased jobs and returns signed receipts through the documented
 [controller contract](https://github.com/Rullst/Rullst/blob/main/docs/src/labs-runner-contract.md).
@@ -9,8 +9,7 @@ runner claims leased jobs and returns signed receipts through the documented
 The `rullst-labs-runner` candidate (a Linux Rust-to-Wasm/Wasmi
 executor) passed source admission in [PR #228](https://github.com/Rullst/Rullst/pull/228)
 but was removed from the workspace for 13.0; its source remains in git history.
-Final release acceptance of this crate remains outstanding. Neither the
-candidate name nor a signed receipt establishes production readiness.
+A signed receipt does not establish that a runner isolates hostile code.
 
 **Maturity: Extension** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)),
 since 13.0.0-alpha.5: optional, and supported for the scope documented here.
@@ -18,7 +17,11 @@ The crate has shipped since `13.0.0-alpha.1`; it contains contracts only and
 never executes learner code. In the 13.0.0-alpha.5 acceptance run a runner
 that starts one Docker container per job graded Python submissions through
 these contracts (correct answers 3/3, wrong answers 0/3, a syntax error
-reported, network blocked, the wall-time limit enforced). A container per job
+reported, network blocked, the wall-time limit enforced). Protocol v1 defines
+only the Rust profile (`rust-function-wasm-v1`, see
+[Profile and limits](#profile-and-limits)), so those submissions travelled in
+its Rust-named types, outside the documented profile; the runner of that run is
+not in the repository. A container per job
 alone is not enough isolation for hostile code; see the
 [controller contract](https://github.com/Rullst/Rullst/blob/main/docs/src/labs-runner-contract.md#isolation-the-host-owns).
 
@@ -30,7 +33,7 @@ runner's trusted controller. Pin the prerelease exactly, for example
 application and `features = ["sqlite", "receipt-signing"]` in the controller.
 The application must never spawn learner code or expose a container control socket.
 
-## Implemented candidate surface
+## Implemented surface
 
 - Validated tenant/course/learner/job identities, bounded Rust source and immutable
   instructor exercise revisions with at most 64 exact cases.

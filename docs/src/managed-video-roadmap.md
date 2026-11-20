@@ -20,7 +20,7 @@ diagnostic and supervision observation base. The owner's subsequent September
 20 direction prioritizes completing the supported private-video lifecycle before
 starting Labs or another optional integration. This is an acceptance target,
 not a promise that every Bunny service/API belongs in
-v13. Final release acceptance remains required; since September 22 the owner no
+v13. Since September 22 the owner no
 longer requires publication by September 26 (see the
 [delivery plan](v13-delivery-plan.md)).
 

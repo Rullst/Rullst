@@ -1,12 +1,12 @@
 # Private object storage
 
-The v13 `storage-s3` candidate adds optional AWS S3 and Cloudflare R2 operations
+The v13 `storage-s3` feature adds optional AWS S3 and Cloudflare R2 operations
 to `rullst-core::Storage` and the `rullst` facade. It supports bounded object
 upload, download, metadata, deletion and signed GET URLs. Bare Core does not
 enable this feature or its HTTP/signing dependencies.
 
 Protocol tests and a digest-pinned disposable Garage service exercise signature
-rejection and restart persistence. Hosted workspace/platform and extracted-package source admission passed in [PR #236](v13-delivery-plan.md#six-increment-source-admission-on-september-21). Final release admission remains separate.
+rejection and restart persistence. Hosted workspace/platform and extracted-package source admission passed in [PR #236](v13-delivery-plan.md#six-increment-source-admission-on-september-21).
 No AWS/R2 owner account has been exercised; bucket policy and provider
 interoperability remain deployment responsibilities.
 
@@ -21,7 +21,7 @@ rullst = { version = "=13.0.0-alpha.6", default-features = false, features = ["s
 ```
 
 The version above is the 13.0.0-alpha.6 prerelease, which `cargo add rullst`
-does not select; name it explicitly. Final release admission remains separate.
+does not select; name it explicitly.
 
 ```rust,no_run
 # #[cfg(all(feature = "storage-s3", feature = "security"))]
@@ -122,5 +122,5 @@ the implemented S3 protocol journey; it does not establish AWS/R2 account
 configuration, all S3 extensions or multi-region failover.
 
 Server-mediated resumable multipart uploads are the separate opt-in
-[`storage-multipart`](private-multipart-uploads.md) candidate. Direct presigned
+[`storage-multipart`](private-multipart-uploads.md) feature. Direct presigned
 uploads, image processing and additional S3 operations remain future increments.

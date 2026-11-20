@@ -6,7 +6,7 @@ preserving a note that another operation has already changed, applying its
 policy, recording the audit and refreshing projections after commit.
 
 Local SQLite, PostgreSQL and MySQL journeys, cancellation, Redis cache, Scout,
-MSRV 1.96, strict linting and an extracted-facade consumer passed. Hosted workspace/platform and extracted-package source admission passed in [PR #236](v13-delivery-plan.md#six-increment-source-admission-on-september-21). Final release admission remains separate.
+MSRV 1.96, strict linting and an extracted-facade consumer passed. Hosted workspace/platform and extracted-package source admission passed in [PR #236](v13-delivery-plan.md#six-increment-source-admission-on-september-21).
 
 ## Application use
 

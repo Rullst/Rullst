@@ -30,6 +30,12 @@ recorded the following local LLVM/LCOV gates before the Codecov upload:
 | Whole repository | **90.3220%** (79,813/88,365 lines) | **90%** |
 | Framework libraries | **90.6186%** (60,014/66,227 lines across 436 files) | **90%** |
 
+On the v13 line, the [coverage run](https://github.com/Rullst/Rullst/actions/runs/44801697110)
+on `main` at `b4a72832` (20 November 2026) measured **94.5822%** (158,202/167,264
+lines) for the whole repository and **94.9493%** (110,747/116,638 lines across
+884 files) for the framework libraries. The coverage workflow enforces the floors
+on every push to `main`; pull requests to `main` do not run it.
+
 These are distinct path sets, not values to average. The public Codecov badge
 tracks the current branch and may change as its source and report processing
 change. Do not relabel an older checkpoint as the latest measurement.

@@ -332,11 +332,11 @@
       <div class="integration-levels">
         <article class="integration-level" data-integration-level="real-accounts">
           <span class="integration-index">01 / REAL ACCOUNTS</span>
-          <h3>Validated with real accounts</h3>
+          <h3>Used with real accounts</h3>
           <ul>
             <li><b>Stripe</b> (real payments)</li>
             <li><b>InfinitePay</b> (a real Pix payment)</li>
-            <li><b>Bunny Stream</b>, <b>Resend</b>, <b>SMTP</b> mail, <b>Google Gemini</b>, <b>Google</b> sign-in and <b>GitHub</b> sign-in (used in production applications)</li>
+            <li><b>Bunny Stream</b>, <b>Resend</b>, <b>SMTP</b> mail, <b>Google Gemini</b>, <b>Google</b> sign-in and <b>GitHub</b> sign-in (used by the maintainer's production applications, with no automated test against a live account)</li>
             <li><b>PostgreSQL</b> and <b>SQLite</b> (in production in the maintainer's applications, besides CI)</li>
             <li>The OpenAI-compatible AI adapter (validated with <b>Groq</b>, an OpenAI-compatible provider, not with OpenAI)</li>
           </ul>
@@ -380,7 +380,7 @@
 
     <section class="shell release-card" aria-label="Before you deploy" data-reveal>
       <h2>Explore boldly.<br>Deploy responsibly.</h2>
-      <div><p><strong>v13</strong> is in prerelease: 13.0.0-alpha.6 is the 13.0 feature freeze, followed by 13.0.0-rc.1 (fixes and documentation only) and 13.0.0. Cargo never selects a prerelease on its own, so name the exact version from <a href="https://crates.io/crates/rullst">crates.io</a> (<code>=13.0.0-alpha.6</code>) and use its matching immutable tag rather than the moving <a href="https://github.com/Rullst/Rullst/tree/main">main</a> branch. The v12 line reached end of life on 16 October 2026 with 12.3.0, and the <a href="https://github.com/Rullst/Rullst/tree/v12">v12 branch</a> is frozen; move applications with the <a href="/Rullst/book/migration-v13.html">v12 → v13 adoption guide</a>. The legacy <a href="https://github.com/Rullst/Rullst/tree/v5">v5 branch</a> is no longer maintained either. <a href="/Rullst/book/scope-and-limits.html">Scope and limits</a> lists what Rullst does not do by design and what its own tests cannot establish. Prerelease and stable describe the framework API lifecycle, not automatic approval of an application's authorization, provider configuration, operations or deployment.</p><a href="https://github.com/Rullst/Rullst/blob/main/RELEASE_GUIDE.md">Check the release guide ↗</a></div>
+      <div><p><strong>v13</strong> is in prerelease: 13.0.0-alpha.6 is the 13.0 feature freeze, followed by 13.0.0-rc.1 (fixes and documentation, and the changes the maintainer approved one by one after the freeze, two of them breaking) and 13.0.0. Cargo never selects a prerelease on its own, so name the exact version from <a href="https://crates.io/crates/rullst">crates.io</a> (<code>=13.0.0-alpha.6</code>) and use its matching immutable tag rather than the moving <a href="https://github.com/Rullst/Rullst/tree/main">main</a> branch. The v12 line reached end of life on 16 October 2026 with 12.3.0, and the <a href="https://github.com/Rullst/Rullst/tree/v12">v12 branch</a> is frozen; move applications with the <a href="/Rullst/book/migration-v13.html">v12 → v13 adoption guide</a>. The legacy <a href="https://github.com/Rullst/Rullst/tree/v5">v5 branch</a> is no longer maintained either. <a href="/Rullst/book/scope-and-limits.html">Scope and limits</a> lists what Rullst does not do by design and what its own tests cannot establish. Prerelease and stable describe the framework API lifecycle, not automatic approval of an application's authorization, provider configuration, operations or deployment.</p><a href="https://github.com/Rullst/Rullst/blob/main/RELEASE_GUIDE.md">Check the release guide ↗</a></div>
     </section>
   </main>
 

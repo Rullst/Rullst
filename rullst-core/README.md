@@ -23,12 +23,11 @@ Server-Sent Events, i18n and process telemetry. The `rullst` facade re-exports i
   cookie or a bounded `Accept-Language` parse and offers a CSRF-protected
   `POST` switch route. See [the guide](https://github.com/Rullst/Rullst/blob/main/docs/src/i18n.md).
 - **Runtime Telemetry:** Exposes process/runtime snapshots and tracing-span collection for consumers such as Rullst Studio.
-- **Distributed Tracing Candidate (v13):** `telemetry::distributed` (the
+- **Distributed Tracing (v13):** `telemetry::distributed` (the
   optional `telemetry` feature) adds explicit parent trust, approved operation
-  labels, minimized OTLP export and an owned lifecycle. Independent Messaging
-  processes and a standard TLS collector passed local acceptance, and hosted
-  source/package admission passed in PR #236; final release admission remains
-  separate.
+  labels, minimized OTLP export and an owned lifecycle. CI runs independent
+  Messaging processes against a standard OpenTelemetry Collector over TLS in a
+  local container; no hosted tracing backend is tested.
   See [the profile](https://github.com/Rullst/Rullst/blob/main/docs/src/distributed-tracing.md).
 - **Realtime over Server-Sent Events (v13):** `BroadcastManager` channels
   (and `TenantRealtime`'s tenant-scoped ones) stream to the browser through
@@ -166,18 +165,18 @@ Server-Sent Events, i18n and process telemetry. The `rullst` facade re-exports i
   declared type, and applies the CSRF ordering rule and the WAF's field
   signatures. See the
   [form uploads guide](https://github.com/Rullst/Rullst/blob/main/docs/src/form-uploads.md).
-- **Private Object Storage Candidate (v13):** The optional `storage-s3` feature
+- **Private Object Storage (v13):** The optional `storage-s3` feature
   adds bounded S3/R2 upload, download, metadata, deletion and short-lived signed
   GET URLs to the existing storage and tenant APIs. Configuration is explicit;
-  offline credentials select a bounded deterministic store. Source/package
-  admission passed in PR #236; release admission and owner-account interoperability
-  remain outstanding.
-  See the [candidate contract](https://github.com/Rullst/Rullst/blob/main/docs/src/private-object-storage.md).
-- **Resumable Private Upload Candidate (v13):** Separate `storage-multipart`
+  offline credentials select a bounded deterministic store. CI tests it against
+  an S3-compatible server (Garage) in a local container; no automated test runs
+  against AWS S3 or Cloudflare R2.
+  See the [storage contract](https://github.com/Rullst/Rullst/blob/main/docs/src/private-object-storage.md).
+- **Resumable Private Uploads (v13):** Separate `storage-multipart`
   adds exact-size parts, SHA-256 checks, encrypted tenant/object-bound recovery
-  records, completion reconciliation and abort. Native disposable S3 restart and
-  adversarial protocol tests passed locally, and hosted source/package admission
-  passed in PR #239; final release admission remains separate.
+  records, completion reconciliation and abort. Its restart and adversarial
+  protocol tests run against a disposable S3-compatible server; no automated
+  test runs against AWS S3 or Cloudflare R2.
   See [private multipart uploads](https://github.com/Rullst/Rullst/blob/main/docs/src/private-multipart-uploads.md).
 
 ## 🚀 Usage

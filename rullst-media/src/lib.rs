@@ -7,9 +7,9 @@
 //! **Maturity: Extension**
 //! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)) since
 //! 13.0.0-alpha.5: optional, and supported for its documented scope. A
-//! production application uses the Bunny adapter with a real Bunny Stream
-//! library; transcoding and CDN edge cases are not covered by Rullst's own
-//! tests. The opt-in `s3` adapter has the same tier and is tested offline
+//! production application of the maintainer uses the Bunny adapter with a
+//! real Bunny Stream library; no automated test runs against a live account,
+//! and transcoding and CDN edge cases are not covered by Rullst's own tests. The opt-in `s3` adapter has the same tier and is tested offline
 //! only, against the offline mock and a loopback protocol fixture; no
 //! automated test runs against a live S3, R2 or MinIO service.
 //!

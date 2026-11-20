@@ -192,7 +192,9 @@ failed-attempt telemetry and external immutable delivery.
 ## Secure mounting
 
 Nexus is fail-closed: `try_build()` returns an error until an explicit access policy is selected.
-The built-in Basic Auth policy rejects weak/example credentials, compares both credential fields in
+The built-in Basic Auth policy rejects a password shorter than 16 characters and a fixed list of
+example usernames and passwords (such as `changeme` or a `replace_me_` prefix); it does not
+measure strength otherwise. It compares both credential fields in
 constant time, and counts failed credentials per client bucket: one IPv4 address or one IPv6 /64
 taken from the verified socket peer. Five failures within five minutes lock the bucket for fifteen
 minutes. A request without a Basic `Authorization` header only receives the `401` challenge and is
@@ -326,6 +328,13 @@ layer imposes `no-referrer`, browsers send `Origin: null`; the policy then
 accepts the request only with a single `Sec-Fetch-Site: same-origin`, a header
 page scripts cannot set, so documents of other origins or local ports stay
 rejected.
+
+The loopback check trusts the TCP peer address and the `Host` header. A reverse proxy, port
+forward or tunnel on the same machine that connects to the application from a loopback address
+with a local `Host` header (an nginx `proxy_pass http://127.0.0.1:3000` with its default
+headers, for example) makes
+every client it forwards a loopback peer, so a debug build behind such a forwarder serves Nexus
+without credentials. Deploy release builds only.
 
 The blog example of the Rullst repository uses
 `NexusAuthPolicy::local_development_or_basic_from_env()`: debug builds select

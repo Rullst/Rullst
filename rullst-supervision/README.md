@@ -60,11 +60,10 @@ The [design and acceptance boundary](https://rullst.github.io/Rullst/book/superv
 supported scope and its validation evidence. Source increments entered
 `v13` through PRs #222 and #226; the latter's missing premerge archive gate was
 repaired retrospectively, as recorded in the
-[delivery evidence](https://rullst.github.io/Rullst/book/v13-delivery-plan.html). Final combined release
-and package-admission requirements remain separate.
-The standalone package is now included in the v13 release inventory and was
-first published on crates.io as `13.0.0-alpha.1`. Final release acceptance
-remains outstanding; `13.0.0-alpha.6` is a prerelease, not a stable release. Applications
+[delivery evidence](https://rullst.github.io/Rullst/book/v13-delivery-plan.html).
+The standalone package is included in the v13 release inventory and was
+first published on crates.io as `13.0.0-alpha.1`; `13.0.0-alpha.6` is a
+prerelease, not a stable release. Applications
 opt in explicitly; no default framework dependency is added.
 
 ## Reporting problems

@@ -130,7 +130,7 @@ for the explicit raw-transaction and streaming limitations.
 ## Verification
 
 The unit suite inspects generated SQL/bind ordering and zero-panic production
-tokens. Twenty-seven `trybuild` compile-fail cases exercise the actual parser
+tokens. Thirty-one `trybuild` compile-fail cases (`tests/ui/`) exercise the actual parser
 diagnostics, including duplicate/unknown options and cross-field invariants,
 rather than an unresolved import:
 

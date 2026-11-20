@@ -122,7 +122,7 @@
 - [Privacy & Proportional Age Assurance](privacy-age-assurance-roadmap.md)
 - [Transparent Exam & Parental Supervision](supervision.md)
   - [Exam observation integration](supervision-observations.md)
-- [Private Course Video Integration Candidate](managed-video.md)
+- [Private Course Video Integration](managed-video.md)
 
 # Recipes
 

@@ -1,16 +1,16 @@
 # rullst-media
 
-v13 candidate for private course videos with Bunny Stream, first published in
+Private course videos with Bunny Stream, first published in
 the 13.0.0-alpha.1 prerelease. The crate
 provides creation, metadata, resumable upload authorization, processing refresh,
 explicit publication, current-entitlement playback, withdrawal, deletion and
 recovery of interrupted operations. An opt-in `s3` adapter stores and
 serves the original upload in a private S3, R2 or MinIO bucket instead, without
 transcoding. It is **opt-in**, with its standalone package
-now included in the v13 release inventory. Final release acceptance remains
-outstanding.
-A production application uses the Bunny adapter with a real Bunny Stream library
-(create, browser upload, status, update, deletion and private playback). Rullst's own
+included in the v13 release inventory.
+A production application of the maintainer uses the Bunny adapter with a real Bunny
+Stream library (create, browser upload, status, update, deletion and private playback);
+no automated test runs against a live account. Rullst's own
 automated acceptance uses local HTTP protocol fixtures and controlled browser media,
 so transcoding, CDN and player edge cases are not covered by it.
 The `s3` adapter is tested offline only: no automated test runs against a live
@@ -340,8 +340,9 @@ exact length) and are presigned `PUT` requests; `PlaybackKind::Original` grants
 are presigned `GET` requests. Both expire within 900 seconds. `refresh` or
 `publish` confirms the object with `HEAD` before it becomes ready.
 **Status: Extension, tested offline only.** Its tests run against the offline
-mock and a loopback HTTP fixture that checks request signing and payload
-digests; no automated test runs against a live AWS S3, Cloudflare R2 or MinIO
+mock and a loopback HTTP fixture that checks the shape of the SigV4
+`Authorization` header and the payload digest without recomputing the
+signature; no automated test runs against a live AWS S3, Cloudflare R2 or MinIO
 service, so provider interoperability is not yet validated. Configuration, bucket CORS and limits are
 in the [private video guide](https://rullst.github.io/Rullst/book/managed-video.html#s3-compatible-object-storage-s3-r2-minio).
 

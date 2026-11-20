@@ -11,8 +11,10 @@ Since **12.1.2** (and in v13), built-in
 authorization-code URLs explicitly request `response_type=code`. The
 [OAuth protocol](https://www.rfc-editor.org/rfc/rfc6749#section-4.1.1) and
 [Google request contract](https://developers.google.com/identity/openid-connect/openid-connect#sendauthrequest)
-require this field. Offline parsed-query tests cover all eleven providers;
-real account interoperability remains separate. Temporary workarounds for
+require this field. Offline parsed-query tests cover all eleven providers.
+Google and GitHub sign-in are used by the maintainer's production
+applications; no automated test runs against a live account, and the other
+providers have not been used with real accounts. Temporary workarounds for
 earlier 12.x releases should add the field only when absent.
 
 > **Vision preserved:** message brokers, additional queue transports, remote
@@ -222,6 +224,10 @@ v13 prerelease command (the v12 line reached end of life on 16 October 2026):
 cargo add rullst-connect@=13.0.0-alpha.6
 cargo add secrecy
 ```
+
+With no feature, the crate has the providers and `begin_login`; `AuthCallback`
+and `finish_login` need one of the `axum`, `actix`, `leptos` or `rullst`
+features (`--features axum`, for example).
 
 A Rullst application can use the facade instead: the `rullst` feature `oauth`
 re-exports this crate as `rullst::connect` with its Axum integration

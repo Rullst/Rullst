@@ -4,7 +4,8 @@
 12.3.0 is its last release and the `v12` branch is frozen (see
 [SECURITY.md](../../SECURITY.md)). 13.0.0-alpha.4 was published on 31 October
 and 13.0.0-alpha.5 on 14 November; 13.0.0-alpha.6 is the 13.0 feature freeze,
-followed by 13.0.0-rc.1 (fixes and documentation only) and then 13.0.0. The
+followed by 13.0.0-rc.1 (fixes, documentation and the changes approved one
+by one after the freeze) and then 13.0.0. The
 September directions below record how the priorities were set; the v12
 maintenance instructions in them no longer apply.
 

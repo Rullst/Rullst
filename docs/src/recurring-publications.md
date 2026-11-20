@@ -186,5 +186,4 @@ PostgreSQL restart. An encrypted SQLite broker journey verifies acceptance befor
 lost ACK, reopen/replay deduplication and real consumer delivery. No provider
 account is used. The same native journey passed through an extracted facade
 consumer, with Messaging source bytes matched against its archive. Combined
-hosted and extracted-package source admission then passed in PR #239; final
-release acceptance remains separate.
+hosted and extracted-package source admission then passed in PR #239.

@@ -1,6 +1,6 @@
 # Robótica e IoT em sala de aula
 
-> **Tradução** da página em inglês [`iot-classroom.md`](../iot-classroom.md), feita a partir do commit [`09efdd525`](https://github.com/Rullst/Rullst/commit/09efdd5257db6a8b8311ea62098a7f8c4b7a25cf). Se as duas versões divergirem, vale a versão em inglês.
+> **Tradução** da página em inglês [`iot-classroom.md`](../iot-classroom.md), feita a partir do commit [`746e8b724`](https://github.com/Rullst/Rullst/commit/746e8b7245f60672ffd384c0ba6e82b486ef5ca0). Se as duas versões divergirem, vale a versão em inglês.
 
 Este guia é para professores que querem combinar placas de robótica com uma
 aplicação web Rullst em sala de aula: quais placas escolher, ideias de
@@ -359,11 +359,13 @@ construída sobre `BroadcastManager` e `PresenceTracker`.
   memória e tempo
   ([isolamento](../labs-runner-contract.md#isolation-the-host-owns)). A
   aplicação fornece os alunos autenticados e suas matrículas no curso. O
-  código-fonte chega como texto (`RustSource`); qual linguagem o executor
-  compila ou interpreta é escolha do executor. Na execução de aceitação da
-  13.0.0-alpha.5, um executor que iniciava um contêiner Docker por trabalho
-  corrigiu submissões em Python, e o contrato afirma que um contêiner sozinho
-  não é isolamento suficiente para código hostil.
+  código-fonte chega como texto (`RustSource`). O protocolo v1 define um único
+  perfil, uma função em Rust (`rust-function-wasm-v1`); um executor que
+  compila ou interpreta outra linguagem faz isso fora desse perfil. Na
+  execução de aceitação da 13.0.0-alpha.5, um executor que iniciava um
+  contêiner Docker por trabalho corrigiu submissões em Python dessa forma, e o
+  contrato afirma que um contêiner sozinho não é isolamento suficiente para
+  código hostil.
 - **Os alunos aprendem:** escrever uma função a partir de uma especificação,
   casos de teste e casos-limite (zero, leituras negativas), e por que existem
   testes ocultos.

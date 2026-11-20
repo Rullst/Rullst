@@ -568,8 +568,10 @@ let rullst_app: Router = axum_app.into();
 
 ## 🛡️ Security baseline
 
-In staging and production, `Server` mounts the runtime security baseline from
-`rullst_core::security`: secure headers with a per-request CSP nonce, an exact
+`Server` mounts the runtime security baseline from
+`rullst_core::security` (secure headers and CSRF in every environment since
+13.0.0-alpha.6; the WAF refusing requests in staging and production): secure
+headers with a per-request CSP nonce, an exact
 CORS allowlist, a bounded WAF, double-submit CSRF and, when
 `enable_pii_masking` is set, response PII masking. `rullst-security` adds
 opt-in layers that overlap some of these. See

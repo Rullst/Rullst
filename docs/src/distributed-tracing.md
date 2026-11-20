@@ -7,7 +7,7 @@ The existing `SpanCollector` stays process-local; Studio's authenticated trace
 ingestion remains its separate protocol and is not an OTLP collector.
 
 Acceptance includes independent Messaging producer/consumer processes and the
-standard OpenTelemetry Collector 0.161.0 over verified TLS. Hosted workspace/platform and extracted-package source admission passed in [PR #236](v13-delivery-plan.md#six-increment-source-admission-on-september-21). Final release admission remains separate.
+standard OpenTelemetry Collector 0.161.0 over verified TLS. Hosted workspace/platform and extracted-package source admission passed in [PR #236](v13-delivery-plan.md#six-increment-source-admission-on-september-21).
 
 ## Explicit configuration and lifecycle
 
@@ -19,7 +19,7 @@ tracing-subscriber = "0.3"
 ```
 
 This version is the 13.0.0-alpha.6 prerelease, which `cargo add rullst` does not
-select; name it explicitly. Final release admission remains separate.
+select; name it explicitly.
 
 ```rust,no_run
 # #[cfg(feature = "telemetry")]
@@ -170,7 +170,7 @@ backups, availability and data access separately. Traces are not an audit ledger
 
 ## Legacy initialization and executable evidence
 
-`init_telemetry` remains the legacy general tracing subscriber. The v13 candidate
+`init_telemetry` remains the legacy general tracing subscriber. v13
 repairs its unsupported async-client/thread-processor combination with the same
 compatible bounded HTTP transport. Its default is now OTLP/HTTP at
 `http://127.0.0.1:4318/v1/traces`, rather than the gRPC port. An explicit

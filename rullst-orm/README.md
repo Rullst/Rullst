@@ -147,7 +147,7 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   relationships for cascade; implicit deletes open a transaction when needed,
   while explicit or task-scoped transactions are reused without nesting. The
   cascade honours the child's tenant scope, not its `global_scope`.
-- **Transactional Partial Updates (v13 candidate)**: `.update_partial()` merges
+- **Transactional Partial Updates (v13)**: `.update_partial()` merges
   selected values into the locked current row and runs the full save lifecycle,
   including audit and post-commit effects. The loaded row runs `after_fetch`
   first, like `find()`. It refreshes the caller model after
@@ -176,7 +176,10 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   `with_tenant` scope ended before the commit) through a per-table key index,
   never a keyspace `SCAN`, so write latency does not grow with unrelated keys
   in a shared Redis database; cluster/failover evidence remains outside the
-  current contract.
+  current contract. One write removes at most 10,000 cached keys of its
+  table (in batches of 500); past that the invalidation fails with
+  `Error::CacheError`, and the remaining entries keep serving their stale
+  rows until their TTL expires.
 - **Model Policies (Authorization)**: `#[orm(policy = "MyPolicy")]` checks generated
   instance mutations. Policy-protected models reject `delete_all()` because
   bulk SQL cannot invoke per-row authorization; load the intended rows and call

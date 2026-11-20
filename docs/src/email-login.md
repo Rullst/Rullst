@@ -1,4 +1,4 @@
-# Optional email login (v13 candidate)
+# Optional email login (v13)
 
 `rullst-auth` features `email-login-sqlite` and `email-login-postgres` expose
 `recovery::email_login::EmailLoginService`. The umbrella features are
@@ -6,8 +6,7 @@
 reuse the authoritative `SqlRecoveryStore` account and opaque-session registry.
 They do not enable JWT, OAuth or email login on existing accounts automatically.
 Combined hosted source/package/coverage admission passed in
-[PR #239](v13-delivery-plan.md#additional-priorities-approved-on-21-september);
-final release admission remains separate.
+[PR #239](v13-delivery-plan.md#additional-priorities-approved-on-21-september).
 
 ## Account and application boundaries
 
@@ -139,7 +138,7 @@ or a production mail delivery SLA.
 
 ## Automated evidence
 
-The candidate includes SQLite/PostgreSQL independent-pool races, purpose and
+The tests include SQLite/PostgreSQL independent-pool races, purpose and
 namespace isolation, browser mismatch, replacement, opt-out/epoch invalidation,
 expiry/clock rollback, locked-database expiry, cancellation, SQL failure
 atomicity, bounded retries and suppression. Process tests use fresh executables;
