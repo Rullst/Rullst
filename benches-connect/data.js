@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795189220433,
+  "lastUpdate": 1795191927126,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -15483,6 +15483,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 559,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "24ec542c58f8a26e4eea81c599447d7f9265343b",
+          "message": "Merge pull request #774 from Rullst/docs/v13-compare-leptos-dioxus-scope-link\n\ndocs(site): explain Leptos and Dioxus on the comparison page and link Scope and limits",
+          "timestamp": "2026-11-20T13:08:13-03:00",
+          "tree_id": "8b9d2292e3d7dd9306e8b871c7f18a02fb4ee1a7",
+          "url": "https://github.com/Rullst/Rullst/commit/24ec542c58f8a26e4eea81c599447d7f9265343b"
+        },
+        "date": 1795191925594,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 269,
+            "range": "± 9",
             "unit": "ns/iter"
           }
         ]
