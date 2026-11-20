@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795212515080,
+  "lastUpdate": 1795215373553,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -38041,6 +38041,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1090,
             "range": "± 12",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ec7c35c2c9c167737bfab747183e60fe40fc4797",
+          "message": "Merge pull request #787 from Rullst/docs/v13-rc1-loopback-wording\n\ndocs(studio,nexus): describe the loopback check after the forwarding refusals",
+          "timestamp": "2026-11-20T19:52:26-03:00",
+          "tree_id": "31012394bbb7a720f7eae033fc1b3c027c8222a4",
+          "url": "https://github.com/Rullst/Rullst/commit/ec7c35c2c9c167737bfab747183e60fe40fc4797"
+        },
+        "date": 1795215368982,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 665,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 895,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 419,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1933,
+            "range": "± 29",
             "unit": "ns/iter"
           }
         ]
