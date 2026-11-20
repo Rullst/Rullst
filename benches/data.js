@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795200159952,
+  "lastUpdate": 1795203011711,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -37825,6 +37825,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1982,
             "range": "± 49",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b4a728319abb1573a406ba56d8447430f7ffa51b",
+          "message": "Merge pull request #777 from Rullst/docs/v13-roadmap-reorganization\n\ndocs(roadmap): reorganize into now, next, later and long-term vision",
+          "timestamp": "2026-11-20T16:23:34-03:00",
+          "tree_id": "fdd521cf0ffc9f44f2b07bc1c28870d509ce4228",
+          "url": "https://github.com/Rullst/Rullst/commit/b4a728319abb1573a406ba56d8447430f7ffa51b"
+        },
+        "date": 1795203006711,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 699,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 918,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 427,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2005,
+            "range": "± 24",
             "unit": "ns/iter"
           }
         ]
