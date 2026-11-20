@@ -377,7 +377,7 @@ new is collected or stored on the servers.
 
 ```bash
 cargo install rullst-studio --version =13.0.0-alpha.6 --no-default-features --features remote --locked
-rullst-studio                  # http://127.0.0.1:5556/studio
+rullst-studio                  # prints http://127.0.0.1:5556/studio?key=…
 # or, with the CLI installed:
 cargo rullst studio --remote   # --port 7000 for another port
 ```
@@ -395,7 +395,11 @@ SQLx's SQLite, for its own history.
 
 It listens on `127.0.0.1` only, with the same protections as Studio's local
 pages: loopback peer and `Host`, same-origin forms, and a per-process form
-token. Its pages are the remote ones only: the data browser, `.env` viewer,
+token. Other accounts on the machine can connect to `127.0.0.1` too, so each
+start prints its address with a random key: open that address (it sets a
+session cookie and drops the key from the address bar); without it every page
+answers `403`. The key changes at every start, and anyone who can read the
+printed address can use Studio until then, so keep that output private. Its pages are the remote ones only: the data browser, `.env` viewer,
 AI and API playgrounds and migration pages do not exist in this mode.
 
 ### Add a project

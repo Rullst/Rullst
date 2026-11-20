@@ -19,6 +19,8 @@ const MAX_FORM_BYTES: usize = 8 * 1024;
 
 /// Shared state of the remote Studio.
 pub(crate) struct RemoteState {
+    /// Random per process; required by every request (see `launch.rs`).
+    pub(crate) launch: super::launch::LaunchKey,
     pub(crate) store: ProjectStore,
     /// Replaced when the proxy setting changes; read it with [`Self::client`].
     pub(crate) client: RwLock<MonitorClient>,
@@ -106,8 +108,12 @@ pub(crate) fn router(state: Arc<RemoteState>) -> Router {
             get(super::preferences::notifications_feed),
         )
         .layer(DefaultBodyLimit::max(MAX_FORM_BYTES))
-        .with_state(state)
-        .nest("/studio/assets", crate::assets::router());
+        .with_state(state.clone())
+        .nest("/studio/assets", crate::assets::router())
+        .layer(axum::middleware::from_fn_with_state(
+            state,
+            super::launch::require_launch_key,
+        ));
     crate::access::protect_remote_router(router)
 }
 

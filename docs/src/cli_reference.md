@@ -1846,7 +1846,8 @@ authentication, authorization, and TLS boundary.
 installed standalone `rullst-studio` binary
 (`cargo install rullst-studio --version =13.0.0-alpha.6 --no-default-features --features remote --locked`;
 Cargo installs a prerelease only when its version is named),
-which serves Studio's remote-projects mode on `127.0.0.1:5556` (or `PORT`)
+which serves Studio's remote-projects mode on `127.0.0.1:5556` (or `PORT`;
+open the `…/studio?key=…` address it prints, whose key changes at every start)
 and reads the [production monitoring endpoint](production-monitoring.md#watch-your-projects-from-studio)
 of the projects you add. Without the binary it explains how to install it.
 

@@ -3,6 +3,8 @@ mod browser_boundary;
 mod credentials;
 mod error;
 #[cfg(test)]
+mod loopback_tests;
+#[cfg(test)]
 mod proxy_tests;
 mod rate_limit;
 #[cfg(test)]
@@ -26,6 +28,7 @@ pub use rate_limit::{
     NEXUS_BASIC_AUTH_FAILURE_WINDOW, NEXUS_BASIC_AUTH_LOCKOUT, NEXUS_BASIC_AUTH_MAX_FAILURES,
     NEXUS_BASIC_AUTH_MAX_PEERS,
 };
+use rullst_core::config::Environment;
 use std::{fmt, net::SocketAddr, sync::Arc, time::Duration};
 use subtle::ConstantTimeEq;
 use transport::has_verified_tls;
@@ -101,10 +104,20 @@ impl fmt::Debug for NexusBasicAuth {
 
 /// Explicit capability for running Nexus without credentials on loopback in development.
 ///
-/// This policy is accepted only in debug builds. Every request must also contain Axum
+/// This policy is accepted only in debug builds whose process environment
+/// (`RULLST_ENV`, then `APP_ENV`) is not staging or production; an invalid
+/// value counts as one of them. Every request must also contain Axum
 /// `ConnectInfo<SocketAddr>` for a loopback peer and a local Host authority.
 /// Unsafe methods also require an exact same-origin Origin header. This
 /// browser boundary prevents DNS rebinding and blind cross-origin mutations.
+///
+/// A request with a proxy forwarding header (`Forwarded`, `X-Forwarded-*`,
+/// `X-Real-IP`, `Via`, …) or over HTTP/1.0 is refused, because a same-host
+/// reverse proxy or tunnel connects from loopback; so is a request whose
+/// `Server` resolved staging or production (from `.env` or `[app].env` too).
+/// A proxy that adds no forwarding header and speaks HTTP/1.1 or newer cannot
+/// be told apart from a local browser, so never put one in front of this
+/// policy.
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy)]
 pub struct LocalNexusAccess {
@@ -156,17 +169,18 @@ impl NexusAuthPolicy {
     }
 
     /// Uses credential-free loopback access in debug builds and validated
-    /// environment credentials in release builds.
+    /// environment credentials in release builds, and in debug builds whose
+    /// process `RULLST_ENV` or `APP_ENV` is staging or production.
     ///
     /// This is the ergonomic policy for generated applications and local
     /// examples. Debug access still requires Axum `ConnectInfo<SocketAddr>` and
-    /// denies every non-loopback peer. Release builds never enable local access
-    /// and require [`NEXUS_ADMIN_USERNAME_ENV`] and
-    /// [`NEXUS_ADMIN_PASSWORD_ENV`] through [`Self::basic_from_env`].
+    /// denies every non-loopback peer. Otherwise local access is never enabled,
+    /// and [`NEXUS_ADMIN_USERNAME_ENV`] and [`NEXUS_ADMIN_PASSWORD_ENV`] are
+    /// required through [`Self::basic_from_env`].
     /// Applications that need to exercise Basic Auth in a debug build can call
     /// [`Self::basic_from_env`] explicitly.
     pub fn local_development_or_basic_from_env() -> Result<Self, NexusBuildError> {
-        if cfg!(debug_assertions) {
+        if loopback_permitted() {
             Ok(Self::loopback_only(LocalNexusAccess::loopback_only()))
         } else {
             Self::basic_from_env()
@@ -193,9 +207,11 @@ impl NexusAuthPolicy {
 
     /// Uses credential-free loopback access in debug builds and the
     /// application's sign-in ([`Self::application`]) in release builds, as
-    /// the generated SaaS starter does.
+    /// the generated SaaS starter does. A debug build whose process
+    /// `RULLST_ENV` or `APP_ENV` is staging or production uses the
+    /// application's sign-in too.
     pub fn local_development_or_application(authorizer: impl NexusAuthorizer) -> Self {
-        if cfg!(debug_assertions) {
+        if loopback_permitted() {
             Self::loopback_only(LocalNexusAccess::loopback_only())
         } else {
             Self::application(authorizer)
@@ -248,7 +264,7 @@ pub(crate) fn validate_policy(policy: NexusAuthPolicy) -> Result<NexusAuthPolicy
             Ok(NexusAuthPolicy::Basic(credentials))
         }
         NexusAuthPolicy::LoopbackOnly(access) => {
-            if cfg!(debug_assertions) {
+            if loopback_permitted() {
                 Ok(NexusAuthPolicy::LoopbackOnly(access))
             } else {
                 Err(NexusBuildError::LocalAccessRequiresDebugBuild)
@@ -259,6 +275,29 @@ pub(crate) fn validate_policy(policy: NexusAuthPolicy) -> Result<NexusAuthPolicy
             Ok(NexusAuthPolicy::Application(access))
         }
     }
+}
+
+/// Whether the credential-free loopback policy may be built: in a debug build
+/// whose process environment is not staging or production.
+fn loopback_permitted() -> bool {
+    cfg!(debug_assertions) && !process_environment_requires_secure_defaults()
+}
+
+/// The process `RULLST_ENV`, then `APP_ENV`, names staging or production, or
+/// is invalid (which fails closed).
+fn process_environment_requires_secure_defaults() -> bool {
+    Environment::detect(None).map_or(true, Environment::requires_secure_defaults)
+}
+
+/// A request the loopback policy refuses even from a loopback peer: one that a
+/// same-host proxy or tunnel relayed, or one that a `Server` running in
+/// staging or production received.
+fn relayed_or_in_secure_environment(request: &Request) -> bool {
+    rullst_core::server::is_proxied_request(request)
+        || request
+            .extensions()
+            .get::<Environment>()
+            .is_some_and(|environment| environment.requires_secure_defaults())
 }
 
 pub(crate) async fn basic_auth_middleware(
@@ -322,7 +361,10 @@ pub(crate) async fn loopback_only_middleware(mut request: Request, next: Next) -
         .get::<ConnectInfo<SocketAddr>>()
         .is_some_and(|connection| connection.0.ip().to_canonical().is_loopback());
 
-    if is_loopback && browser_boundary::allows(&request) {
+    if is_loopback
+        && !relayed_or_in_secure_environment(&request)
+        && browser_boundary::allows(&request)
+    {
         request
             .extensions_mut()
             .insert(NexusPrincipal::authenticated("local-loopback"));

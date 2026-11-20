@@ -15,6 +15,9 @@ use machine::{Constants, MachineRoutes, route_methods};
 
 const ACCESS_MARKER: &str = "rullst-access:";
 
+/// What `audit --idor` prints about the scope of its guard evidence.
+pub(crate) const GUARD_SCOPE_NOTE: &str = "Guard evidence is crate-wide, not per handler: one `RbacGuard::authorize_owner_or_role` call anywhere in a crate's non-test code satisfies every `owner` route of that crate (and likewise for `role` and `admin`), so check that each handler enforces its own classification.";
+
 /// Recursively scans Rust source files for parameterized routes without an
 /// explicit public, owner, role, administrator or machine access
 /// classification.

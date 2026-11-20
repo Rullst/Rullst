@@ -119,10 +119,15 @@ fn the_address_is_printed_once_the_port_listens() {
     let _ = std::fs::remove_dir_all(&home);
 
     let (first, second) = printed.expect("rullst-studio printed its address");
-    assert_eq!(
-        first.as_deref(),
-        Some(format!("Rullst Studio (remote projects) on http://127.0.0.1:{port}/studio").as_str())
-    );
+    let first = first.expect("address line");
+    let key = first
+        .strip_prefix(&format!(
+            "Rullst Studio (remote projects) on http://127.0.0.1:{port}/studio?key="
+        ))
+        .unwrap_or_else(|| panic!("{first}"));
+    // The key of this start, which the browser exchanges for a cookie.
+    assert_eq!(key.len(), 64, "{first}");
+    assert!(key.bytes().all(|byte| byte.is_ascii_hexdigit()), "{first}");
     let projects = second.expect("project list line");
     assert!(projects.starts_with("Project list: "), "{projects}");
     assert!(projects.ends_with("projects.json"), "{projects}");

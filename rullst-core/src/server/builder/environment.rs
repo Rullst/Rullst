@@ -63,6 +63,25 @@ pub(in crate::server) fn development_console_enabled(
     debug_build && environment.allows_development_tools()
 }
 
+/// The warning for a server that listens on `ip` without the staging and
+/// production defaults, or `None` on a loopback address and in staging and
+/// production. With no `RULLST_ENV`, `APP_ENV` or `[app].env` the environment
+/// is Development, so a release binary started with `HOST=0.0.0.0` and no
+/// environment setting serves the network with development defaults.
+pub(in crate::server) fn insecure_listen_warning(
+    environment: crate::config::Environment,
+    ip: std::net::IpAddr,
+) -> Option<&'static str> {
+    if environment.requires_secure_defaults() || ip.to_canonical().is_loopback() {
+        return None;
+    }
+    Some(if environment.allows_development_tools() {
+        "Rullst is serving a non-loopback address as development: the WAF only logs what it would refuse and HSTS is not sent over plain HTTP. Set RULLST_ENV=production (or staging) for a deployment; without RULLST_ENV, APP_ENV or [app].env, Rullst runs as development."
+    } else {
+        "Rullst is serving a non-loopback address as test: the WAF is off and HSTS is not sent over plain HTTP. Set RULLST_ENV=production (or staging) for a deployment."
+    })
+}
+
 pub(super) fn resolve_hot_reload_token() -> Result<Arc<str>, ServerError> {
     let token = read_optional_environment_variable("RULLST_HMR_TOKEN")?.ok_or_else(|| {
         ServerError::HotReloadConfiguration(
@@ -92,3 +111,7 @@ pub(in crate::server) fn parse_dotenv(
 ) -> Result<HashMap<String, String>, ServerError> {
     crate::config::parse_dotenv_entries(content).map_err(ServerError::Configuration)
 }
+
+#[cfg(test)]
+#[path = "environment_tests.rs"]
+mod tests;

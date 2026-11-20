@@ -7,8 +7,8 @@ use crate::generators::audit_compliance::{
 };
 use crate::generators::audit_evidence::inspect_local_network_surface;
 pub use crate::generators::audit_evidence::{generate_cyclonedx_sbom, scan_local_network_surface};
-use crate::generators::audit_idor::collect_rust_source_files;
 pub use crate::generators::audit_idor::scan_idor_vulnerabilities;
+use crate::generators::audit_idor::{GUARD_SCOPE_NOTE, collect_rust_source_files};
 #[cfg(test)]
 use crate::generators::audit_scope::cargo_audit_arguments;
 pub use crate::generators::audit_scope::scan_unsafe_code;
@@ -314,6 +314,9 @@ pub(crate) fn run_audit(options: AuditOptions<'_>) -> Result<(), Box<dyn std::er
                 say!(json, "  {} {}", "[IDOR WARNING]".yellow().bold(), warn);
             }
             issues_found += idor_count;
+        }
+        if idor_source_available {
+            say!(json, "  {} {}", "[NOTE]".bright_yellow(), GUARD_SCOPE_NOTE);
         }
     }
 

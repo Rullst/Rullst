@@ -39,6 +39,9 @@ pub use builder::{Server, ServerError};
 // Used by `rullst-studio`.
 #[doc(hidden)]
 pub use database_url::resolve_project_database_url;
+// Used by `rullst-studio` and `rullst-nexus`.
+#[doc(hidden)]
+pub use dev_telemetry::is_proxied_request;
 pub use hotswap::HotSwapService;
 // Used by `rullst-mail`.
 #[doc(hidden)]

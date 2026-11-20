@@ -86,7 +86,9 @@ Studio on `127.0.0.1:5556` without an application process and reads the
 read-only `/_rullst/monitor/v2` document (`/_rullst/monitor/v1` from an
 application before 13.0.0-alpha.6) of the projects you add: overview, routes,
 queues, N+1, traces and security pages with a project switcher. It keeps the loopback
-`Host`, same-origin and marker checks above, adds a per-process form token,
+`Host`, same-origin and marker checks above, adds a per-process form token
+and a per-start launch key (open the printed `…/studio?key=…` address, so
+other accounts of the machine cannot use it),
 and runs in release builds because it serves no local data: the data
 browser, `.env` viewer, AI and API playgrounds and migration pages are not
 mounted. Projects are stored owner-only in the user's configuration

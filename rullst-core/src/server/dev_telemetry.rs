@@ -267,13 +267,7 @@ async fn queue_depth(queue: Option<&Queue>) -> QueueDepth {
 /// with a forwarding header, or over HTTP/1.0 (nginx's default upstream
 /// protocol), are refused as well.
 pub(crate) fn is_local(request: &Request) -> bool {
-    if matches!(
-        request.version(),
-        axum::http::Version::HTTP_09 | axum::http::Version::HTTP_10
-    ) || FORWARDING_HEADERS
-        .iter()
-        .any(|name| request.headers().contains_key(*name))
-    {
+    if is_proxied_request(request) {
         return false;
     }
     let extensions = request.extensions();
@@ -313,6 +307,23 @@ pub(crate) fn is_local(request: &Request) -> bool {
             })
             .is_some_and(is_loopback_authority),
     }
+}
+
+/// Whether `request` shows that a reverse proxy or tunnel relayed it: a
+/// forwarding header (`Forwarded`, `X-Forwarded-*`, `X-Real-IP`, `Via`, …), or
+/// HTTP/1.0, nginx's default upstream protocol. A proxy that adds neither
+/// cannot be told apart from a direct client. Development tools that trust a
+/// loopback peer refuse such requests. Hidden support API for Rullst Studio
+/// and Nexus, not a stable extension point.
+// Used by `rullst-studio` and `rullst-nexus`.
+#[doc(hidden)]
+pub fn is_proxied_request(request: &Request) -> bool {
+    matches!(
+        request.version(),
+        axum::http::Version::HTTP_09 | axum::http::Version::HTTP_10
+    ) || FORWARDING_HEADERS
+        .iter()
+        .any(|name| request.headers().contains_key(*name))
 }
 
 fn is_loopback_authority(value: &str) -> bool {
