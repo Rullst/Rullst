@@ -30,6 +30,16 @@ This inventory covers the `13.0.0-alpha.6` development source. Revisit it as the
 [delivery priorities](v13-delivery-plan.md) land. It does not promise that every
 existing application, provider account or deployment works without review.
 
+Install the CLI of the version you upgrade to before running
+`cargo rullst upgrade`, and check what `rullst --version` prints: a CLI
+already on `PATH` may be an earlier prerelease, which targets its own version
+by default and does not know the rules of later releases:
+
+```bash
+cargo install cargo-rullst --version =<version> --locked --force
+rullst --version
+```
+
 To find the rows that affect an application, run `cargo rullst upgrade --dry-run`
 with the v13 CLI: its `rullst-upgrade-rules-v4` catalog reports `MUST-CHANGE`
 and `REVIEW` findings at `file:line`, each naming the first-column title of its
@@ -49,6 +59,25 @@ first, one on 13.0.0-alpha.3 the
 before that, and one on 13.0.0-alpha.2 the
 [alpha.2 to alpha.3 checklist](#upgrading-an-alpha2-application-to-alpha3)
 before those.
+
+Two things outside the Rust code change with every upgrade:
+
+- **Pinned CLIs.** Workflows and scripts that install a pinned CLI
+  (`cargo install cargo-rullst --version =…`, often through a
+  `RULLST_CLI_VERSION` variable) need the new version, whatever the workflow
+  file is called: `grep -rn 'RULLST_CLI_VERSION\|cargo-rullst' .github/workflows`
+  lists them. `cargo rullst upgrade` does not edit them.
+- **Lockfiles.** `cargo update -p rullst --precise <version>` (or the
+  upgrade itself) can rewrite a large part of `Cargo.lock`: the new
+  prerelease's requirements re-resolve shared dependencies, so dozens of
+  packages may be added, removed or moved to another major (13.0.0-alpha.6
+  brought `jsonwebtoken` 12 and `jiff`). That is expected; review it like any
+  dependency update. A `Cargo.lock` the application ships as content, such
+  as a starter kit or a course project, is updated with Cargo too: change
+  the kit's `Cargo.toml` requirement, then run
+  `cargo update --manifest-path <kit>/Cargo.toml -p rullst --precise <version>`.
+  Never replace the version strings in the lockfile's text: its `checksum`
+  lines would no longer match the registry, and Cargo refuses the file.
 
 ## Changes from the published 12.1.0 source
 
@@ -434,9 +463,17 @@ for jiff's types. The ORM therefore owns four column types in
 | `NaiveTime` | `rullst::orm::Time` | `jiff::civil::Time` | `time()` |
 
 Each type converts to and from the jiff type with `From` and dereferences to
-it, so jiff's methods apply (`at.as_second()`); the result of jiff arithmetic
-converts back with `.into()`. `Display`, `Debug`, serde and `FromStr` are
-byte for byte those of the `chrono` type it replaces (a `Timestamp` displays
+it, so jiff's methods apply (`at.as_second()`). The ORM types also have
+their own arithmetic and accessors, which take ORM values and return an ORM
+value where the result is a date or a time: `checked_add`, `checked_sub`,
+`saturating_add`, `saturating_sub`, `duration_since` and `duration_until` on
+`Timestamp`, `DateTime` and `Date`; `tomorrow` and `yesterday` on `DateTime`
+and `Date`; `days_since` and `days_until` on `Date`; and `date()` and `time()`
+on `DateTime`. Do not convert to jiff and back for these: an `.into()` on
+their result turns an ORM value into itself, which clippy reports as
+`useless_conversion`. Convert with `.into()` only what jiff's own methods
+return. `Display`, `Debug`, serde and `FromStr` are byte for byte those of
+the `chrono` type it replaces (a `Timestamp` displays
 as `2026-10-15 09:30:00.500 UTC` and serializes as
 `"2026-10-15T09:30:00.500Z"`), and parsing accepts every form `chrono`
 accepted first, then jiff's own forms (`FromStr::Err` is `jiff::Error`). The
@@ -533,8 +570,8 @@ so write `*at` where an expression needs the jiff value itself.
 | `at.naive_utc()` | `jiff::tz::TimeZone::UTC.to_datetime(at)` |
 
 ```rust
-use rullst::orm::jiff::{civil, SignedDuration};
-use rullst::orm::{Date, Timestamp};
+use rullst::orm::jiff::{civil, SignedDuration, ToSpan};
+use rullst::orm::{Date, DateTime, Timestamp};
 
 // A `timestamp_tz()` field and an instant five minutes later.
 let created_at = Timestamp::now();
@@ -551,9 +588,32 @@ let due: Date = civil::Date::new(2026, 10, 22)?.into();
 assert_eq!(due.to_string(), "2026-10-22");
 let invoice = rullst::capital::Invoice::new("INV-1", "ana@example.com", created_at, "BRL");
 let reminder = rullst::mail::Message::new().send_at(expires_at);
+
+// Arithmetic on an ORM value returns an ORM value: no `.into()` round trip.
+let class_at: DateTime = "2026-10-15T18:30:00".parse()?;
+let reminder_at: DateTime = class_at.checked_sub(2.hours())?;
+let next_week: Date = class_at.date().saturating_add(7.days());
+assert_eq!(next_week.days_since(class_at.date()), 7);
+assert_eq!(reminder_at.duration_until(class_at), SignedDuration::from_hours(2));
+
+// Compare like with like: `*` gives the jiff value behind an ORM value.
+let doors_open: civil::DateTime = civil::date(2026, 10, 15).at(18, 0, 0, 0);
+assert!(*class_at > doors_open);
+assert!(class_at > DateTime::from(doors_open));
 # let _ = (invoice, reminder);
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
+
+**`DateTime` and `DateTime`.** `rullst::orm::DateTime` and
+`jiff::civil::DateTime` are different types with the same name, and so are the
+other three pairs. A comparison or an argument that mixes them fails with
+E0308 "mismatched types", whose note says that the two types "have similar
+names, but are actually distinct types". It usually comes from a `*` in front
+of an ORM value compared with a value an ORM method returned, as in
+`*class_at <= now.saturating_add(1.hours())` where `now` is an ORM
+`DateTime`. Compare like with like: drop the `*` there, dereference the ORM
+side when the other side is jiff's (`*class_at > doors_open`), or convert the
+jiff side (`class_at > DateTime::from(doors_open)`).
 
 **How `cargo rullst upgrade` helps.** Four `MUST-CHANGE` rules, all
 introduced in 13.0.0-alpha.6, report the code that passes or reads `chrono`
@@ -1547,7 +1607,11 @@ Work through the steps in order.
     Nexus models (the SaaS starter's `src/models/user.rs` and subscription
     model have such literals), `AuthCallback::default()` and field
     assignments in a `make:oauth apple` controller,
-    `ExchangeParams::new(code).with_code_verifier(verifier)`,
+    `ExchangeParams::new(code).with_code_verifier(verifier)` (for a nonce
+    kept in an `Option`, `with_expected_nonce` takes a `&str` and has no
+    `Option` form, so assign the public field,
+    `params.expected_nonce = challenge.nonce.as_deref();`, or branch:
+    `if let Some(nonce) = challenge.nonce.as_deref() { params = params.with_expected_nonce(nonce); }`),
     `ConnectUser::new(id, name, access_token)` and `HttpResponse::new` in
     custom Connect providers and clients, `WebhookEvent::new` in a custom
     billing provider, `QueuedJob::new` in a custom queue driver,
@@ -1615,7 +1679,7 @@ Work through the steps in order.
 
     | chrono | jiff |
     | :--- | :--- |
-    | `value.format("%d/%m/%Y")` | `value.strftime("%d/%m/%Y")`, with the same `%` specifiers |
+    | `value.format("%d/%m/%Y")` | `value.strftime("%d/%m/%Y")`: `%Y`, `%m`, `%d`, `%H`, `%M`, `%S`, `%A` and `%B` mean what they meant, but chrono's `%f` (always nine digits) is jiff's `%9f` or `%N`, because jiff's `%f` writes only the digits needed |
     | `NaiveDate::parse_from_str(text, "%Y-%m-%d")` | `jiff::civil::Date::strptime("%Y-%m-%d", text)`: the format comes first |
     | `at.timestamp()` | `at.as_second()` (`as_millisecond()` for `timestamp_millis()`) |
     | `day.month0()`, `day.month()` | `day.month() - 1`, `day.month()`: `year()` is an `i16` and `month()`, `day()`, `hour()` are `i8`, so cast where code expected `i32` or `u32` |
@@ -1623,9 +1687,10 @@ Work through the steps in order.
     | `day.iter_days()` | `day.series(1.day())` (`use jiff::ToSpan`) |
     | `day + Duration::days(n)` | `day.saturating_add(n.days())` or `day.checked_add(n.days())?` on a `Date` or `DateTime` (`use jiff::ToSpan`); a `Timestamp` has no calendar, so `at.checked_add(SignedDuration::from_hours(24 * n))?`, and its `saturating_add` returns a `Result` that is an error for a `Span` with units above hours. `checked_sub` and `saturating_sub` subtract |
     | `day.succ_opt()`, `day.pred_opt()` | `day.tomorrow()?`, `day.yesterday()?` on a `Date` or `DateTime` |
-    | `(later - earlier).num_days()` | `later.days_since(earlier)` or `earlier.days_until(later)` on a `Date` (whole calendar days, an `i64`); `later.duration_since(earlier)` and `duration_until` on every ORM type give a `SignedDuration` |
+    | `(later - earlier).num_days()` | `later.days_since(earlier)` or `earlier.days_until(later)` on an ORM `Date` (whole calendar days, an `i64`); `later.duration_since(earlier)` and `duration_until` on an ORM `Timestamp`, `DateTime` or `Date` give a `SignedDuration` (`as_secs() / 86_400` for whole days of 24 hours). jiff's `Span`, which jiff's own `since` and `until` return, has no `num_days`: for two jiff dates, `later.since(earlier)?.get_days()` |
     | `at.date()`, `at.time()` | `rullst::orm::DateTime`'s `date()` and `time()`, which return `rullst::orm::Date` and `Time` |
-    | `at.to_rfc3339()` | `rullst::orm::Timestamp::to_rfc3339()`, byte for byte chrono's output (`2026-10-15T09:30:00.500+00:00`); jiff's own `Display` writes `Z` and the shortest fraction |
+    | `at.to_rfc3339()` | `rullst::orm::Timestamp::to_rfc3339()`, byte for byte chrono's output (`2026-10-15T09:30:00.500+00:00`), also for a `jiff::Timestamp` through `rullst::orm::Timestamp::from(at).to_rfc3339()`. jiff's own `Display` (`to_string()`) writes `Z` instead of `+00:00` and the shortest fraction, which changes the text of a JSON export or a test expectation |
+    | Comparing an ORM value with a jiff value | E0308, "have similar names, but are actually distinct types": compare like with like, `*orm_value <= jiff_value` or `orm_value <= rullst::orm::DateTime::from(jiff_value)` ([moving off `chrono`](#moving-off-chrono)) |
 21. **Review messaging schedules for POSIX cron** (Messaging schedules use
     the scheduler's cron syntax row, `V13-MESSAGING-CRON-POSIX`).
     `RecurringDefinition::new` now reads a new definition's expression as
