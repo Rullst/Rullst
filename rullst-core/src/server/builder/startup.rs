@@ -3,8 +3,8 @@
 //! static or development hot-reload HTTP loop.
 
 use super::environment::{
-    development_console_enabled, listen_address, read_optional_environment_variable,
-    resolve_environment, resolve_hot_reload_token,
+    development_console_enabled, insecure_listen_warning, listen_address,
+    read_optional_environment_variable, resolve_environment, resolve_hot_reload_token,
 };
 use super::shutdown::{mark_lifecycle_ready, mark_lifecycle_stopped, shutdown_with_lifecycle};
 use super::{Server, ServerError};
@@ -231,6 +231,10 @@ impl Server {
                 "⚠️  Rullst Dev: Self-Healing Console mounted on /_rullst/*\n\
                    Set RULLST_ENV=production to disable before deploying."
             );
+        }
+        // Release builds too: an unset environment is Development.
+        if let Some(warning) = insecure_listen_warning(environment, addr.ip()) {
+            tracing::warn!(address = %addr, %environment, "{warning}");
         }
 
         Ok(addr)
