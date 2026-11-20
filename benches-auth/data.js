@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795203748659,
+  "lastUpdate": 1795205951160,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -25221,6 +25221,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4285,
             "range": "± 67",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6d49218977973ee1dbf37155b8980f11c2f12f20",
+          "message": "Merge pull request #781 from Rullst/fix/v13-rc1-upgrade-feedback\n\nfix(cli): rc.1 upgrade-rule and migration-guide fixes from the alpha.6 upgrades",
+          "timestamp": "2026-11-20T17:03:00-03:00",
+          "tree_id": "494302eed18ace05a70972bb6234a4500c9ba0fc",
+          "url": "https://github.com/Rullst/Rullst/commit/6d49218977973ee1dbf37155b8980f11c2f12f20"
+        },
+        "date": 1795205950473,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1007,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 747,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1798,
+            "range": "± 42",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4256,
+            "range": "± 74",
             "unit": "ns/iter"
           }
         ]
