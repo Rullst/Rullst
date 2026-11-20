@@ -42,9 +42,10 @@ room. The 13.x stability promise begins with stable `13.0.0`.
   values and does not offer bulk flush.
 - **Local-first security:** The supported launcher binds to loopback, verifies
   the direct peer and local `Host` authority, and requires same-origin `Origin`
-  on mutations. These checks trust the TCP peer address: a reverse proxy,
-  tunnel or other forwarder on the same machine makes every client it forwards
-  look local (see [Local access limits](#local-access-limits)).
+  on mutations. These checks trust the TCP peer address: requests with a
+  forwarding header or over HTTP/1.0 are refused, but a forwarder on the same
+  machine that sends neither makes every client it forwards look local (see
+  [Local access limits](#local-access-limits)).
 - **Self-contained interface:** Studio embeds its compiled stylesheet and its
   small request-stream client. Its database, cache, environment, trace and ER
   pages do not depend on a browser-side Tailwind compiler, Google Fonts, HTMX,
@@ -93,12 +94,15 @@ return `403`.
 #### Local access limits
 
 The loopback check trusts the TCP peer address and the `Host` header, and the
-`Origin` check stops browsers, not other clients. A reverse proxy, SSH or
-container port forward, tunnel or other forwarder on the same machine that
-connects to Studio from a loopback address with a local `Host` header, such as
-an nginx `proxy_pass http://127.0.0.1:5555` with its default headers, makes
-every client it forwards look local. Never put a forwarder in front of local
-Studio.
+`Origin` check stops browsers, not other clients. It refuses a request that
+carries a forwarding header (`Forwarded`, `X-Forwarded-*`, `X-Real-IP`, `Via`,
+`CF-Connecting-IP`, `True-Client-IP`) or arrives over HTTP/1.0, which is what
+nginx's default `proxy_pass` sends, and a request whose application runs as
+staging or production. A forwarder on the same machine that adds no forwarding
+header and speaks HTTP/1.1, such as an SSH or container port forward, a TCP
+tunnel, or nginx with `proxy_http_version 1.1` and no forwarding headers, still
+makes every client it forwards look local. Never put a forwarder in front of
+local Studio.
 
 ### Remote projects (v13, since 13.0.0-alpha.3)
 
@@ -215,8 +219,8 @@ OTLP collector, durable trace backend, key manager, or production Studio login.
 
 `rullst-studio` currently supports verified-loopback development access, with
 the [limits above](#local-access-limits): a forwarder on the same machine
-defeats the loopback check, and every user account on the machine counts as
-local. It does
+that adds no forwarding header and speaks HTTP/1.1 defeats the loopback check,
+and every user account on the machine counts as local. It does
 not provide a built-in shared-intranet or production authentication mode. Do not
 expose raw subrouters publicly; a future shared mode must fail closed behind
 application-owned authentication, administrator authorization, TLS, and network

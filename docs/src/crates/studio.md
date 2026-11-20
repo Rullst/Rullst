@@ -47,8 +47,9 @@ views from the sources explicitly supplied by the application.
 - **Local-first security:** The supported launcher binds to loopback, verifies
   the direct peer and local `Host` authority on every request, and requires a
   same-origin `Origin` header for mutations. These checks trust the TCP peer
-  address: a reverse proxy, tunnel or other forwarder on the same machine
-  makes every client it forwards look local.
+  address: requests with a forwarding header or over HTTP/1.0 are refused, but
+  a forwarder on the same machine that sends neither makes every client it
+  forwards look local.
 - **Self-contained interface:** Compiled CSS and the bounded request-stream
   client are served from the Studio router itself. The core operator pages do
   not require Google Fonts, HTMX, Mermaid, a browser-side CSS compiler, or a
@@ -74,12 +75,15 @@ on Studio's own form posts. `Origin: null` passes only together with
 port is rejected.
 
 The loopback check trusts the TCP peer address and the `Host` header, and the
-`Origin` check stops browsers, not other clients. A reverse proxy, SSH or
-container port forward, tunnel or other forwarder on the same machine that
-connects to Studio from a loopback address with a local `Host` header, such as
-an nginx `proxy_pass http://127.0.0.1:5555` with its default headers, makes
-every client it forwards look local. Never put a forwarder in front of local
-Studio.
+`Origin` check stops browsers, not other clients. It refuses a request that
+carries a forwarding header (`Forwarded`, `X-Forwarded-*`, `X-Real-IP`, `Via`,
+`CF-Connecting-IP`, `True-Client-IP`) or arrives over HTTP/1.0, which is what
+nginx's default `proxy_pass` sends, and a request whose application runs as
+staging or production. A forwarder on the same machine that adds no forwarding
+header and speaks HTTP/1.1, such as an SSH or container port forward, a TCP
+tunnel, or nginx with `proxy_http_version 1.1` and no forwarding headers, still
+makes every client it forwards look local. Never put a forwarder in front of
+local Studio.
 Database, queue, cache and feature-flag writes also require a crate-private
 marker that only this capability installs, so raw subrouters mounted elsewhere
 return `403` for them.
@@ -184,8 +188,9 @@ is bounded process memory, not OTLP or durable trace storage.
 ## 🔐 Security Audit
 
 `rullst-studio` currently supports verified-loopback development access, with
-the limits above: a forwarder on the same machine defeats the loopback check,
-and every user account on the machine counts as local. It does
+the limits above: a forwarder on the same machine that adds no forwarding
+header and speaks HTTP/1.1 defeats the loopback check, and every user account
+on the machine counts as local. It does
 not provide a built-in shared-intranet or production authentication mode. Do not
 expose raw subrouters publicly; a future shared mode must fail closed behind
 application-owned authentication, administrator authorization, TLS, and network
