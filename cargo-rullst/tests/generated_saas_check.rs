@@ -199,7 +199,9 @@ fn add_saas_generator_smoke(project_dir: &Path) {
         fs::read_to_string(&controllers_mod_path).expect("generated controllers module");
     fs::write(
         controllers_mod_path,
-        format!("{controllers_mod}pub mod docs_controller;\npub mod product_controller;\n"),
+        format!(
+            "{controllers_mod}pub mod docs_controller;\npub mod page_controller;\npub mod product_controller;\n"
+        ),
     )
     .expect("register generated controller smoke");
     fs::write(
@@ -212,6 +214,11 @@ fn add_saas_generator_smoke(project_dir: &Path) {
         cargo_rullst::generators::controller::render_controller_source("ProductController", true),
     )
     .expect("generated API controller");
+    fs::write(
+        project_dir.join("src/controllers/page_controller.rs"),
+        cargo_rullst::generators::controller::render_controller_source("PageController", false),
+    )
+    .expect("generated HTML controller");
     let bin_dir = project_dir.join("src/bin");
     fs::create_dir_all(&bin_dir).expect("generated bin directory");
     fs::write(
