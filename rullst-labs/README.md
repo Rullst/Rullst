@@ -163,3 +163,12 @@ runner are required before any production claim.
 Application policy, instructor review, verified enrollment, privacy notices,
 backup retention/erasure and accessibility remain host responsibilities. This
 crate does not certify legal compliance or award academic credit automatically.
+
+## Reporting problems
+
+If this crate does not behave as documented, open an issue at
+<https://github.com/Rullst/Rullst/issues/new/choose> with the Rullst version,
+enabled features, platform and a minimal reproduction, without secrets or
+private data. Report security vulnerabilities privately as described in
+[`SECURITY.md`](https://github.com/Rullst/Rullst/blob/main/SECURITY.md),
+never in a public issue.

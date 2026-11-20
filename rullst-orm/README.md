@@ -929,5 +929,14 @@ schema, migrations and the optional stores in more depth.
 
 Rullst ORM uses SQLx prepared-statement bindings for values accepted by its query builders. Structural identifiers are restricted to a bounded ASCII identifier grammar before interpolation. Raw SQL and application authorization remain the caller's responsibility; these controls reduce injection risk but are not an absolute safety guarantee.
 
+## Reporting problems
+
+If this crate does not behave as documented, open an issue at
+<https://github.com/Rullst/Rullst/issues/new/choose> with the Rullst version,
+enabled features, platform and a minimal reproduction, without secrets or
+private data. Report security vulnerabilities privately as described in
+[`SECURITY.md`](https://github.com/Rullst/Rullst/blob/main/SECURITY.md),
+never in a public issue.
+
 ## 📄 License
 This project is licensed under the [MIT License](https://github.com/Rullst/Rullst/blob/main/LICENSE).

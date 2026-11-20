@@ -37,7 +37,7 @@ Teaching robotics? The [Robotics and IoT in the Classroom](../iot-classroom.md) 
 | **Ed25519 OTA Manifest Gate** | 🟢 `[Implemented / Bounded]` | Verifies a domain-separated signed manifest, target, firmware length/hash, and monotonic counter. A `no_std` store trait adds durable compare-and-set coordination; its concrete persistence, flashing, bootloader handoff, and hardware validation remain external. |
 | **`no_std` Telemetry Models** | 🟢 `[Implemented / Bounded]` | Allocation-conscious telemetry, digital-twin, and sensor models are available without `std` (with `alloc` and a global allocator). CI links a firmware for `thumbv7em-none-eabihf`, and the same firmware ran on a micro:bit V2; other boards and toolchains must still be validated. |
 | **Protocol Frame Helpers** | 🟢 `[Implemented / Bounded]` | MQTT 5 PUBLISH, RFC 7252 CoAP base requests, Modbus CRC, I2C frame packing, BLE GATT data models, and power-policy abstractions; these are bounded packet/state helpers, not network, bus, or radio drivers. |
-| **Experimental Fixtures** | 🟡 `[Simulated fixtures]` | The opt-in feature exposes explicitly named deterministic MQTT formatting, HSM-byte, and PQC-byte fixtures. GPIO/I2C/BLE types are always-available state/frame helpers, not hardware simulators. |
+| **Test Fixtures** | 🟡 `[Simulated fixtures]` | The opt-in `experimental-simulators` feature exposes explicitly named deterministic MQTT formatting, HSM-byte, and PQC-byte fixtures. GPIO/I2C/BLE types are always-available state/frame helpers, not hardware simulators. |
 | **Native MQTT/CoAP Transport** | 🔵 `[Roadmap]` | Connections, TLS/DTLS, broker negotiation, acknowledgement/retransmission state, subscriptions, block-wise transfer, and interoperability. |
 | **Hardware Security Module (HSM)** | 🔵 `[Roadmap]` | Native secure-element driver interfaces (ATECC608A, TPM 2.0, STSAFE). |
 
@@ -485,13 +485,16 @@ does it with an ORM model, a migration, register/revoke commands and a Nexus
 page, and runs two Arduino Uno boards through per-board serial gateways to a
 live SSE dashboard.
 
-## 🔬 Experimental Simulators (`experimental-simulators`)
+## 🔬 Test fixtures (`experimental-simulators`)
 
-For local integration tests without physical hardware attached, enable the simulator feature:
+For local integration tests without physical hardware attached, enable the
+fixture feature. It keeps its `experimental-simulators` name for
+compatibility; the name is not a maturity label, and the fixtures have the
+crate's Extension tier:
 
 ```toml
 [dependencies]
 rullst-iot = { version = "=13.0.0-alpha.6", features = ["experimental-simulators"] }
 ```
 
-This exposes `SimulatedMqttPayloadFormatter`, `SimulatedHsmDevice`, and `SimulatedPqcFixture` for deterministic sandbox execution.
+This exposes `SimulatedMqttPayloadFormatter`, `SimulatedHsmDevice`, and `SimulatedPqcFixture` for deterministic sandbox execution. They generate deterministic, non-secret bytes and a formatted number: they do not talk to hardware, protect keys, sign, implement ML-KEM or connect to a broker, and are not for production.

@@ -507,3 +507,12 @@ terminated connections and expiry/rollback during an actual database lock wait.
 These are local executable contracts;
 they do not establish power-loss recovery on a deployment's hardware, arbitrary
 backup rollback detection or a real provider's accuracy.
+
+## Reporting problems
+
+If this crate does not behave as documented, open an issue at
+<https://github.com/Rullst/Rullst/issues/new/choose> with the Rullst version,
+enabled features, platform and a minimal reproduction, without secrets or
+private data. Report security vulnerabilities privately as described in
+[`SECURITY.md`](https://github.com/Rullst/Rullst/blob/main/SECURITY.md),
+never in a public issue.

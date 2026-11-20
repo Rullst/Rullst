@@ -145,7 +145,8 @@ Os pacotes promovidos ao nível Extension mantêm o escopo documentado
   cobertos pelos testes do próprio Rullst, que rodam offline. O status 7
   (*just-in-time*) do Bunny continua `Processing` (só o status 8 é
   `Playable`), e um vídeo `Playable` só toca no player do próprio Bunny. O
-  adaptador S3/R2 é experimental e testado apenas offline.
+  adaptador S3/R2 é testado apenas offline; nenhum teste automatizado roda
+  contra um serviço S3, R2 ou MinIO real.
 - O adaptador InfinitePay cobre links de pagamento avulsos e notificações
   confirmadas na origem, validados com um pagamento Pix real na execução de
   aceitação da 13.0.0-alpha.5. Assinaturas, o portal, cobrança por uso,

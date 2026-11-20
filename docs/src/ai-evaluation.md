@@ -144,3 +144,11 @@ fuzz-evidence policy. The assessment itself is unchanged.
 13.0.0-alpha.5, with the evidence recorded on the
 [maturity tiers](maturity.md#promotions-in-1300-alpha5) page; that is item 5
 of "What would raise my confidence most". The assessment itself is unchanged.
+
+*Amended on 19 November 2026:* Rullst no longer has an Experimental tier. The
+three parts that still carried the label (the `s3` adapter of `rullst-media`,
+the `rullst-iot` fixtures and `#[memoize]`) have the tier of their package,
+and their documentation states what they are tested against
+([maturity tiers](maturity.md#no-experimental-tier-since-19-november-2026)).
+Where this page mentions Experimental packages, read it as the state of
+13.0.0-alpha.4. The assessment itself is unchanged.

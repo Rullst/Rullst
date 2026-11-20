@@ -17,6 +17,20 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![forbid(unsafe_code)]
 #![cfg_attr(feature = "age-assurance", doc = include_str!("../README.md"))]
+// With `age-assurance` (docs.rs builds every feature) the README above is
+// appended to the crate documentation and ends with this same section.
+#![cfg_attr(
+    not(feature = "age-assurance"),
+    doc = "
+# Reporting problems
+
+If this crate does not behave as documented, open an issue at
+<https://github.com/Rullst/Rullst/issues/new/choose> with the Rullst version,
+enabled features, platform and a minimal reproduction, without secrets or
+private data. Report security vulnerabilities privately as described in
+[`SECURITY.md`](https://github.com/Rullst/Rullst/blob/main/SECURITY.md),
+never in a public issue."
+)]
 
 #[cfg(any(feature = "postgres", feature = "consent-postgres"))]
 mod postgres_connection;

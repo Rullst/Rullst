@@ -49,7 +49,7 @@ impl<C: Clock> SqliteLabs<C> {
         .await
     }
     /// Deliberate protocol testing only. A simulation store produces Simulated,
-    /// never Completed, and an experimental profile rejects this method.
+    /// never Completed, and a `LinuxExperimental` profile rejects this method.
     pub async fn complete_simulation(
         &self,
         scope: &Scope,

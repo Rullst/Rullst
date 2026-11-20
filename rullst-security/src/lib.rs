@@ -31,6 +31,15 @@
 //! **Maturity: Core**
 //! ([tiers](https://rullst.github.io/Rullst/book/maturity.html)). Crate guide:
 //! <https://rullst.github.io/Rullst/book/crates/security.html>.
+//!
+//! # Reporting problems
+//!
+//! If this crate does not behave as documented, open an issue at
+//! <https://github.com/Rullst/Rullst/issues/new/choose> with the Rullst version,
+//! enabled features, platform and a minimal reproduction, without secrets or
+//! private data. Report security vulnerabilities privately as described in
+//! [`SECURITY.md`](https://github.com/Rullst/Rullst/blob/main/SECURITY.md),
+//! never in a public issue.
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub mod error;

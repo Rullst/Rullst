@@ -408,3 +408,12 @@ JWKS rotation, and deterministic offline fixtures are implemented by `rullst-con
 Security-sensitive functions return typed errors or a false verification result. The repository's
 zero-panic CI checks production library paths; this policy is not an absolute guarantee about all
 dependencies or host failures.
+
+## Reporting problems
+
+If this crate does not behave as documented, open an issue at
+<https://github.com/Rullst/Rullst/issues/new/choose> with the Rullst version,
+enabled features, platform and a minimal reproduction, without secrets or
+private data. Report security vulnerabilities privately as described in
+[`SECURITY.md`](https://github.com/Rullst/Rullst/blob/main/SECURITY.md),
+never in a public issue.

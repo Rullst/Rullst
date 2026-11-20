@@ -13,8 +13,11 @@ the code. To find a first task, look at the issues labelled
 
 ### Reporting Bugs
 This section guides you through submitting a bug report for Rullst. Following these guidelines helps maintainers and the community understand your report, reproduce the behavior, and find related reports.
-- Use the provided **Bug Report** issue template.
-- Explain the problem and include additional details to help maintainers reproduce the problem.
+- [Open an issue](https://github.com/Rullst/Rullst/issues/new/choose) with the **Bug report** form when a crate, the CLI or the documentation does not behave as documented.
+- Give the Rullst version, the crates and features enabled, the OS and Rust version, what you expected, what happened and a minimal reproduction.
+- Leave out secrets and private data: keys, tokens, real user data, private source code and production databases.
+- Saying whether an AI assistant helped find or describe the problem is optional.
+- Never report a security vulnerability in a public issue; follow [`SECURITY.md`](SECURITY.md).
 
 ### Suggesting Enhancements
 This section guides you through submitting an enhancement suggestion for Rullst, including completely new features and minor improvements to existing functionality.

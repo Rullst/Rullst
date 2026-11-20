@@ -17,7 +17,8 @@ pub enum ExecutionProfile {
     /// Operator-selected candidate; actual per-job hardening is still mandatory.
     /// The only profile whose signed receipts `complete` accepts. This crate
     /// verifies neither the platform, the pinned tools nor any isolation; the
-    /// host-owned runner must enforce them.
+    /// host-owned runner must enforce them. The name is serialized into every
+    /// stored profile and its digest, so it stays; it is not a maturity label.
     LinuxExperimental {
         tools: ToolIdentity,
         /// Pinned Ed25519 public key; the private seed belongs only to the

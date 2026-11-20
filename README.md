@@ -290,10 +290,10 @@ Rullst's examples have two homes:
 Rullst is a family of focused crates in one versioned workspace: v13 publishes
 20 packages with the same version, and the `rullst` facade compiles only the
 features you select. Each package has a maturity tier. *Core* packages are
-needed by every application. *Extensions* are optional and supported. Since
-13.0.0-alpha.5 no package is *Experimental* (optional, may change between 13.x
-releases); a few parts of supported packages still are, such as the S3/R2
-adapter of `rullst-media`. The
+needed by every application. *Extensions* are optional and supported. Each
+package's documentation states what it is tested against and what has never
+run against a live service; the S3/R2 adapter of `rullst-media`, for example,
+is tested offline only. The
 [maturity tiers](https://rullst.github.io/Rullst/book/maturity.html) page
 defines each promise, and the
 [specification](https://rullst.github.io/Rullst/book/spec.html) records the
@@ -654,6 +654,13 @@ alongside the results.
 Try a starter or an example, report a reproducible bug, improve a tutorial or contribute a
 focused change with tests. Documentation, accessibility and integration feedback
 matter as much as new features.
+
+If a crate does not behave as documented, open an issue at
+<https://github.com/Rullst/Rullst/issues/new/choose> with the Rullst version,
+enabled features, platform and a minimal reproduction, without secrets or
+private data. Report security vulnerabilities privately as described in
+[`SECURITY.md`](https://github.com/Rullst/Rullst/blob/main/SECURITY.md),
+never in a public issue.
 
 [Contributing](https://github.com/Rullst/Rullst/blob/main/CONTRIBUTING.md)
 · [Issues](https://github.com/Rullst/Rullst/issues)

@@ -133,8 +133,8 @@ The packages promoted to the Extension tier keep their documented scope
   application, but transcoding and CDN edge cases are not covered by Rullst's
   own tests, which run offline. Bunny's just-in-time status 7 stays
   `Processing` (only status 8 is `Playable`), and a `Playable` video plays
-  only in Bunny's own player. The S3/R2 adapter is experimental and tested
-  offline only.
+  only in Bunny's own player. The S3/R2 adapter is tested offline only; no
+  automated test runs against a live S3, R2 or MinIO service.
 - The InfinitePay adapter covers one-off payment links and source-confirmed
   notifications, validated with one real Pix payment in the 13.0.0-alpha.5
   acceptance run. Subscriptions, the portal, usage, coupons and trials return

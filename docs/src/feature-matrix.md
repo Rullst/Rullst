@@ -458,7 +458,7 @@ no umbrella features; depend on them directly. None has default features.
 | `rullst-supervision` | `sqlite` | `exam` and `parental` plus the shared-local SQLite store |
 | `rullst-media` | `bunny` | Bunny Stream adapter, signatures, bounded HTTP and the browser upload module |
 | `rullst-media` | `sqlite` | Shared-local durable assets, leased operations and the application service |
-| `rullst-media` | `s3` | Experimental S3-compatible object storage (AWS S3, Cloudflare R2, MinIO): presigned upload and playback of the original, no transcoding |
+| `rullst-media` | `s3` | S3-compatible object storage (AWS S3, Cloudflare R2, MinIO): presigned upload and playback of the original, no transcoding; tested offline only, never against a live service |
 | `rullst-media` | `conformance` | The test kit `conformance::check_video_provider`, which runs the Bunny adapter's contract against your own `VideoProvider`; enable it in development dependencies only (see [provider conformance kits](provider-conformance.md)) |
 | `rullst-labs` | `sqlite` | Encrypted shared-local exercise and job storage with leases, cancellation and retention |
 | `rullst-labs` | `receipt-signing` | Receipt signing for the application-owned runner controller |
@@ -508,7 +508,8 @@ Embedded IoT model without the standard library:
 rullst-iot = { version = "=13.0.0-alpha.6", default-features = false }
 ```
 
-Experimental IoT fixtures are deliberately separate:
+The IoT test fixtures are deliberately separate (the feature keeps its
+`experimental-simulators` name for compatibility; it is not a maturity label):
 
 ```toml
 rullst-iot = {

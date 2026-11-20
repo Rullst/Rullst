@@ -4,7 +4,7 @@ v13 candidate for private course videos with Bunny Stream, first published in
 the 13.0.0-alpha.1 prerelease. The crate
 provides creation, metadata, resumable upload authorization, processing refresh,
 explicit publication, current-entitlement playback, withdrawal, deletion and
-recovery of interrupted operations. An experimental `s3` adapter stores and
+recovery of interrupted operations. An opt-in `s3` adapter stores and
 serves the original upload in a private S3, R2 or MinIO bucket instead, without
 transcoding. It is **opt-in**, with its standalone package
 now included in the v13 release inventory. Final release acceptance remains
@@ -13,12 +13,13 @@ A production application uses the Bunny adapter with a real Bunny Stream library
 (create, browser upload, status, update, deletion and private playback). Rullst's own
 automated acceptance uses local HTTP protocol fixtures and controlled browser media,
 so transcoding, CDN and player edge cases are not covered by it.
-The `s3` adapter is validated against the offline mock only.
+The `s3` adapter is tested offline only: no automated test runs against a live
+S3, R2 or MinIO service.
 
 **Maturity: Extension** ([tiers](https://rullst.github.io/Rullst/book/maturity.html)),
 since 13.0.0-alpha.5: optional, and supported for the scope documented here.
-The opt-in `s3` adapter stays experimental: it may change between 13.x
-releases and is validated against the offline mock only.
+The opt-in `s3` adapter has the same tier and the same 13.x stability promise;
+what it is tested against is described [below](#s3-compatible-object-storage).
 
 [PR #227](https://github.com/Rullst/Rullst/pull/227) passed hosted workspace,
 platform and installed-archive source admission at `b21d52e7`. The final release
@@ -32,7 +33,7 @@ campaign and provider interoperability remain separate requirements.
 | `bunny` | Bunny Stream adapter, signatures, bounded HTTP and browser upload module |
 | `sqlite` | Shared-local durable assets, leased operations and application service |
 | `bunny,sqlite` | Complete supported private-video service composition |
-| `s3` | Experimental S3-compatible object storage (AWS S3, Cloudflare R2, MinIO): presigned upload/playback of the original, no transcoding |
+| `s3` | S3-compatible object storage (AWS S3, Cloudflare R2, MinIO): presigned upload/playback of the original, no transcoding; tested offline only |
 | `s3,sqlite` | Object-storage service composition; see [the guide](https://rullst.github.io/Rullst/book/managed-video.html#s3-compatible-object-storage-s3-r2-minio) |
 
 Run `cargo run -p rullst-media --example private_course_video --all-features`
@@ -332,14 +333,16 @@ reconciliation.
 
 ## S3-compatible object storage
 
-The experimental `s3` feature stores and serves the uploaded original in a
+The opt-in `s3` feature stores and serves the uploaded original in a
 private bucket; it never transcodes. Upload grants come from
 `MediaService::upload_declared` with an `UploadDeclaration` (content type and
 exact length) and are presigned `PUT` requests; `PlaybackKind::Original` grants
 are presigned `GET` requests. Both expire within 900 seconds. `refresh` or
 `publish` confirms the object with `HEAD` before it becomes ready.
-**Status: Experimental; validated against the offline mock only; provider
-interoperability not yet validated.** Configuration, bucket CORS and limits are
+**Status: Extension, tested offline only.** Its tests run against the offline
+mock and a loopback HTTP fixture that checks request signing and payload
+digests; no automated test runs against a live AWS S3, Cloudflare R2 or MinIO
+service, so provider interoperability is not yet validated. Configuration, bucket CORS and limits are
 in the [private video guide](https://rullst.github.io/Rullst/book/managed-video.html#s3-compatible-object-storage-s3-r2-minio).
 
 ## Acceptance and limits
@@ -363,3 +366,12 @@ profile. API/signature references are Bunny's official
 [webhooks](https://bunny.net/docs/stream/webhooks) and
 [advanced CDN tokens](https://bunny.net/docs/cdn/security/token-authentication/advanced),
 reviewed September 20, 2026. Local protocol vectors are not live interoperability evidence.
+
+## Reporting problems
+
+If this crate does not behave as documented, open an issue at
+<https://github.com/Rullst/Rullst/issues/new/choose> with the Rullst version,
+enabled features, platform and a minimal reproduction, without secrets or
+private data. Report security vulnerabilities privately as described in
+[`SECURITY.md`](https://github.com/Rullst/Rullst/blob/main/SECURITY.md),
+never in a public issue.

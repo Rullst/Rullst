@@ -131,7 +131,7 @@ assets, moderation, anti-cheat, state synchronization and operational design.
 
 Ordinary secure-coding exercises may run under the standard restricted profile.
 A narrowly scoped offensive exercise may be explored only through a distinct,
-experimental profile with a dedicated target and deny-by-default egress.
+separately reviewed profile with a dedicated target and deny-by-default egress.
 
 A complete offensive CTF arena is external deployment infrastructure integrated
 with Rullst, not an in-process framework feature. It requires separate network
@@ -236,7 +236,7 @@ requirements.
 - [ ] Application-owned runners: independent isolation review of each deployed backend before any production hostile-code claim.
 - [ ] Evaluate rootless OCI or microVM profiles as separate later protocol work.
 - [ ] Add native Rust/Rullst application, general Cargo, test and lint language packs; the pure-function profile does not provide them.
-- [ ] Reconsider offensive CTF infrastructure only through its separately governed experimental deployment and review.
+- [ ] Reconsider offensive CTF infrastructure only through its own separately governed deployment and review.
 
 `rullst-labs` is in the release-order manifest and has shipped since
 `13.0.0-alpha.1` (maintainer decision, 8 October 2026). It packages contracts

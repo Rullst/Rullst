@@ -278,11 +278,13 @@ has the full results; the firmware is
 [`.github/fixtures/iot-microbit-v2`](https://github.com/Rullst/Rullst/tree/main/.github/fixtures/iot-microbit-v2),
 which CI builds for `thumbv7em-none-eabihf`.
 
-## Experimental simulators
+## Test fixtures
 
 The `experimental-simulators` feature exposes deterministic fixtures named
 `SimulatedHsmDevice`, `SimulatedPqcFixture`, and
-`SimulatedMqttPayloadFormatter`. They are useful only in tests and demos:
+`SimulatedMqttPayloadFormatter`. The feature keeps its name for compatibility;
+it is not a maturity label, and the fixtures have the crate's Extension tier.
+They are useful only in tests and demos:
 
 ```toml
 # The v13 prerelease, pinned exactly; the v12 line reached end of life.
@@ -319,3 +321,12 @@ integration has not started.
 
 See the [crate roadmap](https://github.com/Rullst/Rullst/blob/main/rullst-iot/ROADMAP.md)
 for the remaining integration work.
+
+## Reporting problems
+
+If this crate does not behave as documented, open an issue at
+<https://github.com/Rullst/Rullst/issues/new/choose> with the Rullst version,
+enabled features, platform and a minimal reproduction, without secrets or
+private data. Report security vulnerabilities privately as described in
+[`SECURITY.md`](https://github.com/Rullst/Rullst/blob/main/SECURITY.md),
+never in a public issue.

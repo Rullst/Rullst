@@ -41,7 +41,8 @@ receiver) with the fixes they found, removes what 13.0 should not carry
 adapters, the MongoDB, DuckDB and Qdrant adapters, the Academy preset, the
 ERP and Portfolio examples) and cleans up the public API before the freeze.
 On the evidence of its acceptance runs, the maintainer promoted `rullst-iot`,
-`rullst-media` (its S3/R2 adapter stays experimental), `rullst-labs`,
+`rullst-media` (its S3/R2 adapter followed on 19 November 2026, when the
+Experimental tier was dropped), `rullst-labs`,
 `rullst-privacy` and `rullst-supervision` to the Extension tier, made the
 InfinitePay adapter supported and moved `cargo rullst footprint` into the
 CLI's Core tier ([maturity tiers](maturity.md#promotions-in-1300-alpha5)).

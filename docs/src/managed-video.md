@@ -7,8 +7,8 @@ refresh, explicit publication, current-entitlement playback, withdrawal, metadat
 updates, deletion and durable reconciliation. Its standalone package is in the
 v13 release inventory, pending final release acceptance; it is not part of the framework facade. Existing starters are not
 changed. Its [maturity tier](maturity.md) has been Extension since
-13.0.0-alpha.5; the `s3` adapter [below](#s3-compatible-object-storage-s3-r2-minio)
-stays experimental.
+13.0.0-alpha.5. The `s3` adapter [below](#s3-compatible-object-storage-s3-r2-minio)
+has the same tier and is tested offline only.
 
 The [crate integration guide](../../rullst-media/README.md) describes installation
 (`rullst-media = { version = "=13.0.0-alpha.6", features = ["bunny", "sqlite"] }`),
@@ -46,8 +46,10 @@ acceptance remains separate from implementation and local test success.
 
 ## S3-compatible object storage (S3, R2, MinIO)
 
-**Status: Experimental; validated against the offline mock only; provider
-interoperability not yet validated.** The opt-in `s3` feature adds
+**Status: Extension, tested offline only.** Its tests run against the offline
+mock and a loopback HTTP fixture that checks request signing and payload
+digests. No automated test runs against a live AWS S3, Cloudflare R2 or MinIO
+service, so provider interoperability is not yet validated. The opt-in `s3` feature adds
 `rullst_media::s3::S3Storage`, a second `VideoProvider` beside Bunny Stream for
 AWS S3, Cloudflare R2 and MinIO (custom endpoint). It stores and serves the
 uploaded original. There is **no transcoding**, HLS or renditions: browsers play

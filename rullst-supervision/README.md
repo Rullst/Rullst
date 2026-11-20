@@ -66,3 +66,12 @@ The standalone package is now included in the v13 release inventory and was
 first published on crates.io as `13.0.0-alpha.1`. Final release acceptance
 remains outstanding; `13.0.0-alpha.6` is a prerelease, not a stable release. Applications
 opt in explicitly; no default framework dependency is added.
+
+## Reporting problems
+
+If this crate does not behave as documented, open an issue at
+<https://github.com/Rullst/Rullst/issues/new/choose> with the Rullst version,
+enabled features, platform and a minimal reproduction, without secrets or
+private data. Report security vulnerabilities privately as described in
+[`SECURITY.md`](https://github.com/Rullst/Rullst/blob/main/SECURITY.md),
+never in a public issue.

@@ -10,6 +10,9 @@ use serde::{Deserialize, Serialize};
 pub enum ResultEvidence {
     /// Explicit local simulation; never execution evidence or academic credit.
     Simulation,
+    /// A signed runner receipt, verified against the pinned key of the
+    /// `LinuxExperimental` profile. The name is part of the stored form; it is
+    /// not a maturity label.
     Experimental {
         receipt: ContentHash,
         observations: ContentHash,
