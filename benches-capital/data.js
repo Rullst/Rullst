@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795198541174,
+  "lastUpdate": 1795201122719,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -19370,6 +19370,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_past_due",
             "value": 19,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "84739036fb8cd27ace965e1292be7831f94e052a",
+          "message": "Merge pull request #778 from Rullst/fix/v13-rc1-no-experimental-api\n\nfix(api)!: drop experimental names from Labs and IoT public APIs",
+          "timestamp": "2026-11-20T15:39:33-03:00",
+          "tree_id": "1b0b403eed4bb294e78436075139cee54991b0a1",
+          "url": "https://github.com/Rullst/Rullst/commit/84739036fb8cd27ace965e1292be7831f94e052a"
+        },
+        "date": 1795201122057,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
             "range": "± 0",
             "unit": "ns/iter"
           },
