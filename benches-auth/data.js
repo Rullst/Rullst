@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795194943224,
+  "lastUpdate": 1795198147600,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -25077,6 +25077,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4693,
             "range": "± 93",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "935103d4883fa43aa4d0f148526172f5b73156a2",
+          "message": "Merge pull request #775 from Rullst/docs/v13-no-experimental-tier\n\ndocs: drop the Experimental tier and document how to report problems",
+          "timestamp": "2026-11-20T14:48:04-03:00",
+          "tree_id": "95fad5a65ca60eab4c89b2cd24b51012b3f3395b",
+          "url": "https://github.com/Rullst/Rullst/commit/935103d4883fa43aa4d0f148526172f5b73156a2"
+        },
+        "date": 1795198146680,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1068,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 794,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1854,
+            "range": "± 43",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4319,
+            "range": "± 122",
             "unit": "ns/iter"
           }
         ]
