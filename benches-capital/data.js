@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795206294665,
+  "lastUpdate": 1795209493139,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -19502,6 +19502,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a2a6a6653b6ea8c9c50619fc46e5809e8a14dbc3",
+          "message": "Merge pull request #782 from Rullst/docs/v13-rc1-skeptic-review-step\n\ndocs(maintaining): add the skeptic review step to prerelease publishing",
+          "timestamp": "2026-11-20T17:55:45-03:00",
+          "tree_id": "f3b9952a249b682da7097ae257a0f2526715d589",
+          "url": "https://github.com/Rullst/Rullst/commit/a2a6a6653b6ea8c9c50619fc46e5809e8a14dbc3"
+        },
+        "date": 1795209492527,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
             "range": "± 0",
             "unit": "ns/iter"
           }
