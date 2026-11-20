@@ -32,7 +32,7 @@ jobs:
           fetch-depth: 0 # Required for TruffleHog to scan git history
           
       - name: TruffleHog OSS
-        uses: trufflesecurity/trufflehog@db665f0c24c63a536220e0e4a3ec9b9dc250e6be # main @ 2026-11-15
+        uses: trufflesecurity/trufflehog@ffdee00aded8ed6e545aba48ef7956522d3b076e # main @ 2026-11-16
         with:
           path: ./
           # Pin the scanner image as well as the composite Action wrapper.
