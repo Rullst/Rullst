@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795195013229,
+  "lastUpdate": 1795198223236,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -15543,6 +15543,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 493,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "935103d4883fa43aa4d0f148526172f5b73156a2",
+          "message": "Merge pull request #775 from Rullst/docs/v13-no-experimental-tier\n\ndocs: drop the Experimental tier and document how to report problems",
+          "timestamp": "2026-11-20T14:48:04-03:00",
+          "tree_id": "95fad5a65ca60eab4c89b2cd24b51012b3f3395b",
+          "url": "https://github.com/Rullst/Rullst/commit/935103d4883fa43aa4d0f148526172f5b73156a2"
+        },
+        "date": 1795198222209,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 549,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
