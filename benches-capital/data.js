@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795209493139,
+  "lastUpdate": 1795213484360,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -19527,6 +19527,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/a2a6a6653b6ea8c9c50619fc46e5809e8a14dbc3"
         },
         "date": 1795209492527,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "607a58c9e1656850c8c215566fdfec7534c223c0",
+          "message": "Merge pull request #784 from Rullst/docs/v13-rc1-skeptic-claims\n\ndocs: align public claims with the code, tests and CI for 13.0.0-rc.1",
+          "timestamp": "2026-11-20T19:03:55-03:00",
+          "tree_id": "70a7ea5ace6746760d8bd2040614752eadba1d3c",
+          "url": "https://github.com/Rullst/Rullst/commit/607a58c9e1656850c8c215566fdfec7534c223c0"
+        },
+        "date": 1795213484057,
         "tool": "cargo",
         "benches": [
           {
