@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795191877558,
+  "lastUpdate": 1795194943224,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -25029,6 +25029,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2981,
             "range": "± 59",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e8ce2e2a97decc3a2c7b69968fdf9d05b2cc714e",
+          "message": "Merge pull request #776 from Rullst/docs/v13-iot-classroom-guide\n\ndocs(iot): add a robotics and IoT classroom guide",
+          "timestamp": "2026-11-20T14:01:38-03:00",
+          "tree_id": "34dcd79a0ce9d264991b1079f70cfbfb93f25add",
+          "url": "https://github.com/Rullst/Rullst/commit/e8ce2e2a97decc3a2c7b69968fdf9d05b2cc714e"
+        },
+        "date": 1795194942534,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 964,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 701,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1659,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4693,
+            "range": "± 93",
             "unit": "ns/iter"
           }
         ]
