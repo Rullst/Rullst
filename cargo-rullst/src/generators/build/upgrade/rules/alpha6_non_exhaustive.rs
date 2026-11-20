@@ -235,49 +235,51 @@ fn glob_import(text: &str) -> bool {
     })
 }
 
-/// The rule for a construction of one of `structs` named `name` whose crate
-/// the file names, or the review rule when the file names no such crate but
-/// imports a glob, which can bring the type in unnamed.
-fn construction(
-    structs: impl Iterator<Item = (&'static str, &'static str, Vec<&'static str>)>,
-    matches: impl Fn(&str, &[&str]) -> bool,
-    text: &str,
-) -> Option<&'static Rule> {
-    let mut unnamed = false;
-    for (struct_name, krate, own) in structs {
-        if !matches(struct_name, &own) {
-            continue;
-        }
-        if names_crate(text, krate) {
-            return Some(&NON_EXHAUSTIVE_LITERAL);
-        }
-        unnamed = true;
+/// The rule for a construction of a struct of one of `crates`: the
+/// must-change rule when the file names one of them, or the review rule when
+/// it names none but imports a glob, which can bring the type in unnamed
+/// ([`super::non_exhaustive_globs`] then looks for the name's origin).
+fn construction(crates: &[&'static str], text: &str) -> Option<&'static Rule> {
+    if crates.is_empty() {
+        return None;
     }
-    (unnamed && glob_import(text)).then_some(&NON_EXHAUSTIVE_LITERAL_GLOB)
+    if crates.iter().any(|krate| names_crate(text, krate)) {
+        return Some(&NON_EXHAUSTIVE_LITERAL);
+    }
+    glob_import(text).then_some(&NON_EXHAUSTIVE_LITERAL_GLOB)
+}
+
+/// The crates of the structs above named `name` whose fields include every
+/// one of `fields` (none without fields).
+pub(super) fn literal_crates(name: &str, fields: &[String]) -> Vec<&'static str> {
+    if fields.is_empty() {
+        return Vec::new();
+    }
+    entries(STRUCTS)
+        .filter(|(struct_name, _, own)| {
+            *struct_name == name && fields.iter().all(|field| own.contains(&field.as_str()))
+        })
+        .map(|(_, krate, _)| krate)
+        .collect()
+}
+
+/// The crates of the tuple structs above named `name`.
+pub(super) fn call_crates(name: &str) -> Vec<&'static str> {
+    entries(TUPLE_STRUCTS)
+        .filter(|(struct_name, _, _)| *struct_name == name)
+        .map(|(_, krate, _)| krate)
+        .collect()
 }
 
 /// The rule for a struct literal whose path ends in `name` and whose named
 /// fields are `fields`: a struct above whose fields include every one of
 /// them, in a file that names its crate (or, for review, imports a glob).
 pub(super) fn literal_rule(name: &str, fields: &[String], text: &str) -> Option<&'static Rule> {
-    if fields.is_empty() {
-        return None;
-    }
-    construction(
-        entries(STRUCTS),
-        |struct_name, own| {
-            struct_name == name && fields.iter().all(|field| own.contains(&field.as_str()))
-        },
-        text,
-    )
+    construction(&literal_crates(name, fields), text)
 }
 
 /// The rule for a call whose path ends in `name`: one of the tuple structs
 /// above, in a file that names its crate (or, for review, imports a glob).
 pub(super) fn call_rule(name: &str, text: &str) -> Option<&'static Rule> {
-    construction(
-        entries(TUPLE_STRUCTS),
-        |struct_name, _| struct_name == name,
-        text,
-    )
+    construction(&call_crates(name), text)
 }

@@ -27,6 +27,7 @@ mod api_cleanups;
 mod catalog;
 mod files;
 mod markup;
+mod non_exhaustive_globs;
 mod rc1_experimental;
 mod removed_adapters;
 mod reviewed;
@@ -200,6 +201,9 @@ struct Collector {
     constructors: Vec<(usize, String)>,
     /// Types this file defines with `define_provider!`.
     providers: BTreeSet<String>,
+    /// `V13-NON-EXHAUSTIVE-LITERAL-GLOB` literals by line, with the struct's
+    /// name and candidate crates, for [`non_exhaustive_globs`].
+    glob_literals: Vec<(usize, String, Vec<&'static str>)>,
 }
 
 impl Collector {
@@ -233,6 +237,12 @@ impl Collector {
     /// This file defines `name` with `define_provider!`.
     fn add_provider(&mut self, name: String) {
         self.providers.insert(name);
+    }
+
+    /// A literal or call of the struct `name`, which one of `crates` may
+    /// define, reported for review through a glob import at `line`.
+    fn add_glob_literal(&mut self, line: usize, name: String, crates: Vec<&'static str>) {
+        self.glob_literals.push((line.max(1), name, crates));
     }
 
     /// The constructor calls a `define_provider!` in another file may still
@@ -396,6 +406,7 @@ fn scan_package(
     let mut constructors: Vec<(PathBuf, usize, String)> = Vec::new();
     let mut providers: BTreeSet<String> = BTreeSet::new();
     let mut mounts_health = false;
+    let mut globs = non_exhaustive_globs::GlobResolver::new(package_root);
     let mut entries = 0usize;
     for entry in WalkDir::new(package_root)
         .follow_links(false)
@@ -442,6 +453,8 @@ fn scan_package(
                     server_start = Some((path.to_path_buf(), line, covered));
                 }
                 mounts_health |= summary.mounts_health;
+                let literals = std::mem::take(&mut collector.glob_literals);
+                globs.add(path, summary.module, literals);
             }
             Err(_) => scan.unscanned.push(path.to_path_buf()),
         }
@@ -462,6 +475,7 @@ fn scan_package(
         providers.extend(file_providers);
         collector.finish(path, &mut scan.findings);
     }
+    globs.finish(&mut scan.findings);
     scan.findings.extend(
         calls
             .into_iter()

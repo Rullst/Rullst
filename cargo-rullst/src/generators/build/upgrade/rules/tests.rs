@@ -29,6 +29,7 @@ mod files;
 mod functions;
 mod limits;
 mod markup;
+mod non_exhaustive_globs;
 mod rc1_experimental;
 mod rc1_gaps;
 mod releases;

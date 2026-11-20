@@ -40,6 +40,8 @@ pub(super) struct FileSummary {
     /// The file names `health_router`, `health_router_with_lifecycle` or
     /// one of their `_version` variants.
     pub mounts_health: bool,
+    /// Its top-level `mod`, `use` and type items.
+    pub module: super::non_exhaustive_globs::ModuleFacts,
 }
 
 /// Parses and scans one Rust file; the rules about production behaviour
@@ -69,6 +71,7 @@ pub(super) fn scan_source(
     Ok(FileSummary {
         server_start: facts.server_start,
         mounts_health: facts.mounts_health,
+        module: super::non_exhaustive_globs::ModuleFacts::of(&file),
     })
 }
 
