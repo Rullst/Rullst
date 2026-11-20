@@ -131,8 +131,10 @@ fn in_memory_sqlite_pools_keep_their_database_connection() {
     );
 }
 
+/// No pool pings every connection before handing it out (SQLx's
+/// `test_before_acquire`); PostgreSQL and MySQL pools ping idle ones instead.
 #[test]
-fn only_sqlite_pools_skip_the_ping_before_acquire() {
+fn only_postgres_and_mysql_pools_ping_idle_connections() {
     for dsn in [
         "sqlite:data/app.db",
         "sqlite://db.sqlite?mode=rwc",
@@ -140,6 +142,7 @@ fn only_sqlite_pools_skip_the_ping_before_acquire() {
     ] {
         let options = Orm::options_for(Orm::pool_options(), dsn);
         assert!(!options.get_test_before_acquire(), "{dsn}");
+        assert!(!super::liveness::pings_idle_connections(dsn), "{dsn}");
     }
     for dsn in [
         "postgres://db/app",
@@ -148,12 +151,28 @@ fn only_sqlite_pools_skip_the_ping_before_acquire() {
         "mariadb://db/app",
     ] {
         let options = Orm::options_for(Orm::pool_options(), dsn);
-        assert!(options.get_test_before_acquire(), "{dsn}");
+        assert!(!options.get_test_before_acquire(), "{dsn}");
+        assert!(super::liveness::pings_idle_connections(dsn), "{dsn}");
     }
     // The in-memory database is still retained.
     let memory = Orm::options_for(Orm::pool_options(), "sqlite::memory:");
     assert_eq!(memory.get_min_connections(), 1);
     assert_eq!(memory.get_idle_timeout(), None);
+}
+
+/// The release ping checked a connection idle for less than 500 ms; one idle
+/// for 500 ms or more is pinged again before the pool hands it out.
+#[test]
+fn connections_idle_for_half_a_second_are_pinged_before_acquire() {
+    use std::time::Duration;
+
+    for (idle_ms, pinged) in [(0, false), (499, false), (500, true), (501, true)] {
+        assert_eq!(
+            super::liveness::needs_idle_ping(Duration::from_millis(idle_ms)),
+            pinged,
+            "idle for {idle_ms} ms"
+        );
+    }
 }
 
 /// With the idle reaper active, an in-memory database would be dropped with

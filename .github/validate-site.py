@@ -441,7 +441,13 @@ def validate_static_page(path: Path, lang: str, page: str, pt_page: str | None, 
 
 
 COMPARE_PAGE = "compare/index.html"
-CHECKED_CODE = re.compile(r'<p class="compare-checked" id="checked">(.*?)</p>', re.DOTALL)
+CHECKED_CODE = re.compile(r'<p class="compare-checked" id="([a-z-]+)">(.*?)</p>', re.DOTALL)
+# Each "checked" line, in page order, and the crates.io packages whose
+# versions it must name: the topic-by-topic comparison, then the
+# "Why not Leptos or Dioxus?" section.
+CHECKED_PACKAGES = {"checked": ("loco-rs", "topcoat"), "checked-ui": ("leptos", "dioxus")}
+CHECKED_PACKAGE_VERSION = re.compile(r"([a-z0-9_-]+) [0-9][0-9A-Za-z.+-]*")
+UI_FRAMEWORKS = re.compile(r'<section id="ui-frameworks" [^>]*>(.*?)</section>', re.DOTALL)
 
 
 def validate_comparison(home: Document, home_pt: Document, assembler) -> None:
@@ -449,13 +455,29 @@ def validate_comparison(home: Document, home_pt: Document, assembler) -> None:
     compare, source = validate_static_page(COMPARE, "en", "compare/", "pt-br/comparar/", home)
     compare_pt, source_pt = validate_static_page(COMPARE_PT_BR, "pt-BR", "compare/", "pt-br/comparar/", home_pt)
     validate_translation(compare, source, compare_pt, source_pt, COMPARE_PT_BR.name)
-    checked = [CHECKED_CODE.search(text) for text in (source, source_pt)]
-    assert all(checked), "comparison pages must state what each fact was checked against"
-    versions = [re.findall(r"<code>(.*?)</code>|<time datetime=\"([0-9-]+)\">", match[1]) for match in checked]
-    assert versions[0] == versions[1], f"comparison pages checked different versions or dates: {versions}"
-    assert any(code.startswith("loco-rs ") for code, _ in versions[0]) and any(
-        code.startswith("topcoat ") for code, _ in versions[0]
-    ), "comparison must name the Loco and Topcoat versions it checked"
+    checked = [{match[1]: match[2] for match in CHECKED_CODE.finditer(text)} for text in (source, source_pt)]
+    assert all(list(lines) == list(CHECKED_PACKAGES) for lines in checked), (
+        f"comparison pages must state what each fact was checked against, in this order: {list(CHECKED_PACKAGES)}; "
+        f"found {[list(lines) for lines in checked]}"
+    )
+    for identifier, packages in CHECKED_PACKAGES.items():
+        versions = [re.findall(r"<code>(.*?)</code>|<time datetime=\"([0-9-]+)\">", lines[identifier]) for lines in checked]
+        assert versions[0] == versions[1], f"comparison pages checked different versions or dates in #{identifier}: {versions}"
+        assert any(date for _code, date in versions[0]), f"comparison #{identifier} must give the date it was checked"
+        named = [match[1] for code, _date in versions[0] if (match := CHECKED_PACKAGE_VERSION.fullmatch(code))]
+        assert all(package in named for package in packages), f"comparison #{identifier} must name the {packages} versions it checked"
+        for package in named:
+            for document, name in ((compare, COMPARE.name), (compare_pt, COMPARE_PT_BR.name)):
+                assert f"https://crates.io/crates/{package}" in document.links, f"{name}: Sources must link {package} on crates.io"
+    # "Why not Leptos or Dioxus?": its own checked line, between the topics and Performance.
+    for text, name in ((source, COMPARE.name), (source_pt, COMPARE_PT_BR.name)):
+        section = UI_FRAMEWORKS.search(text)
+        assert section and 'id="checked-ui"' in section[1], f"{name}: needs the ui-frameworks section with its checked line"
+        heading = re.search(r"<h2 [^>]*>(.*?)</h2>", section[1])
+        assert heading and "Leptos" in heading[1] and "Dioxus" in heading[1], f"{name}: ui-frameworks heading must name Leptos and Dioxus"
+        assert text.index('id="topics"') < section.start() < text.index('id="benchmarks"'), (
+            f"{name}: the ui-frameworks section goes between the topics and Performance"
+        )
     topics = [re.findall(r'<div class="compare-topic" id="([a-z-]+)">', text) for text in (source, source_pt)]
     assert len(topics[0]) >= 11 and topics[0] == topics[1], f"comparison topics differ: {topics}"
     for text, name in ((source, COMPARE.name), (source_pt, COMPARE_PT_BR.name)):
@@ -487,7 +509,10 @@ def validate_comparison(home: Document, home_pt: Document, assembler) -> None:
             rendered = (Path(temp) / "data" / page).read_text(encoding="utf-8")
             assert 'class="benchmark-pending"' not in rendered, f"{page}: benchmark rows were not rendered"
             assert all(text in rendered for text in expected), f"{page}: unexpected benchmark rendering"
-            assert "Actix" not in rendered, f"{page}: renders a framework outside the comparison"
+            # The fixture's Actix-Web row stays out of the results (the
+            # "Why not Leptos or Dioxus?" text names Actix Web on purpose).
+            results = rendered[rendered.index(assembler.BENCHMARK_START):rendered.index(assembler.BENCHMARK_END)]
+            assert "Actix" not in results, f"{page}: renders a framework outside the comparison"
             # Rullst, then the minimal row labelled as the framework without the
             # generated app's layers, then Loco and Topcoat.
             rows = re.search(r'<ul class="benchmark-rows">(.*?)</ul>', rendered, re.DOTALL)

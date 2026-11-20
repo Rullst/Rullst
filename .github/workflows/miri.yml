@@ -54,6 +54,8 @@ jobs:
           - scope: rullst-auth/passkey ceremony
             manifest: rullst-auth/Cargo.toml
             filter: auth::passkey::ceremony::tests
+            # Passkeys compile only with this feature since 13.0.0-alpha.6.
+            features: passkeys
           - scope: rullst-capital/billable contract
             manifest: rullst-capital/Cargo.toml
             filter: billable::tests
@@ -88,12 +90,26 @@ jobs:
         env:
           MIRI_MANIFEST: ${{ matrix.manifest }}
           MIRI_TEST_FILTER: ${{ matrix.filter }}
-          RUSTFLAGS: -Zrandomize-layout
+          MIRI_FEATURES: ${{ matrix.features || '' }}
           MIRIFLAGS: -Zmiri-disable-isolation
         run: |
+          # Every crate is built with a randomized layout except jsonschema,
+          # which asserts its own struct sizes at compile time. The flag is a
+          # profile setting, not RUSTFLAGS: Cargo passes RUSTFLAGS after
+          # profile flags, so it would override the package's `=no`, while a
+          # package's profile rustflags replace the profile-wide ones.
+          miri_args=(
+            --manifest-path "$MIRI_MANIFEST"
+            -Zprofile-rustflags
+            --config 'profile.dev.rustflags = ["-Zrandomize-layout"]'
+            --config 'profile.dev.package.jsonschema.rustflags = ["-Zrandomize-layout=no"]'
+          )
+          if [ -n "$MIRI_FEATURES" ]; then
+            miri_args+=(--features "$MIRI_FEATURES")
+          fi
+
           scope_list="$RUNNER_TEMP/miri-scope.txt"
-          cargo +"$MIRI_TOOLCHAIN" miri test \
-            --manifest-path "$MIRI_MANIFEST" \
+          cargo +"$MIRI_TOOLCHAIN" miri test "${miri_args[@]}" \
             --lib "$MIRI_TEST_FILTER" -- --list | tee "$scope_list"
 
           if ! grep --fixed-strings --quiet "$MIRI_TEST_FILTER" "$scope_list"; then
@@ -101,8 +117,7 @@ jobs:
             exit 1
           fi
 
-          cargo +"$MIRI_TOOLCHAIN" miri test \
-            --manifest-path "$MIRI_MANIFEST" \
+          cargo +"$MIRI_TOOLCHAIN" miri test "${miri_args[@]}" \
             --lib "$MIRI_TEST_FILTER"
 
   careful:
