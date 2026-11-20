@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795125943010,
+  "lastUpdate": 1795189521983,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -19191,6 +19191,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/58438b64caa847ef7ffdcc08653ce26cb5a8a8a0"
         },
         "date": 1795125942349,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "84bf0aa3bcf330649cfa571d723b5efb76c8f423",
+          "message": "Merge pull request #779 from Rullst/docs/v13-record-alpha6-publication\n\ndocs(release): record the 13.0.0-alpha.6 publication",
+          "timestamp": "2026-11-20T12:22:08-03:00",
+          "tree_id": "8719c89f287d6f80c8aef94ac208034c6a6caf0f",
+          "url": "https://github.com/Rullst/Rullst/commit/84bf0aa3bcf330649cfa571d723b5efb76c8f423"
+        },
+        "date": 1795189521328,
         "tool": "cargo",
         "benches": [
           {
