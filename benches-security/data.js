@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795189364642,
+  "lastUpdate": 1795192034890,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -25352,6 +25352,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "24ec542c58f8a26e4eea81c599447d7f9265343b",
+          "message": "Merge pull request #774 from Rullst/docs/v13-compare-leptos-dioxus-scope-link\n\ndocs(site): explain Leptos and Dioxus on the comparison page and link Scope and limits",
+          "timestamp": "2026-11-20T13:08:13-03:00",
+          "tree_id": "8b9d2292e3d7dd9306e8b871c7f18a02fb4ee1a7",
+          "url": "https://github.com/Rullst/Rullst/commit/24ec542c58f8a26e4eea81c599447d7f9265343b"
+        },
+        "date": 1795192033878,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 2947,
+            "range": "± 63",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 267,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 9,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 7,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 7,
             "range": "± 0",
             "unit": "ns/iter"
           }
