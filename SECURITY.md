@@ -8,7 +8,10 @@ is frozen and no further 12.x release is planned. Until 13.0.0 is stable, the
 latest published v13 prerelease is supported as described in
 [Security support for v13 prereleases](#security-support-for-v13-prereleases).
 After the 13.0 feature freeze, 13.0.0-alpha.6, 13.0.0-rc.1 takes
-fixes and documentation only, and 13.0.0 follows.
+fixes and documentation, and the changes the maintainer approved one by one
+after the freeze (the removal of the `rullst-iot` simulator fixtures and new
+names for two `rullst-labs` variants, both breaking, and fewer connection
+pings in ORM pools); 13.0.0 follows.
 
 Rullst adopts Semantic Versioning for each published crate; crates.io remains
 authoritative for whether an exact package version has been published. Source
@@ -20,7 +23,7 @@ documents the end-of-life 12.x line.
 | Version | Supported | Status |
 | :--- | :---: | :--- |
 | **12.x** | :x: | End of life since 16 October 2026; 12.3.0 is the last release. crates.io yanked the `zip` releases its Studio needs, so new 12.x projects no longer resolve dependencies. Move to v13. |
-| **Latest 13.0.0 prerelease** | :white_check_mark: | Only the most recently published prerelease (13.0.0-alpha.6 once it is published; 13.0.0-alpha.5 until then). Fixes ship in a new prerelease; see below. |
+| **Latest 13.0.0 prerelease** | :white_check_mark: | Only the most recently published prerelease (13.0.0-alpha.6, published on 20 November 2026). Fixes ship in a new prerelease; see below. |
 | **Earlier 13.0.0 prereleases** | :x: | Not patched; upgrade to the latest prerelease. |
 | **13.x (from 13.0.0)** | planned | Patch releases of the newest 13.x minor carry bug and security fixes. The maintainer intends to keep 13.x the active line for 12 months after 13.0.0 and to give it security fixes for 12 more months after 14.0.0; this is an intention, not a guarantee, and any change will be announced in advance. See the [support window](docs/src/compatibility-policy.md#supported-release-window). |
 | **12.0.0-rc.1** | :x: | Immutable evaluation prerelease of the end-of-life 12.x line; move to v13. |

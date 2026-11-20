@@ -169,6 +169,17 @@ curl http://127.0.0.1:3000/api/health
   </picture>
 </p>
 
+What a new project mounts: in every starter, `Server` applies secure headers,
+CSRF protection and the WAF, and the SaaS starter adds password sign-in
+(Argon2id) with sessions and a rate limit on the sign-in routes. Passkeys,
+OAuth2/OIDC sign-in, two-step verification and the login jail are opt-in
+([what each starter mounts](https://rullst.github.io/Rullst/book/security-layers.html#what-generated-applications-already-have)).
+Without `RULLST_ENV=production` (or `APP_ENV`, or `env` under `[app]` in
+`Rullst.toml`), Rullst runs as development: the WAF only logs what it would
+refuse, and `Strict-Transport-Security` is sent only to requests that arrive
+over HTTPS. The generated `Dockerfile` and the `compose.yaml` of
+`cargo rullst deploy` set `RULLST_ENV=production`.
+
 Every capability has a documented boundary — security middleware does not
 replace your authorization rules, and databases are not interchangeable. See the
 [capability ledger](https://rullst.github.io/Rullst/book/capability-ledger.html)
@@ -208,7 +219,7 @@ How far each built-in integration has been tested:
 
 | Status | Integrations |
 | :--- | :--- |
-| **Validated with real accounts** | Stripe (real payments); InfinitePay (a real Pix payment); Bunny Stream, Resend, SMTP mail, Google Gemini, Google sign-in and GitHub sign-in (used in production applications); PostgreSQL and SQLite (in production in the maintainer's applications, besides CI); the OpenAI-compatible AI adapter (validated with Groq, an OpenAI-compatible provider, not with OpenAI) |
+| **Used with real accounts** | Stripe (real payments); InfinitePay (a real Pix payment); Bunny Stream, Resend, SMTP mail, Google Gemini, Google sign-in and GitHub sign-in (used by the maintainer's production applications, with no automated test against a live account); PostgreSQL and SQLite (in production in the maintainer's applications, besides CI); the OpenAI-compatible AI adapter (validated with Groq, an OpenAI-compatible provider, not with OpenAI) |
 | **Tested in CI against servers in local containers** | MySQL and MariaDB; Redis (cache, queues, rate limits, ORM data structures and Redis Streams messaging); SurrealDB; Turso/libSQL (the `libsql-server` image, which is `sqld`); Meilisearch search; pgvector; S3-compatible storage (a Garage server) |
 | **Offline only: mock mode, local fixtures or a [conformance kit](https://rullst.github.io/Rullst/book/provider-conformance.html)** | AWS SES and SendPulse mail; OpenAI and Anthropic Claude, and the DeepSeek and Ollama presets of the OpenAI-compatible adapter; Microsoft, Apple, Auth0, AWS Cognito, Facebook, X (Twitter), Discord, LinkedIn and generic OpenID Connect sign-in; the S3/R2 adapter of `rullst-media` |
 
@@ -356,14 +367,23 @@ English or Spanish.
 
 ## 🛡️ Engineered like critical infrastructure
 
-Rullst is maintained with the rigor you expect from security software:
+Rullst has one maintainer, and pull requests need no second reviewer
+([governance](https://github.com/Rullst/Rullst/blob/main/GOVERNANCE.md)).
+What CI checks:
 
-- **No panics in production code**, enforced by CI across the published runtime crates.
+- **No `unwrap`, `expect`, `panic!`, `todo!` or `unimplemented!` in
+  production code** of the published crates, denied by Clippy. Indexing,
+  slicing and arithmetic overflow are not linted.
 - **No new `unsafe`** outside a reviewed OS/FFI allowlist.
-- **At least 90% line coverage, enforced**, plus 42 fuzz targets, property
-  tests, sanitizers and Kani/Miri checks on selected critical code.
+- **At least 90% line coverage**, enforced on every push to `main` (pull
+  requests to `main` do not run the coverage job), plus 42 fuzz targets,
+  property tests, sanitizers and Kani/Miri checks on selected critical code.
 - **Supply-chain hygiene**: RustSec and license policy on every change,
-  SHA-pinned Actions, and an SBOM with build-provenance attestation for every release.
+  SHA-pinned Actions, and an SBOM with build-provenance attestation for every
+  release. Advisory exceptions are listed with an expiry in a
+  [ledger](https://rullst.github.io/Rullst/book/security-advisory-exceptions.html);
+  one, `RUSTSEC-2026-0459`, covers the bundled SQLite of every SQLite feature
+  until SQLx accepts the fixed release.
 - **A fast Linux gate on every pull request**, with the complete
   Linux/macOS/Windows matrix every night and before every release.
 
@@ -385,19 +405,19 @@ of every application built with Rullst.
 
 | Continuous or change-aware gate | Development `main` status | Actual scope |
 | :--- | :---: | :--- |
-| **Rust CI** | [![Rust CI](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?branch=main&style=flat-square&label=Rust%20CI)](https://github.com/Rullst/Rullst/actions/workflows/ci.yml?query=branch%3Amain) | Format, all-target/all-feature Clippy, a Linux gate on pull requests (the complete matrix on pull requests labeled `full-matrix`), every Linux shard after merge and the complete Linux/macOS/Windows matrix nightly; Cargo-aware doctests sourced from every tutorial and the main guides, strict DB boundaries, feature boundaries, generated-code checks, the generated deployment started with Docker and rootless Podman, the first-hour documentation run as written, the generated starters driven in Chromium, Firefox and WebKit (keyboard, CSP and axe-core checks), and MSRV 1.96.0. |
+| **Rust CI** | [![Rust CI](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?branch=main&style=flat-square&label=Rust%20CI)](https://github.com/Rullst/Rullst/actions/workflows/ci.yml?query=branch%3Amain) | Format, all-target/all-feature Clippy, a Linux gate on pull requests (the complete matrix on pull requests labeled `full-matrix`), every Linux shard after merge and the complete Linux/macOS/Windows matrix nightly; Cargo-aware doctests sourced from every tutorial and the main guides (blocks marked `ignore`, about a quarter of the tutorials' Rust blocks, are not compiled), strict DB boundaries, feature boundaries, generated-code checks, the generated deployment started with Docker and rootless Podman, the first-hour documentation run as written, the generated starters driven in Chromium, Firefox and WebKit (keyboard, CSP and axe-core checks), and MSRV 1.96.0. |
 | **Declared MSRV** | [![MSRV 1.96.0](https://img.shields.io/badge/MSRV-1.96.0-f74c00?style=flat-square&logo=rust)](https://rullst.github.io/Rullst/book/compatibility-policy.html) | Every publishable manifest declares Rust 1.96.0, the oldest supported compiler; the latest stable Rust is recommended. A required CI job compiles the workspace with every feature on 1.96.0, and a nightly workflow runs the central crates' tests on it. |
 | **GitHub Actions lint** | [![Workflow Lint](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/workflow-lint.yml?branch=main&style=flat-square&label=Workflow%20Lint)](https://github.com/Rullst/Rullst/actions/workflows/workflow-lint.yml?query=branch%3Amain) | Validates workflow syntax, expressions, embedded shell, and full-SHA third-party Action pins. |
 | **Documentation** | [![Documentation](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/documentation.yml?branch=main&style=flat-square&label=Docs)](https://github.com/Rullst/Rullst/actions/workflows/documentation.yml?query=branch%3Amain) | Builds the mdBook and rejects broken local links and anchors; scheduled/manual runs also preserve an informational external-link report. |
 | **End-to-end smoke** | [![E2E](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/e2e-smoke.yml?branch=main&style=flat-square&label=E2E)](https://github.com/Rullst/Rullst/actions/workflows/e2e-smoke.yml?query=branch%3Amain) | Boots the release blog example and verifies HTTP, security headers, form flow, and SQLite persistence. |
-| **Codecov — whole repository** | [![Whole-repository coverage](https://codecov.io/github/Rullst/Rullst/branch/main/graph/badge.svg)](https://codecov.io/gh/Rullst/Rullst) | The badge reports the current branch aggregate. The enforced repository floor is **≥90%** with zero tolerance. For reference, the [LLVM run](https://github.com/Rullst/Rullst/actions/runs/34895523751) on the v12.0.0 release commit `eb11f892` measured **90.3220%** (79,813/88,365 lines) before Codecov upload. |
-| **Codecov — framework libraries** | [![Framework library coverage](https://codecov.io/github/Rullst/Rullst/branch/main/graph/badge.svg?component=framework_libraries)](https://codecov.io/gh/Rullst/Rullst) | Runtime libraries are enforced separately at **≥90%**. CLI and proc-macro components stay separately visible; [Coverage CI](https://github.com/Rullst/Rullst/actions/workflows/coverage.yml?query=branch%3Amain) uploads their real LCOV evidence with OIDC. |
+| **Codecov — whole repository** | [![Whole-repository coverage](https://codecov.io/github/Rullst/Rullst/branch/main/graph/badge.svg)](https://codecov.io/gh/Rullst/Rullst) | The badge reports the current branch aggregate. The repository floor is **≥90%** with zero tolerance, enforced on every push to `main`; pull requests to `main` do not run the coverage job. The [LLVM run](https://github.com/Rullst/Rullst/actions/runs/44801697110) on `b4a72832` (20 November 2026) measured **94.58%** (158,202/167,264 lines) before Codecov upload. |
+| **Codecov — framework libraries** | [![Framework library coverage](https://codecov.io/github/Rullst/Rullst/branch/main/graph/badge.svg?component=framework_libraries)](https://codecov.io/gh/Rullst/Rullst) | Runtime libraries are enforced separately at **≥90%**; the same run measured **94.95%** (110,747/116,638 lines). The workflow's own check counts every runtime library, while the Codecov component leaves out `rullst-privacy`, `rullst-supervision`, `rullst-media` and `rullst-labs`. CLI and proc-macro components stay separately visible; [Coverage CI](https://github.com/Rullst/Rullst/actions/workflows/coverage.yml?query=branch%3Amain) uploads their real LCOV evidence with OIDC. |
 | **Supply chain** | [![Supply Chain](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/supply-chain.yml?branch=main&style=flat-square&label=Supply%20Chain)](https://github.com/Rullst/Rullst/actions/workflows/supply-chain.yml?query=branch%3Amain) | Cargo Deny's advisory, license, ban and source policy; a RustSec Cargo Audit of the production and fuzz locks; and a check that every advisory exception has an owner and an expiry in the ledger. Runs on every push and pull request and twice a day; a failed scheduled run opens an issue. |
 | **CodeQL SAST** | [![CodeQL](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/codeql.yml?branch=main&style=flat-square&label=CodeQL)](https://github.com/Rullst/Rullst/actions/workflows/codeql.yml?query=branch%3Amain) | Rust semantic analysis after an all-target/all-feature build, plus JavaScript/TypeScript analysis. |
 | **OpenSSF Scorecard** | [![OpenSSF Scorecard](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.scorecard.dev%2Fprojects%2Fgithub.com%2FRullst%2FRullst&query=%24.score&label=OpenSSF%20Scorecard&style=flat-square)](https://scorecard.dev/viewer/?uri=github.com/Rullst/Rullst) | The badge renders the score from the official public Scorecard JSON report; the pinned [Scorecard workflow](https://github.com/Rullst/Rullst/actions/workflows/scorecards.yml) publishes OIDC-authenticated results on each `main` push and weekly. A score is evidence, not a security certification. [Evidence and improvements](https://rullst.github.io/Rullst/book/openssf-scorecard.html). |
 | **Cargo Machete** | [![Machete](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/machete.yml?branch=main&style=flat-square&label=Machete)](https://github.com/Rullst/Rullst/actions/workflows/machete.yml?query=branch%3Amain) | Unused direct dependency detection. |
 | **SemVer checks** | [![SemVer](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/semver.yml?branch=main&style=flat-square&label=SemVer)](https://github.com/Rullst/Rullst/actions/workflows/semver.yml?query=branch%3Amain) | Supported library APIs are compared with the latest stable crates.io release of their own major line; 13.x is compared from 13.0.0 on, and until then each package reports that its prereleases have no baseline. Never-published packages and unsupported proc-macro/binary surfaces are reported explicitly. Each library's documented API must also match its committed listing in `.github/public-api/`. |
-| **Zero-panics policy** | [![Zero Panics](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/zero-panics.yml?branch=main&style=flat-square&label=Zero%20Panics)](https://github.com/Rullst/Rullst/actions/workflows/zero-panics.yml?query=branch%3Amain) | Denies panic-family operations in published production targets and generated runtime templates. |
+| **Zero-panics policy** | [![Zero Panics](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/zero-panics.yml?branch=main&style=flat-square&label=Zero%20Panics)](https://github.com/Rullst/Rullst/actions/workflows/zero-panics.yml?query=branch%3Amain) | Denies `unwrap`, `expect`, `panic!`, `todo!` and `unimplemented!` in published production targets and generated runtime templates; indexing, slicing and arithmetic overflow are not linted. |
 | **Unsafe boundary** | [![Unsafe Policy](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/unsafe-policy.yml?branch=main&style=flat-square&label=Unsafe%20Policy)](https://github.com/Rullst/Rullst/actions/workflows/unsafe-policy.yml?query=branch%3Amain) | Denies new production unsafe code outside the reviewed OS/FFI allowlist. |
 | **Secret scanning** | [![TruffleHog](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/trufflehog.yml?branch=main&style=flat-square&label=Secrets)](https://github.com/Rullst/Rullst/actions/workflows/trufflehog.yml?query=branch%3Amain) | Verified-secret scan across the configured Git history range. |
 | **Spellcheck** | [![Spellcheck](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/spellcheck.yml?branch=main&style=flat-square&label=Spellcheck)](https://github.com/Rullst/Rullst/actions/workflows/spellcheck.yml?query=branch%3Amain) | Repository-wide typo detection. |
@@ -407,7 +427,7 @@ of every application built with Rullst.
 | **IoT integration** | [![IoT](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/iot-integration.yml?branch=main&style=flat-square&label=IoT)](https://github.com/Rullst/Rullst/actions/workflows/iot-integration.yml?query=branch%3Amain) | Host tests, signed OTA invariants, and a Cortex-M build. |
 | **IoT and Vault crypto containment** | [![Crypto Containment](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/crypto-containment.yml?branch=main&style=flat-square&label=Crypto%20Containment)](https://github.com/Rullst/Rullst/actions/workflows/crypto-containment.yml?query=branch%3Amain) | Path-aware signed OTA, Vault, advisory, and no-unsafe checks; no PQC/HSM certification claim. |
 | **PR security evidence** | [![PR-only evidence](https://img.shields.io/badge/trigger-PR--only-2563eb?style=flat-square)](https://github.com/Rullst/Rullst/actions/workflows/pr-security-evidence.yml?query=event%3Apull_request) | Pull-request-only bounded IDOR/RBAC heuristics and CycloneDX SBOM artifact. It intentionally has no continuous `main` status. |
-| **PR mutation diff** | [![PR-only evidence](https://img.shields.io/badge/trigger-PR--only-2563eb?style=flat-square)](https://github.com/Rullst/Rullst/actions/workflows/mutants-pr.yml?query=event%3Apull_request) | Pull-request-only cargo-mutants run over the changed Rust lines; a missed mutant fails it. It intentionally has no continuous `main` status. |
+| **PR mutation diff** | [![PR-only evidence](https://img.shields.io/badge/trigger-PR--only-2563eb?style=flat-square)](https://github.com/Rullst/Rullst/actions/workflows/mutants-pr.yml?query=event%3Apull_request) | Pull-request-only cargo-mutants run over the changed Rust lines; a missed mutant fails it. It is not a required status check, and it does not mutate the PostgreSQL, MySQL and Redis Streams code that only the wrapper scripts with disposable servers test (`.github/mutants-pr-exclude.txt`), nor `cargo-rullst` files outside `.github/mutants-pr-cli.txt` (83 of about 330). It intentionally has no continuous `main` status. |
 
 Deep or irreversible workflows are intentionally not presented as continuously
 green main gates:
@@ -415,15 +435,15 @@ green main gates:
 | Deep evidence | Trigger and enforcement |
 | :--- | :--- |
 | [Benchmark regression](https://github.com/Rullst/Rullst/actions/workflows/bench.yml) | Weekly, `main` push, or manual; eight published groups backed by nine Criterion benchmark binaries emit non-blocking alerts at a 20% regression, and the generated application's production stack must keep its throughput ratio to the same routes without layers. |
-| [Property testing](https://github.com/Rullst/Rullst/actions/workflows/proptest.yml) | Weekly/manual release-mode invariant testing with 10,000 configured cases. |
+| [Property testing](https://github.com/Rullst/Rullst/actions/workflows/proptest.yml) | Weekly/manual release-mode invariant testing with `PROPTEST_CASES=10000`; properties that set their own count (some ORM ones run 512 or 2,048 cases) keep it. |
 | [TSan and ASan](https://github.com/Rullst/Rullst/actions/workflows/sanitizers.yml) | Daily/manual package matrices on a pinned verifier-only nightly. |
 | [MSRV tests](https://github.com/Rullst/Rullst/actions/workflows/msrv-tests.yml) | Daily/manual informational run of the Core, ORM (SQLite), Security, Auth, macro and facade tests on Rust 1.96.0. |
 | [Fuzzing](https://github.com/Rullst/Rullst/actions/workflows/fuzzing.yml) | Forty-two manual libFuzzer jobs, one per declared target, required as release evidence. |
-| [OWASP ZAP](https://github.com/Rullst/Rullst/actions/workflows/dast-zap.yml) | Manual baseline over four release surfaces: the generated REST API, the generated SaaS starter (public pages, then signed-in pages with a disposable account) and the LMS example are blocking with no ignored alerts; the deliberately CDN-backed blog showcase remains an explicitly informational boundary. |
+| [OWASP ZAP](https://github.com/Rullst/Rullst/actions/workflows/dast-zap.yml) | Manual baseline over four release surfaces: the generated REST API, the generated SaaS starter (public pages, then signed-in pages with a disposable account) and the LMS example are blocking: no alert is ignored, seven explained rules are reported as INFO (`.zap/*.tsv`), and the signed-in scan leaves out the sign-out and billing commands; the deliberately CDN-backed blog showcase remains an explicitly informational boundary. |
 | [Kani](https://github.com/Rullst/Rullst/actions/workflows/kani.yml), [Miri](https://github.com/Rullst/Rullst/actions/workflows/miri.yml) | Weekly on `main` and dispatched for release admission: the selected Kani harnesses and Miri scopes are strict. Only the dispatched run on the exact candidate commit counts as release evidence. The Miri run also has informational `cargo careful test` jobs. |
 | [Mutation testing](https://github.com/Rullst/Rullst/actions/workflows/mutants.yml), [cargo-udeps](https://github.com/Rullst/Rullst/actions/workflows/udeps.yml) | Manual mutation campaigns and weekly unused-dependency scans; their findings remain explicitly informational. |
 | [Public dependency health](https://github.com/Rullst/Rullst/actions/workflows/dependency-health.yml) | Monthly/manual informational report on the crates the public API exposes: stale releases, newer incompatible lines, RustSec advisories (unmaintained ones included) and archived repositories; a flagged crate opens or updates an issue. |
-| [v13 Verus pilot](https://github.com/Rullst/Rullst/blob/main/.github/workflows/verus.yml) | Optional production-linked age-policy proof with pinned tooling and three negative controls. Hosted registration/acceptance remains pending; no framework-wide correctness claim. |
+| [v13 Verus pilot](https://github.com/Rullst/Rullst/blob/main/.github/workflows/verus.yml) | Optional production-linked age-policy proof with pinned tooling and three negative controls. It has never run on GitHub Actions; no framework-wide correctness claim. |
 | [GitHub Pages](https://github.com/Rullst/Rullst/actions/workflows/pages.yml) | Deploys development documentation and the benchmark dashboards from `main` under `/Rullst/`; the [rullst.win](https://rullst.win/) landing page is built from the same `docs/` sources by `Rullst/Rullst.github.io`. It is not a code-quality gate. |
 | [Release and provenance](https://github.com/Rullst/Rullst/actions/workflows/release.yml) | Exact version tags only: exact-SHA admission of the full CI matrix, package-all, evidence bundle, checksums, GitHub build-provenance attestation, changelog-derived release notes, and ordered crates.io publication. This does **not** claim a project-wide SLSA level or independent certification. |
 
@@ -466,7 +486,12 @@ production data. [Assisted upgrade tutorial](https://rullst.github.io/Rullst/boo
 ## 🚀 Versions: v13 is a prerelease
 
 `13.0.0-alpha.6` is the latest v13 prerelease and the 13.0 feature freeze;
-`13.0.0-rc.1` (fixes and documentation only) and `13.0.0` follow. Cargo
+`13.0.0-rc.1` and `13.0.0` follow. rc.1 takes fixes and documentation, and
+the changes the maintainer approved one by one after the freeze: the removal
+of `rullst-iot`'s simulator fixtures and new names for two `rullst-labs`
+variants (both breaking, [#778](https://github.com/Rullst/Rullst/pull/778)),
+and fewer connection pings in ORM pools
+([#780](https://github.com/Rullst/Rullst/pull/780)). Cargo
 never selects a prerelease on its own, so `cargo install cargo-rullst` and
 `cargo add rullst` without a version still pick the end-of-life 12.x. Until
 13.0.0 is released, name the exact version:
@@ -514,9 +539,12 @@ list every change.
   `cargo rullst completions <shell>`, and `cargo rullst add <capability>` to
   enable mail, auth, AI, Nexus or Studio in an existing project.
 - **One deployment path:** `cargo rullst deploy` writes a Dockerfile,
-  `compose.yaml` and `Caddyfile` for any Linux VM with Docker or Podman, which
-  CI builds and starts with both engines, with guides for Hetzner Cloud,
-  DigitalOcean, Oracle Cloud and Google Cloud
+  `compose.yaml` and `Caddyfile` for any Linux VM with Docker or Podman. CI
+  builds and starts them with both engines for the Blank and SaaS starters on
+  SQLite, on an x86_64 Ubuntu runner; Arm machines and PostgreSQL/MySQL
+  deployments are not tested. The guides for Hetzner Cloud, DigitalOcean,
+  Oracle Cloud and Google Cloud were written from the providers'
+  documentation, not followed end to end on real accounts
   ([guide](https://rullst.github.io/Rullst/book/vm-deployment.html)).
 - **Security evidence report:** `cargo rullst audit --report` writes a
   Markdown, HTML or JSON report mapped to OWASP ASVS 5.0 Level 1, with a
@@ -541,7 +569,8 @@ list every change.
   exposes and the intended 13.x support window
   ([compatibility policy](https://rullst.github.io/Rullst/book/compatibility-policy.html)).
 - **One TLS provider:** aws-lc-rs is the rustls crypto provider for every TLS
-  connection Rullst makes, with post-quantum hybrid key exchange; ring remains
+  connection Rullst makes, with the post-quantum hybrid `X25519MLKEM768` key
+  exchange among its default groups (no post-quantum signatures); ring remains
   only for primitives such as HMAC and digests
   ([cryptography providers](https://rullst.github.io/Rullst/book/security-architecture.html#cryptography-providers)).
 - **Progressive web apps:** `cargo rullst make:pwa` (manifest, service worker,
@@ -578,12 +607,13 @@ list every change.
   so Nexus builds without `rullst-ai` unless you choose it.
 - **Assisted upgrades:** `cargo rullst upgrade` reports v12 → v13 source
   findings at `file:line` and applies per-release rules.
-- **Opt-in candidates:** email login, scoped API tokens, active-session
+- **Opt-in features:** email login, scoped API tokens, active-session
   management with remote logout, private S3/R2 storage with resumable uploads,
   durable outgoing webhooks and recurring publications, Redis Streams
-  messaging and distributed tracing are in the 13.0
-  prereleases behind their own features; each guide states what has been
-  validated and what is still open.
+  messaging and distributed tracing are behind their own features. They have
+  their package's tier and its 13.x stability promise; each guide states what
+  is tested and what is not (S3/R2 storage and Redis Streams, for example, run
+  in CI against local containers, not against a hosted service).
 
 <details>
 <summary><strong>What v13 removed from 12.x</strong></summary>

@@ -25,12 +25,12 @@
     <p class="eyebrow">Três frameworks web em Rust. Fatos verificados.</p>
     <h1>Rullst, Loco e Topcoat.</h1>
     <p>Os três constroem aplicações web em Rust sobre o Tokio, e cada um é a melhor escolha para alguns projetos. Esta página compara os três tema a tema, com base no que a documentação de cada projeto diz. Quando um projeto não documenta algo, a página diz isso em vez de adivinhar.</p>
-    <p class="compare-checked" id="checked">Verificado em <time datetime="2026-11-14">14 de novembro de 2026</time> com Rullst <code>13.0.0-alpha.5</code>, Loco <code>loco-rs 1.3.1</code> e Topcoat <code>topcoat 0.12.1</code>. Quem escreveu esta página são os mantenedores do Rullst. Se algum fato estiver errado ou desatualizado, <a href="https://github.com/Rullst/Rullst/issues">abra uma issue</a>.</p>
+    <p class="compare-checked" id="checked">Verificado em <time datetime="2026-11-14">14 de novembro de 2026</time> com Rullst <code>13.0.0-alpha.5</code>, Loco <code>loco-rs 1.3.1</code> e Topcoat <code>topcoat 0.12.1</code>. Quem escreveu esta página é o mantenedor do Rullst. Se algum fato estiver errado ou desatualizado, <a href="https://github.com/Rullst/Rullst/issues">abra uma issue</a>.</p>
 
     <section id="fit" aria-labelledby="fit-heading">
       <h2 id="fit-heading">Quando cada um faz sentido</h2>
       <ul class="compare-fit">
-        <li><h3>Rullst</h3><p>Faz sentido quando você quer uma suíte coordenada sobre Axum e SQLx que já traga sessões e passkeys, proteção contra CSRF, cobrança (Stripe e InfinitePay), e-mail transacional, um admin de modelos e uma sala de controle local para desenvolvimento, com HTML renderizado no servidor.</p><p>Leve em conta: a 13.0 ainda é um pré-lançamento, e o projeto foi publicado pela primeira vez em maio de 2026 por uma equipe pequena.</p></li>
+        <li><h3>Rullst</h3><p>Faz sentido quando você quer uma suíte coordenada sobre Axum e SQLx que já traga sessões e passkeys, proteção contra CSRF, cobrança (Stripe e InfinitePay), e-mail transacional, um admin de modelos e uma sala de controle local para desenvolvimento, com HTML renderizado no servidor.</p><p>Leve em conta: a 13.0 ainda é um pré-lançamento, e o projeto foi publicado pela primeira vez em maio de 2026 pelo seu único mantenedor.</p></li>
         <li><h3>Loco</h3><p>Faz sentido quando você quer uma versão 1.x estável com convenções no estilo Rails, Sea-ORM, autenticação por JWT ou cookie, filas de jobs em Redis, PostgreSQL ou SQLite e geradores de modelos, scaffolds e workers. É a maior comunidade dos três.</p><p>Leve em conta: pagamentos e uma interface de admin não fazem parte da documentação dele.</p></li>
         <li><h3>Topcoat</h3><p>Faz sentido quando você quer componentes renderizados no servidor cujas expressões <code>$(...)</code> também rodam no navegador como JavaScript gerado, sem bundle Wasm e sem etapa de build no cliente.</p><p>Leve em conta: o README o descreve como inicial e experimental; autenticação, jobs em segundo plano e documentação de deploy estão no roadmap dele.</p></li>
       </ul>
@@ -89,7 +89,7 @@
       <div class="compare-topic" id="topic-admin">
         <h3>Admin e observabilidade</h3>
         <dl>
-          <div><dt>Rullst</dt><dd>Nexus, um admin gerado para os modelos registrados; Studio, uma sala de controle local para desenvolvimento; exportação de traces distribuídos via OpenTelemetry.</dd></div>
+          <div><dt>Rullst</dt><dd>Nexus, um admin gerado para os modelos registrados; Studio, uma sala de controle local para desenvolvimento; exportação de traces distribuídos via OpenTelemetry, testada na CI com um OpenTelemetry Collector em um contêiner local.</dd></div>
           <div><dt>Loco</dt><dd>Nenhuma interface de admin documentada. Logs com <code>tracing</code>, endpoints <code>/_ping</code>, <code>/_health</code> e <code>/_readiness</code> e <code>cargo loco doctor</code>.</dd></div>
           <div><dt>Topcoat</dt><dd>Sem framework de admin (existe uma aplicação de demonstração de admin). Logs e endpoints de saúde não estão documentados; a geração de OpenAPI chegou na 0.12.1.</dd></div>
         </dl>
@@ -105,7 +105,7 @@
       <div class="compare-topic" id="topic-deployment">
         <h3>Orientação de deploy</h3>
         <dl>
-          <div><dt>Rullst</dt><dd>Guias para DigitalOcean, Hetzner, Oracle Cloud e Google Cloud. Os deploys gerados para VM são testados na CI com Docker e Podman.</dd></div>
+          <div><dt>Rullst</dt><dd>Guias para DigitalOcean, Hetzner, Oracle Cloud e Google Cloud. A CI testa o deploy gerado para VM dos starters Blank e SaaS, com SQLite, no Docker e no Podman em um runner x86_64; máquinas Arm não são testadas, e os guias dos provedores foram escritos a partir da documentação deles, sem serem seguidos de ponta a ponta em contas reais.</dd></div>
           <div><dt>Loco</dt><dd>Um binário de release, mais configurações geradas de Docker, nginx ou AWS Lambda, e <code>loco doctor</code> antes de ir para produção.</dd></div>
           <div><dt>Topcoat</dt><dd>A documentação de deploy está no roadmap. Há um exemplo para Cloudflare Workers e hospedagem própria via <code>serve()</code> ou <code>Router::handle</code>.</dd></div>
         </dl>
@@ -113,7 +113,7 @@
       <div class="compare-topic" id="topic-stability">
         <h3>Estabilidade, versionamento e janela de suporte</h3>
         <dl>
-          <div><dt>Rullst</dt><dd>A 13.0 está em pré-lançamento; a 13.0.0-alpha.6 congela as funcionalidades e a API pública. Depois da 13.0.0, o mantenedor pretende manter a 13.x como linha ativa por 12 meses e, depois da 14.0.0, dar a ela correções de segurança por mais 12 meses (uma intenção, não uma garantia). Versionamento semântico; MSRV Rust 1.96.</dd></div>
+          <div><dt>Rullst</dt><dd>A 13.0 está em pré-lançamento; a 13.0.0-alpha.6 congelou as funcionalidades e a API pública, e a 13.0.0-rc.1 traz correções, documentação e as mudanças que o mantenedor aprovou uma a uma depois do congelamento, duas delas incompatíveis. Depois da 13.0.0, o mantenedor pretende manter a 13.x como linha ativa por 12 meses e, depois da 14.0.0, dar a ela correções de segurança por mais 12 meses (uma intenção, não uma garantia). Versionamento semântico; MSRV Rust 1.96.</dd></div>
           <div><dt>Loco</dt><dd>A 1.0.0 (julho de 2026) foi a primeira versão estável. As notas de atualização listam mudanças incompatíveis; uma declaração de semver e uma janela de suporte não estão documentadas. MSRV Rust 1.94.</dd></div>
           <div><dt>Topcoat</dt><dd>O README diz: inicial e experimental, espere mudanças incompatíveis. O changelog diz que segue o versionamento semântico. Nenhuma janela de suporte documentada. MSRV Rust 1.99.</dd></div>
         </dl>
