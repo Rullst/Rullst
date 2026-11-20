@@ -239,6 +239,7 @@ async fn test_resend_driver() {
     let driver = ResendDriver::try_new("mock_resend").unwrap();
     let msg = Message::new()
         .to("test@rullst.dev")
+        .from("team@rullst.dev")
         .subject("offline-resend");
     let res = driver.send(&msg).await;
     assert!(res.is_ok());

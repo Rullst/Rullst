@@ -49,8 +49,12 @@ impl Drop for EnvironmentGuard {
     }
 }
 
+/// Clears every provider setting and the environment name, so the
+/// development fallbacks apply unless a test selects another environment.
 pub(super) fn clear_provider_environment(environment: &mut EnvironmentGuard) {
     for key in [
+        "RULLST_ENV",
+        "APP_ENV",
         "MAIL_HOST",
         "MAIL_PORT",
         "MAIL_USERNAME",

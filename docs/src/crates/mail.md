@@ -78,7 +78,7 @@ enabled automatically. See the
 - **🔬 Opt-in Attachment Inspection (`AttachmentInspectionGuard`):** A strict bounded local policy rejects executable magic, spoofed known types, active PDF/SVG, secrets and unsafe text links before transport. Checks follow the case-insensitive declared type, the filename extension and the content signature together, never the declared type alone. A static `AttachmentInspector` adapter boundary supports an independently operated production scanner.
 - **🚫 Durable Recipient Suppression (`sqlite`, v13 `postgres`):** `SuppressionGuard` checks manual, hard-bounce and spam-complaint state before transport. The SQLite store binds verified provider/event identities, detects conflicting replay, enforces immutable quotas transactionally and survives restart or multiple local processes; the v13 PostgreSQL store shares that state across hosts.
 - **📊 Secret-Minimized Delivery Observability:** `ObservedMailDriver` records only a bounded provider label, terminal outcome, latency, attachment count and scheduling/tenant booleans through a non-failing static observer.
-- **⏰ Durable Scheduling (`.send_at()`, `.send_in()`):** SQLite and Redis queues persist schedules for up to 366 days and never claim early; direct Resend delivery uses provider scheduling and rejects a schedule beyond its documented limit (30 days ahead) with `ConfigError` before any request. Real SMTP, SendPulse, Log and SES paths reject future direct delivery and must use a durable queue; offline fixtures may retain the timestamp for assertions.
+- **⏰ Durable Scheduling (`.send_at()`, `.send_in()`):** SQLite and Redis queues persist schedules for up to 366 days and never claim early; direct Resend delivery uses provider scheduling and rejects a schedule beyond its documented limit (30 days ahead) with `ConfigError` before any request. Real SMTP, SendPulse, Log and SES paths reject future direct delivery and must use a durable queue. The Resend and SendPulse offline mocks apply the same schedule rules as their live delivery; the SMTP and SES offline fixtures may retain the timestamp for assertions.
 - **🕵️ Outbound Phishing & Homograph URL Interceptor (`.validate_security()`):** Pre-flight detection of mixed-script Unicode IDN spoofed domains (`pаypal.com` with Cyrillic characters), checked per DNS label of the link host and user-info only, as the text reads and as a browser resolves the link (tabs and newlines removed, `\` read as `/` for HTTP(S), `https:host` and scheme-relative `\\host` forms, percent-encoded and A-label hosts), so single-script IDNs such as `παράδειγμα.gr` or `пример.com` and non-Latin query text are allowed while all-lookalike Cyrillic labels under a non-Cyrillic TLD are rejected, and dangerous URI schemes (`javascript:`, `data:text/html`).
 - **↩️ Reply-To (`.reply_to()`):** Replies go to another mailbox than the sender, for example the visitor who filled in a contact form. The pipeline validates it like `from`, and Resend, SendPulse, AWS SES (native and proxy) and SMTP send it (since 13.0.0-alpha.5).
 - **📜 RFC 8058 One-Click List-Unsubscribe:** Automatic compliant header injection (`List-Unsubscribe`, plus `List-Unsubscribe-Post: List-Unsubscribe=One-Click` only for an HTTPS unsubscribe URL, as RFC 8058 requires). The unsubscribe email must be one bare address and the URL may not contain whitespace, `<`, `>` or `"`, so neither value can add another header entry.
@@ -570,8 +570,20 @@ offline fallback. Use `driver.delivery_mode()` and
 `OfflineMailMock::deliveries()` to assert this explicitly in tests. The
 process-wide capture keeps only the newest 1,000 deliveries and at most 64 MiB
 of their subject, body and attachment bytes, and the first capture in a process
-logs a `mail.offline_mock.active` warning, because an empty production secret
-also selects this fallback.
+logs a `mail.offline_mock.active` warning. The Resend and SendPulse mocks run
+the same message checks as their live delivery (sender, schedule and, for
+SendPulse, body, inline CID, unsubscribe headers and attachment names) before
+capturing, so a test with `mock_*` credentials refuses what the provider path
+refuses.
+
+In staging and production, the `Mail` facade refuses an empty or unset
+`RESEND_API_KEY`, `SENDPULSE_API_KEY`, SES proxy token
+(`AWS_SES_TOKEN`/`AWS_SES_BEARER_TOKEN`, when no AWS keys select native SES) or
+`MAIL_HOST` with `MailError::ConfigError`, instead of capturing every message
+in the offline mock and reporting success. An explicit `mock_*` value stays
+allowed there, and development and test keep the empty-credential fallback.
+Drivers built directly with `try_new` do not read the environment and keep
+the empty-credential rule above (since 13.0.0-rc.1).
 
 Every real transport needs a sender that the provider account has verified:
 the message's `from`, or, for `Mail` facade sends, the `MAIL_FROM` /

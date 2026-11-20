@@ -136,6 +136,12 @@ the providers apply. Configuration is not a health probe.
 With no provider it retains the deterministic offline fallback. Embeddings never
 fall back to another model after a failure, because vectors from different
 models are not comparable; only providers without embeddings are skipped.
+The chain tries the next provider after any error, so in staging and
+production (`RULLST_ENV`, then `APP_ENV`, from the process environment) a
+`mock_*` provider configured beside a live one is refused with
+`AiError::ConfigError`: it would answer with fixture text whenever the live
+provider failed. A chain of mocks only, or of live providers only, is
+unaffected (since 13.0.0-rc.1).
 
 Groq uses `GROQ_API_KEY` and an explicit account-supported `GROQ_MODEL` through
 the [documented compatible endpoint](https://console.groq.com/docs/openai).

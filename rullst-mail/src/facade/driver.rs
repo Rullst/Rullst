@@ -77,18 +77,24 @@ impl DriverSpec {
         }
         let value = |name: &str| settings.value(name);
         let required = |name: &str| -> Result<String, MailError> {
-            Ok(settings.value(name)?.unwrap_or_default())
+            let credential = settings.value(name)?.unwrap_or_default();
+            require_credential(settings, &credential, name)?;
+            Ok(credential)
         };
         Ok(match driver_name.as_str() {
             "log" => Self::Log,
             "memory" => Self::Memory,
             #[cfg(feature = "mail-smtp")]
-            "smtp" => Self::Smtp {
-                host: value("MAIL_HOST")?.unwrap_or_else(|| "127.0.0.1".to_string()),
-                port: smtp_port(value("MAIL_PORT")?)?,
-                username: value("MAIL_USERNAME")?,
-                password: value("MAIL_PASSWORD")?,
-            },
+            "smtp" => {
+                let host = value("MAIL_HOST")?.unwrap_or_else(|| "127.0.0.1".to_string());
+                require_credential(settings, &host, "MAIL_HOST")?;
+                Self::Smtp {
+                    host,
+                    port: smtp_port(value("MAIL_PORT")?)?,
+                    username: value("MAIL_USERNAME")?,
+                    password: value("MAIL_PASSWORD")?,
+                }
+            }
             #[cfg(not(feature = "mail-smtp"))]
             "smtp" => Self::Smtp,
             "resend" => Self::Resend(required("RESEND_API_KEY")?),
@@ -184,6 +190,32 @@ fn removed_driver_error(driver_name: &str) -> Option<MailError> {
     )))
 }
 
+/// Refuses an empty `setting` in staging and production.
+///
+/// An empty provider credential (or SMTP host) selects the offline mock,
+/// which reports success for mail it never sends. That is a development
+/// convenience; in staging or production it means a secret was not set, so
+/// the facade fails closed. An explicit `mock_*` value is deliberate and
+/// stays allowed in every environment.
+fn require_credential(
+    settings: &MailSettings,
+    value: &str,
+    setting: &str,
+) -> Result<(), MailError> {
+    if !value.trim().is_empty() {
+        return Ok(());
+    }
+    let environment = settings.environment()?;
+    if environment.requires_secure_defaults() {
+        return Err(MailError::ConfigError(format!(
+            "{setting} is empty or unset in the {environment} environment, so mail would be \
+             captured by the offline mock instead of delivered; set it, or set a `mock_` value \
+             to keep the offline mock on purpose"
+        )));
+    }
+    Ok(())
+}
+
 /// Port 25 only when `MAIL_PORT` is absent or empty; a malformed or
 /// out-of-range value fails closed.
 #[cfg(feature = "mail-smtp")]
@@ -216,12 +248,19 @@ fn ses_credentials(settings: &MailSettings) -> Result<SesCredentials, MailError>
         (Some(_), Some(_)) => Err(MailError::ConfigError(
             "native AWS SES credentials require the `aws-ses` feature".to_string(),
         )),
-        (None, None) => Ok(SesCredentials::Proxy(
-            match settings.value("AWS_SES_TOKEN")? {
+        (None, None) => {
+            let token = match settings.value("AWS_SES_TOKEN")? {
                 Some(token) => token,
                 None => settings.value("AWS_SES_BEARER_TOKEN")?.unwrap_or_default(),
-            },
-        )),
+            };
+            require_credential(
+                settings,
+                &token,
+                "AWS_SES_BEARER_TOKEN (or AWS_SES_TOKEN, or AWS_ACCESS_KEY_ID and \
+                 AWS_SECRET_ACCESS_KEY for native SES)",
+            )?;
+            Ok(SesCredentials::Proxy(token))
+        }
         _ => Err(MailError::ConfigError(
             "native AWS SES requires both AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY".to_string(),
         )),

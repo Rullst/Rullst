@@ -4,7 +4,9 @@
 
 use super::super::tests::{EnvironmentGuard, clear_provider_environment};
 use super::*;
+use crate::error::MailError;
 use crate::facade::{MAIL_ENV_LOCK, Mail};
+use crate::message::Message;
 
 #[tokio::test]
 async fn a_changed_setting_builds_a_new_driver() {
@@ -82,4 +84,117 @@ async fn both_aws_keys_select_native_ses_credentials() {
             ..
         })
     ));
+}
+
+/// The settings a facade send would read now.
+async fn spec() -> Result<DriverSpec, MailError> {
+    DriverSpec::from_settings(&MailSettings::load().await.unwrap())
+}
+
+fn names_the_setting(
+    spec: Result<DriverSpec, MailError>,
+    setting: &str,
+    environment: &str,
+) -> bool {
+    matches!(spec, Err(MailError::ConfigError(text))
+        if text.contains(setting) && text.contains(environment) && text.contains("mock_"))
+}
+
+#[tokio::test]
+async fn staging_and_production_refuse_an_empty_provider_credential() {
+    let _lock = MAIL_ENV_LOCK.lock().await;
+    let mut environment = EnvironmentGuard::new();
+    clear_provider_environment(&mut environment);
+    for (driver, setting) in [
+        ("resend", "RESEND_API_KEY"),
+        ("sendpulse", "SENDPULSE_API_KEY"),
+        ("ses", "AWS_SES_BEARER_TOKEN"),
+    ] {
+        environment.set("MAIL_DRIVER", driver);
+        for name in ["production", "staging"] {
+            environment.set("RULLST_ENV", name);
+            environment.clear(setting);
+            assert!(
+                names_the_setting(spec().await, setting, name),
+                "{driver} {name}"
+            );
+            environment.set(setting, " ");
+            assert!(
+                names_the_setting(spec().await, setting, name),
+                "{driver} {name}"
+            );
+            // An explicit mock is deliberate, and a real secret is used.
+            environment.set(setting, "mock_fixture");
+            assert!(spec().await.is_ok(), "{driver} {name}");
+            environment.set(setting, "configured-secret");
+            assert!(spec().await.is_ok(), "{driver} {name}");
+        }
+        // Development and test keep the offline fallback.
+        for name in ["development", "test"] {
+            environment.set("RULLST_ENV", name);
+            environment.set(setting, "");
+            assert!(spec().await.is_ok(), "{driver} {name}");
+            environment.clear(setting);
+            assert!(spec().await.is_ok(), "{driver} {name}");
+        }
+    }
+    // The SES token read first decides, so an empty one is refused too.
+    environment.set("MAIL_DRIVER", "ses");
+    environment.set("RULLST_ENV", "production");
+    environment.set("AWS_SES_TOKEN", "");
+    environment.set("AWS_SES_BEARER_TOKEN", "configured-secret");
+    assert!(names_the_setting(
+        spec().await,
+        "AWS_SES_TOKEN",
+        "production"
+    ));
+    // An environment that cannot be resolved fails closed as well.
+    environment.set("RULLST_ENV", "not-an-environment");
+    assert!(matches!(spec().await, Err(MailError::ConfigError(_))));
+}
+
+#[cfg(feature = "mail-smtp")]
+#[tokio::test]
+async fn production_refuses_an_empty_smtp_host_but_keeps_the_local_default() {
+    let _lock = MAIL_ENV_LOCK.lock().await;
+    let mut environment = EnvironmentGuard::new();
+    clear_provider_environment(&mut environment);
+    environment.set("MAIL_DRIVER", "smtp");
+    environment.set("RULLST_ENV", "production");
+    environment.set("MAIL_HOST", "");
+    assert!(names_the_setting(spec().await, "MAIL_HOST", "production"));
+    environment.set("MAIL_HOST", "mock_smtp");
+    assert!(spec().await.is_ok());
+    // Unset, the host is 127.0.0.1, a real relay rather than the mock.
+    environment.clear("MAIL_HOST");
+    assert!(matches!(spec().await, Ok(DriverSpec::Smtp { host, .. }) if host == "127.0.0.1"));
+    environment.set("RULLST_ENV", "development");
+    environment.set("MAIL_HOST", "");
+    assert!(spec().await.is_ok());
+}
+
+/// The end-to-end case of the defect: a production send with no API key
+/// fails instead of reporting success for mail the mock captured.
+#[tokio::test]
+async fn a_production_send_without_an_api_key_is_a_configuration_error() {
+    let _lock = MAIL_ENV_LOCK.lock().await;
+    let mut environment = EnvironmentGuard::new();
+    clear_provider_environment(&mut environment);
+    environment.set("RULLST_ENV", "production");
+    environment.set("MAIL_DRIVER", "resend");
+    Mail::reset_driver();
+    let message = Message::new()
+        .to("member@example.com")
+        .from("team@acme.example")
+        .subject("production send without a key")
+        .text("must not be captured");
+    let error = Mail::send_now(message).await.unwrap_err();
+    assert!(matches!(&error, MailError::ConfigError(text) if text.contains("RESEND_API_KEY")));
+    assert!(
+        !crate::drivers::OfflineMailMock::deliveries()
+            .unwrap()
+            .iter()
+            .any(|delivery| delivery.message.subject == "production send without a key")
+    );
+    Mail::reset_driver();
 }

@@ -649,7 +649,7 @@ is a complete Axum server with Google and GitHub sign-in. From a checkout of
 the repository, run it with offline `mock_*` credentials:
 
 ```bash
-cargo run -p rullst-connect --example axum_server --features mock
+cargo run -p rullst-connect --example axum_server --features axum,mock
 ```
 
 Set `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` and

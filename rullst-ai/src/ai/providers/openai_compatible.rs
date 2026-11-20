@@ -181,11 +181,10 @@ impl OpenAiCompatibleProvider {
     ) -> Result<Self, AiError> {
         validate_model("generation model", &model)?;
         let base_url = validate_base_url(base_url, scope)?;
-        let client = reqwest::Client::builder()
-            .redirect(reqwest::redirect::Policy::none())
-            .no_proxy()
-            .build()
-            .map_err(AiError::request)?;
+        // The pooled client every built-in adapter shares: no redirects, no
+        // ambient proxy and a five-second connect deadline. `request` sets
+        // this provider's whole-request deadline on each request.
+        let client = super::support::http_client()?.clone();
         Ok(Self {
             preset: Preset::Generic,
             base_url,
