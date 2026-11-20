@@ -59,9 +59,7 @@ impl ResendDriver {
         validate_credential("Resend API key", &self.api_key)?;
         let prepared = DeliveryPipeline::prepare(message)?;
         let message = prepared.message();
-        if self.delivery_mode() == DeliveryMode::OfflineMock {
-            return record_offline_delivery("resend", message);
-        }
+        // The offline mock refuses every message live delivery refuses.
         if message.send_at.as_ref().is_some_and(|send_at| {
             send_at.duration_since(jiff::Timestamp::now()) > MAX_PROVIDER_SCHEDULE
         }) {
@@ -70,10 +68,14 @@ impl ResendDriver {
                     .to_string(),
             ));
         }
+        let from_addr = super::rest::required_sender(message)?;
+        if self.delivery_mode() == DeliveryMode::OfflineMock {
+            return record_offline_delivery("resend", message);
+        }
 
         let client = super::http::client()?;
 
-        let body = payload(message, super::rest::required_sender(message)?);
+        let body = payload(message, from_addr);
 
         let mut request = client
             .post("https://api.resend.com/emails")
@@ -204,6 +206,41 @@ mod tests {
             rich["headers"]["List-Unsubscribe"],
             "<http://example.com/unsubscribe>"
         );
+    }
+
+    /// A test with a `mock_*` key refuses what live delivery refuses, before
+    /// anything is captured.
+    #[tokio::test]
+    async fn offline_mock_refuses_what_live_delivery_refuses() {
+        let driver = ResendDriver::try_new("mock_resend").unwrap();
+        let message = Message::new()
+            .to("owner@example.com")
+            .from("site@example.com")
+            .subject("resend offline refusal")
+            .text("body");
+        let unsigned = Message {
+            from: None,
+            ..message.clone()
+        };
+        assert!(matches!(
+            driver.send(&unsigned).await,
+            Err(MailError::ConfigError(text)) if text.contains("verified sender")
+        ));
+        let hours = |hours| jiff::Timestamp::now() + jiff::SignedDuration::from_hours(hours);
+        assert!(matches!(
+            driver.send(&message.clone().send_at(hours(721))).await,
+            Err(MailError::ConfigError(text)) if text.contains("30 days")
+        ));
+        // Resend schedules up to 30 days ahead, so the mock captures this one.
+        let scheduled = message.clone().subject("resend offline schedule");
+        driver.send(&scheduled.send_at(hours(719))).await.unwrap();
+        let subjects: Vec<String> = crate::drivers::OfflineMailMock::deliveries()
+            .unwrap()
+            .into_iter()
+            .map(|delivery| delivery.message.subject)
+            .collect();
+        assert!(subjects.iter().any(|s| s == "resend offline schedule"));
+        assert!(!subjects.iter().any(|s| s == "resend offline refusal"));
     }
 
     #[tokio::test]

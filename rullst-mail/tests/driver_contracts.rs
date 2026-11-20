@@ -75,12 +75,15 @@ async fn resend_rejects_schedules_beyond_its_window_before_network() {
         matches!(&outcome, Err(MailError::ConfigError(text)) if text.contains("30 days")),
         "{outcome:?}"
     );
-    // The offline fixture keeps longer schedules for assertions.
-    ResendDriver::try_new("mock_resend")
+    // The offline mock refuses it too, so a test sees what production would.
+    let offline = ResendDriver::try_new("mock_resend")
         .unwrap()
         .send(&message)
-        .await
-        .unwrap();
+        .await;
+    assert!(
+        matches!(&offline, Err(MailError::ConfigError(text)) if text.contains("30 days")),
+        "{offline:?}"
+    );
 }
 
 #[tokio::test]

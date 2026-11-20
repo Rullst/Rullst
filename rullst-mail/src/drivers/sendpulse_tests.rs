@@ -11,9 +11,10 @@ fn native_request_preserves_reset_link_and_encodes_html_and_attachments() {
         .text("password=accidental")
         .attach(Attachment::new("note.txt", b"hello".to_vec(), "text/plain"));
     let prepared = DeliveryPipeline::prepare(&message).unwrap();
+    let body = rest::encode(&payload(prepared.message()).unwrap()).unwrap();
     let request = SendPulseDriver::try_new("fixture_sendpulse")
         .unwrap()
-        .request(prepared.message())
+        .request(body)
         .unwrap();
     assert_eq!(
         request.url().as_str(),
@@ -114,5 +115,67 @@ fn reply_to_is_sent_as_a_mailbox_object() {
         payload(&without).unwrap()["email"]
             .get("reply_to")
             .is_none()
+    );
+}
+
+/// A test with a `mock_*` key refuses what live delivery refuses (inline CID,
+/// unsubscribe headers, a future schedule, no sender or body, duplicate
+/// attachment names), before anything is captured.
+#[tokio::test]
+async fn offline_mock_refuses_what_live_delivery_refuses() {
+    let driver = SendPulseDriver::try_new("mock_sendpulse").unwrap();
+    let message = Message::new()
+        .from("accounts@example.com")
+        .to("member@example.com")
+        .subject("sendpulse offline refusal")
+        .text("Welcome");
+    let unsupported = |error: &MailError| matches!(error, MailError::ValidationError(text) if text.contains("SendPulse REST does not support"));
+    let inline = message.clone().html(r#"<img src="cid:logo">"#).attach_cid(
+        "logo",
+        "logo.png",
+        b"png".to_vec(),
+        "image/png",
+    );
+    assert!(unsupported(&driver.send(&inline).await.unwrap_err()));
+    let unsubscribe = message
+        .clone()
+        .unsubscribe_url("https://app.example/unsubscribe");
+    assert!(unsupported(&driver.send(&unsubscribe).await.unwrap_err()));
+    let scheduled = message
+        .clone()
+        .send_at(jiff::Timestamp::now() + jiff::SignedDuration::from_mins(5));
+    assert!(matches!(
+        driver.send(&scheduled).await,
+        Err(MailError::ConfigError(text)) if text.contains("cannot schedule")
+    ));
+    let unsigned = Message {
+        from: None,
+        ..message.clone()
+    };
+    assert!(matches!(
+        driver.send(&unsigned).await,
+        Err(MailError::ConfigError(text)) if text.contains("verified sender")
+    ));
+    let empty = Message {
+        body_text: None,
+        ..message.clone()
+    };
+    assert!(matches!(
+        driver.send(&empty).await,
+        Err(MailError::ValidationError(text)) if text.contains("nonempty text or HTML")
+    ));
+    let duplicate = message
+        .clone()
+        .attach(Attachment::new("note.txt", b"one".to_vec(), "text/plain"))
+        .attach(Attachment::new("note.txt", b"two".to_vec(), "text/plain"));
+    assert!(matches!(
+        driver.send(&duplicate).await,
+        Err(MailError::ValidationError(text)) if text.contains("unique")
+    ));
+    assert!(
+        !crate::drivers::OfflineMailMock::deliveries()
+            .unwrap()
+            .iter()
+            .any(|delivery| delivery.message.subject == "sendpulse offline refusal")
     );
 }

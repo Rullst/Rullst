@@ -86,21 +86,21 @@ async fn dotenv_provider_credentials_select_the_real_transport() {
     );
     let message = Message::new()
         .to("member@example.com")
+        .from("team@acme.example")
         .subject("Credential source")
         .text("body");
+    let resend_key = |settings: &MailSettings| match driver::DriverSpec::from_settings(settings) {
+        Ok(driver::DriverSpec::Resend(key)) => key,
+        _ => panic!("expected the Resend driver"),
+    };
 
-    // The real transport refuses a message without a sender before any
-    // request; the offline mock would have accepted it.
     let settings = MailSettings::load_from(project.path()).await.unwrap();
-    let driver = Mail::resolve_driver_from(&settings).unwrap();
-    assert!(matches!(
-        driver.send(&message).await,
-        Err(MailError::ConfigError(_))
-    ));
+    assert_eq!(resend_key(&settings), "re_dotenv_fixture");
 
     // The process environment wins, even with an empty (offline) credential.
     environment.set("RESEND_API_KEY", "");
     let settings = MailSettings::load_from(project.path()).await.unwrap();
+    assert_eq!(resend_key(&settings), "");
     let driver = Mail::resolve_driver_from(&settings).unwrap();
     driver.send(&message).await.unwrap();
 }

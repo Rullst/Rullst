@@ -25,13 +25,12 @@ impl SendPulseDriver {
         credential_mode(self.api_key.expose_secret())
     }
 
-    fn request(&self, message: &Message) -> Result<reqwest::Request, MailError> {
-        let body = payload(message)?;
+    fn request(&self, body: Vec<u8>) -> Result<reqwest::Request, MailError> {
         super::http::client()?
             .post("https://api.sendpulse.com/smtp/emails")
             .bearer_auth(self.api_key.expose_secret())
             .header("Content-Type", "application/json")
-            .body(rest::encode(&body)?)
+            .body(body)
             .build()
             .map_err(|_| rest::contract())
     }
@@ -42,11 +41,13 @@ impl MailDriver for SendPulseDriver {
     async fn send(&self, message: &Message) -> Result<(), MailError> {
         let prepared = DeliveryPipeline::prepare(message)?;
         let message = prepared.message();
+        // The offline mock refuses every message live delivery refuses.
+        DeliveryPipeline::require_due("SendPulse", message)?;
+        let body = rest::encode(&payload(message)?)?;
         if self.delivery_mode() == DeliveryMode::OfflineMock {
             return mock::record_offline_delivery("sendpulse", message);
         }
-        DeliveryPipeline::require_due("SendPulse", message)?;
-        let receipt = rest::execute(self.request(message)?, "sendpulse").await?;
+        let receipt = rest::execute(self.request(body)?, "sendpulse").await?;
         validate_receipt(&receipt)
     }
 }
