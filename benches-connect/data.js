@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795200802746,
+  "lastUpdate": 1795203821429,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -15603,6 +15603,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 554,
             "range": "± 22",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b4a728319abb1573a406ba56d8447430f7ffa51b",
+          "message": "Merge pull request #777 from Rullst/docs/v13-roadmap-reorganization\n\ndocs(roadmap): reorganize into now, next, later and long-term vision",
+          "timestamp": "2026-11-20T16:23:34-03:00",
+          "tree_id": "fdd521cf0ffc9f44f2b07bc1c28870d509ce4228",
+          "url": "https://github.com/Rullst/Rullst/commit/b4a728319abb1573a406ba56d8447430f7ffa51b"
+        },
+        "date": 1795203820623,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 559,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
