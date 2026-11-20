@@ -42,34 +42,14 @@ jobs:
         run: cargo check --workspace --all-features --lib --bins
 
       - name: Verify the reviewed exception allowlist
+        # Any `unsafe_code` inside allow/expect/warn, alone or among other
+        # lints, through cfg_attr or over several lines, in any workspace
+        # member or manifest, overrides -Dunsafe-code; the list is in the script.
         run: |
-          actual="$(
-            grep -Ern -l '#!?[[:space:]]*\[[[:space:]]*allow[[:space:]]*\([[:space:]]*unsafe_code[[:space:]]*\)' \
-              rullst*/src cargo-rullst/src rullst/src 2>/dev/null |
-              sort -u
-          )"
-          expected="$(printf '%s\n' \
-            'cargo-rullst/src/generators/footprint/process/macos.rs' \
-            'cargo-rullst/src/generators/footprint/process/windows.rs' \
-            'cargo-rullst/src/update/cache/windows_acl.rs' \
-            'cargo-rullst/src/update/project/permissions_unix.rs' \
-            'cargo-rullst/src/update/project/permissions_windows.rs' \
-            'rullst-core/src/radar.rs' \
-            'rullst-core/src/server/dylib_loader.rs' |
-            sort)"
-          if [ "$actual" != "$expected" ]; then
-            echo "The reviewed unsafe exception allowlist changed:"
-            diff -u <(printf '%s\n' "$expected") <(printf '%s\n' "$actual") || true
-            exit 1
-          fi
+          python3 .github/test-check-unsafe-allowlist.py
+          python3 .github/check-unsafe-allowlist.py
 
       - name: Publish the audited unsafe inventory
         run: |
-          grep -En -n 'unsafe\s*(\{|fn|impl|trait|extern)' \
-            cargo-rullst/src/generators/footprint/process/macos.rs \
-            cargo-rullst/src/generators/footprint/process/windows.rs \
-            cargo-rullst/src/update/cache/windows_acl.rs \
-            cargo-rullst/src/update/project/permissions_unix.rs \
-            cargo-rullst/src/update/project/permissions_windows.rs \
-            rullst-core/src/radar.rs \
-            rullst-core/src/server/dylib_loader.rs
+          mapfile -t reviewed < <(python3 .github/check-unsafe-allowlist.py --list)
+          grep -En -n 'unsafe\s*(\{|fn|impl|trait|extern)' "${reviewed[@]}"

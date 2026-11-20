@@ -486,7 +486,11 @@ tests are excluded.
 `-Dunsafe-code`. The reviewed source allowlist holds the Radar OS probe, the
 dynamic-library loader, the CLI's Windows cache/installation owner/DACL
 boundary, Windows project access-policy preservation and macOS extended-ACL
-inspection, and the workflow fails if it changes. Each unsafe call documents
+inspection, plus the hot-reload router export of `examples/blog`, and the
+workflow fails if it changes: `.github/check-unsafe-allowlist.py` lists every
+file of a workspace member, and every manifest, that names `unsafe_code`
+other than to forbid or deny it (inside `allow`, `expect` or `warn`, among
+other lints, through `cfg_attr` or over several lines). Each unsafe call documents
 pointer and handle ownership and lifetime: Windows descriptors are installed
 atomically through owned handles, and ACE pointers and SID lengths are checked
 before use; the macOS module only inspects an ACL. This is an enforced
