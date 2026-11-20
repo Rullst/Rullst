@@ -390,25 +390,32 @@ testing.
    deletes the fragments. Then write the version's short summary and its
    `### Known limitations` subsection below the new heading. Preflight and
    `release.yml` refuse a release while `changelog.d/` has unmerged fragments.
-2. Show the maintainer the known limitations and get an explicit approval for
+2. Run an independent skeptic review before asking for that approval: an
+   assistant without the release work's context reads the public
+   documentation (README, website, scope and limits, maturity tiers, security
+   architecture, crate READMEs) and the code, tests and CI, and reports what
+   they claim but do not support. Fix each finding or state it in the known
+   limitations. A published benchmark or comparison gets the same review of
+   what it does not measure.
+3. Show the maintainer the known limitations and get an explicit approval for
    this publication. An approval for an earlier release does not carry over.
-3. On the exact candidate commit on `main`, every workflow in
+4. On the exact candidate commit on `main`, every workflow in
    [`.github/release-required-workflows.json`](.github/release-required-workflows.json)
    must succeed: the push-triggered ones run on merge; dispatch the manual
    ones (`ci.yml` with all platforms and shards, `fuzzing.yml` in release
    mode, `dast-zap.yml`, `kani.yml`, `miri.yml`, `proptest.yml`,
    `sanitizers.yml`). `python3 .github/release-preflight.py v<version>` and
    `.github/check-release-admission.py` report what is missing.
-4. Tag only when admission is complete. The release workflow packages,
+5. Tag only when admission is complete. The release workflow packages,
    verifies and publishes in topological order; the `crates-io` environment
    waits for a reviewer's approval.
-5. Never bypass a failing gate to publish. Fix the cause and admit the new
+6. Never bypass a failing gate to publish. Fix the cause and admit the new
    commit. A tag whose release published nothing may be deleted and recreated
    only with the maintainer's approval; a published version is never
    reused — release the next version instead. While the tag exists,
    `release-preflight.py` refuses; when no package has that version on
    crates.io, it prints the commands for this case. It never deletes a tag.
-6. Record the publication in `ROADMAP.md` (release lines) and
+7. Record the publication in `ROADMAP.md` (release lines) and
    `docs/src/v13-delivery-plan.md`.
 
 Upstream surprises happen: crates.io yanks, new RustSec advisories and new
