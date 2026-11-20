@@ -7,6 +7,7 @@ use std::fmt::Display;
 ))]
 pub mod json_columns;
 pub mod migrations;
+pub mod pool_liveness;
 
 const REQUIRE_CONTAINERS_ENV: &str = "RULLST_REQUIRE_TESTCONTAINERS";
 

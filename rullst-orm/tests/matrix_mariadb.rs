@@ -96,6 +96,7 @@ async fn test_matrix_mariadb_crud() {
     support::migrations::exercise_pool_access_in_transactional_migrations().await;
     exercise_native_enum().await;
     driver_contract::exercise().await;
+    support::pool_liveness::exercise_idle_ping_replaces_ended_connections(&connection_string).await;
 }
 
 async fn exercise_native_enum() {

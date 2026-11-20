@@ -23,7 +23,7 @@ Intentions, not promises; dates follow the evidence gates described below.
 - **v13:** `13.0.0-alpha.1` to `alpha.3` were published from 11 to 24
   October 2026, `13.0.0-alpha.4` on 31 October and `13.0.0-alpha.5` on
   14 November; alpha.5 adds what the applications upgraded to alpha.4 asked
-  for. `13.0.0-alpha.6`, prepared on 16 November, is the 13.0 feature and
+  for. `13.0.0-alpha.6`, published on 20 November, is the 13.0 feature and
   public API freeze, with every pending fix and improvement. Then `13.0.0-rc.1` (fixes and
   documentation only, driven by user feedback) and `13.0.0` stable, from which
   the [maturity tiers](docs/src/maturity.md) apply; see the
@@ -321,9 +321,9 @@ alpha.5 was planned as the 13.0 freeze; the same day the freeze moved to
 
 ### Delivered in 13.0.0-alpha.6
 
-Planned after 13.0.0-alpha.5 with the maintainer on 14 November 2026 and
-prepared on 16 November 2026 as the 13.0.0-alpha.6 release candidate; the
-coordinator records publication in the table below. They add no milestone to
+Planned after 13.0.0-alpha.5 with the maintainer on 14 November 2026,
+prepared on 16 November and published on 20 November 2026 (see the table
+below). They add no milestone to
 the counts above.
 
 - **13.0.0-alpha.6: the 13.0 feature and public API freeze.** It carries every
@@ -493,7 +493,7 @@ the counts above.
     aws-lc-rs 1.19 for the aarch64 ES256 fix
     ([#734](https://github.com/Rullst/Rullst/pull/734)); and the website's
     single landing page and comparison page (see the
-    [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha6---2026-11-17)).
+    [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha6---2026-11-20)).
   - **Mutation campaigns:** done in the 13.0.0-alpha.6 source. The 13.0
     campaigns of `rullst-auth`, `rullst-security`, `rullst-privacy`,
     `rullst-supervision`, `rullst-labs`, `rullst-media`, `rullst-mail`,
@@ -552,7 +552,7 @@ alpha.6, 13.0.0-rc.1 (fixes and documentation only), then 13.0.0.
 | **v13.0.0-alpha.3** | `[x] Published prerelease` | All twenty packages were published on 24 October 2026 from tag `v13.0.0-alpha.3` at `be336833` ([release run 40129821475](https://github.com/Rullst/Rullst/actions/runs/40129821475)) after all 25 required workflows passed on that commit. See the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha3---2026-10-23). |
 | **v13.0.0-alpha.4** | `[x] Published prerelease` | All twenty packages were published on 31 October 2026 from tag `v13.0.0-alpha.4` at `2bd3c2ad` ([release run 41233925160](https://github.com/Rullst/Rullst/actions/runs/41233925160)). See the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha4---2026-10-31). |
 | **v13.0.0-alpha.5** | `[x] Published prerelease` | All twenty packages were published on 14 November 2026 from tag `v13.0.0-alpha.5` at `5feda4ac` ([release run 43631881119](https://github.com/Rullst/Rullst/actions/runs/43631881119)) after all 23 required workflows passed on that commit. A first tag at `034df65e` stopped in release verification before publishing anything (`cargo rullst audit` lacked the governed advisory exceptions, #690) and was replaced with the maintainer's approval. The fixes and additions from the applications upgraded to alpha.4; planned as the 13.0 feature and public API freeze, which moved to alpha.6 the same day. See [Delivered in 13.0.0-alpha.5](#delivered-in-1300-alpha5) and the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-14). |
-| **v13.0.0-alpha.6** | `[ ] Release candidate` | Prepared on 16 November 2026 and not yet published; the coordinator records the tag, release run and publication here. Twenty packages; the 13.0 feature and public API freeze: every pending fix and improvement, the Rust 1.100 toolchain and current dependency majors, the removal of every API still deprecated (in 12.x or during the 13.0 prereleases), smaller dependency graphs and the `#[non_exhaustive]` public API audit. See [Delivered in 13.0.0-alpha.6](#delivered-in-1300-alpha6) and the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha6---2026-11-17). |
+| **v13.0.0-alpha.6** | `[x] Published prerelease` | All twenty packages were published on 20 November 2026 from tag `v13.0.0-alpha.6` at `58438b64` ([release run 44753380780](https://github.com/Rullst/Rullst/actions/runs/44753380780)) after all 23 required workflows passed on that commit. Admission of the first candidate, `ef28c0e0`, found two Miri scopes and the packaged distribution's email-login consumer failing; [#773](https://github.com/Rullst/Rullst/pull/773) fixed them before the tag. The 13.0 feature and public API freeze: every pending fix and improvement, the Rust 1.100 toolchain and current dependency majors, the removal of every API still deprecated (in 12.x or during the 13.0 prereleases), smaller dependency graphs and the `#[non_exhaustive]` public API audit. See [Delivered in 13.0.0-alpha.6](#delivered-in-1300-alpha6) and the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha6---2026-11-20). |
 | **v13.0.0-rc.1** | `[ ] Planned` | Fixes and documentation only after the alpha.6 feature and API freeze. See [Planned after 13.0.0-alpha.6](#planned-after-1300-alpha6). |
 | **v13.0.0** | `[ ] Planned stable` | Follows once rc.1 leaves no open defect in the stability scope; the [maturity tiers](docs/src/maturity.md) apply from this release. |
 | **v13.x** | `[ ] After 13.0.0` | Compatible capabilities continue in 13.1 and later minors: generated-project coverage, auth/session consolidation, typed SDKs, selected adapters, security-stack consolidation and research-heavy architecture all require fresh acceptance boundaries. |

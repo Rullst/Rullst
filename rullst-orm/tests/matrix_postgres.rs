@@ -211,6 +211,7 @@ async fn test_matrix_postgres_crud() {
     #[cfg(not(feature = "strict-postgres"))]
     exercise_dynamic_pool_enum_refusal().await;
     driver_contract::exercise().await;
+    support::pool_liveness::exercise_idle_ping_replaces_ended_connections(&connection_string).await;
 }
 
 /// `Blueprint::boolean` creates a native PostgreSQL boolean, so `bool` model

@@ -128,6 +128,14 @@
       </div>
     </section>
 
+    <section id="ui-frameworks" aria-labelledby="ui-frameworks-heading">
+      <h2 id="ui-frameworks-heading">Why not Leptos or Dioxus?</h2>
+      <p class="compare-checked" id="checked-ui">Checked on <time datetime="2026-11-19">19 November 2026</time> against Leptos <code>leptos 0.8.23</code> and Dioxus <code>dioxus 0.7.10</code>.</p>
+      <p>Leptos and Dioxus are full-stack in a different sense: they are UI frameworks. The same Rust components can render HTML on the server and then run in the browser as WebAssembly, which hydrates that HTML, and server functions let the browser call Rust code that runs only on the server. Dioxus also targets desktop and mobile.</p>
+      <p>As UI frameworks, neither ships an ORM, migrations or authentication, and neither documents mail, background jobs or an admin panel. The Leptos book says Leptos itself provides neither the HTTP server nor the database; the Dioxus documentation says Dioxus does not provide a built-in way of managing authentication, and its database tutorial uses <code>rusqlite</code> and names SQLx and SeaORM among the alternatives. Applications assemble these parts from other crates: the Leptos authentication example and the Dioxus authentication guide both use <code>axum_session_auth</code> with SQLx.</p>
+      <p>They are not in the Performance section because it measures equivalent applications serving HTTP requests. The server side of a Leptos application runs on Actix Web or Axum through Leptos's integrations, and Dioxus Fullstack is built on Axum, which is already the benchmark's baseline; an equivalent application would also need its ORM and authentication assembled by hand. The approaches are complementary: a Leptos or Dioxus interface can call a Rullst HTTP API.</p>
+    </section>
+
     <section id="benchmarks" aria-labelledby="benchmarks-heading">
       <h2 id="benchmarks-heading">Performance</h2>
       <p>These numbers are not written by hand: each daily build of this site inserts the latest published results of the <a href="/Benchmarks/">Rullst/Benchmarks</a> suite for the three frameworks, plus a minimal Rullst configuration.</p>
@@ -153,6 +161,8 @@
         <li>Rullst: <a href="https://github.com/Rullst/Rullst#integrations">README integrations</a>, <a href="/Rullst/book/maturity.html">maturity tiers</a>, <a href="/Rullst/book/compatibility-policy.html#supported-release-window">supported release window</a>, <a href="/Rullst/book/database-support.html">database support</a>, <a href="https://crates.io/crates/rullst">crates.io</a>.</li>
         <li>Loco: <a href="https://loco.rs/docs/">documentation</a>, <a href="https://github.com/loco-rs/loco/tree/v1.3.1">repository at v1.3.1</a>, <a href="https://crates.io/crates/loco-rs">crates.io</a>.</li>
         <li>Topcoat: <a href="https://github.com/tokio-rs/topcoat/tree/v0.12.1">repository at v0.12.1</a> (README, <code>docs/</code>, changelog), <a href="https://docs.rs/topcoat/0.12.1">docs.rs</a>, <a href="https://crates.io/crates/topcoat">crates.io</a>.</li>
+        <li>Leptos: <a href="https://book.leptos.dev/">the Leptos book</a> (<a href="https://book.leptos.dev/ssr/22_life_cycle.html">the life of a page load</a>, <a href="https://book.leptos.dev/server/25_server_functions.html">server functions</a>, <a href="https://book.leptos.dev/server/26_extractors.html">extractors</a>), <a href="https://github.com/leptos-rs/leptos/tree/v0.8.23/projects/session_auth_axum">authentication example at v0.8.23</a>, <a href="https://crates.io/crates/leptos">crates.io</a>.</li>
+        <li>Dioxus: <a href="https://dioxuslabs.com/learn/0.7/">documentation for 0.7</a> (<a href="https://dioxuslabs.com/learn/0.7/guides/platforms/web/">web</a>, <a href="https://dioxuslabs.com/learn/0.7/essentials/fullstack/axum/">router and state</a>, <a href="https://dioxuslabs.com/learn/0.7/essentials/fullstack/authentication/">authentication</a>, <a href="https://dioxuslabs.com/learn/0.7/tutorial/databases/">databases</a>), <a href="https://crates.io/crates/dioxus">crates.io</a>.</li>
       </ul>
     </section>
   </main>

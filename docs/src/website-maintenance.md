@@ -127,6 +127,22 @@ checked versions and dates and the same external links in both pages. Say
 "not documented" rather than guessing, and keep the "where each one fits"
 section fair to all three.
 
+A "Why not Leptos or Dioxus?" / "Por que não Leptos ou Dioxus?" section
+(`ui-frameworks`, between the topics and Performance) explains why the page
+leaves those two out: they are UI frameworks whose components render on the
+server and run in the browser as WebAssembly, with server functions; they ship
+no ORM, migrations or authentication; their server side runs on Axum (and, for
+Leptos, Actix Web), which is already the benchmark's baseline; and a Leptos or
+Dioxus interface can call a Rullst API. Its facts come from the Leptos book,
+the Leptos repository, the Dioxus 0.7 documentation and crates.io, and its own
+checked line (`checked-ui`) names `leptos 0.8.23` and `dioxus 0.7.10`, checked
+on 19 November 2026 (stable releases; `leptos 0.9.0-rc1` and
+`dioxus 0.8.0-alpha.3` were prereleases then). The validator applies the same
+rules to both checked lines, `checked` and `checked-ui`: the same versions and
+date in both languages, the named packages present, and a crates.io link in
+Sources for every package a line names. Recheck the section when either project
+releases a new stable line.
+
 Its Performance section is filled at build time, never by hand. The
 deployment downloads the latest results that `Rullst/Benchmarks` publishes and
 saves them as `benchmarks.json` in the working directory and runs the
