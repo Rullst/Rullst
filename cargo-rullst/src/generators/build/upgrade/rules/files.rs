@@ -11,6 +11,8 @@ use walkdir::WalkDir;
 
 #[path = "files/alpha6.rs"]
 mod alpha6;
+#[path = "files/csrf_scripts.rs"]
+mod csrf_scripts;
 #[path = "files/deploy.rs"]
 mod deploy;
 #[path = "files/features.rs"]
@@ -19,8 +21,14 @@ mod features;
 mod footprint;
 #[path = "files/htmx.rs"]
 mod htmx;
+#[path = "files/script_tokens.rs"]
+mod script_tokens;
 #[path = "files/scripts.rs"]
 mod scripts;
+#[cfg(test)]
+pub(super) use csrf_scripts::{
+    compared_lines as csrf_compared_lines, comparisons as csrf_comparisons,
+};
 use features::{
     SQLX_RING_TLS, enables_sqlx_macros, feature_reference, has_feature, nexus_without_assistant,
 };
@@ -552,6 +560,9 @@ pub(super) fn project_findings(
     }
     for (file, line) in footprint::green_mentions(root, &mut reviewed) {
         push(&CLI_GREEN_RENAMED, &file, line);
+    }
+    for (file, line) in csrf_scripts::comparisons(root) {
+        push(&CSRF_TOKEN_COMPARED, &file, line);
     }
     if kubernetes
         && let Some((manifest, name, line)) = package_name(root, plans)

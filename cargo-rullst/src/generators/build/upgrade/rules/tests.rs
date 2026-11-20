@@ -22,6 +22,7 @@ mod alpha6_orm_save_mode;
 mod alpha6_passkeys;
 mod alpha6_public_deps;
 mod cron_corpus;
+mod csrf_scripts;
 mod data;
 mod docs;
 mod files;
