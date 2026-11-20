@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795198375414,
+  "lastUpdate": 1795200948708,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -25508,6 +25508,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "rbac_guard/authorize_owner_or_role",
             "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "84739036fb8cd27ace965e1292be7831f94e052a",
+          "message": "Merge pull request #778 from Rullst/fix/v13-rc1-no-experimental-api\n\nfix(api)!: drop experimental names from Labs and IoT public APIs",
+          "timestamp": "2026-11-20T15:39:33-03:00",
+          "tree_id": "1b0b403eed4bb294e78436075139cee54991b0a1",
+          "url": "https://github.com/Rullst/Rullst/commit/84739036fb8cd27ace965e1292be7831f94e052a"
+        },
+        "date": 1795200948056,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5797,
+            "range": "± 117",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 585,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
             "range": "± 0",
             "unit": "ns/iter"
           },
