@@ -9,9 +9,10 @@
 - The documentation now states limits it left out: without `RULLST_ENV`
   (or `APP_ENV`, or `[app] env`) an application runs as development, where
   the WAF only logs and `Strict-Transport-Security` is sent only over HTTPS;
-  a reverse proxy, port forward or tunnel on the same machine defeats the
-  loopback check of local Studio and of Nexus in a debug build, and every
-  user account on the machine can use the remote Studio; `html!` only
+  a forwarder on the same machine that adds no forwarding header and speaks
+  HTTP/1.1 defeats the loopback check of local Studio and of Nexus in a debug
+  build, and anyone who can read the address the remote Studio prints can use
+  it until it restarts; `html!` only
   HTML-escapes `<script>` and `<style>` bodies, `srcdoc` and htmx's
   `hx-vals`/`hx-headers`, so they take trusted values only; a signed-webhook
   handler that fails keeps the payload's replay claim, so the provider's
