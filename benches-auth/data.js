@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795213179325,
+  "lastUpdate": 1795215994497,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -25365,6 +25365,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1955,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ec7c35c2c9c167737bfab747183e60fe40fc4797",
+          "message": "Merge pull request #787 from Rullst/docs/v13-rc1-loopback-wording\n\ndocs(studio,nexus): describe the loopback check after the forwarding refusals",
+          "timestamp": "2026-11-20T19:52:26-03:00",
+          "tree_id": "31012394bbb7a720f7eae033fc1b3c027c8222a4",
+          "url": "https://github.com/Rullst/Rullst/commit/ec7c35c2c9c167737bfab747183e60fe40fc4797"
+        },
+        "date": 1795215993824,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 980,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 716,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1685,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4115,
+            "range": "± 28",
             "unit": "ns/iter"
           }
         ]
