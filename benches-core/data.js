@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795200630206,
+  "lastUpdate": 1795203644932,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Core Primitives Benchmark": [
@@ -39789,6 +39789,78 @@ window.BENCHMARK_DATA = {
             "name": "generate_csrf_token_32_chars",
             "value": 135,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b4a728319abb1573a406ba56d8447430f7ffa51b",
+          "message": "Merge pull request #777 from Rullst/docs/v13-roadmap-reorganization\n\ndocs(roadmap): reorganize into now, next, later and long-term vision",
+          "timestamp": "2026-11-20T16:23:34-03:00",
+          "tree_id": "fdd521cf0ffc9f44f2b07bc1c28870d509ce4228",
+          "url": "https://github.com/Rullst/Rullst/commit/b4a728319abb1573a406ba56d8447430f7ffa51b"
+        },
+        "date": 1795203644092,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_escape/clean_input_no_escape",
+            "value": 24,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/malicious_input_full_escape",
+            "value": 184,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/realistic_partial_escape",
+            "value": 57,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/email_field",
+            "value": 216,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/credit_card_field",
+            "value": 191,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/phone_field",
+            "value": 172,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/safe_field_no_pii",
+            "value": 188,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "generate_csrf_token_32_chars",
+            "value": 131,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
