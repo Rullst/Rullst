@@ -98,10 +98,8 @@ operator recovery; normal startup must not remove it.
 
 The optional `consent-postgres` feature supplies `PostgresConsentStore`
 independently of age assurance. It uses one authoritative writable PostgreSQL
-database and a fixed `rullst_consent` schema. Combined hosted and
-extracted-package source admission passed in
-[PR #239](https://github.com/Rullst/Rullst/pull/239); final release admission
-remains separate.
+database and a fixed `rullst_consent` schema. CI tests it against a disposable
+PostgreSQL server.
 
 - Run `initialize(url, capacity)` with a deployment role to create an absent
   schema or validate the existing one. Concurrent initializers serialize;

@@ -19,9 +19,11 @@ Passwords, cookie sessions, RBAC and policies need no feature. The optional
 parts are Cargo features:
 
 - `passkeys`: WebAuthn passkey ceremonies (`auth::passkey`, since
-  13.0.0-alpha.6 a feature). It is the only feature that adds aws-lc-rs,
-  which checks the ES256 keys and signatures, so an application without
-  passkeys builds neither.
+  13.0.0-alpha.6 a feature). It is the only feature that uses aws-lc-rs
+  directly, to check the ES256 keys and signatures. `jwt` (through
+  `jsonwebtoken`), `oauth` and the PostgreSQL and MySQL features (through
+  rustls) also build aws-lc-rs; an application with none of them builds no
+  aws-lc-rs for this crate.
 - `jwt`: the application JWT policy (`ApplicationJwtPolicy`).
 - `sqlite`: `jwt` and `passkeys` plus durable SQLite JWT revocation and the
   SQLite passkey device registry.
@@ -59,15 +61,18 @@ async fn verify_login(password: String) -> Result<bool, AuthError> {
 
 Passwords longer than 72 bytes are rejected. `needs_rehash` compares the algorithm, version,
 memory, iteration, and parallelism parameters. The optional `SqlRecoveryStore` applies
-the same 72-byte bound to registration, password reset and `authenticate`; overlong input
-returns `RecoveryError::InvalidInput` before any account lookup, for registered and
-unknown emails alike.
+the same 72-byte bound to registration, password reset and `authenticate`. For
+registration and `authenticate`, overlong input returns `RecoveryError::InvalidInput`
+before any account lookup, for registered and unknown emails alike; a password reset
+looks up the reset token first, so an unknown, expired or used token returns
+`RecoveryError::InvalidAction` whatever the password's length.
 
 ## Encrypted sessions
 
 `make_login_cookie`, `make_login_cookie_with_epoch` and their decoders
 `decrypt_session` and `decrypt_session_claims` use a versioned AES-256-GCM
-envelope with authenticated metadata and an operating-system nonce. `APP_KEY` must contain at least 32 bytes,
+envelope with authenticated metadata and a random 96-bit nonce from the `rand` crate's
+thread-local generator (seeded from the operating system). `APP_KEY` must contain at least 32 bytes,
 must not be a documented placeholder, and must satisfy the entropy check.
 `get_app_key` reads it from the `APP_KEY` environment variable, then `.env`,
 then `Rullst.toml`. Without one, staging and production fail with
@@ -224,7 +229,7 @@ a cookie at the new epoch; a reset signs out every device and redirects to the
 login page. See [Tutorial 11](https://github.com/Rullst/Rullst/blob/main/docs/src/tutorials/11-authentication-system.md#what-the-scaffold-currently-enforces)
 for the generated routes and their answers.
 
-## Active-session management candidate (v13)
+## Active-session management (v13)
 
 With `recovery-sqlite` or `recovery-postgres`, `SqlRecoveryStore` can list the
 current account's active opaque sessions, revoke one sibling or revoke all
@@ -232,26 +237,24 @@ others while preserving the current session. Explicit display labels are
 bounded; no device fingerprint, IP address or activity history is collected.
 Run the additive schema migration and verify SQL state on every request.
 Encrypted-only cookies and independent JWTs do not adopt this policy
-implicitly; encrypted cookies use the session epoch above.
-Hosted source/package admission passed in PR #236; final release admission
-remains separate. See the
+implicitly; encrypted cookies use the session epoch above. See the
 [session contract](https://github.com/Rullst/Rullst/blob/main/docs/src/session-management.md) for retention, deadlines,
 tenant boundaries and automated evidence.
 
-## Email login candidate (v13)
+## Email login (v13)
 
 Optional `email-login-sqlite` / `email-login-postgres` adds explicit account-opt-in,
 browser-bound single-use links and an encrypted delivery outbox. A deliberate
 CSRF-protected POST consumes the link and creates an existing revocable opaque
-session in one transaction. GET/HEAD never authenticate. The application still
+session in one transaction. The application's landing page must only render a
+confirmation on GET/HEAD and never redeem there; the crate cannot enforce which
+method calls `redeem`. The application still
 owns tenant authorization, MFA policy, secure cookies and sensitive-URL logging.
 SQLite shares one local file; PostgreSQL shares one authoritative writable server.
 See the [email-login contract](https://github.com/Rullst/Rullst/blob/main/docs/src/email-login.md) for limits, retention,
-Mail composition and process/browser evidence. Combined hosted and
-extracted-package source admission passed in PR #239; final release admission
-remains separate.
+Mail composition and process/browser evidence.
 
-## API token candidate (v13)
+## API tokens (v13)
 
 Optional `api-tokens-sqlite` / `api-tokens-postgres` supplies owner-managed opaque
 credentials with literal scopes, bounded lifetime, atomic revision-based rotation
@@ -260,8 +263,7 @@ changes invalidate older credentials. The Core machine-route adapter requires
 an Authorization bearer and preserves the security baseline; applications still
 enforce current tenant membership and resource permissions. See the
 [API-token contract](https://github.com/Rullst/Rullst/blob/main/docs/src/api-tokens.md) for setup, operational limits
-and restart/HTTP evidence. Combined hosted and extracted-package source
-admission passed in PR #239; final release admission remains separate.
+and restart/HTTP evidence.
 
 ## WebAuthn/passkeys
 

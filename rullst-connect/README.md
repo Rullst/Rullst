@@ -133,7 +133,8 @@ Official support for 11 core providers:
     token request body unless discovery lists `client_secret_basic` without
     `client_secret_post`, in which case it uses HTTP Basic)
 
-ID-token verification is implemented by Google, Apple and `OidcProvider`.
+ID-token verification is implemented by Google, Apple, `MicrosoftOidcProvider`
+and `OidcProvider`.
 Those paths require signed `iss`, `aud`, `sub`, `exp` and `iat` claims, bind the
 configured issuer/client, check a supplied `azp`, and reject an expected nonce
 when the ID token is missing. Additional audiences are rejected because these
@@ -229,6 +230,10 @@ prerelease on its own, so pin it exactly (the v12 line, `rullst-connect@12`, rea
 ```bash
 cargo add rullst-connect@=13.0.0-alpha.6
 ```
+
+With no feature, the crate has the providers and `begin_login`; `AuthCallback`
+and `finish_login` need one of the `axum`, `actix`, `leptos` or `rullst`
+features (for example `cargo add rullst-connect@=13.0.0-alpha.6 --features axum`).
 
 For the login challenge store in the application's database (`sqlite`,
 `postgres` or `mysql`; `axum` adds `finish_login` and the callback extractor):

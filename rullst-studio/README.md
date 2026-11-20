@@ -42,7 +42,9 @@ room. The 13.x stability promise begins with stable `13.0.0`.
   values and does not offer bulk flush.
 - **Local-first security:** The supported launcher binds to loopback, verifies
   the direct peer and local `Host` authority, and requires same-origin `Origin`
-  on mutations.
+  on mutations. These checks trust the TCP peer address: a reverse proxy,
+  tunnel or other forwarder on the same machine makes every client it forwards
+  look local (see [Local access limits](#local-access-limits)).
 - **Self-contained interface:** Studio embeds its compiled stylesheet and its
   small request-stream client. Its database, cache, environment, trace and ER
   pages do not depend on a browser-side Tailwind compiler, Google Fonts, HTMX,
@@ -88,6 +90,19 @@ so importing the raw browser, `jobs_monitor` or `feature_flags` router cannot
 turn those handlers into an unprotected write API; without the marker they
 return `403`.
 
+#### Local access limits
+
+The loopback check trusts the TCP peer address and the `Host` header, and the
+`Origin` check stops browsers, not other clients. A reverse proxy, SSH or
+container port forward, tunnel or other forwarder on the same machine that
+connects to Studio from a loopback address, such as an nginx
+`proxy_pass http://127.0.0.1:5555` with its default `Host` header, makes every
+client it forwards look local. When the router is mounted behind Core's
+trusted-proxy layer, so does any host in a `trusted_proxies` network, which can
+send a forwarding header naming `127.0.0.1`. The release-build refusal does not
+depend on `RULLST_ENV`: a debug build started with `RULLST_ENV=production`
+still serves local Studio. Never put a forwarder in front of local Studio.
+
 ### Remote projects (v13, since 13.0.0-alpha.3)
 
 The `rullst-studio` binary (`cargo install rullst-studio --version =13.0.0-alpha.6 --no-default-features --features remote --locked`, then
@@ -105,7 +120,11 @@ and runs in release builds because it serves no local data: the data
 browser, `.env` viewer, AI and API playgrounds and migration pages are not
 mounted. Projects are stored owner-only in the user's configuration
 directory, with each token AES-256-GCM encrypted under a key in the data
-directory and bound to its name and base URL. Requests require `https://`
+directory and bound to its name and base URL. The server checks the loopback
+peer, not the operating-system user: any account on the same machine can open
+`127.0.0.1:5556`, read the monitoring pages, receive the form token in them
+and submit the forms. Owner-only storage protects the files at rest, not what
+the running process serves. Requests require `https://`
 (or `http://` to loopback), follow no redirects, use a proxy only when the
 Settings page selects one (the `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY` and
 `NO_PROXY` variables, or an explicit URL; SOCKS is not supported) and
@@ -197,7 +216,10 @@ OTLP collector, durable trace backend, key manager, or production Studio login.
 
 ## 🔐 Security Audit
 
-`rullst-studio` currently supports verified-loopback development access. It does
+`rullst-studio` currently supports verified-loopback development access, with
+the [limits above](#local-access-limits): a forwarder on the same machine
+defeats the loopback check, and every user account on the machine counts as
+local. It does
 not provide a built-in shared-intranet or production authentication mode. Do not
 expose raw subrouters publicly; a future shared mode must fail closed behind
 application-owned authentication, administrator authorization, TLS, and network

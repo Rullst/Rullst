@@ -43,7 +43,7 @@ walk through a complete integration.
 - **Shared team/workspace quotas:** Bounded subject identities, idempotent
   reservations, replay-safe execution and an opt-in transactional SQL store for
   SQLite, PostgreSQL, MySQL and MariaDB.
-- **v13 plan-gate candidate:** `entitlements` checks current tenant/subject-bound
+- **Plan gate (v13):** `entitlements` checks current tenant/subject-bound
   subscription state against an explicit feature/plan policy on every action.
   It rejects mocks, mismatched modes, non-active status, expiry and stale reads.
   Trusted storage/reconciliation adapters remain application-owned; success is
@@ -542,7 +542,9 @@ they are not encryption or a complete billing audit history.
 Reviewed live adapters share one pooled client with finite connect and
 whole-request timeouts. It does not follow redirects or inherit ambient proxy
 environment variables. JSON responses are capped at one MiB, checkout
-locations must be bounded credential-free HTTPS URLs without fragments, and
+locations must be bounded credential-free HTTPS URLs without fragments
+(Stripe's are kept with theirs: its hosted checkout URL carries an opaque
+client fragment), and
 public errors never include a request URL, credential, provider body, or raw
 transport diagnostic.
 
@@ -916,8 +918,12 @@ another node's proof early. An in-memory SQLite URL (`sqlite::memory:` or
 database; its claims are still lost on restart.
 
 That middleware path records the payload before calling the handler, so it is
-a replay firewall rather than an exactly-once delivery protocol. A crash after
-admission can still occur before a business mutation.
+a replay firewall rather than an exactly-once delivery protocol. The claim is
+kept whatever the handler returns: when the handler answers with an error
+status, times out or the process crashes before the business mutation, the
+provider's retry of the same payload gets `409 Conflict` for the replay TTL
+(24 hours by default) and the event is lost. Store the event durably (an outbox
+row or a queue job) before answering `2xx`, or use the event-key path below.
 
 When a verified provider protocol supplies a stable event ID, prefer
 `check_and_record_event_key` over payload-only replay detection. A relational
