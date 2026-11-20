@@ -59,14 +59,22 @@ release's source, work scheduled for the next one) are in that release's
 ## Databases and the ORM
 
 - Turso/libSQL support is deliberately bounded: it is a primary database only
-  in the Blank and API starters, through `TursoOrm` and the `TursoModel` API
-  that `#[derive(Orm)]` generates for it, and does not work with `Schema`,
-  `artisan!`, `Server::with_db`, Nexus, Studio's database pages or
-  `make:billing`. Full ORM parity is not planned (see the ROADMAP's
+  in the Blank and API starters (any starter can add it as a side store with
+  `--turso`), through `TursoOrm` and the `TursoModel` contract that
+  `#[derive(Orm)]` with `#[orm(backend = "turso")]`, or `#[derive(TursoModel)]`,
+  generates; such a model must declare `#[orm(full_row_save)]`. It does not
+  work with `Schema`, `artisan!`, `Server::with_db`, Nexus, Studio's database
+  pages or `make:billing`, and its transactions are statement batches
+  (`TursoStore::transaction`). Full ORM parity is not planned (see the ROADMAP's
   [decided non-goals](../../ROADMAP.md#13x-minor-candidates-and-decided-non-goals)).
   The client follows a same-origin `base_url` from a multi-instance server
   (such as Turso Cloud); a `base_url` at another origin is refused with
   `PolyglotError::CrossOriginEndpoint` and the insert is not committed.
+  When `TURSO_DATABASE_URL` is empty or a `mock_` value, the store is a local
+  SQLite file (`TURSO_OFFLINE_PATH` in the generated starter, by default
+  `turso-development.db`) in every environment, production included: a
+  deployment that does not set the variable writes to that file instead of
+  Turso.
 - `save()` writes only the changed columns for a model with a `RowSnapshot`
   field. A model with `#[orm(full_row_save)]`, and every Turso model, writes
   every column, so two requests that change different columns of one row can
@@ -146,9 +154,9 @@ The packages promoted to the Extension tier keep their documented scope
 - No automated test runs against a live provider account: CI exercises the
   payment, video, OAuth, mail and AI providers against local mocks, fixtures
   and test servers, without credentials.
-- Google and GitHub sign-in are used with real accounts in production
-  applications; Microsoft, Apple and the other OAuth providers are not
-  validated with real accounts. Microsoft sign-in needs the optional claims
+- Google and GitHub sign-in are used by the maintainer's production
+  applications, with no automated test against a live account; Microsoft,
+  Apple and the other OAuth providers have not been used with real accounts. Microsoft sign-in needs the optional claims
   `email` and `xms_edov` to link or create accounts. `make:oauth` needs the
   account files of `cargo rullst auth` or the SaaS starter, or the functions
   of the documented authentication contract (`src/auth_contract.rs`).

@@ -335,11 +335,12 @@ on `BroadcastManager` and `PresenceTracker`.
   access to the job database or keys, and CPU, memory and time limits
   ([isolation](labs-runner-contract.md#isolation-the-host-owns)). The
   application supplies signed-in students and their course enrollment. The
-  source arrives as text (`RustSource`); which language the runner compiles
-  or interprets is the runner's choice. In the 13.0.0-alpha.5 acceptance run
-  a runner that started one Docker container per job graded Python
-  submissions, and the contract states that a container alone is not enough
-  isolation for hostile code.
+  source arrives as text (`RustSource`). Protocol v1 defines only one
+  profile, a Rust function (`rust-function-wasm-v1`); a runner that compiles
+  or interprets another language does so outside that profile. In the
+  13.0.0-alpha.5 acceptance run a runner that started one Docker container per
+  job graded Python submissions that way, and the contract states that a
+  container alone is not enough isolation for hostile code.
 - **Students learn:** writing a function to a specification, test cases and
   edge cases (zero, negative readings), and why hidden tests exist.
 - **Difficulty:** beginner for students; advanced for the teacher, who sets

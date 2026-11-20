@@ -62,15 +62,23 @@ próxima) estão nas "Known limitations" dessa versão no
 ## Bancos de dados e o ORM
 
 - O suporte a Turso/libSQL é limitado de propósito: ele é banco de dados
-  principal apenas nos starters Blank e API, por meio do `TursoOrm` e da API
-  `TursoModel` que o `#[derive(Orm)]` gera para ele, e não funciona com
-  `Schema`, `artisan!`, `Server::with_db`, Nexus, as páginas de banco de dados
-  do Studio nem `make:billing`. Paridade completa com o ORM não está planejada
+  principal apenas nos starters Blank e API (qualquer starter pode adicioná-lo
+  como armazenamento auxiliar com `--turso`), por meio do `TursoOrm` e do
+  contrato `TursoModel` que o `#[derive(Orm)]` com `#[orm(backend = "turso")]`,
+  ou o `#[derive(TursoModel)]`, gera; esse model precisa declarar
+  `#[orm(full_row_save)]`. Ele não funciona com `Schema`, `artisan!`,
+  `Server::with_db`, Nexus, as páginas de banco de dados do Studio nem
+  `make:billing`, e as transações dele são lotes de comandos
+  (`TursoStore::transaction`). Paridade completa com o ORM não está planejada
   (veja os [não objetivos decididos](../../../ROADMAP.md#13x-minor-candidates-and-decided-non-goals)
   do ROADMAP). O cliente segue um `base_url` de mesma origem enviado por um
   servidor com várias instâncias (como o Turso Cloud); um `base_url` de outra
   origem é recusado com `PolyglotError::CrossOriginEndpoint`, e o insert não é
-  confirmado.
+  confirmado. Quando o `TURSO_DATABASE_URL` está vazio ou é um valor `mock_`,
+  o armazenamento é um arquivo SQLite local (`TURSO_OFFLINE_PATH` no starter
+  gerado, por padrão `turso-development.db`) em qualquer ambiente, inclusive
+  produção: um deploy que não define a variável grava nesse arquivo em vez de
+  no Turso.
 - O `save()` grava apenas as colunas alteradas de um model com um campo
   `RowSnapshot`. Um model com `#[orm(full_row_save)]`, e todo model Turso,
   grava todas as colunas, então duas requisições que alteram colunas
@@ -159,9 +167,9 @@ Os pacotes promovidos ao nível Extension mantêm o escopo documentado
 - Nenhum teste automatizado roda contra a conta real de um provedor: a CI
   exercita os provedores de pagamento, vídeo, OAuth, e-mail e IA contra mocks,
   fixtures e servidores de teste locais, sem credenciais.
-- O login com Google e GitHub é usado com contas reais em aplicações em
-  produção; Microsoft, Apple e os outros provedores OAuth não foram validados
-  com contas reais. O login da Microsoft precisa das claims opcionais `email`
+- O login com Google e GitHub é usado pelas aplicações em produção do
+  mantenedor, sem teste automatizado com uma conta real; Microsoft, Apple e os
+  outros provedores OAuth não foram usados com contas reais. O login da Microsoft precisa das claims opcionais `email`
   e `xms_edov` para vincular ou criar contas. O `make:oauth` precisa dos
   arquivos de conta do `cargo rullst auth` ou do starter SaaS, ou das funções
   do contrato de autenticação documentado (`src/auth_contract.rs`).

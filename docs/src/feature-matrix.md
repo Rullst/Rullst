@@ -12,7 +12,7 @@
 This page is the public feature contract for the 20 packages in the v13
 [release inventory](../../.github/release-order.json): the 16 published 12.x
 packages plus the `rullst-privacy`, `rullst-supervision`, `rullst-media` and
-`rullst-labs` candidates, first published in the 13.0.0-alpha.1 prerelease.
+`rullst-labs` packages, first published in the 13.0.0-alpha.1 prerelease.
 The package manifests remain the machine-readable
 source of truth. The matrix explains the behavior those names select in this
 v13 source and makes the default build visible before an application adopts
@@ -37,7 +37,7 @@ the exact individual checks.
 
 ## v13 prerelease privacy additions
 
-The v13 candidate adds `rullst-privacy` as an optional release package. These
+v13 adds `rullst-privacy` as an optional release package. These
 features are absent from published 12.x releases and first shipped in the
 13.0.0-alpha.1 prerelease, which requires an explicit version opt-in. They do not change
 default dependencies or select application policies automatically.
@@ -51,31 +51,31 @@ default dependencies or select application policies automatically.
 | `privacy-postgres` | `postgres` | Age replay protection on one authoritative PostgreSQL database |
 | `privacy-consent` | `consent` | Purpose/version choices and effective withdrawal |
 | `privacy-consent-sqlite` | `consent-sqlite` | Shared-local consent state |
-| `privacy-consent-postgres` | `consent-postgres` | New candidate for shared consent across application hosts; independent of age assurance |
+| `privacy-consent-postgres` | `consent-postgres` | Shared consent across application hosts; independent of age assurance |
 
 See the [privacy package guide](../../rullst-privacy/README.md) for initialization,
 runtime roles, data minimization, backup/failover obligations and acceptance.
 
-The local email-login candidate adds Auth `email-login-sqlite` and
+Email login adds Auth `email-login-sqlite` and
 `email-login-postgres`, with facade `auth-email-login-sqlite` /
 `auth-email-login-postgres`. These optional paths reuse authoritative recovery
 accounts and opaque sessions; they do not enable email login on accounts or
-replace tenant/MFA policy. Hosted source/package admission remains pending; see
+replace tenant/MFA policy. See
 [the email-login contract](email-login.md).
 
-The scoped API-token candidate adds Auth `api-tokens-sqlite` /
+Scoped API tokens add Auth `api-tokens-sqlite` /
 `api-tokens-postgres` and facade `auth-api-tokens-sqlite` /
 `auth-api-tokens-postgres`. They enable the corresponding recovery backend only;
 email login, JWT and OAuth remain independent. See the
-[API-token contract](api-tokens.md) for current admission and boundaries.
+[API-token contract](api-tokens.md) for what is tested and the boundaries.
 
 ## Umbrella crate: `rullst`
 
-The v13 prerelease private-storage candidate adds Core/facade `storage-multipart`,
+Private storage adds the Core/facade feature `storage-multipart`,
 which selects `storage-s3`, bounded XML parsing and checkpoint key zeroization.
 It enables no database, queue or default feature. See
 [private multipart uploads](private-multipart-uploads.md) for server-mediated
-parts, encrypted resumable checkpoints, cleanup responsibilities and admission.
+parts, encrypted resumable checkpoints, cleanup responsibilities and what is tested.
 
 The default `rullst` dependency enables no feature: since 13.0.0-alpha.3 it
 compiles the HTTP runtime without the ORM, a SQLx driver or Core's durable
@@ -106,8 +106,8 @@ the drivers.
 | `orm-pgvector` | no | `orm` plus typed pgvector SQLx values; use with `strict-postgres` for the supported live query contract |
 | `orm-redis` | no | `orm` plus namespaced Redis Hash, Set and Sorted Set operations |
 | `queue-sqlite` | no | Core's durable SQLite queue backend |
-| `storage-s3` | no | v13 candidate: Core's bounded AWS S3 and Cloudflare R2 object operations and signed GET URLs; see [private object storage](private-object-storage.md) |
-| `storage-multipart` | no | v13 candidate: `storage-s3` plus server-mediated multipart uploads with bounded XML parsing and checkpoint key zeroization; see [private multipart uploads](private-multipart-uploads.md) |
+| `storage-s3` | no | v13: Core's bounded AWS S3 and Cloudflare R2 object operations and signed GET URLs; see [private object storage](private-object-storage.md) |
+| `storage-multipart` | no | v13: `storage-s3` plus server-mediated multipart uploads with bounded XML parsing and checkpoint key zeroization; see [private multipart uploads](private-multipart-uploads.md) |
 | `nexus` | no | The generated Nexus administration interface, without the AI assistant (since 13.0.0-alpha.4) |
 | `nexus-ai` | no | v13: `nexus` plus the AI assistant at `/nexus/chat` (`rullst-nexus/ai`), which adds `rullst-ai`; without it `/nexus/chat` answers 404 with a notice naming this feature |
 | `nexus-tz` | no | v13: `nexus` plus `NexusTimeZone::named`, so `DateTimeUtc` form values are shown and read in a named IANA time zone with its daylight-saving rules; enables the time zone database of `jiff` (always a dependency since 13.0.0-alpha.6): the system zoneinfo, with a bundled fallback |
@@ -116,13 +116,13 @@ the drivers.
 | `auth-passkeys` | no | v13 (13.0.0-alpha.6): `auth` plus WebAuthn passkeys (`rullst::auth::passkey`, Auth `passkeys`), which adds aws-lc-rs to `rullst-auth`; `auth-sqlite` and `auth-passkey-postgres` include it |
 | `auth-jwt` | no | `auth` plus the strict application-issued JWT policy |
 | `auth-sqlite` | no | `auth-jwt` and `auth-passkeys` plus bounded shared SQLite JWT revocation and passkey device lifecycle state |
-| `auth-passkey-postgres` | no | `auth-passkeys` plus the optional v13 account/session-bound PostgreSQL passkey ceremony candidate; host credential-counter CAS remains required |
-| `auth-sessions-sqlite` | no | v13 candidate: `auth` plus the SQLite account registry, opaque sessions and session inventory (Auth `recovery-sqlite`); see [session management](session-management.md) |
-| `auth-sessions-postgres` | no | v13 candidate: `auth` plus the PostgreSQL account registry, opaque sessions and session inventory (Auth `recovery-postgres`) |
-| `auth-email-login-sqlite` | no | v13 candidate: `auth` plus email login over the SQLite recovery accounts and sessions; see [the email-login contract](email-login.md) |
-| `auth-email-login-postgres` | no | v13 candidate: `auth` plus email login over the PostgreSQL recovery accounts and sessions |
-| `auth-api-tokens-sqlite` | no | v13 candidate: `auth` plus scoped API tokens over the SQLite recovery backend; see [the API-token contract](api-tokens.md) |
-| `auth-api-tokens-postgres` | no | v13 candidate: `auth` plus scoped API tokens over the PostgreSQL recovery backend |
+| `auth-passkey-postgres` | no | `auth-passkeys` plus the optional account/session-bound PostgreSQL passkey ceremony store (v13); host credential-counter CAS remains required |
+| `auth-sessions-sqlite` | no | v13: `auth` plus the SQLite account registry, opaque sessions and session inventory (Auth `recovery-sqlite`); see [session management](session-management.md) |
+| `auth-sessions-postgres` | no | v13: `auth` plus the PostgreSQL account registry, opaque sessions and session inventory (Auth `recovery-postgres`) |
+| `auth-email-login-sqlite` | no | v13: `auth` plus email login over the SQLite recovery accounts and sessions; see [the email-login contract](email-login.md) |
+| `auth-email-login-postgres` | no | v13: `auth` plus email login over the PostgreSQL recovery accounts and sessions |
+| `auth-api-tokens-sqlite` | no | v13: `auth` plus scoped API tokens over the SQLite recovery backend; see [the API-token contract](api-tokens.md) |
+| `auth-api-tokens-postgres` | no | v13: `auth` plus scoped API tokens over the PostgreSQL recovery backend |
 | `auth-session-registry-sqlite` | no | v13: `auth` plus the server-side login-session registry (`rullst::auth::session_registry`) over the application's SQLite pool: revocable `rullst_session` cookies, a device list and per-session sign-out; see [session management](session-management.md#server-side-login-sessions) |
 | `auth-session-registry-postgres` | no | v13: the session registry over the application's PostgreSQL pool |
 | `auth-session-registry-mysql` | no | v13: the session registry over the application's MySQL or MariaDB pool |
@@ -130,23 +130,23 @@ the drivers.
 | `account-mail-postgres` | no | `auth` and `mail` plus the PostgreSQL recovery store and the `account_mail` delivery bridge |
 | `mail` | no | `rullst-mail` with HTTP/offline transports and no SMTP dependency |
 | `mail-sqlite` | no | `mail` plus bounded shared-local SQLite recipient suppression and provider-event replay evidence |
-| `mail-postgres` | no | v13 candidate: shared PostgreSQL suppression with keyed identifiers, authoritative dispatch checks and independent quotas |
+| `mail-postgres` | no | v13: shared PostgreSQL suppression with keyed identifiers, authoritative dispatch checks and independent quotas |
 | `mail-smtp` | no | `mail` plus the optional SMTP transport |
 | `mail-aws-ses` | no | `mail` plus native SES v2 delivery signed by the official AWS SDK |
 | `messaging` | no | Native bounded broker-neutral messaging contracts and the deterministic process-local broker |
 | `messaging-sqlite` | no | `messaging` plus fixed-schema durable local SQLite publication, lease, retry/DLQ, ACK and idempotency state |
-| `messaging-schedules-postgres` | no | v13 candidate: encrypted PostgreSQL recurring-publication outbox and fenced relay into an explicitly selected broker; no default SQLite/ORM |
-| `messaging-webhooks` | no | v13 candidate: encrypted shared-local SQLite outgoing outbox, immutable HTTPS destination, signed exact bytes, fenced retries and minimized terminal inspection |
+| `messaging-schedules-postgres` | no | v13: encrypted PostgreSQL recurring-publication outbox and fenced relay into an explicitly selected broker; no default SQLite/ORM |
+| `messaging-webhooks` | no | v13: encrypted shared-local SQLite outgoing outbox, immutable HTTPS destination, signed exact bytes, fenced retries and minimized terminal inspection |
 | `messaging-orm-outbox` | no | `messaging` and `orm` plus the static relational outbox-to-broker relay; the publish/ACK crash window remains at-least-once |
-| `messaging-redis` | no | v13 candidate: `messaging` plus the Redis Streams broker with fenced delivery indexes; enables no ORM, mail, cache or Core queue; see [Redis Streams messaging](redis-messaging.md) |
-| `privacy` | no | v13 candidate: the independent empty `rullst-privacy` base; the `privacy-*` features are listed in [the privacy additions](#v13-prerelease-privacy-additions) |
-| `privacy-age` | no | v13 candidate: `privacy` plus proportional age-policy contracts |
-| `privacy-challenge-tokens` | no | v13 candidate: `privacy-age` plus authenticated server challenge transport |
-| `privacy-sqlite` | no | v13 candidate: `privacy-age` plus shared-local age replay protection |
-| `privacy-postgres` | no | v13 candidate: `privacy-age` plus age replay protection on one authoritative PostgreSQL database |
-| `privacy-consent` | no | v13 candidate: `privacy` plus purpose/version choices and effective withdrawal |
-| `privacy-consent-sqlite` | no | v13 candidate: `privacy-consent` plus shared-local consent state |
-| `privacy-consent-postgres` | no | v13 candidate: `privacy-consent` plus shared PostgreSQL consent state |
+| `messaging-redis` | no | v13: `messaging` plus the Redis Streams broker with fenced delivery indexes; enables no ORM, mail, cache or Core queue; see [Redis Streams messaging](redis-messaging.md) |
+| `privacy` | no | v13: the independent empty `rullst-privacy` base; the `privacy-*` features are listed in [the privacy additions](#v13-prerelease-privacy-additions) |
+| `privacy-age` | no | v13: `privacy` plus proportional age-policy contracts |
+| `privacy-challenge-tokens` | no | v13: `privacy-age` plus authenticated server challenge transport |
+| `privacy-sqlite` | no | v13: `privacy-age` plus shared-local age replay protection |
+| `privacy-postgres` | no | v13: `privacy-age` plus age replay protection on one authoritative PostgreSQL database |
+| `privacy-consent` | no | v13: `privacy` plus purpose/version choices and effective withdrawal |
+| `privacy-consent-sqlite` | no | v13: `privacy-consent` plus shared-local consent state |
+| `privacy-consent-postgres` | no | v13: `privacy-consent` plus shared PostgreSQL consent state |
 | `mailer` | no | Compatibility alias for `mail-smtp`; prefer `mail-smtp` in new manifests |
 | `queue-redis` | no | Redis dependency and Core's Redis queue backend |
 | `cache-redis` | no | Redis dependency and Core's Redis cache backend |
@@ -229,8 +229,8 @@ Default features: none.
 | `cache-redis` | Redis-backed cache storage |
 | `redis` | Convenience alias for both Redis queue and cache backends |
 | `scheduler-tz` | v13: `Scheduler::task_in_tz` and `Scheduler::deferrable_task_in_tz` for cron tasks (and deferral windows) in a named IANA time zone (system zoneinfo, bundled `jiff` database as fallback) |
-| `storage-s3` | v13 candidate: bounded AWS S3 and Cloudflare R2 object operations and signed GET URLs |
-| `storage-multipart` | v13 candidate: `storage-s3` plus server-mediated multipart uploads with bounded XML parsing and checkpoint key zeroization |
+| `storage-s3` | v13: bounded AWS S3 and Cloudflare R2 object operations and signed GET URLs |
+| `storage-multipart` | v13: `storage-s3` plus server-mediated multipart uploads with bounded XML parsing and checkpoint key zeroization |
 | `studio` | Integration marker used by the umbrella Studio boundary; it adds no dependency by itself |
 | `telemetry` | OpenTelemetry tracing and OTLP export dependencies |
 | `strict-postgres` | `orm` and `tls` plus the ORM PostgreSQL backend selection |
@@ -292,9 +292,9 @@ boundary are defined in the packaged crate README and the
 | Feature | Enables |
 | --- | --- |
 | `runtime-driver-codecs` | Enum codecs follow the ORM runtime's selected SQLx drivers; `rullst-orm` enables it |
-| `runtime-feature-gates` | v13 candidate: Redis and embedding APIs are emitted or omitted at expansion time from the forwarded `redis`/`ai` features instead of the application's own features; `rullst-orm` enables it |
-| `redis` | v13 candidate: forwarded by `rullst-orm/redis`; emits the Redis cache, hash and event code under `runtime-feature-gates` |
-| `ai` | v13 candidate: forwarded by `rullst-orm/ai`; emits `save_with_embedding` under `runtime-feature-gates` |
+| `runtime-feature-gates` | v13: Redis and embedding APIs are emitted or omitted at expansion time from the forwarded `redis`/`ai` features instead of the application's own features; `rullst-orm` enables it |
+| `redis` | v13: forwarded by `rullst-orm/redis`; emits the Redis cache, hash and event code under `runtime-feature-gates` |
+| `ai` | v13: forwarded by `rullst-orm/ai`; emits `save_with_embedding` under `runtime-feature-gates` |
 | `strict-postgres` | Compatibility marker matching the ORM backend vocabulary; no macro expansion changes |
 | `strict-mysql` | Compatibility marker matching the ORM backend vocabulary; no macro expansion changes |
 | `strict-sqlite` | Compatibility marker matching the ORM backend vocabulary; no macro expansion changes |
@@ -323,16 +323,16 @@ types remain available without a web-framework adapter.
 Default features: none. The deterministic process-local broker, versioned
 envelope, idempotency, consumer groups, leases, retry, dead-letter, and purge
 contracts are available without optional dependencies. The only remote broker
-adapter is the v13 Redis Streams candidate (13.0.0-alpha.1 prerelease); other remote brokers
+adapter is Redis Streams (since 13.0.0-alpha.1); other remote brokers
 are not implemented and have no placeholder features.
 
 | Feature | Enables |
 | --- | --- |
 | `sqlite` | Fixed-schema durable local broker with serialized SQLite writes and immutable plaintext or explicit AES-256-GCM content profiles; restart/corruption/rotation/tamper/two-instance evidence is local, while metadata visibility, key custody and remote replication/failover remain explicit boundaries |
 | `orm-outbox` | Static bridge from the relational `rullst-orm` outbox to one configured broker topic, with exact replay after the publish-before-ACK crash window; worker operations and remote atomicity remain application boundaries |
-| `redis-streams` | v13 candidate: standalone Redis Streams broker with Rullst-owned fenced delivery indexes; see [Redis Streams messaging](redis-messaging.md) |
-| `schedules-postgres` | v13 candidate: encrypted PostgreSQL recurring-publication outbox and fenced relay into a `MessageBroker`; enables neither SQLite nor ORM |
-| `webhooks` | v13 candidate: `sqlite` plus one immutable approved HTTPS destination, HMAC-SHA256 signing, bounded retry/dead-letter state, cancellation and terminal retention |
+| `redis-streams` | v13: standalone Redis Streams broker with Rullst-owned fenced delivery indexes; see [Redis Streams messaging](redis-messaging.md) |
+| `schedules-postgres` | v13: encrypted PostgreSQL recurring-publication outbox and fenced relay into a `MessageBroker`; enables neither SQLite nor ORM |
+| `webhooks` | v13: `sqlite` plus one immutable approved HTTPS destination, HMAC-SHA256 signing, bounded retry/dead-letter state, cancellation and terminal retention |
 
 ### `rullst-iot`
 
@@ -365,7 +365,7 @@ Default features: none. HTTP mail providers remain available without SMTP.
 | `aws-ses` | Official AWS SES v2 SDK, regional SigV4, temporary/rotating credential providers and native attachments/CID; AWS account readiness and inbox delivery remain external |
 | `capital-invoice` | Capital's native invoice PDF plus the final-payment-bound delivery bridge; durable outbox claiming remains application-owned |
 | `sqlite` | File-backed shared-local suppression state with exact provider-event replay binding and immutable quotas; webhook authentication, encryption and multi-host replication remain application-owned |
-| `postgres` | v13 candidate: namespaced suppression on one authoritative writable PostgreSQL database; independent of SQLite. See [shared mail suppression](shared-mail-suppression.md) for initialization, runtime grants, retention and pending admission |
+| `postgres` | v13: namespaced suppression on one authoritative writable PostgreSQL database; independent of SQLite. See [shared mail suppression](shared-mail-suppression.md) for initialization, runtime grants, retention and pending admission |
 | `conformance` | v13: the test kit `conformance::check_mail_driver`, which runs the built-in drivers' contract against your own `MailDriver`; enable it in development dependencies only (see [provider conformance kits](provider-conformance.md)) |
 
 ### `rullst-auth`
@@ -375,16 +375,16 @@ Default features: none.
 | Feature | Enables |
 | --- | --- |
 | `oauth` | Optional `rullst-connect` OAuth2/OIDC integration and re-exports |
-| `passkeys` | WebAuthn ES256 passkeys (`auth::passkey`), checked with aws-lc-rs, the only feature that adds aws-lc-rs to this crate (13.0.0-alpha.6) |
+| `passkeys` | WebAuthn ES256 passkeys (`auth::passkey`), checked with aws-lc-rs, the only feature that uses aws-lc-rs directly (13.0.0-alpha.6); `jwt`, `oauth` and the PostgreSQL and MySQL features also build it, through `jsonwebtoken` and rustls |
 | `jwt` | Application-issued JWT claims, key rotation, and revocation-store policy |
 | `sqlite` | `jwt` and `passkeys` plus bounded file-backed shared JWT revocation and passkey device lifecycle state |
-| `recovery-sqlite` | SQLite account registry, recovery and opaque sessions (`SqlRecoveryStore`); the v13 candidate adds session inventory/logout |
+| `recovery-sqlite` | SQLite account registry, recovery and opaque sessions (`SqlRecoveryStore`); v13 adds session inventory/logout |
 | `recovery-postgres` | The same recovery store on PostgreSQL |
-| `passkey-postgres` | v13 candidate: `passkeys` plus shared account/session-bound PostgreSQL passkey ceremonies |
-| `email-login-sqlite` | v13 candidate: `recovery-sqlite` plus email login over its accounts and sessions; see [the email-login contract](email-login.md) |
-| `email-login-postgres` | v13 candidate: `recovery-postgres` plus email login |
-| `api-tokens-sqlite` | v13 candidate: `recovery-sqlite` plus scoped API tokens; see [the API-token contract](api-tokens.md) |
-| `api-tokens-postgres` | v13 candidate: `recovery-postgres` plus scoped API tokens |
+| `passkey-postgres` | v13: `passkeys` plus shared account/session-bound PostgreSQL passkey ceremonies |
+| `email-login-sqlite` | v13: `recovery-sqlite` plus email login over its accounts and sessions; see [the email-login contract](email-login.md) |
+| `email-login-postgres` | v13: `recovery-postgres` plus email login |
+| `api-tokens-sqlite` | v13: `recovery-sqlite` plus scoped API tokens; see [the API-token contract](api-tokens.md) |
+| `api-tokens-postgres` | v13: `recovery-postgres` plus scoped API tokens |
 
 The umbrella crate exposes `passkeys`, `jwt` and `sqlite` as `auth-passkeys`,
 `auth-jwt` and `auth-sqlite` (`auth-sqlite` also enables `auth-jwt` and
@@ -443,7 +443,7 @@ select one backend (and, for Nexus, to leave out the AI assistant and
 
 Use the same single-selection rule described for `rullst-orm`.
 
-## v13 prerelease candidate packages
+## v13 packages without facade features
 
 `rullst-supervision`, `rullst-media` and `rullst-labs` are in the v13 release
 inventory and were first published in the 13.0.0-alpha.1 prerelease. They have

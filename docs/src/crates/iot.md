@@ -313,7 +313,10 @@ security, identity, timing, correlation, retry and peer interoperability.
 On 2026-11-10 a BBC micro:bit V2 (nRF52833, Cortex-M4F at 64 MHz, 128 KiB
 RAM, 512 KiB flash) ran a firmware built on `rullst-iot` with
 `default-features = false`, `embedded-alloc` and a 32 KiB heap, on Rust 1.99.1
-at `opt-level = 3` with LTO. Its checks ran twice per boot, on every boot,
+at `opt-level = 3` with LTO (the firmware is
+[`.github/fixtures/iot-microbit-v2`](https://github.com/Rullst/Rullst/tree/main/.github/fixtures/iot-microbit-v2);
+the results below are the maintainer's record of the run, and no serial log is
+committed). Its checks ran twice per boot, on every boot,
 with no failure:
 
 | Group | Checks | What ran on the device |

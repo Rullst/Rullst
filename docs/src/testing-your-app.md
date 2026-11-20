@@ -197,6 +197,9 @@ a file you changed is kept. A project generated before 13.0.0-alpha.5 has no
 `cargo rullst audit --idor` lists every route with a path parameter that has
 no adjacent `// rullst-access: public|owner|role|admin — reason` comment, or
 whose classification has no matching guard in the crate, and exits non-zero.
+The guard is looked up once per crate: a single `authorize_owner_or_role` call
+anywhere satisfies every `owner` route, so a handler that forgot its own check
+is not reported.
 Add it to your CI once the CLI is installed there (`cargo install cargo-rullst
 --version <the version you generated with> --locked`). The audit points at
 the routes; a person still has to read each handler and decide whether it

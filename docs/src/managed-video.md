@@ -1,11 +1,11 @@
 # Private course videos with Bunny Stream
 
-`rullst-media` is an optional v13 candidate, first published in the
+`rullst-media` is an optional v13 package, first published in the
 13.0.0-alpha.1 prerelease. It implements a bounded
 private-video lifecycle: authorized creation and resumable upload, processing
 refresh, explicit publication, current-entitlement playback, withdrawal, metadata
 updates, deletion and durable reconciliation. Its standalone package is in the
-v13 release inventory, pending final release acceptance; it is not part of the framework facade. Existing starters are not
+v13 release inventory; it is not part of the framework facade. Existing starters are not
 changed. Its [maturity tier](maturity.md) has been Extension since
 13.0.0-alpha.5. The `s3` adapter [below](#s3-compatible-object-storage-s3-r2-minio)
 has the same tier and is tested offline only.
@@ -35,9 +35,10 @@ Applications supply authenticated tenant/course membership and current entitleme
 Automated acceptance uses actual local HTTP, SQLite and Chromium with controlled
 media. It checks signatures, upload bytes and failure recovery, CSRF and tenant
 denial, media decoding, captions/keyboard interaction, withdrawal and deletion.
-A production application uses the Bunny adapter with a real Bunny Stream library
-(create, browser upload, status, update, deletion and private playback); transcoding,
-CDN and iframe edge cases are not covered by Rullst's own tests. Signed URLs do not imply
+A production application of the maintainer uses the Bunny adapter with a real Bunny
+Stream library (create, browser upload, status, update, deletion and private playback);
+no automated test runs against a live account, and transcoding, CDN and iframe edge
+cases are not covered by Rullst's own tests. Signed URLs do not imply
 DRM, immediate revocation of existing capabilities or prevention of all copying.
 
 See the [managed-video acceptance roadmap](managed-video-roadmap.md) and the
@@ -47,8 +48,9 @@ acceptance remains separate from implementation and local test success.
 ## S3-compatible object storage (S3, R2, MinIO)
 
 **Status: Extension, tested offline only.** Its tests run against the offline
-mock and a loopback HTTP fixture that checks request signing and payload
-digests. No automated test runs against a live AWS S3, Cloudflare R2 or MinIO
+mock and a loopback HTTP fixture that checks the shape of the SigV4
+`Authorization` header and the payload digest without recomputing the
+signature. No automated test runs against a live AWS S3, Cloudflare R2 or MinIO
 service, so provider interoperability is not yet validated. The opt-in `s3` feature adds
 `rullst_media::s3::S3Storage`, a second `VideoProvider` beside Bunny Stream for
 AWS S3, Cloudflare R2 and MinIO (custom endpoint). It stores and serves the

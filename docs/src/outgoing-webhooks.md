@@ -180,4 +180,4 @@ were audited; the facade consumer passed the same HTTP/TLS and fresh-process
 journeys with 53 Messaging source files byte-matched to the candidate. All-feature
 Messaging regression (63 ordinary tests), strict all-target Clippy and the native
 recurring PostgreSQL regression passed. Combined hosted and extracted-package
-source admission then passed in PR #239; final release acceptance remains separate.
+source admission then passed in PR #239.

@@ -58,7 +58,7 @@ age-only crate is unnecessary for the first bounded contract.
 
 The base crate must not require a database, camera, remote provider, inference
 runtime or new default Core dependency. Provider/persistence integrations stay
-feature-gated. The package candidate is included in the v13 release-order
+feature-gated. The package is included in the v13 release-order
 manifest and has explicit optional umbrella features, with no Core dependency.
 The package was first published in the 13.0.0-alpha.1 prerelease on
 11 October 2026. Live

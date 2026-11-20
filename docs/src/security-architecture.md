@@ -123,8 +123,12 @@ routes reuse the same fail-closed peer/credential and administrator boundary as
 Nexus. The guard is looked up in the same crate's `src` tree, outside comments
 and `#[cfg(test)]` items; it need not be in the route's file.
 
-The marker records intent and the scanner catches common omissions; neither is
-a proof of domain ownership. Protected object routes still need negative HTTP
+The marker records intent and the scanner catches a missing marker or a
+classification with no matching guard anywhere in the crate; neither is
+a proof of domain ownership. The guard check is per crate, not per route: one
+`authorize_owner_or_role` call anywhere in `src` satisfies every `owner` route
+of that crate, so the scanner does not notice an `owner` handler that forgot
+its own check. Protected object routes still need negative HTTP
 tests in which an authenticated subject requests another subject's resource and
 receives a denial before data or side effects are exposed.
 
@@ -232,10 +236,19 @@ AES-256-GCM since 13.0.0-alpha.6, when `rullst-core` stopped depending on
 
 | Component | Library | Why |
 | --- | --- | --- |
-| Every TLS connection Rullst makes: outbound HTTPS (reqwest: AI and payment providers, OAuth, webhooks, S3 storage, Studio's remote poller), SQLx (PostgreSQL and MySQL), Redis (Redis Streams messaging, ORM Redis data and cache), SMTP (`mail-smtp`) and OTLP telemetry | `aws-lc-rs`, as the rustls crypto provider | Post-quantum hybrid key exchange (`X25519MLKEM768`, offered first) and a FIPS-capable build |
+| Every TLS connection Rullst makes: outbound HTTPS (reqwest: AI and payment providers, OAuth, webhooks, S3 storage, Studio's remote poller), SQLx (PostgreSQL and MySQL), Redis (Redis Streams messaging, ORM Redis data and cache), SMTP (`mail-smtp`) and OTLP telemetry | `aws-lc-rs`, as the rustls crypto provider | Post-quantum hybrid key exchange and a FIPS-capable build (see below) |
 | SHA-256 and HMAC-SHA256 in `rullst-core` and `rullst-capital` (since 13.0.0-alpha.5), and the AES-256-GCM recovery records of Core's `storage-multipart` (since 13.0.0-alpha.6) | RustCrypto `sha2`, `hmac` and `aes-gcm` | Pure Rust, portable to wasm and edge targets; signatures are checked with `Mac::verify_slice` (constant time) |
 | ES256 passkeys in `rullst-auth`: the credential public key at registration and in the passkey stores, and the assertion signature (ASN.1 DER, high-S accepted as WebAuthn allows) | `aws-lc-rs`, used directly, only with the `passkeys` feature (`auth-passkeys` in `rullst`) | The library behind TLS, so an application with passkeys usually builds it already, and one without them compiles it for neither; `rullst-auth` is native-only in the facade. It replaced `p256` and `ring` here with the same decisions, on differential tests and on the Wycheproof ECDSA P-256 vectors |
 | HMAC, digests, randomness and the other signatures in `rullst-auth`, `rullst-labs`, `rullst-media`, `rullst-privacy`, `rullst-studio` and `rullst-supervision` | `ring`, used directly | Portable to wasm and edge targets, where `aws-lc-rs` is not available |
+
+Post-quantum TLS is limited to key exchange. The hybrid `X25519MLKEM768` group
+is among the default key-exchange groups of rustls 0.23 with aws-lc-rs. rustls
+offers it first only when a crate in the build enables rustls's
+`prefer-post-quantum` feature; in Rullst only the AWS SES client of
+`rullst-mail` does. Otherwise it is offered last, after X25519, P-256 and
+P-384, so a connection uses it only when the server asks for it with a retry
+request. There are no post-quantum signatures: certificates are verified with
+classical signatures.
 
 `ring` is not a rustls provider in Rullst: no Rullst crate enables rustls' `ring`
 feature. JWT signing (`rullst-auth` `jwt`) uses `jsonwebtoken`'s `aws_lc_rs`

@@ -18,8 +18,8 @@ production monitor's traces, security radar, desktop notifications and
 proxy support in Studio, per-response CSRF masking with compressed pages,
 the security baseline in every environment, revocable server-side login
 sessions, explicit ORM save modes and the fixes the applications upgraded
-to alpha.5 reported. Next come 13.0.0-rc.1 (fixes and documentation only)
-and then 13.0.0. Work planned next is under
+to alpha.5 reported. Next come 13.0.0-rc.1 (fixes, documentation and the
+changes approved one by one after the freeze) and then 13.0.0. Work planned next is under
 [Planned after 13.0.0-alpha.6](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#planned-after-1300-alpha6);
 the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha6---2026-11-20)
 lists every change and the known limitations.

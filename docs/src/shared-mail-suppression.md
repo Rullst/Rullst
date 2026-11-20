@@ -1,4 +1,4 @@
-# Shared PostgreSQL mail suppression (v13 candidate)
+# Shared PostgreSQL mail suppression (v13)
 
 Mail's optional `postgres` feature exposes `PostgresSuppressionStore`,
 `PostgresSuppressionConfig` and `SuppressionKey`; the facade feature is
@@ -6,7 +6,7 @@ Mail's optional `postgres` feature exposes `PostgresSuppressionStore`,
 `MutableSuppressionStore` contracts across hosts sharing one authoritative
 writable PostgreSQL database. It does not enable SQLite or change default mail
 delivery. It passed combined hosted and extracted-package source admission in
-PR #239; final release acceptance remains separate.
+PR #239.
 
 ## Configure and compose the store
 
@@ -121,7 +121,7 @@ do not prove inbox acceptance, provider account readiness or legal compliance.
 
 ## Automated evidence
 
-The candidate's owned PostgreSQL suite exercises independent initializers/pools,
+The owned PostgreSQL suite exercises independent initializers/pools,
 replay and conflict races, reason precedence, recipient/event quotas, SQL failure
 rollback, cancellation, lock deadlines, clock/configuration drift, restricted
 runtime privileges, non-durable storage rejection and close/reopen. Fresh

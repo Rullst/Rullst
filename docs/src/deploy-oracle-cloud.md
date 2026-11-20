@@ -13,11 +13,17 @@ account: check Oracle's current Always Free documentation before you rely on
 them. Free Arm capacity in a popular region is sometimes unavailable; try
 again later or pick another availability domain.
 
+This guide was written from Oracle's documentation and has not been followed
+end to end on a real account. Rullst's CI builds and starts the generated
+deployment on x86-64 Linux only: an Arm (`linux/arm64`) image and an Ampere
+machine are not tested.
+
 ## Arm or x86?
 
-- **Ampere A1 (Arm).** Build for `linux/arm64`. Rust and the generated
-  `Dockerfile` work natively on Arm, so the simplest way is to **build on the
-  VM itself** with `docker compose up -d --build` (step 4A of the shared guide).
+- **Ampere A1 (Arm).** Build for `linux/arm64`. Rust targets Arm, and the
+  generated `Dockerfile` names no architecture, so the simplest way is to
+  **build on the VM itself** with `docker compose up -d --build` (step 4A of
+  the shared guide); Rullst's CI does not build or run it on Arm.
   Ampere VMs are usually fast enough for this.
 - **Building elsewhere.** On an x86-64 computer, build for Arm with
   `docker buildx build --platform linux/arm64 -t my-app:<tag> --load .`. This

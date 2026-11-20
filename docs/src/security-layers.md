@@ -24,8 +24,10 @@ contracts, and both crates are in the Core [maturity tier](maturity.md).
 ## The short answer
 
 1. Run your application through `Server` and configure `[security]` in
-   `Rullst.toml`. In staging and production that gives you headers, CORS, the
-   WAF and CSRF without extra code.
+   `Rullst.toml`. That gives you headers, CORS, the WAF and CSRF without extra
+   code: headers and CSRF in every environment, the WAF refusing requests in
+   staging and production (set `RULLST_ENV=production`; without it the
+   application runs as development, where the WAF only logs).
 2. Behind a reverse proxy, set `Server::trusted_proxies` (or
    `[security] trusted_proxies`) to your proxy networks only.
 3. Add from `rullst-security` only what your application needs: the honeypot
@@ -64,9 +66,9 @@ From the outermost layer to your handler:
 | # | Layer | Owner | How you enable it |
 | :---: | :--- | :--- | :--- |
 | 1 | Trusted-proxy client resolution | Core | `Server::trusted_proxies` or `[security] trusted_proxies` |
-| 2 | Secure headers and CSP nonce | Core baseline | Automatic in staging/production; tune `[security] csp` and `coep` |
+| 2 | Secure headers and CSP nonce | Core baseline | Automatic in every environment since 13.0.0-alpha.6 (HSTS outside staging and production only over HTTPS); tune `[security] csp` and `coep` |
 | 3 | CORS allowlist | Core baseline | `[security] cors_allow_origins` |
-| 4 | WAF | Core baseline | Automatic in staging/production |
+| 4 | WAF | Core baseline | Automatic: refuses in staging/production, only logs in development, off in test |
 | 5 | CSRF (and exact machine endpoints) | Core baseline | Automatic; `Server::with_machine_endpoints` for API, webhook and mTLS routes |
 | 6 | Readiness and drain, Traffic Shield, per-peer rate limit | Core `Server` | `with_lifecycle`, `shield`, `rate_limit` |
 | 7 | Honeypot trap paths and peer bans | `rullst-security` | `HoneypotLayer` |

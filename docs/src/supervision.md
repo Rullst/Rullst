@@ -1,9 +1,9 @@
 # Transparent exam and parental supervision
 
-**Status: v13 candidate, first published in the 13.0.0-alpha.1
+**Status: v13 package, first published in the 13.0.0-alpha.1
 prerelease.** The implemented contract and observation extension passed combined
 source/archive acceptance in PR #239. The package is included in the release
-inventory, pending final release acceptance. It supplies no verified guardianship, device-wide
+inventory. It supplies no verified guardianship, device-wide
 control or legal-compliance certification. Its
 [maturity tier](maturity.md) is **Extension** (since 13.0.0-alpha.5): it was
 exercised on a real phone in the 13.0.0-alpha.5 acceptance application
@@ -102,7 +102,7 @@ payload; camera and audio findings come only from the host's adapters. The
 consumer must show active/paused/ended state and stop sending after pause/end.
 No-JavaScript controls must still work without claiming visibility observations.
 
-## Observation extension candidate
+## Observation extension
 
 The September 20 extension keeps the implementation in `rullst-supervision`.
 There is no separate `rullst-proctoring` crate. It adds exact collection selection,

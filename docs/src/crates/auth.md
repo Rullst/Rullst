@@ -27,15 +27,18 @@ async fn verify_login(password: String) -> Result<bool, AuthError> {
 
 Passwords longer than 72 bytes are rejected. `needs_rehash` compares the algorithm, version,
 memory, iteration, and parallelism parameters. The optional `SqlRecoveryStore` applies
-the same 72-byte bound to registration, password reset and `authenticate`; overlong input
-returns `RecoveryError::InvalidInput` before any account lookup, for registered and
-unknown emails alike.
+the same 72-byte bound to registration, password reset and `authenticate`. For
+registration and `authenticate`, overlong input returns `RecoveryError::InvalidInput`
+before any account lookup, for registered and unknown emails alike; a password reset
+looks up the reset token first, so an unknown, expired or used token returns
+`RecoveryError::InvalidAction` whatever the password's length.
 
 ## Encrypted sessions
 
 `make_login_cookie`, `make_login_cookie_with_epoch` and their decoders
 `decrypt_session` and `decrypt_session_claims` use a versioned AES-256-GCM
-envelope with authenticated metadata and an operating-system nonce. `APP_KEY` must contain at least 32 bytes,
+envelope with authenticated metadata and a random 96-bit nonce from the `rand` crate's
+thread-local generator (seeded from the operating system). `APP_KEY` must contain at least 32 bytes,
 must not be a documented placeholder, and must satisfy the entropy check.
 `get_app_key` reads it from the `APP_KEY` environment variable, then `.env`,
 then `Rullst.toml`. Without one, staging and production fail with
