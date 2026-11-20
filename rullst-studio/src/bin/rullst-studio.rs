@@ -15,8 +15,10 @@ use std::process::ExitCode;
 const USAGE: &str = "Usage: rullst-studio [--port PORT]
 
 Serves Rullst Studio for remote projects on http://127.0.0.1:PORT (default 5556).
-Projects are stored in your configuration directory, their tokens encrypted
-with a key in your data directory. Studio only ever listens on 127.0.0.1.";
+Open the address it prints: it carries a key that changes at every start, so
+other accounts on this machine cannot use Studio. Projects are stored in your
+configuration directory, their tokens encrypted with a key in your data
+directory. Studio only ever listens on 127.0.0.1.";
 
 fn parse_port(arguments: &[String]) -> Result<Option<u16>, String> {
     match arguments {

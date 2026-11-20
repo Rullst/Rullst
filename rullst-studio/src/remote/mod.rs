@@ -19,6 +19,11 @@
 //! name and base URL. Requests go only to `https://` origins, or `http://` to a
 //! loopback address (an SSH tunnel), follow no redirects and are bounded in
 //! size and time. Threat model: `TM-STUDIO-3`. Added in v13.
+//!
+//! Other accounts on the same machine can connect to `127.0.0.1` too, so
+//! since 13.0.0-rc.1 each start prints an address with a random key and
+//! Studio serves only a browser that opened it; anyone who reads that address
+//! can use Studio until it restarts.
 
 mod alerts;
 mod client;
@@ -26,6 +31,7 @@ mod crypto;
 mod document;
 mod document_v2;
 mod history;
+mod launch;
 mod monitoring;
 mod notify;
 mod pages;
@@ -48,6 +54,8 @@ mod client_tests;
 mod document_tests;
 #[cfg(test)]
 mod history_tests;
+#[cfg(test)]
+mod launch_tests;
 #[cfg(test)]
 mod notify_tests;
 #[cfg(test)]
@@ -177,6 +185,7 @@ pub(crate) async fn state(
         .unwrap_or_default();
     let plan = proxy::ProxyPlan::from_settings(&proxy);
     Ok(router::RemoteState {
+        launch: launch::LaunchKey::new(random_hex(32)?, options.port),
         store,
         client: std::sync::RwLock::new(
             client::MonitorClient::with_proxy(options.limits, &plan)
@@ -203,8 +212,9 @@ pub async fn run_remote_studio(options: RemoteStudioOptions) -> Result<(), Remot
     if let Some(history) = state.history.clone() {
         tokio::spawn(poller::run(state.clone(), history, state.poll_interval));
     }
+    let address = state.launch.address();
     let app = router::router(state);
-    announce(options.port, &options.paths.projects);
+    announce(&address, &options.paths.projects);
     axum::serve(
         listener,
         app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
@@ -225,14 +235,12 @@ async fn listen(port: u16) -> Result<tokio::net::TcpListener, RemoteStudioError>
         })
 }
 
-/// Prints where the Studio listens. A closed standard output is ignored
-/// rather than stopping a Studio that is already serving.
-fn announce(port: u16, projects: &std::path::Path) {
+/// Prints where the Studio listens, with this start's key. A closed
+/// standard output is ignored rather than stopping a Studio that is already
+/// serving.
+fn announce(address: &str, projects: &std::path::Path) {
     use std::io::Write;
     let mut stdout = std::io::stdout().lock();
-    let _ = writeln!(
-        stdout,
-        "Rullst Studio (remote projects) on http://127.0.0.1:{port}/studio"
-    );
+    let _ = writeln!(stdout, "Rullst Studio (remote projects) on {address}");
     let _ = writeln!(stdout, "Project list: {}", projects.display());
 }

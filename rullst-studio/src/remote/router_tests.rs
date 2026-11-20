@@ -37,7 +37,7 @@ pub(super) async fn studio() -> Studio {
     }
 }
 
-fn request(
+pub(super) fn request(
     method: Method,
     uri: &str,
     peer: &str,
@@ -58,11 +58,27 @@ fn request(
     request
 }
 
+/// The session cookie a browser holds after opening the printed address.
+pub(super) fn session(studio: &Studio) -> String {
+    format!(
+        "{}={}",
+        studio.state.launch.cookie_name(),
+        studio.state.launch.key
+    )
+}
+
 pub(super) async fn get(studio: &Studio, uri: &str) -> (StatusCode, String) {
+    let cookie = session(studio);
     let response = studio
         .app
         .clone()
-        .oneshot(request(Method::GET, uri, "127.0.0.1:40000", &[], ""))
+        .oneshot(request(
+            Method::GET,
+            uri,
+            "127.0.0.1:40000",
+            &[("cookie", &cookie)],
+            "",
+        ))
         .await
         .unwrap();
     let status = response.status();
@@ -78,7 +94,11 @@ pub(super) async fn post(
     origin: Option<&str>,
     body: &str,
 ) -> StatusCode {
-    let mut headers = vec![("content-type", "application/x-www-form-urlencoded")];
+    let cookie = session(studio);
+    let mut headers = vec![
+        ("content-type", "application/x-www-form-urlencoded"),
+        ("cookie", cookie.as_str()),
+    ];
     if let Some(origin) = origin {
         headers.push(("origin", origin));
     }
@@ -176,14 +196,22 @@ async fn cross_origin_or_tokenless_forms_change_nothing() {
 #[tokio::test]
 async fn only_direct_loopback_requests_reach_studio() {
     let studio = studio().await;
+    let cookie = session(&studio);
+    let cookie = [("cookie", cookie.as_str())];
     let remote = studio
         .app
         .clone()
-        .oneshot(request(Method::GET, "/studio", "192.0.2.10:40000", &[], ""))
+        .oneshot(request(
+            Method::GET,
+            "/studio",
+            "192.0.2.10:40000",
+            &cookie,
+            "",
+        ))
         .await
         .unwrap();
     assert_eq!(remote.status(), StatusCode::FORBIDDEN);
-    let mut public_host = request(Method::GET, "/studio", "127.0.0.1:40000", &[], "");
+    let mut public_host = request(Method::GET, "/studio", "127.0.0.1:40000", &cookie, "");
     public_host
         .headers_mut()
         .insert(header::HOST, "studio.example".parse().unwrap());
