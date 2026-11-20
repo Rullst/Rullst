@@ -83,6 +83,13 @@ harness = false
 name = "axum_example"
 required-features = ["axum"]
 
+# `finish_login` needs a web-framework feature; `test = true` runs the
+# example's offline sign-in tests (with `mock`) in `cargo test`.
+[[example]]
+name = "axum_server"
+required-features = ["axum"]
+test = true
+
 [lints.rust]
 # Kani é uma ferramenta externa que injeta `cfg(kani)` automaticamente — não é uma crate do crates.io
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)', 'cfg(coverage_nightly)', 'cfg(mutants)'] }

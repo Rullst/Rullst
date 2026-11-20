@@ -650,7 +650,7 @@ repository root, without provider credentials (the `mock` feature makes the
 `mock_*` fallback credentials sign in offline):
 
 ```bash
-cargo run -p rullst-connect --example axum_server --features mock
+cargo run -p rullst-connect --example axum_server --features axum,mock
 ```
 
 ## 📦 Releasing a New Version
