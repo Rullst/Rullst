@@ -76,13 +76,10 @@ port is rejected.
 The loopback check trusts the TCP peer address and the `Host` header, and the
 `Origin` check stops browsers, not other clients. A reverse proxy, SSH or
 container port forward, tunnel or other forwarder on the same machine that
-connects to Studio from a loopback address, such as an nginx
-`proxy_pass http://127.0.0.1:5555` with its default `Host` header, makes every
-client it forwards look local. When the router is mounted behind Core's
-trusted-proxy layer, so does any host in a `trusted_proxies` network, which can
-send a forwarding header naming `127.0.0.1`. The release-build refusal does not
-depend on `RULLST_ENV`: a debug build started with `RULLST_ENV=production`
-still serves local Studio. Never put a forwarder in front of local Studio.
+connects to Studio from a loopback address with a local `Host` header, such as
+an nginx `proxy_pass http://127.0.0.1:5555` with its default headers, makes
+every client it forwards look local. Never put a forwarder in front of local
+Studio.
 Database, queue, cache and feature-flag writes also require a crate-private
 marker that only this capability installs, so raw subrouters mounted elsewhere
 return `403` for them.

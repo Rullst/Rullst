@@ -243,7 +243,7 @@ Depend on the crate with `default-features = false`. It uses `alloc`, so the
 firmware provides a `#[global_allocator]` (for example `embedded-alloc`) and a
 panic handler. Plan for about 8 KiB of stack in `begin_update` or
 `verify_update` and 2.6 KiB while building an `OtaManager`, plus your own
-frames (measured with `ed25519-dalek` 2.2, before this release moved to
+frames (measured with `ed25519-dalek` 2.2, before 13.0.0-alpha.6 moved to
 `ed25519-dalek` 3; the board has not been re-run since); the heap needs little
 beyond the packets you encode. `rullst-iot` uses `ed25519-dalek` 3 without its
 precomputed tables; adding `ed25519-dalek = { version = "3",

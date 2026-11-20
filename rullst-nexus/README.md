@@ -331,10 +331,10 @@ rejected.
 
 The loopback check trusts the TCP peer address and the `Host` header. A reverse proxy, port
 forward or tunnel on the same machine that connects to the application from a loopback address
-(an nginx `proxy_pass http://127.0.0.1:3000` with its default `Host` header, for example) makes
-every client it forwards a loopback peer, and so does a `trusted_proxies` network that sends a
-forwarding header naming `127.0.0.1`. The policy is chosen by the build, not by `RULLST_ENV`: a
-debug build behind such a forwarder serves Nexus without credentials. Deploy release builds only.
+with a local `Host` header (an nginx `proxy_pass http://127.0.0.1:3000` with its default
+headers, for example) makes
+every client it forwards a loopback peer, so a debug build behind such a forwarder serves Nexus
+without credentials. Deploy release builds only.
 
 The blog example of the Rullst repository uses
 `NexusAuthPolicy::local_development_or_basic_from_env()`: debug builds select
