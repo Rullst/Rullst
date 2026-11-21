@@ -78,7 +78,9 @@ log the grant JSON you send to the browser.
 use rullst_media::{LibraryId, UploadDeclaration, s3::{S3Config, S3Credentials, S3Storage}};
 
 // AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY (+ optional AWS_SESSION_TOKEN).
-// Unset keys select the offline mock, which StoreConfig::production rejects.
+// Unset keys select the offline mock in every environment, which
+// StoreConfig::production rejects; without that store, check
+// credentials.mode() before serving staging or production traffic.
 let credentials = S3Credentials::from_env()?;
 // Cloudflare R2: https://<account>.r2.cloudflarestorage.com, region `auto`.
 let config = S3Config::r2(LibraryId::new(1)?, "<account-id>", "course-videos", credentials)?

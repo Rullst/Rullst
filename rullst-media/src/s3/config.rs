@@ -52,7 +52,10 @@ impl S3Credentials {
 
     /// Reads `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and the optional
     /// `AWS_SESSION_TOKEN`. When both keys are unset the offline mock is used,
-    /// which the `sqlite` feature's `StoreConfig::production` rejects.
+    /// which the `sqlite` feature's `StoreConfig::production` rejects. This
+    /// crate does not read the runtime environment, so a host that does not
+    /// open its store with `StoreConfig::production` checks [`Self::mode`]
+    /// before serving staging or production traffic.
     pub fn from_env() -> Result<Self, Error> {
         let read = |name: &str| match std::env::var(name) {
             Ok(value) => Ok(Some(value)),

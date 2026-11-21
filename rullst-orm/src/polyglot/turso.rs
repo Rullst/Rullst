@@ -147,7 +147,9 @@ pub struct TursoConfig {
 impl TursoConfig {
     /// Creates a remote or deterministic mock configuration.
     ///
-    /// Empty and `mock_*` URLs select the SQLite-compatible in-memory fallback.
+    /// Empty and `mock_*` URLs select the SQLite-compatible in-memory fallback
+    /// in every environment: this crate does not read the runtime environment,
+    /// so the application refuses an empty URL in staging and production.
     pub fn new(url: impl Into<String>, auth_token: impl Into<String>) -> Self {
         Self {
             url: url.into().trim().to_owned(),

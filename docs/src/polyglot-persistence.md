@@ -136,6 +136,17 @@ reaches a local `turso dev` or `sqld` server; any other `http://` endpoint is
 still refused. `init_from_env` does not opt in, so for a local server build
 the `TursoConfig` as the starter does.
 
+`rullst-orm` does not read the runtime environment, so `init_from_env` and
+`TursoStore::connect` treat an empty `TURSO_DATABASE_URL` the same way in
+every environment: they use the offline fallback below and write a local file.
+Since 13.0.0-rc.1 the starter refuses that in staging and production before
+calling `TursoOrm::init`: it resolves the environment with
+`rullst::config::Environment::resolve` from `RULLST_ENV` and `APP_ENV` (read
+with `project_setting`) and stops at start-up with an error naming
+`TURSO_DATABASE_URL`. An explicit `mock_` URL still selects the local file
+there. An application that calls `init_from_env` directly makes the same check
+first.
+
 The typed contract includes CRUD, equality filters, ordering, bounded
 pagination/counts, app-assigned or generated primary keys, checksummed
 migrations, status, and rollback. An empty `String` key is filled by the
