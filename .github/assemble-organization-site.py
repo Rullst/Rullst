@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Assemble the https://rullst.win/ root site from this repository's sources.
 
-    python3 .github/assemble-organization-site.py --out DIRECTORY [--benchmarks]
+    python3 .github/assemble-organization-site.py --out DIRECTORY [--benchmarks [--benchmarks-max-age-days DAYS]]
 
 Writes the English landing, privacy and comparison pages (/, /privacy.html,
 /compare/), their Brazilian Portuguese versions under pt-br/ (/pt-br/comparar/
@@ -12,12 +12,15 @@ or empty. The pages also reference /Rullst/book/, /Rullst/images/ and
 is valid at the site root.
 
 --benchmarks reads benchmarks.json from the working directory: a downloaded
-copy (at most 1 MiB) of the Rullst/Benchmarks latest-results JSON, schema
-"rullst.benchmarks.latest.v1" (see docs/src/website-maintenance.md). Its
-Rullst, Rullst (minimal), Loco and Topcoat rows are rendered into the
-comparison pages; without
-the file, or when it is invalid, the pages keep their "first measurement in
-progress" text and the script prints a warning instead of failing.
+copy (at most 1 MiB) of the site summary Rullst/Benchmarks publishes
+(results/site.json, schema "rullst.benchmarks.site.v2"; see
+docs/src/website-maintenance.md). Its overall and category scores, positions,
+flags and memory for Rullst, Loco, Topcoat, Actix Web, Gin and Rullst
+(minimal), and its Rullst reading, are rendered into the comparison pages.
+Without the file, when it is invalid or uses anything the pages do not
+explain, or when it was measured more than --benchmarks-max-age-days days
+ago (default 90), the pages keep their "no current results" text and the
+script prints a warning instead of failing.
 
 The Rullst/Rullst.github.io deployment workflow runs this script from a
 read-only checkout of this repository's main branch; it reads no secret and
@@ -27,7 +30,7 @@ never commits, pushes or deploys anything itself. validate-site.py runs it too.
 from __future__ import annotations
 
 import argparse
-from datetime import date
+from datetime import date, datetime, timezone
 from hashlib import sha256
 from html import escape
 import json
@@ -70,20 +73,24 @@ LOCAL_ASSET = re.compile(r'(?:href|src)="/(assets/[^"?#]+)')
 COMPARE_PAGES = {"compare/index.html": "en", "pt-br/comparar/index.html": "pt-BR"}
 BENCHMARK_START = "<!-- benchmark-results:start -->"
 BENCHMARK_END = "<!-- benchmark-results:end -->"
-BENCHMARK_SCHEMA = "rullst.benchmarks.latest.v1"
-# The rows shown, in order. "Rullst" is the default variant, the application
-# `cargo rullst new` generates; "Rullst (minimal)" is the framework without that
-# application's middleware, an extra row shown only when the data has it.
-MINIMAL = "Rullst (minimal)"
-ROWS = ("Rullst", MINIMAL, "Loco", "Topcoat")
+BENCHMARK_SCHEMA = "rullst.benchmarks.site.v2"
+# Results measured longer ago than this are not shown (--benchmarks-max-age-days).
+BENCHMARK_MAX_AGE_DAYS = 90
+# The rows shown (Rullst/Benchmarks slug -> name). "rullst" is the application
+# `cargo rullst new` generates, which has a position; "rullst-minimal" is the
+# framework without that application's middleware, a diagnostic row without a
+# position, shown only when the data has it.
+MINIMAL = "rullst-minimal"
+ROWS = {"rullst": "Rullst", "loco": "Loco", "topcoat": "Topcoat", "actix": "Actix Web", "gin": "Gin", MINIMAL: "Rullst (minimal)"}
 OPTIONAL_ROWS = (MINIMAL,)
-# Result key -> English label, Portuguese label, unit, decimals.
-METRICS = {
-    "json_rps": ("JSON responses per second", "Respostas JSON por segundo", "", 0),
-    "db_single_rps": ("Responses with one database query per second", "Respostas com uma consulta ao banco por segundo", "", 0),
-    "avg_latency_ms": ("Average latency", "Latência média", " ms", 2),
-    "peak_ram_mib": ("Peak memory", "Pico de memória", " MiB", 1),
-}
+# The data must use exactly these categories, overall weights and flags; the
+# page explains no other (a new one needs a new schema and a change here).
+CATEGORIES = ("hello", "database", "application", "memory", "startup")
+WEIGHTS = {"hello": 2, "database": 2, "application": 2, "memory": 1, "startup": 1}
+FLAGS = {"cpu_cost": "*", "database_note": "†", "put_not_written": "‡", "within_reference_margin": "≈"}
+STATUSES = ("ranked", "diagnostic", "errors", "incomplete", "not comparable", "not measured", "unstable")
+STABILITY = ("pass", "warn", "fail")
+MEMORY = ("peak_ram_mib", "axum_peak_ram_mib", "after_logins_peak_ram_mib", "axum_after_logins_peak_ram_mib")
 MONTHS = {
     "en": ("January", "February", "March", "April", "May", "June", "July", "August",
            "September", "October", "November", "December"),
@@ -92,36 +99,68 @@ MONTHS = {
 }
 TEXT = {
     "en": {
-        "measured": "Measured on {date} with the Rullst/Benchmarks suite. The rows update automatically after each new Rullst release; this page is rebuilt daily.",
-        "run": "Measurement run",
-        "missing": "Not in this measurement run.",
-        "version": "version",
+        "measured": "Measured on {date} with Rullst {version}{source}, against Axum {axum} on the same GitHub-hosted runners ({run}).",
+        "run": "measurement run {id}",
+        "source": {"crates.io": " from crates.io", "git": " from a git revision"},
+        "full": 'The <a href="/Benchmarks/">full results</a> list all {ranked} ranked implementations, every endpoint and the method. They update automatically after each new Rullst release; this page is rebuilt daily.',
+        "caption": "Score relative to Axum (1.00×; higher is better in every column), position among the {ranked} ranked implementations and tie margin (±).",
+        "headers": ("Framework", "Overall", "Hello world", "Database", "Application", "Memory", "Startup", "Stability"),
         "names": {MINIMAL: "Rullst (minimal)"},
-        "variants": {
-            "Rullst": "As <code>cargo rullst new</code> generates it, with its security layers on.",
-            MINIMAL: "The framework without the generated app's security layers.",
+        "variants": {"rullst": "as <code>cargo rullst new</code> generates it", MINIMAL: "diagnostic, no position"},
+        "missing": "Not in this measurement run.",
+        "statuses": {"diagnostic": "diagnostic", "errors": "errors", "incomplete": "incomplete", "not comparable": "not comparable",
+                     "not measured": "not measured", "unstable": "unstable"},
+        "stability": {"pass": "pass", "warn": "warn", "fail": "fail"},
+        "unpublished": "This run publishes no overall score; the categories are the result.",
+        "legend": "Each cell shows the position (a range such as 3–7 is a tie: those implementations share positions 3 to 7 in no particular order), the score and its tie margin (±: the margin of its comparison with the score above; the first position has none).",
+        "flags": {
+            "cpu_cost": "* In at least one run of this score the runner's load generator and PostgreSQL were the limit (client-bound), so that run counts with its CPU-cost ratio, requests per CPU-second of the server and PostgreSQL together, instead of requests per second.",
+            "database_note": "† This implementation's database setup differs from the others' in a way the full results explain.",
+            "put_not_written": "‡ In this run most of this implementation's measured PUT /world/{id} requests did not write a row, so its Application score, and through it its overall score, are higher than they would be with a write. The full results explain the cause and its fix.",
+            "within_reference_margin": "≈ Within the tie margin of Axum's 1.00×: not distinguishable from Axum.",
         },
+        "memory": "Memory",
+        "memory_caption": "RAM of the server in MiB, with Axum's on the same runners in parentheses. The Memory score compares the high-water mark under load; no score includes the peak after the {logins} logins of the application endpoints.",
+        "memory_headers": ("Framework", "High-water mark under load", "Peak after the {logins} logins"),
+        "reading": "What this means for Rullst",
     },
     "pt-BR": {
-        "measured": "Medido em {date} com a suíte Rullst/Benchmarks. As linhas se atualizam automaticamente a cada nova versão do Rullst; esta página é reconstruída diariamente.",
-        "run": "Execução da medição",
-        "missing": "Fora desta rodada de medição.",
-        "version": "versão",
+        "measured": "Medido em {date} com o Rullst {version}{source}, contra o Axum {axum} nas mesmas máquinas do GitHub ({run}).",
+        "run": "execução da medição {id}",
+        "source": {"crates.io": " do crates.io", "git": " de uma revisão git"},
+        "full": 'Os <a href="/Benchmarks/">resultados completos</a> (em inglês) listam as {ranked} implementações classificadas, cada endpoint e o método. Eles se atualizam automaticamente a cada nova versão do Rullst; esta página é reconstruída diariamente.',
+        "caption": "Pontuação em relação ao Axum (1,00×; mais é melhor em todas as colunas), posição entre as {ranked} implementações classificadas e margem de empate (±).",
+        "headers": ("Framework", "Geral", "Hello world", "Banco de dados", "Aplicação", "Memória", "Inicialização", "Estabilidade"),
         "names": {MINIMAL: "Rullst (mínimo)"},
-        "variants": {
-            "Rullst": "Como o <code>cargo rullst new</code> gera, com as camadas de segurança ligadas.",
-            MINIMAL: "O framework sem as camadas de segurança do app gerado.",
+        "variants": {"rullst": "como o <code>cargo rullst new</code> gera", MINIMAL: "diagnóstico, sem posição"},
+        "missing": "Fora desta rodada de medição.",
+        "statuses": {"diagnostic": "diagnóstico", "errors": "erros", "incomplete": "incompleto", "not comparable": "não comparável",
+                     "not measured": "não medido", "unstable": "instável"},
+        "stability": {"pass": "passou", "warn": "alerta", "fail": "falhou"},
+        "unpublished": "Esta rodada não publica pontuação geral; o resultado são as categorias.",
+        "legend": "Cada célula mostra a posição (um intervalo como 3–7 é um empate: essas implementações dividem as posições 3 a 7, sem ordem entre elas), a pontuação e a margem de empate dela (±: a margem da comparação com a pontuação acima; a primeira posição não tem).",
+        "flags": {
+            "cpu_cost": "* Em pelo menos uma medição desta pontuação o gerador de carga e o PostgreSQL da máquina eram o limite (client-bound), então essa medição conta com a razão de custo de CPU, requisições por segundo de CPU do servidor e do PostgreSQL juntos, em vez de requisições por segundo.",
+            "database_note": "† A configuração de banco de dados desta implementação difere da das outras de um jeito que os resultados completos explicam.",
+            "put_not_written": "‡ Nesta rodada, a maioria das requisições PUT /world/{id} medidas desta implementação não gravou nenhuma linha, então a pontuação de Aplicação dela, e por meio dela a pontuação geral, são mais altas do que seriam com uma gravação. Os resultados completos explicam a causa e a correção.",
+            "within_reference_margin": "≈ Dentro da margem de empate do 1,00× do Axum: não dá para distinguir do Axum.",
         },
+        "memory": "Memória",
+        "memory_caption": "RAM do servidor em MiB, com a do Axum nas mesmas máquinas entre parênteses. A pontuação de Memória compara o pico sob carga; nenhuma pontuação inclui o pico depois dos {logins} logins dos endpoints de aplicação.",
+        "memory_headers": ("Framework", "Pico sob carga", "Pico depois dos {logins} logins"),
+        "reading": "O que isto significa para o Rullst",
     },
 }
-# The data's note, by page language; a page without its own note shows the English one.
+# The data's note and reading, by page language.
 NOTE_KEYS = {"en": "note", "pt-BR": "note_pt_br"}
+READING_KEYS = {"en": "en", "pt-BR": "pt_br"}
 NOTE_LIMIT = 1000
+READING_LIMIT = 4000
 # Backticks in a note pair up in order; a pair around 1 to 80 characters on
 # one line, not all blank and without `<` or `>`, renders as <code>. Any other
 # pair and a final unpaired backtick stay literal text.
 CODE_TEXT = re.compile(r"[^<>\r\n]{1,80}")
-RUN_URL = re.compile(r"https://github\.com/Rullst/Benchmarks/actions/runs/[0-9]{1,20}")
+RUN_URL = re.compile(r"https://github\.com/Rullst/Benchmarks/actions/runs/([0-9]{1,20})")
 VERSION = re.compile(r"[0-9A-Za-z][0-9A-Za-z.+-]{0,39}")
 
 
@@ -146,63 +185,159 @@ def read_benchmark_file(path: Path) -> object:
         return json.load(handle)
 
 
-def checked_metric(name: str, key: str, raw: object) -> float:
-    value = float(raw)  # type: ignore[arg-type]
-    if not math.isfinite(value) or value < 0:
-        raise ValueError(f"{name}: {key} is not a finite, non-negative number")
+def checked_metric(name: str, key: str, raw: object, limit: float = 1e9) -> float:
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+        raise ValueError(f"{name}: {key} is not a number")
+    value = float(raw)
+    if not math.isfinite(value) or not 0 <= value <= limit:
+        raise ValueError(f"{name}: {key} is not a finite number from 0 to {limit:g}")
     return value
 
 
-def benchmark_row(result: dict) -> tuple[str, dict] | None:
-    """The shown row a result belongs to and its checked values, or None."""
-    name = str(result["framework"])
-    match = next((known for known in ROWS if known.lower() == name.lower()), None)
-    if match is None:
-        return None
-    version = str(result["version"])
-    if not VERSION.fullmatch(version):
-        raise ValueError(f"unexpected version for {name}: {version!r}")
-    metrics = {key: checked_metric(name, key, result[key]) for key in METRICS if result.get(key) is not None}
-    if not metrics:
-        raise ValueError(f"{name}: no known metric")
-    paired = result.get("vs_axum") or {}
-    if not isinstance(paired, dict):
-        raise ValueError(f"{name}: vs_axum is not an object")
-    ratios = {key: checked_metric(name, f"vs_axum.{key}", paired[key]) for key in metrics if paired.get(key) is not None}
-    return match, {"version": version, "metrics": metrics, "ratios": ratios}
+def checked_int(name: str, raw: object, low: int, high: int) -> int:
+    if isinstance(raw, bool) or not isinstance(raw, int) or not low <= raw <= high:
+        raise ValueError(f"{name} is not a whole number from {low} to {high}")
+    return raw
 
 
-def checked_text(key: str, raw: object) -> str:
-    if not isinstance(raw, str) or len(raw) > NOTE_LIMIT:
-        raise ValueError(f"{key} is not a string of at most {NOTE_LIMIT} characters")
+def checked_text(key: str, raw: object, limit: int = NOTE_LIMIT) -> str:
+    if not isinstance(raw, str) or len(raw) > limit:
+        raise ValueError(f"{key} is not a string of at most {limit} characters")
     return raw.strip()
 
 
-def load_benchmarks(path: Path) -> dict | None:
-    """Return the measured date and the compared frameworks' rows, or None.
+def checked_version(name: str, raw: object) -> str:
+    if not isinstance(raw, str) or not VERSION.fullmatch(raw):
+        raise ValueError(f"unexpected version for {name}: {raw!r}")
+    return raw
 
-    Every value is checked before it reaches a page: an unknown schema, a bad
-    date, a non-finite or negative number or an unexpected version string
-    discards the whole file.
+
+def checked_cell(name: str, raw: object, ranked: int) -> dict:
+    """One score: its status, value, position range, tie margin and known flags."""
+    if not isinstance(raw, dict) or raw.get("status") not in STATUSES:
+        raise ValueError(f"{name}: unknown status {raw.get('status') if isinstance(raw, dict) else raw!r}")
+    score = None if raw.get("score") is None else checked_metric(name, "score", raw["score"], 1000)
+    position = raw.get("position")
+    if position is not None:
+        if not isinstance(position, list) or len(position) != 2 or score is None:
+            raise ValueError(f"{name}: a position is a [first, last] range of a score")
+        first, last = (checked_int(f"{name} position", value, 1, ranked) for value in position)
+        if first > last:
+            raise ValueError(f"{name}: position range {position} is reversed")
+        position = (first, last)
+    elif raw["status"] == "ranked" and score is not None:
+        raise ValueError(f"{name}: a ranked score needs a position")
+    margin = None if raw.get("margin_percent") is None else checked_metric(name, "margin_percent", raw["margin_percent"], 1000)
+    flags = raw.get("flags", [])
+    if not isinstance(flags, list) or any(flag not in FLAGS for flag in flags):
+        raise ValueError(f"{name}: unknown flag in {flags!r}")
+    return {"status": raw["status"], "score": score, "position": position, "margin": margin, "flags": set(flags)}
+
+
+def benchmark_row(raw: object, ranked: int, overall_published: bool) -> tuple[str, dict] | None:
+    """The shown row a result belongs to and its checked values, or None for another implementation."""
+    if not isinstance(raw, dict) or raw.get("slug") not in ROWS:
+        return None
+    slug = raw["slug"]
+    name = ROWS[slug]
+    role = "diagnostic" if slug in OPTIONAL_ROWS else "ranked"
+    if raw.get("role") != role:
+        raise ValueError(f"{name}: expected the role {role}, not {raw.get('role')!r}")
+    categories = raw.get("categories")
+    if not isinstance(categories, dict) or set(categories) != set(CATEGORIES):
+        raise ValueError(f"{name}: the categories are not {CATEGORIES}")
+    stability = raw.get("stability")
+    if stability is not None and stability not in STABILITY:
+        raise ValueError(f"{name}: unknown stability result {stability!r}")
+    memory = raw.get("memory") or {}
+    if not isinstance(memory, dict):
+        raise ValueError(f"{name}: memory is not an object")
+    return slug, {
+        "version": checked_version(name, raw.get("version")),
+        "overall": checked_cell(f"{name} overall", raw.get("overall"), ranked) if overall_published else None,
+        "categories": {key: checked_cell(f"{name} {key}", categories[key], ranked) for key in CATEGORIES},
+        "stability": stability,
+        "memory": {key: checked_metric(name, key, memory[key]) for key in MEMORY if memory.get(key) is not None},
+    }
+
+
+def checked_results(data: object, today: date, max_age_days: int) -> dict:
+    """Every value the page shows, checked; ValueError for anything the page does not know."""
+    if not isinstance(data, dict) or data.get("schema") != BENCHMARK_SCHEMA:
+        raise ValueError(f"schema is not {BENCHMARK_SCHEMA}")
+    measured_on = date.fromisoformat(str(data["measured_on"]))
+    if measured_on > today:
+        raise ValueError(f"measured_on {measured_on} is after today ({today})")
+    if (today - measured_on).days > max_age_days:
+        raise ValueError(f"the results were measured on {measured_on}, more than {max_age_days} days ago")
+    run = data.get("run")
+    match = RUN_URL.fullmatch(str(run.get("url", ""))) if isinstance(run, dict) else None
+    if match is None:
+        raise ValueError(f"unexpected run url: {run!r}")
+    reference = data.get("reference")
+    if not isinstance(reference, dict) or reference.get("slug") != "axum" or reference.get("framework") != "Axum":
+        raise ValueError("the reference is not Axum")
+    ranked = checked_int("ranked", data.get("ranked"), 1, 1000)
+    overall_published = data.get("overall_published")
+    if not isinstance(overall_published, bool):
+        raise ValueError("overall_published is not true or false")
+    if overall_published and data.get("weights") != WEIGHTS:
+        raise ValueError(f"the overall weights are not {WEIGHTS}")
+    categories = data.get("categories")
+    if not isinstance(categories, list) or [c.get("key") if isinstance(c, dict) else c for c in categories] != list(CATEGORIES):
+        raise ValueError(f"the categories are not {CATEGORIES}")
+    if data.get("flags") != FLAGS:
+        raise ValueError(f"the flags are not {FLAGS}")
+    if not isinstance(data.get("rows"), list):
+        raise ValueError("rows is not a list")
+    rows: dict[str, dict] = {}
+    for slug, row in filter(None, (benchmark_row(raw, ranked, overall_published) for raw in data["rows"])):
+        if slug in rows:
+            raise ValueError(f"{ROWS[slug]} appears twice")
+        rows[slug] = row
+    source = data.get("rullst_source")
+    source = source.get("kind") if isinstance(source, dict) else None
+    source = source if isinstance(source, str) and source in TEXT["en"]["source"] else None
+    reading = data.get("reading")
+    if not isinstance(reading, dict):
+        raise ValueError("reading is not an object")
+    readings = {lang: checked_text(f"reading.{key}", reading.get(key), READING_LIMIT) for lang, key in READING_KEYS.items()}
+    if not all(readings.values()):
+        raise ValueError("the reading is empty")
+    return {
+        "measured_on": measured_on,
+        "rullst_version": checked_version("Rullst", data.get("rullst_version")),
+        "source": source,
+        "run_url": match[0],
+        "run_id": match[1],
+        "axum_version": checked_version("Axum", reference.get("version")),
+        "ranked": ranked,
+        "overall_published": overall_published,
+        "logins": checked_int("logins", data.get("logins"), 1, 100000) if data.get("logins") is not None else None,
+        "rows": rows,
+        "notes": {lang: checked_text(key, data[key]) for lang, key in NOTE_KEYS.items() if data.get(key)},
+        "readings": readings,
+    }
+
+
+def load_benchmarks(path: Path, today: date | None = None, max_age_days: int = BENCHMARK_MAX_AGE_DAYS) -> dict | None:
+    """Return the checked results, or None after a warning.
+
+    An unknown schema, category, flag, status or weighting, a bad or future
+    date, results older than max_age_days, a non-finite or negative number,
+    an unexpected version string or another run URL discards the whole file,
+    so the page shows no numbers rather than older or partial ones.
     """
+    today = today or datetime.now(timezone.utc).date()
     try:
-        data = read_benchmark_file(path)
-        if not isinstance(data, dict) or data.get("schema") != BENCHMARK_SCHEMA:
-            raise ValueError(f"schema is not {BENCHMARK_SCHEMA}")
-        measured_on = date.fromisoformat(str(data["measured_on"]))
-        rows = dict(row for row in map(benchmark_row, data["results"]) if row is not None)
-        notes = {lang: checked_text(key, data[key]) for lang, key in NOTE_KEYS.items() if data.get(key)}
-        run = data.get("run") or {}
-        run_url = str(run.get("url", "")) if isinstance(run, dict) else ""
-        if run_url and not RUN_URL.fullmatch(run_url):
-            raise ValueError(f"unexpected run url: {run_url!r}")
-    except (OSError, ValueError, KeyError, TypeError) as error:
+        results = checked_results(read_benchmark_file(path), today, max_age_days)
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
         print(f"warning: benchmark results not used ({error})", file=sys.stderr)
         return None
-    if not rows:
+    if not results["rows"]:
         print("warning: benchmark results name none of the compared frameworks", file=sys.stderr)
         return None
-    return {"measured_on": measured_on, "rows": rows, "notes": notes, "run_url": run_url}
+    return results
 
 
 def render_note(note: str) -> str:
@@ -226,48 +361,110 @@ def format_number(value: float, decimals: int, lang: str) -> str:
     return text.translate(str.maketrans(",.", ".,")) if lang == "pt-BR" else text
 
 
-def metric_value(key: str, value: float, ratio: float | None, lang: str) -> str:
-    """The paired ratio to Axum first, when the data has one, then the absolute median."""
-    absolute = f"{format_number(value, METRICS[key][3], lang)}{METRICS[key][2]}"
-    if ratio is None:
-        return absolute
-    return f'{format_number(ratio, 2, lang)}× Axum <span class="benchmark-absolute">({absolute})</span>'
+def render_cell(cell: dict, lang: str) -> str:
+    """Position, score with its flags, and tie margin; the status when there is no score."""
+    if cell["score"] is None:
+        return f'<td class="benchmark-status">{escape(TEXT[lang]["statuses"].get(cell["status"], cell["status"]))}</td>'
+    first, last = cell["position"] or (None, None)
+    position = "–" if first is None else (f"{first}" if first == last else f"{first}–{last}")
+    score = format_number(cell["score"], 2 if cell["score"] >= 0.1 else 3, lang) + "×"
+    score += "*" if "cpu_cost" in cell["flags"] else ""
+    score += "".join(f" {sign}" for flag, sign in FLAGS.items() if flag != "cpu_cost" and flag in cell["flags"])
+    margin = f'<span class="benchmark-margin">±{format_number(cell["margin"], 1, lang)}%</span>' if cell["margin"] is not None else ""
+    return f'<td><span class="benchmark-position">{position}</span><span class="benchmark-score">{escape(score)}</span>{margin}</td>'
 
 
-def render_row(name: str, row: dict | None, lang: str) -> str:
-    """One framework's card; "" for a missing optional row."""
-    if row is None:
-        return "" if name in OPTIONAL_ROWS else f'<li><h3>{name}</h3><p>{TEXT[lang]["missing"]}</p></li>'
-    metrics = "".join(
-        f'<div><dt>{escape(METRICS[key][0 if lang == "en" else 1])}</dt>'
-        f'<dd>{metric_value(key, value, row.get("ratios", {}).get(key), lang)}</dd></div>'
-        for key, value in row["metrics"].items()
-    )
-    title = TEXT[lang]["names"].get(name, name)
-    variant = TEXT[lang]["variants"].get(name)
-    variant = f'<p class="benchmark-variant">{variant}</p>' if variant else ""
-    return f'<li><h3>{title} <span>{TEXT[lang]["version"]} {escape(row["version"])}</span></h3>{variant}<dl>{metrics}</dl></li>'
+def row_header(slug: str, row: dict | None, lang: str) -> str:
+    name = TEXT[lang]["names"].get(slug, ROWS[slug])
+    details = [escape(row["version"])] if row else []
+    if variant := TEXT[lang]["variants"].get(slug):
+        details.append(variant)
+    detail = f'<span class="benchmark-variant">{" · ".join(details)}</span>' if details else ""
+    return f'<th scope="row">{name}{detail}</th>'
+
+
+def shown_rows(results: dict) -> list[str]:
+    """Measured rows by overall position (the fixed order without a published overall), then missing rows."""
+    rows = results["rows"]
+    order = [slug for slug in ROWS if slug in rows]
+    if results["overall_published"]:
+        order.sort(key=lambda slug: (slug in OPTIONAL_ROWS, (rows[slug]["overall"]["position"] or (10**6,))[0],
+                                     -(rows[slug]["overall"]["score"] or 0)))
+    missing = [slug for slug in ROWS if slug not in rows and slug not in OPTIONAL_ROWS]
+    return [slug for slug in order if slug not in OPTIONAL_ROWS] + missing + [slug for slug in order if slug in OPTIONAL_ROWS]
+
+
+def render_table(results: dict, order: list[str], lang: str) -> str:
+    text = TEXT[lang]
+    headers = [name for index, name in enumerate(text["headers"]) if index != 1 or results["overall_published"]]
+    head = "".join(f'<th scope="col">{escape(name)}</th>' for name in headers)
+    lines = []
+    for slug in order:
+        row = results["rows"].get(slug)
+        if row is None:
+            lines.append(f'<tr>{row_header(slug, None, lang)}<td colspan="{len(headers) - 1}">{text["missing"]}</td></tr>')
+            continue
+        cells = [row["overall"]] if results["overall_published"] else []
+        cells += [row["categories"][key] for key in CATEGORIES]
+        stability = escape(text["stability"].get(row["stability"], "–")) if row["stability"] else "–"
+        css = ' class="benchmark-diagnostic"' if slug in OPTIONAL_ROWS else ""
+        lines.append(f'<tr{css}>{row_header(slug, row, lang)}{"".join(render_cell(cell, lang) for cell in cells)}<td>{stability}</td></tr>')
+    # The caption stays outside the horizontally scrolling region, readable at any width.
+    caption = escape(text["caption"].format(ranked=results["ranked"]))
+    return (f'<p class="benchmark-caption" id="benchmark-caption">{caption}</p>'
+            f'<div class="benchmark-table" role="region" aria-labelledby="benchmark-caption" tabindex="0">'
+            f'<table aria-labelledby="benchmark-caption"><thead><tr>{head}</tr></thead>'
+            f'<tbody>{"".join(lines)}</tbody></table></div>')
+
+
+def render_memory(results: dict, order: list[str], lang: str) -> str:
+    text = TEXT[lang]
+    logins = results["logins"] or "–"
+
+    def pair(memory: dict, own: str, axum: str) -> str:
+        if own not in memory:
+            return "–"
+        value = format_number(memory[own], 0, lang)
+        return value + (f' <span class="benchmark-axum">({format_number(memory[axum], 0, lang)})</span>' if axum in memory else "")
+    head = "".join(f'<th scope="col">{escape(name.format(logins=logins))}</th>' for name in text["memory_headers"])
+    lines = [
+        f'<tr>{row_header(slug, row, lang)}<td>{pair(row["memory"], "peak_ram_mib", "axum_peak_ram_mib")}</td>'
+        f'<td>{pair(row["memory"], "after_logins_peak_ram_mib", "axum_after_logins_peak_ram_mib")}</td></tr>'
+        for slug in order if (row := results["rows"].get(slug)) is not None
+    ]
+    caption = escape(text["memory_caption"].format(logins=logins))
+    return (f'<h3>{text["memory"]}</h3><p class="benchmark-caption" id="benchmark-memory-caption">{caption}</p>'
+            f'<div class="benchmark-table benchmark-memory" role="region" aria-labelledby="benchmark-memory-caption" tabindex="0">'
+            f'<table aria-labelledby="benchmark-memory-caption"><thead><tr>{head}</tr></thead>'
+            f'<tbody>{"".join(lines)}</tbody></table></div>')
 
 
 def render_benchmarks(results: dict, lang: str) -> str:
     """HTML for the comparison page's results block, escaped throughout."""
+    text = TEXT[lang]
     measured = results["measured_on"]
     month = MONTHS[lang][measured.month - 1]
     day = f"{measured.day} de {month} de {measured.year}" if lang == "pt-BR" else f"{measured.day} {month} {measured.year}"
-    when = f'<time datetime="{measured.isoformat()}">{escape(day)}</time>'
-    meta = TEXT[lang]["measured"].format(date=when)
-    if results.get("run_url"):
-        meta += f' <a href="{escape(results["run_url"])}">{TEXT[lang]["run"]}</a>.'
-    lines = [f'<p class="benchmark-meta">{meta}</p>']
-    note, note_lang = results.get("notes", {}).get(lang), lang
-    if note is None and results.get("notes", {}).get("en"):
+    run = f'<a href="{escape(results["run_url"])}">{text["run"].format(id=escape(results["run_id"]))}</a>'
+    meta = text["measured"].format(date=f'<time datetime="{measured.isoformat()}">{escape(day)}</time>',
+                                   version=escape(results["rullst_version"]), source=text["source"].get(results["source"], ""),
+                                   axum=escape(results["axum_version"]), run=run)
+    lines = [f'<p class="benchmark-meta">{meta} {text["full"].format(ranked=results["ranked"])}</p>']
+    note, note_lang = results["notes"].get(lang), lang
+    if note is None and results["notes"].get("en"):
         note, note_lang = results["notes"]["en"], "en"
     if note:
         attribute = "" if note_lang == lang else ' lang="en"'
         lines.append(f'<p class="benchmark-note"{attribute}>{render_note(note)}</p>')
-    lines.append('<ul class="benchmark-rows">')
-    lines.extend(item for name in ROWS if (item := render_row(name, results["rows"].get(name), lang)))
-    lines.append("</ul>")
+    order = shown_rows(results)
+    lines.append(render_table(results, order, lang))
+    shown = {flag for row in results["rows"].values() for cell in [row["overall"], *row["categories"].values()] if cell for flag in cell["flags"]}
+    legend = [text["legend"]] + ([] if results["overall_published"] else [text["unpublished"]])
+    legend += [escape(text["flags"][flag]) for flag in FLAGS if flag in shown]
+    lines.append('<ul class="benchmark-legend">' + "".join(f"<li>{item}</li>" for item in legend) + "</ul>")
+    lines.append(render_memory(results, order, lang))
+    lines.append(f'<h3>{text["reading"]}</h3>')
+    lines.append(f'<p class="benchmark-reading">{render_note(results["readings"][lang])}</p>')
     return "\n".join(lines)
 
 
@@ -312,16 +509,23 @@ def check_sources(root: Path = ROOT) -> dict[str, bytes]:
     return contents
 
 
-def assemble(out: Path, root: Path = ROOT, benchmarks: Path | None = None) -> list[str]:
+def assemble(out: Path, root: Path = ROOT, benchmarks: Path | None = None, today: date | None = None,
+             max_age_days: int = BENCHMARK_MAX_AGE_DAYS) -> list[str]:
     """Write the root site into OUT and return the published paths."""
     contents = check_sources(root)
-    results = load_benchmarks(benchmarks) if benchmarks is not None else None
-    if results is not None:
-        for page, lang in COMPARE_PAGES.items():
-            text = contents[page].decode("utf-8")
-            start = text.index(BENCHMARK_START) + len(BENCHMARK_START)
-            end = text.index(BENCHMARK_END)
-            contents[page] = (text[:start] + "\n" + render_benchmarks(results, lang) + "\n" + text[end:]).encode("utf-8")
+    results = load_benchmarks(benchmarks, today, max_age_days) if benchmarks is not None else None
+    try:
+        # Both languages or neither: a failure keeps the pending text and still
+        # deploys, rather than failing the deployment and leaving older pages up.
+        blocks = {page: render_benchmarks(results, lang) for page, lang in COMPARE_PAGES.items()} if results else {}
+    except (KeyError, TypeError, ValueError) as error:
+        print(f"warning: benchmark results not rendered ({error!r})", file=sys.stderr)
+        blocks = {}
+    for page, block in blocks.items():
+        text = contents[page].decode("utf-8")
+        start = text.index(BENCHMARK_START) + len(BENCHMARK_START)
+        end = text.index(BENCHMARK_END)
+        contents[page] = (text[:start] + "\n" + block + "\n" + text[end:]).encode("utf-8")
     if out.is_symlink() or (out.exists() and not out.is_dir()):
         raise AssemblyError(f"output must be a directory: {out}")
     if out.exists() and any(out.iterdir()):
@@ -338,11 +542,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", required=True, type=Path, help="missing or empty output directory")
     parser.add_argument(
         "--benchmarks", action="store_true",
-        help=f"render {BENCHMARK_FILE} (Rullst/Benchmarks latest results) from the working directory",
+        help=f"render {BENCHMARK_FILE} (the Rullst/Benchmarks site summary) from the working directory",
+    )
+    parser.add_argument(
+        "--benchmarks-max-age-days", type=int, default=BENCHMARK_MAX_AGE_DAYS, metavar="DAYS",
+        help=f"do not show results measured more than DAYS days ago (default {BENCHMARK_MAX_AGE_DAYS})",
     )
     args = parser.parse_args(argv)
+    if args.benchmarks_max_age_days < 0:
+        parser.error("--benchmarks-max-age-days must not be negative")
     try:
-        published = assemble(args.out, benchmarks=Path(BENCHMARK_FILE) if args.benchmarks else None)
+        published = assemble(args.out, benchmarks=Path(BENCHMARK_FILE) if args.benchmarks else None,
+                             max_age_days=args.benchmarks_max_age_days)
     except AssemblyError as error:
         print(f"error: {error}", file=sys.stderr)
         return 1

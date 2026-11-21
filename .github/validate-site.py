@@ -13,8 +13,11 @@ same section ids, external links and integration names.
 from __future__ import annotations
 
 from contextlib import redirect_stderr
+import copy
+from datetime import date
 from html import unescape
 import io
+import json
 import os
 from html.parser import HTMLParser
 from hashlib import sha256
@@ -34,6 +37,8 @@ PRIVACY_PT_BR = DOCS / "privacy_template.pt-BR.html"
 COMPARE = DOCS / "compare_template.html"
 COMPARE_PT_BR = DOCS / "compare_template.pt-BR.html"
 BENCHMARK_FIXTURE = ROOT / ".github" / "fixtures" / "site-benchmarks.json"
+# The day the fixture is rendered as of (its measured_on is the day before).
+FIXTURE_DAY = date(2026, 11, 21)
 REDIRECT = DOCS / "redirect_template.html"
 SITE_URL = "https://rullst.win/"
 # English external link -> its Brazilian Portuguese counterpart. Every other
@@ -326,11 +331,11 @@ LANGUAGES = {
     "en": {"home": HOME, "privacy": PRIVACY, "url": SITE_URL, "locale": "en_US",
            "dedication": "All glory and honor to God", "status": "Rullst v13 prerelease",
            "slogan": "Intelligent, Security-Conscious, and Designed for Effortless Productivity",
-           "performance": "measured in June 2026, before v13"},
+           "performance": "measures each new Rullst release"},
     "pt-BR": {"home": HOME_PT_BR, "privacy": PRIVACY_PT_BR, "url": SITE_URL + "pt-br/", "locale": "pt_BR",
               "dedication": "Toda glória e honra a Deus", "status": "Pré-lançamento do Rullst v13",
               "slogan": "Inteligente, consciente da segurança e feito para uma produtividade sem esforço",
-              "performance": "medida em junho de 2026, antes da v13"},
+              "performance": "mede cada nova versão do Rullst"},
 }
 
 
@@ -384,7 +389,7 @@ def validate_landing(lang: str) -> tuple[Document, str]:
     )
     assert {"integrations", "performance"} <= set(home.ids), f"{path.name}: needs Integrations and Performance"
     assert {"/Rullst/benches/", "/Benchmarks/"} <= set(home.links), f"{path.name}: Performance must link both sources"
-    assert facts["performance"] in source, f"{path.name}: Performance must date the cross-framework comparison"
+    assert facts["performance"] in source, f"{path.name}: Performance must say when the cross-framework comparison is measured"
     assert source.count('class="demo-host-note"') == 4, f"{path.name}: every Azure-hosted demo needs its startup note"
     assert not home.inline_behavior, f"{path.name}: inline behavior/style: {home.inline_behavior}"
     for references, filename in ((home.stylesheets, "site.css"), (home.scripts, "site.js")):
@@ -486,62 +491,160 @@ def validate_comparison(home: Document, home_pt: Document, assembler) -> None:
         assert text.count(assembler.BENCHMARK_START) == 1 and 'class="benchmark-pending"' in text, (
             f"{name}: needs the benchmark-results block with its pending text"
         )
-    # "How to read these numbers": the same four points in both languages, naming
+    # "How to read these numbers": the same six points in both languages, naming
     # the minimal row as the assembler labels it, before the results block.
     for text, name, lang in ((source, COMPARE.name, "en"), (source_pt, COMPARE_PT_BR.name, "pt-BR")):
         howto = re.search(r'<div class="benchmark-howto">(.*?)</div>', text, re.DOTALL)
-        assert howto and len(re.findall(r"<li>", howto[1])) == 4, f"{name}: needs the four-point benchmark-howto block"
+        assert howto and len(re.findall(r"<li>", howto[1])) == 6, f"{name}: needs the six-point benchmark-howto block"
         assert text.index('class="benchmark-howto"') < text.index(assembler.BENCHMARK_START), f"{name}: benchmark-howto goes before the results"
         minimal = assembler.TEXT[lang]["names"][assembler.MINIMAL]
         assert f'"{minimal}"' in howto[1] and "cargo rullst new" in howto[1], f"{name}: benchmark-howto must explain {minimal}"
+        assert all(sign in howto[1] for sign in ("1.00×" if lang == "en" else "1,00×", "±", "3–7")), (
+            f"{name}: benchmark-howto must explain the 1.00× reference, the ± margin and position ranges"
+        )
     assert "/compare/" in home.links and "/pt-br/comparar/" in home_pt.links, "landing pages must link the comparison"
+    validate_benchmark_rendering(assembler)
+
+
+PENDING = 'class="benchmark-pending"'
+# Text each language's page must contain when rendered from the fixture.
+FIXTURE_RENDERING = {
+    COMPARE_PAGE: ("en", (
+        '<time datetime="2026-11-20">20 November 2026</time> with Rullst 13.0.0-alpha.6 from crates.io, against Axum 0.8.9',
+        '<a href="https://github.com/Rullst/Benchmarks/actions/runs/1">measurement run 1</a>',
+        '<a href="/Benchmarks/">full results</a> list all 14 ranked implementations',
+        '<span class="benchmark-position">3–4</span><span class="benchmark-score">0.61× ‡</span><span class="benchmark-margin">±5.5%</span>',
+        '<span class="benchmark-score">0.90×* ‡</span>', '<span class="benchmark-score">0.070×*</span>',
+        '<span class="benchmark-score">1.19× †</span>', '<span class="benchmark-score">0.98×* ‡ ≈</span>',
+        '<td class="benchmark-status">errors</td>', '<td class="benchmark-status">incomplete</td>', "<td>warn</td>",
+        '<td>1,045 <span class="benchmark-axum">(929)</span></td>', "Peak after the 125 logins",
+        '<p class="benchmark-note">Fixture note: a note about this Rullst version.</p>',
+        "<h3>What this means for Rullst</h3>",
+        '<p class="benchmark-reading">Fixture reading: these numbers are not measurements of <code>cargo rullst new</code> starters; '
+        "`&lt;b&gt;` and a lone ` stay text.</p>",
+    )),
+    "pt-br/comparar/index.html": ("pt-BR", (
+        '<time datetime="2026-11-20">20 de novembro de 2026</time> com o Rullst 13.0.0-alpha.6 do crates.io, contra o Axum 0.8.9',
+        '<a href="https://github.com/Rullst/Benchmarks/actions/runs/1">execução da medição 1</a>',
+        '<a href="/Benchmarks/">resultados completos</a> (em inglês) listam as 14 implementações classificadas',
+        '<span class="benchmark-position">3–4</span><span class="benchmark-score">0,61× ‡</span><span class="benchmark-margin">±5,5%</span>',
+        '<span class="benchmark-score">0,90×* ‡</span>', '<span class="benchmark-score">0,070×*</span>',
+        '<span class="benchmark-score">1,19× †</span>', '<span class="benchmark-score">0,98×* ‡ ≈</span>',
+        '<td class="benchmark-status">erros</td>', '<td class="benchmark-status">incompleto</td>', "<td>alerta</td>",
+        '<td>1.045 <span class="benchmark-axum">(929)</span></td>', "Pico depois dos 125 logins",
+        '<p class="benchmark-note" lang="en">Fixture note: a note about this Rullst version.</p>',
+        "<h3>O que isto significa para o Rullst</h3>",
+        '<p class="benchmark-reading">Leitura do fixture: estes números não são medições de projetos <code>cargo rullst new</code>; '
+        "`&lt;b&gt;` e uma ` sozinha ficam como texto.</p>",
+    )),
+}
+
+
+def results_block(rendered: str, assembler) -> str:
+    return rendered[rendered.index(assembler.BENCHMARK_START):rendered.index(assembler.BENCHMARK_END)]
+
+
+def table_rows(results: str) -> list[str]:
+    """The row names of the first (scores) table."""
+    table = results[:results.index("</table>")]
+    return re.findall(r'<tr(?: class="benchmark-diagnostic")?><th scope="row">([^<]+)<', table)
+
+
+def fixture_variant(change) -> str:
+    data = copy.deepcopy(json.loads(BENCHMARK_FIXTURE.read_text(encoding="utf-8")))
+    change(data)
+    return json.dumps(data)
+
+
+def fixture_row(data: dict, slug: str) -> dict:
+    return next(row for row in data["rows"] if row["slug"] == slug)
+
+
+# Data the page must not show (it keeps its pending text) and the warning that says why.
+REJECTED = (
+    ("the earlier latest.v1 shape", lambda d: d.update(schema="rullst.benchmarks.latest.v1"), "schema is not"),
+    ("a date after today", lambda d: d.update(measured_on="2026-11-22"), "after today"),
+    ("results older than the limit", lambda d: d.update(measured_on="2026-08-22"), "more than 90 days ago"),
+    ("a flag the page does not explain", lambda d: fixture_row(d, "rullst")["categories"]["hello"]["flags"].append("new_flag"), "unknown flag"),
+    ("a new flag sign table", lambda d: d["flags"].update(new_flag="§"), "the flags are not"),
+    ("other overall weights", lambda d: d["weights"].update(hello=1), "overall weights"),
+    ("another category", lambda d: d["categories"].append({"key": "latency", "title": "Latency"}), "the categories are not"),
+    ("an unknown status", lambda d: fixture_row(d, "loco")["categories"]["database"].update(status="slow"), "unknown status"),
+    ("an unknown stability result", lambda d: fixture_row(d, "loco").update(stability="unknown"), "stability"),
+    ("a position past the ranked count", lambda d: fixture_row(d, "loco")["overall"].update(position=[3, 15]), "position"),
+    ("a ranked minimal row", lambda d: fixture_row(d, "rullst-minimal").update(role="ranked"), "expected the role"),
+    ("a negative score", lambda d: fixture_row(d, "gin")["categories"]["hello"].update(score=-1), "finite number"),
+    ("an unexpected version", lambda d: fixture_row(d, "rullst").update(version="<b>"), "unexpected version"),
+    ("a run outside Rullst/Benchmarks", lambda d: d["run"].update(url="javascript:alert(1)"), "unexpected run url"),
+    ("another reference", lambda d: d["reference"].update(slug="actix", framework="Actix Web"), "reference is not Axum"),
+    ("no Portuguese reading", lambda d: d["reading"].update(pt_br=""), "reading is empty"),
+    ("a duplicated row", lambda d: d["rows"].append(copy.deepcopy(fixture_row(d, "gin"))), "appears twice"),
+)
+
+
+def validate_benchmark_rendering(assembler) -> None:
+    """The results block rendered from the fixture, and the data that must keep the pending text."""
     with tempfile.TemporaryDirectory(prefix="rullst-root-site-") as temp:
-        assembler.assemble(Path(temp) / "data", benchmarks=BENCHMARK_FIXTURE)
-        run_link = '<a href="https://github.com/Rullst/Benchmarks/actions/runs/1">'
-        for page, lang, expected in ((COMPARE_PAGE, "en", ("0.48× Axum", "(90,486)", "3.50 ms", "version 13.0.0-alpha.6", "Not in this measurement run.",
-                                                        "Fixture note: these numbers are not measurements of <code>cargo rullst new</code> starters; "
-                                                        "`&lt;b&gt;` and a lone ` stay text.</p>",
-                                                        "1.00× Axum", "(114,422)", run_link)),
-                               ("pt-br/comparar/index.html", "pt-BR", ("0,48× Axum", "(90.486)", "3,50 ms", "versão 13.0.0-alpha.6", "Fora desta rodada de medição.",
-                                                              "Nota do fixture: estes números não são medições de projetos <code>cargo rullst new</code>; "
-                                                              "`&lt;b&gt;` e uma ` sozinha ficam como texto.</p>",
-                                                              "1,00× Axum", "(114.422)", run_link))):
+        assembler.assemble(Path(temp) / "data", benchmarks=BENCHMARK_FIXTURE, today=FIXTURE_DAY)
+        for page, (lang, expected) in FIXTURE_RENDERING.items():
             rendered = (Path(temp) / "data" / page).read_text(encoding="utf-8")
-            assert 'class="benchmark-pending"' not in rendered, f"{page}: benchmark rows were not rendered"
-            assert all(text in rendered for text in expected), f"{page}: unexpected benchmark rendering"
-            # The fixture's Actix-Web row stays out of the results (the
-            # "Why not Leptos or Dioxus?" text names Actix Web on purpose).
-            results = rendered[rendered.index(assembler.BENCHMARK_START):rendered.index(assembler.BENCHMARK_END)]
-            assert "Actix" not in results, f"{page}: renders a framework outside the comparison"
-            # Rullst, then the minimal row labelled as the framework without the
-            # generated app's layers, then Loco and Topcoat.
-            rows = re.search(r'<ul class="benchmark-rows">(.*?)</ul>', rendered, re.DOTALL)
-            titles = re.findall(r'<li><h3>([^<]*?) ?(?:<span>|</h3>)', rows[1] if rows else "")
-            assert titles == ["Rullst", assembler.TEXT[lang]["names"][assembler.MINIMAL], "Loco", "Topcoat"], f"{page}: benchmark rows {titles}"
-            variants = re.findall(r'<p class="benchmark-variant">(.*?)</p>', rendered)
-            assert variants == [assembler.TEXT[lang]["variants"][row] for row in ("Rullst", assembler.MINIMAL)], f"{page}: variant labels {variants}"
+            document = Document()
+            document.feed(rendered)
+            validate_document(Path(page), document)
+            assert PENDING not in rendered, f"{page}: benchmark rows were not rendered"
+            missing = [text for text in expected if text not in rendered]
+            assert not missing, f"{page}: unexpected benchmark rendering, missing {missing}"
+            results = results_block(rendered, assembler)
+            # The fixture's FastAPI row is not one the page shows.
+            assert "FastAPI" not in results, f"{page}: renders a framework outside the comparison"
+            # By overall position (Loco before Rullst in their shared 3–4 by score),
+            # the row without an overall position after them, the diagnostic last.
+            minimal = assembler.TEXT[lang]["names"][assembler.MINIMAL]
+            rows = table_rows(results)
+            assert rows == ["Actix Web", "Topcoat", "Loco", "Rullst", "Gin", minimal], f"{page}: benchmark rows {rows}"
+            legend = re.search(r'<ul class="benchmark-legend">(.*?)</ul>', results, re.DOTALL)
+            assert legend and all(sign in legend[1] for sign in assembler.FLAGS.values()), f"{page}: the legend must explain every sign shown"
     # Backtick spans of a note: only short, balanced ones without markup become <code>.
     for note, html in (("`a` & `b`", "<code>a</code> &amp; <code>b</code>"), ("`a", "`a"), ("``", "``"), ("` `", "` `"),
                        ("`" + "x" * 81 + "`", "`" + "x" * 81 + "`"), ("`x\ny`", "`x\ny`"), ('`"q"`', "<code>&quot;q&quot;</code>"),
                        ("`<i>` `ok` `", "`&lt;i&gt;` <code>ok</code> `")):
         assert assembler.render_note(note) == html, f"note {note!r} rendered as {assembler.render_note(note)!r}"
+    assert (FIXTURE_DAY - date(2026, 8, 22)).days > assembler.BENCHMARK_MAX_AGE_DAYS >= (FIXTURE_DAY - date(2026, 11, 20)).days, (
+        "the fixture's dates must test both sides of the default age limit"
+    )
     # The assembler reads results only from inside the working directory.
-    with tempfile.TemporaryDirectory(prefix=".validate-site-", dir=ROOT) as temp, redirect_stderr(io.StringIO()) as warnings:
-        bad = Path(temp) / "bad.json"
-        bad.write_text('{"schema": "rullst.benchmarks.latest.v1", "measured_on": "2026-11-20", "results": [{"framework": "Rullst", "version": "<b>", "json_rps": 1}]}')
-        assembler.assemble(Path(temp) / "bad", benchmarks=bad)
-        assert "unexpected version" in warnings.getvalue(), "invalid benchmark data must be reported"
-        bad.write_text('{"schema": "rullst.benchmarks.latest.v1", "measured_on": "2026-11-20", "run": {"url": "javascript:alert(1)"}, "results": [{"framework": "Rullst", "version": "1.0.0", "json_rps": 1}]}')
-        assembler.assemble(Path(temp) / "bad-run", benchmarks=bad)
-        assert "unexpected run url" in warnings.getvalue(), "a run link outside Rullst/Benchmarks must be rejected"
-        # The minimal row is extra: data without it shows the other rows and no placeholder for it.
-        bad.write_text('{"schema": "rullst.benchmarks.latest.v1", "measured_on": "2026-11-20", "results": [{"framework": "Rullst", "version": "1.0.0", "json_rps": 1}]}')
-        assembler.assemble(Path(temp) / "no-minimal", benchmarks=bad)
-        rendered = (Path(temp) / "no-minimal" / COMPARE_PAGE).read_text(encoding="utf-8")
-        assert "<li><h3>Rullst <span>" in rendered and "<li><h3>Rullst (minimal)" not in rendered, "a missing minimal row must be left out"
-        assert 'class="benchmark-pending"' in (Path(temp) / "bad" / COMPARE_PAGE).read_text(encoding="utf-8"), (
-            "invalid benchmark data must keep the pending text"
-        )
+    with tempfile.TemporaryDirectory(prefix=".validate-site-", dir=ROOT) as temp:
+        data = Path(temp) / "data.json"
+        for index, (label, change, warning) in enumerate(REJECTED):
+            data.write_text(fixture_variant(change), encoding="utf-8")
+            with redirect_stderr(io.StringIO()) as warnings:
+                assembler.assemble(Path(temp) / f"rejected-{index}", benchmarks=data, today=FIXTURE_DAY)
+            assert warning in warnings.getvalue(), f"{label}: expected a warning with {warning!r}, got {warnings.getvalue()!r}"
+            for page in FIXTURE_RENDERING:
+                rendered = (Path(temp) / f"rejected-{index}" / page).read_text(encoding="utf-8")
+                assert PENDING in rendered and "benchmark-table" not in rendered, f"{label}: {page} must keep the pending text"
+        # The age limit is configurable: the same results within a longer limit are shown.
+        data.write_text(fixture_variant(lambda d: d.update(measured_on="2026-08-22")), encoding="utf-8")
+        assembler.assemble(Path(temp) / "longer-limit", benchmarks=data, today=FIXTURE_DAY, max_age_days=100)
+        assert PENDING not in (Path(temp) / "longer-limit" / COMPARE_PAGE).read_text(encoding="utf-8"), "--benchmarks-max-age-days must apply"
+        # The minimal row is extra: data without it shows the other rows and no
+        # placeholder for it; a missing compared framework says it is not in this run.
+        data.write_text(fixture_variant(lambda d: d.update(rows=[r for r in d["rows"] if r["slug"] not in ("rullst-minimal", "gin")])), encoding="utf-8")
+        assembler.assemble(Path(temp) / "no-minimal", benchmarks=data, today=FIXTURE_DAY)
+        results = results_block((Path(temp) / "no-minimal" / COMPARE_PAGE).read_text(encoding="utf-8"), assembler)
+        assert table_rows(results) == ["Actix Web", "Topcoat", "Loco", "Rullst", "Gin"], f"rows without the minimal one: {table_rows(results)}"
+        assert '<td colspan="7">Not in this measurement run.</td>' in results, "a missing framework must say it is not in this run"
+        # Without a published overall score the page has no Overall column and says so.
+        data.write_text(fixture_variant(lambda d: d.update(overall_published=False, weights={})), encoding="utf-8")
+        assembler.assemble(Path(temp) / "no-overall", benchmarks=data, today=FIXTURE_DAY)
+        results = results_block((Path(temp) / "no-overall" / COMPARE_PAGE).read_text(encoding="utf-8"), assembler)
+        assert ">Overall<" not in results and assembler.TEXT["en"]["unpublished"] in results, "an unpublished overall score must not be shown"
+        assert table_rows(results)[:3] == ["Rullst", "Loco", "Topcoat"], "without an overall score the rows keep the fixed order"
+        # A source the page does not name is left out of the meta line, not rendered.
+        data.write_text(fixture_variant(lambda d: d.update(rullst_source={"kind": ["crates.io"]})), encoding="utf-8")
+        assembler.assemble(Path(temp) / "other-source", benchmarks=data, today=FIXTURE_DAY)
+        results = results_block((Path(temp) / "other-source" / COMPARE_PAGE).read_text(encoding="utf-8"), assembler)
+        assert "with Rullst 13.0.0-alpha.6, against Axum" in results, "an unknown Rullst source must be left out"
 
 
 DEMO_LINKS = {

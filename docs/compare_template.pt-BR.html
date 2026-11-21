@@ -16,7 +16,7 @@
   <link rel="alternate" hreflang="pt-BR" href="https://rullst.win/pt-br/comparar/">
   <link rel="alternate" hreflang="x-default" href="https://rullst.win/compare/">
   <link rel="icon" type="image/png" href="/Rullst/Rullst.png">
-  <link rel="stylesheet" href="/assets/site.css?v=b1d91f4bbb45ffdf">
+  <link rel="stylesheet" href="/assets/site.css?v=94602bfecf826cce">
 </head>
 <body>
   <a class="skip-link" href="#main">Pular para o conteúdo</a>
@@ -138,19 +138,21 @@
 
     <section id="benchmarks" aria-labelledby="benchmarks-heading">
       <h2 id="benchmarks-heading">Desempenho</h2>
-      <p>Estes números não são escritos à mão: cada build diário deste site insere os resultados publicados mais recentes da suíte <a href="/Benchmarks/">Rullst/Benchmarks</a> para os três frameworks, além de uma configuração mínima do Rullst.</p>
+      <p>Estes números não são escritos à mão: cada build diário deste site insere os resultados publicados mais recentes da suíte <a href="/Benchmarks/">Rullst/Benchmarks</a> para os três frameworks, o Actix Web e o Gin, além de uma configuração mínima do Rullst. O mantenedor do Rullst também mantém esse benchmark e escreveu todas as implementações dele.</p>
       <div class="benchmark-howto">
         <h3>Como ler estes números</h3>
         <ul>
-          <li><strong>1,00× Axum significa o mesmo que o Axum</strong>, um framework Rust usado como referência e medido na mesma máquina e na mesma rodada. 0,50× é metade do valor do Axum; 2,00× é o dobro.</li>
-          <li><strong>Qual direção é melhor:</strong> em respostas por segundo, mais é melhor, então acima de 1× é mais rápido que o Axum; em latência e memória, menos é melhor, então abaixo de 1× é menos que o Axum.</li>
-          <li><strong>Compare as razões, não os números absolutos.</strong> Cada framework foi medido em uma máquina própria do GitHub, e essas máquinas variam, então o número absoluto entre parênteses depende em parte do hardware. A razão compara o framework com o Axum na mesma máquina, o que cancela a maior parte dessa diferença.</li>
-          <li><strong>O Rullst aparece duas vezes.</strong> "Rullst" é a aplicação que o <code>cargo rullst new</code> gera, com o middleware de produção que ele liga: WAF, proteção contra CSRF, cookies seguros, cabeçalhos seguros e log de acesso. "Rullst (mínimo)" usa o mesmo roteador, o mesmo ORM e os mesmos templates <code>html!</code> sem essas camadas, servido como o app do Axum. A diferença entre as duas linhas é o custo dessas camadas.</li>
+          <li><strong>1,00× é o Axum.</strong> Cada pontuação divide o resultado de um framework pelo resultado do Axum, um framework Rust pequeno usado como referência, medido na mesma máquina em rodadas alternadas. 0,50× é metade do resultado do Axum e 2,00× é o dobro. Mais é melhor em todas as pontuações: em memória e tempo de inicialização a razão é invertida, então uma pontuação maior significa menos RAM ou uma inicialização mais rápida.</li>
+          <li><strong>Empates e ±.</strong> As máquinas são máquinas de nuvem compartilhadas, então os resultados variam de uma execução para outra. "±6%" ao lado de uma pontuação é a margem dentro da qual duas pontuações não podem ser distinguidas. Pontuações tão próximas dividem um intervalo de posições, como "3–7": essas implementações estão nas posições 3 a 7, sem ordem entre elas.</li>
+          <li><strong>As categorias respondem a perguntas diferentes.</strong> Hello world: quanto um framework custa por requisição quando a página é trivial. Banco de dados: como ele lê, grava e renderiza linhas. Aplicação: o que ele faz com uma requisição real (entrada, validação, uma gravação, um formulário com proteção contra CSRF, um usuário autenticado). Memória: quanta RAM ele precisa sob carga. Inicialização: quão rápido ele inicia. Estabilidade (passou ou falhou): se ele continua funcionando sob carga mais pesada.</li>
+          <li><strong>O banco de dados costuma vir primeiro.</strong> Numa aplicação real, o banco de dados costuma ser o limite antes do framework, então uma diferença grande em Hello world diminui ou desaparece quando as requisições leem e gravam dados; Banco de dados e Aplicação estão mais perto do que uma aplicação faz.</li>
+          <li><strong>A pontuação geral é um resumo.</strong> Ela combina as cinco pontuações de categoria, com Hello world, Banco de dados e Aplicação contados duas vezes e Memória e Inicialização uma vez, para uma leitura rápida. As categorias são o resultado de verdade: outros pesos mudam a ordem, como mostram os resultados completos.</li>
+          <li><strong>O Rullst aparece duas vezes.</strong> "Rullst" é a aplicação que o <code>cargo rullst new</code> gera, com o middleware de produção que ele liga: WAF, proteção contra CSRF, cookies seguros, cabeçalhos seguros e log de acesso; é o Rullst com posição. "Rullst (mínimo)" usa o mesmo roteador, o mesmo ORM e os mesmos templates <code>html!</code> sem essas camadas, servido como o app do Axum; é um diagnóstico, com pontuações e sem posição. A diferença entre as duas linhas é o custo dessas camadas.</li>
         </ul>
       </div>
       <div class="benchmark-results" data-benchmark-results>
 <!-- benchmark-results:start -->
-        <p class="benchmark-pending">A primeira medição de Rullst, Loco e Topcoat está em andamento. Esta seção se preenche automaticamente quando os resultados forem publicados; até lá, ela não mostra números.</p>
+        <p class="benchmark-pending">Não há resultados atuais disponíveis. Esta seção se preenche automaticamente quando o Rullst/Benchmarks publicar resultados que esta página consiga ler; até lá, ela não mostra números, em vez de mostrar números antigos.</p>
 <!-- benchmark-results:end -->
       </div>
     </section>
