@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795225329605,
+  "lastUpdate": 1795229320198,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -38365,6 +38365,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2002,
             "range": "± 32",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e0ee395352152724f77f1b1f24b2e14f03abfe73",
+          "message": "Merge pull request #794 from Rullst/docs/v13-13-1-deep-performance-tests\n\ndocs(roadmap): record the 13.1 deep performance tests and the ORM/Media environment API",
+          "timestamp": "2026-11-20T23:46:12-03:00",
+          "tree_id": "0a54fcc7cac448948b3a039ecc69081bc3a64f9c",
+          "url": "https://github.com/Rullst/Rullst/commit/e0ee395352152724f77f1b1f24b2e14f03abfe73"
+        },
+        "date": 1795229315634,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 699,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 917,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 429,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1891,
+            "range": "± 26",
             "unit": "ns/iter"
           }
         ]
