@@ -1,8 +1,25 @@
     // Turso is initialized before routes use the global typed model facade.
     // Its settings come from the process environment, then `.env`, which is
     // never loaded into the process, like every other application setting.
+    let turso_url = rullst::config::project_setting("TURSO_DATABASE_URL")?.unwrap_or_default();
+    // An empty URL selects the offline fallback, a local SQLite file. Staging
+    // and production refuse it instead of writing there; an explicit `mock_`
+    // value keeps the file on purpose.
+    let environment = rullst::config::Environment::resolve(
+        rullst::config::project_setting("RULLST_ENV")?.as_deref(),
+        rullst::config::project_setting("APP_ENV")?.as_deref(),
+        None,
+    )?;
+    if turso_url.trim().is_empty() && environment.requires_secure_defaults() {
+        return Err(format!(
+            "TURSO_DATABASE_URL is empty or unset in the {environment} environment, so Turso \
+             would write a local SQLite file instead of the database; set it, or set a `mock_` \
+             value to keep the offline file on purpose"
+        )
+        .into());
+    }
     let turso = rullst_orm::polyglot::TursoConfig::new(
-        rullst::config::project_setting("TURSO_DATABASE_URL")?.unwrap_or_default(),
+        turso_url,
         rullst::config::project_setting("TURSO_AUTH_TOKEN")?.unwrap_or_default(),
     )
     // Only the offline fallback (an empty or `mock_` URL) uses this file.

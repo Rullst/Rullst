@@ -161,7 +161,8 @@ pub(crate) const CAPABILITIES: [Capability; 5] = [
                 "mock_openai_key",
                 &[
                     "AiClient::auto() reads the process environment and uses the first",
-                    "configured provider; no key or a mock_* key selects the offline mock.",
+                    "configured provider; a mock_* key selects the offline mock, and so",
+                    "does no key in development and test (staging and production refuse it).",
                 ],
             ),
             documented("ANTHROPIC_API_KEY", "mock_anthropic_key"),

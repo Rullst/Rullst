@@ -226,15 +226,27 @@ BILLING_ACCOUNT_ID=
 # BILLING_LIVE_ACKNOWLEDGEMENT=I_UNDERSTAND_REAL_CHARGES
 # Stripe is the generated provider; review Rullst.toml security.csp form-action
 # before replacing it with an application-owned gateway adapter.
-BILLING_API_KEY=
-BILLING_WEBHOOK_SECRET=
+# `mock_` values select the local billing fixture, which never reaches Stripe.
+# Staging and production refuse empty values; production also refuses `mock_`.
+BILLING_API_KEY=__BILLING_API_KEY__
+BILLING_WEBHOOK_SECRET=__BILLING_WEBHOOK_SECRET__
 BILLING_REDIRECT_URL=http://localhost:3000/dashboard
 BILLING_ALLOWED_PLAN_IDS=price_starter,price_pro
 # Optional plan-gated report; configure an explicit subset before enabling access.
 BILLING_REPORT_PLAN_IDS=
 "#;
-        env_content.push_str(billing_template);
-        env_example_content.push_str(billing_template);
+        // The development file keeps the fixture explicitly; the example
+        // stays empty, so a deployment copied from it fails closed.
+        env_content.push_str(
+            &billing_template
+                .replace("__BILLING_API_KEY__", "mock_billing_api_key")
+                .replace("__BILLING_WEBHOOK_SECRET__", "mock_billing_webhook_secret"),
+        );
+        env_example_content.push_str(
+            &billing_template
+                .replace("__BILLING_API_KEY__", "")
+                .replace("__BILLING_WEBHOOK_SECRET__", ""),
+        );
     }
 
     // Every starter's `src/main.rs` carries the monitor wiring, commented out.

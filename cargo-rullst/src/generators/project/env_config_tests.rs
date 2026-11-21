@@ -177,6 +177,28 @@ fn the_json_api_token_is_random_in_env_and_empty_in_the_example() {
     assert!(read(".env.example").ends_with("\nAPI_TOKEN=\n"));
 }
 
+/// Staging refuses empty billing credentials, so the development file names
+/// the local fixture explicitly while the example stays empty.
+#[test]
+fn saas_billing_uses_explicit_mock_values_in_env_and_none_in_the_example() {
+    let root = tempfile::tempdir().expect("temporary project");
+    generate_env_and_configs(
+        root.path(),
+        true,
+        "Sqlite",
+        &[],
+        SAAS_BLUEPRINT_ID,
+        "0123456789abcdef0123456789abcdef",
+    )
+    .expect("SaaS environment scaffold");
+    let read = |file: &str| fs::read_to_string(root.path().join(file)).expect("environment file");
+    let (development, example) = (read(".env"), read(".env.example"));
+    assert!(development.contains("\nBILLING_API_KEY=mock_billing_api_key\n"));
+    assert!(development.contains("\nBILLING_WEBHOOK_SECRET=mock_billing_webhook_secret\n"));
+    assert!(example.contains("\nBILLING_API_KEY=\nBILLING_WEBHOOK_SECRET=\n"));
+    assert!(!development.contains("__BILLING") && !example.contains("__BILLING"));
+}
+
 #[test]
 fn cargo_config_selects_the_linker_for_x86_64_and_aarch64_linux() {
     for linker in ["mold", "lld"] {
