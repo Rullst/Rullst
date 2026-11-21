@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795224063013,
+  "lastUpdate": 1795225115141,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -38257,6 +38257,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1481,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "eb0c722d5c78039e4eb23c41aaf27761ec6aae7c",
+          "message": "Merge pull request #792 from Rullst/fix/v13-rc1-surreal-oauth-state\n\nfix(orm,connect): allowlist SurrealDB graph reads; deprecate the oauth_state fallback",
+          "timestamp": "2026-11-20T22:34:20-03:00",
+          "tree_id": "7cbdf2cc08f1de23746aeb2ae4de91f98affe102",
+          "url": "https://github.com/Rullst/Rullst/commit/eb0c722d5c78039e4eb23c41aaf27761ec6aae7c"
+        },
+        "date": 1795225110808,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 536,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 705,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 324,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1490,
+            "range": "± 19",
             "unit": "ns/iter"
           }
         ]
