@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795230120957,
+  "lastUpdate": 1795239726168,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -19712,6 +19712,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4cde8679f20ae0af944960dfc8c0613e1b6ac29b",
+          "message": "Merge pull request #796 from Rullst/fix/v13-site-benchmarks-v3\n\nfix(site): render the v3 benchmark results on the comparison page",
+          "timestamp": "2026-11-21T02:22:10-03:00",
+          "tree_id": "c419b90b0a4c2e111d44e5c60ebcd4c06f632a6c",
+          "url": "https://github.com/Rullst/Rullst/commit/4cde8679f20ae0af944960dfc8c0613e1b6ac29b"
+        },
+        "date": 1795239725497,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 7,
             "range": "± 0",
             "unit": "ns/iter"
           }
