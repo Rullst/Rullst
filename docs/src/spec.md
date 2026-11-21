@@ -3611,8 +3611,11 @@ while portability and semantic review remain the model author's responsibility.
   HTTP endpoints with namespace/database headers (`replace` is a non-creating
   `UPDATE` through `/rpc`, and document IDs are always string keys), no redirects, bounded streaming
   responses, HTTPS by default, and redacted authentication configuration.
-  `GraphQuery::read_only` accepts one `MATCH` query, rejects mutation tokens
-  and caller-supplied limits, then appends a bounded limit.
+  `GraphQuery::read_only` accepts only an allowlisted read grammar (`MATCH`
+  paths of nodes and edges, optional `WHERE` comparisons and `IS [NOT] NULL`
+  tests joined with `AND`/`OR`/`NOT`, `RETURN` items with `AS` aliases and
+  optional `ORDER BY`), refuses every other clause, call, comment, parameter
+  and caller-supplied limit, then appends a bounded limit.
 * This boundary does not turn every backend into SQL Active Record, perform
   cross-database transactions, provide an online-consistent snapshot,
   synchronize records between engines, or prove a third-party deployment. See
