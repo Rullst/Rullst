@@ -173,10 +173,9 @@ fn graph_tokens(query: &str) -> Result<Vec<Token>, &'static str> {
             tokens.push(Token::Literal);
             after
         } else if first.is_ascii_digit() {
-            let (number, after) = rest.split_at(
-                rest.find(|character: char| !(is_word(character) || character == '.'))
-                    .unwrap_or(rest.len()),
-            );
+            // `first` is a digit, so trimming always consumes it.
+            let after = rest.trim_start_matches(|character| is_word(character) || character == '.');
+            let number = rest.strip_suffix(after).unwrap_or_default();
             let parts = number.split('.').collect::<Vec<_>>();
             if parts.len() > 2
                 || parts
@@ -188,10 +187,9 @@ fn graph_tokens(query: &str) -> Result<Vec<Token>, &'static str> {
             tokens.push(Token::Literal);
             after
         } else if is_word(first) {
-            let (word, after) = rest.split_at(
-                rest.find(|character: char| !is_word(character))
-                    .unwrap_or(rest.len()),
-            );
+            // `first` is a word character, so trimming always consumes it.
+            let after = rest.trim_start_matches(is_word);
+            let word = rest.strip_suffix(after).unwrap_or_default();
             tokens.push(
                 KEYWORDS
                     .iter()

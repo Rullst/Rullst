@@ -53,6 +53,7 @@ fn documented_read_queries_are_accepted() {
             "MATCH (n:person) RETURN n ORDER BY n.address.city",
             "MATCH (n:person) RETURN n, n.age ORDER BY n DESC",
             "MATCH (n:person) RETURN n ORDER BY n.age ASC, n",
+            "MATCH (n:person) RETURN n ORDER BY n.age, n.name DESC",
         ],
         ACCEPTED,
     );
