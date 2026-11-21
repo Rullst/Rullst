@@ -110,18 +110,34 @@ In this order (decided 21 November 2026), with no new crate:
 1. **Performance measured by Benchmarks v3,** with before-and-after numbers
    and no public API change: `save()` without a transaction per row, the cost
    of the generated middleware stack, `html!` loops and the pools built
-   outside `Orm`.
-2. **A design study, before any code, of Axum and SQLx at the public
+   outside `Orm`. Deep tests find the causes first (decided 19 November 2026;
+   they start after 13.0.0-rc.1 is published, and their fixes ship in 13.1):
+   - **Rullst only:** CPU flame graphs and allocation profiles of the
+     benchmark endpoints; the database statements each request sends (ORM
+     against plain SQLx); the generated middleware stack measured one layer
+     at a time; Server-Sent Events and WebSocket load; and a workload recorded
+     from a real application (Academy, capoeira or vene.win).
+   - **Across frameworks,** from the Benchmarks data: database statements per
+     request for each endpoint, build time and image size.
+   - The results are published in the documentation with the before-and-after
+     numbers, with no change made only for a benchmark and no security layer
+     weakened.
+2. **Fail closed where settings are read in `rullst-orm` and `rullst-media`:**
+   an API that takes the environment, so that `TursoOrm::init_from_env`,
+   `TursoStore::connect` and `S3Credentials::from_env` refuse an empty value
+   in staging and production as the other providers do since 13.0.0-rc.1
+   (today the documentation asks the application to check).
+3. **A design study, before any code, of Axum and SQLx at the public
    boundary.** Their types appear in Rullst's public API listings (117 Axum
    and 87 SQLx mentions), and both are before 1.0. Handlers and extractors
    are Axum by design, so the goal is not to hide Axum: applications should
    name `rullst::` paths, and a `cargo rullst upgrade` rule should carry an
    Axum or SQLx move, so that it can stay inside 13.x.
-3. **A behavior version** (for example `[app] behavior = "13.2"`): new
+4. **A behavior version** (for example `[app] behavior = "13.2"`): new
    projects get the newest safer defaults, existing projects keep theirs
    until they opt in, and `cargo rullst upgrade` shows what changes. A first
    use: refusing to start in a release build without `RULLST_ENV`.
-4. **The additions decided on 19 November 2026,** below.
+5. **The additions decided on 19 November 2026,** below.
 
 Additive, decided with the maintainer on 19 November 2026:
 
