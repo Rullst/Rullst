@@ -1,0 +1,55 @@
+# OSV-Scanner configuration for this test firmware's Cargo.lock, read by
+# OpenSSF Scorecard's Vulnerabilities check; governed in
+# docs/src/security-advisory-exceptions.md. This firmware is flashed to a
+# maintainer-owned BBC micro:bit V2 for the rullst-iot hardware check and is
+# never published.
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0110"
+ignoreUntil = 2027-02-21
+reason = "bare-metal is deprecated (no known vulnerability); it comes from the Cortex-M support crates of the micro:bit test firmware, which is never published."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0574"
+ignoreUntil = 2027-02-21
+reason = "heapless 0.8.0 is pulled only by usb-device 0.3.2 in the micro:bit test firmware, which is never published; the fix is heapless 0.9.4 and usb-device 0.3.2, its newest release, still requires heapless ^0.8."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0575"
+ignoreUntil = 2027-02-21
+reason = "heapless 0.8.0 is pulled only by usb-device 0.3.2 in the micro:bit test firmware, which is never published; the fix is heapless 0.9.4 and usb-device 0.3.2, its newest release, still requires heapless ^0.8."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0576"
+ignoreUntil = 2027-02-21
+reason = "heapless 0.8.0 is pulled only by usb-device 0.3.2 in the micro:bit test firmware, which is never published; the fix is heapless 0.9.4 and usb-device 0.3.2, its newest release, still requires heapless ^0.8."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0577"
+ignoreUntil = 2027-02-21
+reason = "heapless 0.8.0 is pulled only by usb-device 0.3.2 in the micro:bit test firmware, which is never published; the fix is heapless 0.9.4 and usb-device 0.3.2, its newest release, still requires heapless ^0.8."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0578"
+ignoreUntil = 2027-02-21
+reason = "heapless 0.8.0 is pulled only by usb-device 0.3.2 in the micro:bit test firmware, which is never published; the fix is heapless 0.9.4 and usb-device 0.3.2, its newest release, still requires heapless ^0.8."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0579"
+ignoreUntil = 2027-02-21
+reason = "heapless 0.8.0 is pulled only by usb-device 0.3.2 in the micro:bit test firmware, which is never published; the fix is heapless 0.9.4 and usb-device 0.3.2, its newest release, still requires heapless ^0.8."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0580"
+ignoreUntil = 2027-02-21
+reason = "heapless 0.8.0 is pulled only by usb-device 0.3.2 in the micro:bit test firmware, which is never published; the fix is heapless 0.9.4 and usb-device 0.3.2, its newest release, still requires heapless ^0.8."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0581"
+ignoreUntil = 2027-02-21
+reason = "heapless 0.8.0 is pulled only by usb-device 0.3.2 in the micro:bit test firmware, which is never published; the fix is heapless 0.9.4 and usb-device 0.3.2, its newest release, still requires heapless ^0.8."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0582"
+ignoreUntil = 2027-02-21
+reason = "heapless 0.8.0 is pulled only by usb-device 0.3.2 in the micro:bit test firmware, which is never published; the fix is heapless 0.9.4 and usb-device 0.3.2, its newest release, still requires heapless ^0.8."
