@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795239726168,
+  "lastUpdate": 1795299821862,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -19754,6 +19754,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d82e5626d59baff7ce313a0d71fe32d996dec3a6",
+          "message": "Merge pull request #800 from Rullst/docs/v13-rc1-dash-arm-microbit\n\ndocs: record the rc.1 micro:bit run and production use on Arm, drop the v12 dash screenshot",
+          "timestamp": "2026-11-21T19:03:55-03:00",
+          "tree_id": "ff1d7f183969fb70609b3a08b261fc15ad8497f5",
+          "url": "https://github.com/Rullst/Rullst/commit/d82e5626d59baff7ce313a0d71fe32d996dec3a6"
+        },
+        "date": 1795299821550,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
             "range": "± 0",
             "unit": "ns/iter"
           }
