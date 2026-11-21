@@ -56,6 +56,11 @@ PT_BR_COUNTERPARTS = {
 }
 BENCH_TEMPLATES = sorted(DOCS.glob("benches*_template.html"))
 README = ROOT / "README.md"
+# The blocks assemble-organization-site.py fills on each landing page.
+ASSEMBLER_BLOCKS = {
+    "proof": ("<!-- landing-proof:start -->", "<!-- landing-proof:end -->"),
+    "summary": ("<!-- landing-benchmarks:start -->", "<!-- landing-benchmarks:end -->"),
+}
 
 
 LLMS_INDEX_LIMIT = 128 * 1024
@@ -331,12 +336,28 @@ LANGUAGES = {
     "en": {"home": HOME, "privacy": PRIVACY, "url": SITE_URL, "locale": "en_US",
            "dedication": "All glory and honor to God", "status": "Rullst v13 prerelease",
            "slogan": "Intelligent, Security-Conscious, and Designed for Effortless Productivity",
-           "performance": "measures each new Rullst release"},
+           "performance": "measures each new Rullst release",
+           "lede": "A full-stack web framework for Rust, built on <strong>Axum</strong> and <strong>SQLx</strong>",
+           "disclosure": "Rullst's maintainer also maintains that benchmark",
+           "no_audit": "no external audit has been completed",
+           "maintainer": "Rullst has one maintainer",
+           # Marketing words and absolute claims the landing never makes.
+           "banned": ("blazing", "revolutionary", "best-in-class", "the best", "no other framework", "the only framework",
+                      "unique", "more secure", "experimental", "world-class")},
     "pt-BR": {"home": HOME_PT_BR, "privacy": PRIVACY_PT_BR, "url": SITE_URL + "pt-br/", "locale": "pt_BR",
               "dedication": "Toda glória e honra a Deus", "status": "Pré-lançamento do Rullst v13",
               "slogan": "Inteligente, consciente da segurança e feito para uma produtividade sem esforço",
-              "performance": "mede cada nova versão do Rullst"},
+              "performance": "mede cada nova versão do Rullst",
+              "lede": "Um framework web full-stack para Rust, construído sobre <strong>Axum</strong> e <strong>SQLx</strong>",
+              "disclosure": "O mantenedor do Rullst também mantém esse benchmark",
+              "no_audit": "nenhuma auditoria externa foi concluída",
+              "maintainer": "O Rullst tem um único mantenedor",
+              "banned": ("revolucionári", "o melhor", "nenhum outro framework", "o único framework", "framework único",
+                         "mais seguro", "experimental", "de classe mundial")},
 }
+# The landing sections, in page order, and the blocks the assembler fills.
+LANDING_SECTIONS = ("performance", "security", "included", "integrations", "examples", "academy", "community")
+LANDING_CHECKED = re.compile(r'<p class="(?:landing-checked|security-compare)" id="(checked-[a-z]+)">(.*?)</p>', re.DOTALL)
 
 
 def validate_language_links(path: Path, source: str, page: str, lang: str, pt_page: str | None = None) -> None:
@@ -387,9 +408,7 @@ def validate_landing(lang: str) -> tuple[Document, str]:
     assert "academy" in home.ids and any(link.startswith("https://academy.rullst.win/") for link in home.links), (
         f"{path.name}: must keep the Academy section"
     )
-    assert {"integrations", "performance"} <= set(home.ids), f"{path.name}: needs Integrations and Performance"
-    assert {"/Rullst/benches/", "/Benchmarks/"} <= set(home.links), f"{path.name}: Performance must link both sources"
-    assert facts["performance"] in source, f"{path.name}: Performance must say when the cross-framework comparison is measured"
+    validate_landing_sections(path, source, home, facts)
     assert source.count('class="demo-host-note"') == 4, f"{path.name}: every Azure-hosted demo needs its startup note"
     assert not home.inline_behavior, f"{path.name}: inline behavior/style: {home.inline_behavior}"
     for references, filename in ((home.stylesheets, "site.css"), (home.scripts, "site.js")):
@@ -411,6 +430,58 @@ def validate_landing(lang: str) -> tuple[Document, str]:
         if target is not None:
             assert target.is_file(), f"{path.name}: missing local target {reference} -> {target}"
     return home, source
+
+
+def section_text(source: str, ident: str) -> str:
+    match = re.search(rf'<section id="{ident}" .*?\n    </section>\n', source, re.DOTALL)
+    assert match, f"landing is missing the #{ident} section"
+    return match[0]
+
+
+def validate_landing_sections(path: Path, source: str, home: Document, facts: dict) -> None:
+    """The first screen, Performance, Security and Included sections and their evidence rules."""
+    order = [source.index(f'<section id="{ident}" ') for ident in LANDING_SECTIONS]
+    assert order == sorted(order), f"{path.name}: sections must come in the order {LANDING_SECTIONS}"
+    assert "verification" in home.ids, f"{path.name}: Security needs the #verification list the first screen links"
+    hero = source[source.index('<header class="hero'):source.index("</header>")]
+    assert facts["lede"] in hero, f"{path.name}: the first screen must say what Rullst is in one sentence"
+    assert hero.count('<li class="proof-card ') == 3, f"{path.name}: the first screen needs three proof points"
+    assert INSTALL_PIN.search(hero), f"{path.name}: the first screen must show the install command"
+    for start, end in (ASSEMBLER_BLOCKS["proof"], ASSEMBLER_BLOCKS["summary"]):
+        assert source.count(start) == 1 == source.count(end), f"{path.name}: needs one {start} block"
+        assert 'class="benchmark-pending' in source[source.index(start):source.index(end)], f"{path.name}: {start} needs its pending text"
+    performance = section_text(source, "performance")
+    assert {"/Rullst/benches/", "/Benchmarks/"} <= set(re.findall(r'href="([^"]+)"', performance)), (
+        f"{path.name}: Performance must link the microbenchmarks and the full results"
+    )
+    assert facts["performance"] in performance, f"{path.name}: Performance must say when the cross-framework comparison is measured"
+    assert facts["disclosure"] in performance and performance.index(facts["disclosure"]) < performance.index(ASSEMBLER_BLOCKS["summary"][0]), (
+        f"{path.name}: Performance must say who maintains the benchmark before the results"
+    )
+    security = section_text(source, "security")
+    for statement in ("no_audit", "maintainer"):
+        assert facts[statement] in security, f"{path.name}: Security must say: {facts[statement]}"
+    text = plain_html(source[source.index("<body"):]).lower()
+    banned = [word for word in facts["banned"] if word in text]
+    assert not banned, f"{path.name}: marketing or absolute wording on the landing: {banned}"
+    # A statement about another framework names the version and the day it was checked.
+    for ident in ("security", "included"):
+        body = section_text(source, ident)
+        if "Loco" in plain_html(body) or "Topcoat" in plain_html(body):
+            checked = LANDING_CHECKED.search(body)
+            assert checked and re.search(r'<time datetime="\d{4}-\d{2}-\d{2}">', checked[2]), (
+                f"{path.name}: #{ident} mentions other frameworks without the date it checked them"
+            )
+            versions = re.findall(r"<code>((?:loco-rs|topcoat) [0-9][^<]*)</code>", checked[2])
+            assert {version.split()[0] for version in versions} == {"loco-rs", "topcoat"}, (
+                f"{path.name}: #{ident} must name the loco-rs and topcoat versions it checked: {versions}"
+            )
+
+
+def landing_checked_lines(source: str) -> list[tuple[str, list]]:
+    """Each landing checked line with its versions and date, for the translation check."""
+    return [(ident, re.findall(r"<code>(.*?)</code>|<time datetime=\"([0-9-]+)\">", body))
+            for ident, body in LANDING_CHECKED.findall(source)]
 
 
 def validate_privacy(lang: str, home: Document) -> tuple[Document, str]:
@@ -540,6 +611,48 @@ FIXTURE_RENDERING = {
 }
 
 
+# The landing blocks rendered from the fixture (Rullst overall 0.61× ‡ in 3–4,
+# shared with Loco; the minimal row; RAM 12/470 MiB against Axum's 17/927).
+LANDING_RENDERING = {
+    "index.html": ("en", (
+        '<strong class="landing-bench-score">0.61× ‡</strong><span class="landing-bench-position">positions 3–4 of 14</span>',
+        "It shares positions 3–4 with Loco (0.63×).",
+        '<h3>Level with or above Axum</h3><ul><li><span class="landing-bench-category">Memory</span><span class="landing-bench-value">1.00× ≈</span>',
+        '<h3>Below Axum</h3><ul><li><span class="landing-bench-category">Hello world</span><span class="landing-bench-value">0.48×*</span>',
+        '<span class="landing-bench-value">0.81×</span><span class="landing-bench-position">position 2 of 14</span>',
+        '<span class="landing-bench-value">0.90×* ‡</span>',
+        "RAM: 12 MiB at the high-water mark under load (Axum: 17 MiB); 470 MiB after the 125 logins",
+        "Stability under heavier load: pass.",
+        "scores Hello world 1.00×* ≈, Database 0.87×*, Application 0.98×* ‡ ≈; the gap between the two rows is what those layers cost.",
+        "<strong>12 MiB</strong> of RAM at its high-water mark under load and 470 MiB after 125 logins; Axum: 17 and 927 MiB",
+        "Its lowest speed score is Hello world: 0.48× Axum's.",
+        'Measured by Rullst/Benchmarks on <time datetime="2026-11-20">20 November 2026</time>.',
+    )),
+    "pt-br/index.html": ("pt-BR", (
+        '<strong class="landing-bench-score">0,61× ‡</strong><span class="landing-bench-position">posições 3–4 de 14</span>',
+        "Divide as posições 3–4 com Loco (0,63×).",
+        '<h3>No nível do Axum ou acima</h3><ul><li><span class="landing-bench-category">Memória</span><span class="landing-bench-value">1,00× ≈</span>',
+        '<h3>Abaixo do Axum</h3><ul><li><span class="landing-bench-category">Hello world</span><span class="landing-bench-value">0,48×*</span>',
+        '<span class="landing-bench-value">0,81×</span><span class="landing-bench-position">posição 2 de 14</span>',
+        "RAM: 12 MiB no pico sob carga (Axum: 17 MiB); 470 MiB depois dos 125 logins",
+        "Estabilidade sob carga mais pesada: passou.",
+        "pontua Hello world 1,00×* ≈, Banco de dados 0,87×*, Aplicação 0,98×* ‡ ≈;",
+        "<strong>12 MiB</strong> de RAM no pico sob carga e 470 MiB depois de 125 logins; Axum: 17 e 927 MiB",
+        "A menor pontuação de velocidade é a de Hello world: 0,48× a do Axum.",
+        'Medido pelo Rullst/Benchmarks em <time datetime="2026-11-20">20 de novembro de 2026</time>.',
+    )),
+}
+
+
+def landing_block(rendered: str, name: str) -> str:
+    start, end = ASSEMBLER_BLOCKS[name]
+    return rendered[rendered.index(start):rendered.index(end)]
+
+
+def landing_pending(rendered: str, name: str) -> bool:
+    return 'class="benchmark-pending' in landing_block(rendered, name)
+
+
 def results_block(rendered: str, assembler) -> str:
     return rendered[rendered.index(assembler.BENCHMARK_START):rendered.index(assembler.BENCHMARK_END)]
 
@@ -604,6 +717,22 @@ def validate_benchmark_rendering(assembler) -> None:
             assert rows == ["Actix Web", "Topcoat", "Loco", "Rullst", "Gin", minimal], f"{page}: benchmark rows {rows}"
             legend = re.search(r'<ul class="benchmark-legend">(.*?)</ul>', results, re.DOTALL)
             assert legend and all(sign in legend[1] for sign in assembler.FLAGS.values()), f"{page}: the legend must explain every sign shown"
+        for page, (lang, expected) in LANDING_RENDERING.items():
+            rendered = (Path(temp) / "data" / page).read_text(encoding="utf-8")
+            document = Document()
+            document.feed(rendered)
+            validate_document(Path(page), document)
+            assert not landing_pending(rendered, "proof") and not landing_pending(rendered, "summary"), f"{page}: landing blocks were not rendered"
+            missing = [text for text in expected if text not in rendered]
+            assert not missing, f"{page}: unexpected landing rendering, missing {missing}"
+            summary = landing_block(rendered, "summary")
+            legend = re.search(r'<ul class="benchmark-legend landing-bench-legend">(.*?)</ul>', summary, re.DOTALL)
+            cells = re.findall(r'<span class="landing-bench-value">([^<]*)</span>|<strong class="landing-bench-score">([^<]*)</strong>', summary)
+            values = "".join(value + score for value, score in cells)
+            values += re.search(r'<p class="landing-bench-minimal">(.*?)</p>', summary, re.DOTALL)[1]
+            signs = {sign for sign in assembler.FLAGS.values() if sign in values}
+            assert legend and signs and all(f"<li>{sign} " in legend[1] for sign in signs), f"{page}: the legend must explain {signs}"
+            assert "database_note" not in summary and "†" not in summary, f"{page}: the landing explains a sign it does not show"
     # Backtick spans of a note: only short, balanced ones without markup become <code>.
     for note, html in (("`a` & `b`", "<code>a</code> &amp; <code>b</code>"), ("`a", "`a"), ("``", "``"), ("` `", "` `"),
                        ("`" + "x" * 81 + "`", "`" + "x" * 81 + "`"), ("`x\ny`", "`x\ny`"), ('`"q"`', "<code>&quot;q&quot;</code>"),
@@ -623,6 +752,10 @@ def validate_benchmark_rendering(assembler) -> None:
             for page in FIXTURE_RENDERING:
                 rendered = (Path(temp) / f"rejected-{index}" / page).read_text(encoding="utf-8")
                 assert PENDING in rendered and "benchmark-table" not in rendered, f"{label}: {page} must keep the pending text"
+            for page in LANDING_RENDERING:
+                rendered = (Path(temp) / f"rejected-{index}" / page).read_text(encoding="utf-8")
+                assert landing_pending(rendered, "proof") and landing_pending(rendered, "summary"), f"{label}: {page} must keep the pending text"
+                assert "landing-bench-split" not in rendered and "MiB" not in rendered, f"{label}: {page} shows numbers"
         # The age limit is configurable: the same results within a longer limit are shown.
         data.write_text(fixture_variant(lambda d: d.update(measured_on="2026-08-22")), encoding="utf-8")
         assembler.assemble(Path(temp) / "longer-limit", benchmarks=data, today=FIXTURE_DAY, max_age_days=100)
@@ -645,6 +778,54 @@ def validate_benchmark_rendering(assembler) -> None:
         assembler.assemble(Path(temp) / "other-source", benchmarks=data, today=FIXTURE_DAY)
         results = results_block((Path(temp) / "other-source" / COMPARE_PAGE).read_text(encoding="utf-8"), assembler)
         assert "with Rullst 13.0.0-alpha.6, against Axum" in results, "an unknown Rullst source must be left out"
+        validate_landing_variants(assembler, Path(temp), data)
+
+
+def assemble_variant(assembler, temp: Path, data: Path, name: str, change) -> tuple[str, str, str]:
+    """English landing, comparison page and warnings for one fixture variant."""
+    data.write_text(fixture_variant(change), encoding="utf-8")
+    with redirect_stderr(io.StringIO()) as warnings:
+        assembler.assemble(temp / name, benchmarks=data, today=FIXTURE_DAY)
+    return ((temp / name / "index.html").read_text(encoding="utf-8"),
+            (temp / name / COMPARE_PAGE).read_text(encoding="utf-8"), warnings.getvalue())
+
+
+def validate_landing_variants(assembler, temp: Path, data: Path) -> None:
+    """How the landing summary words groups, a missing Rullst row, memory or overall score."""
+    def position(slugs, first, last):
+        return lambda d: [fixture_row(d, slug)["overall"].update(position=[first, last]) for slug in slugs]
+    for name, change, sentence in (
+        ("group-partial", position(("rullst", "loco"), 3, 5), "It shares positions 3–5 with 2 other implementations, among them Loco (0.63×)."),
+        ("group-unnamed", position(("rullst",), 6, 7), "It shares positions 6–7 with one other implementation of the full results."),
+        ("group-unnamed-many", position(("rullst",), 6, 8), "It shares positions 6–8 with 2 other implementations of the full results."),
+        ("group-alone", position(("rullst",), 4, 4), "No other implementation shares its position."),
+        ("group-named", position(("rullst", "loco", "topcoat"), 3, 5), "It shares positions 3–5 with Topcoat (0.99×) and Loco (0.63×)."),
+    ):
+        landing, _compare, _warnings = assemble_variant(assembler, temp, data, name, change)
+        assert sentence in landing, f"{name}: expected {sentence!r} in {landing_block(landing, 'summary')[:600]!r}"
+    # Gin's fixture overall has no score, so a shared range does not name it.
+    landing, _compare, _warnings = assemble_variant(assembler, temp, data, "no-gin-score", position(("rullst", "loco", "gin"), 3, 5))
+    assert "Gin" not in landing_block(landing, "summary"), "a row without an overall score is not named in the group"
+    landing, compare, warnings = assemble_variant(assembler, temp, data, "no-rullst",
+                                                  lambda d: d.update(rows=[r for r in d["rows"] if r["slug"] != "rullst"]))
+    assert PENDING not in compare and landing_pending(landing, "summary") and landing_pending(landing, "proof"), (
+        "without a Rullst row the comparison renders and the landing keeps its pending text"
+    )
+    assert "no Rullst row" in warnings, f"a missing Rullst row must be logged: {warnings!r}"
+    landing, _compare, _warnings = assemble_variant(assembler, temp, data, "no-memory", lambda d: fixture_row(d, "rullst").update(memory={}))
+    assert landing_pending(landing, "proof") and not landing_pending(landing, "summary") and "RAM:" not in landing, (
+        "without Rullst's RAM the proof point stays pending and the summary leaves memory out"
+    )
+    landing, _compare, _warnings = assemble_variant(assembler, temp, data, "landing-no-overall",
+                                                    lambda d: d.update(overall_published=False, weights={}))
+    summary = landing_block(landing, "summary")
+    assert assembler.TEXT["en"]["unpublished"] in summary and "Overall score" not in summary, "an unpublished overall score is not shown"
+    landing, _compare, _warnings = assemble_variant(assembler, temp, data, "landing-errors",
+                                                    lambda d: fixture_row(d, "rullst")["categories"]["database"].update(score=None, position=None, status="errors"))
+    summary = landing_block(landing, "summary")
+    assert '<h3>Without a score</h3><ul><li><span class="landing-bench-category">Database</span><span class="landing-bench-value">errors</span>' in summary, (
+        "a category without a score is listed with its status"
+    )
 
 
 DEMO_LINKS = {
@@ -673,6 +854,16 @@ def main() -> None:
     home, source = validate_landing("en")
     home_pt, source_pt = validate_landing("pt-BR")
     validate_translation(home, source, home_pt, source_pt, HOME_PT_BR.name)
+    landing_checked = [landing_checked_lines(text) for text in (source, source_pt)]
+    assert landing_checked[0] == landing_checked[1] and landing_checked[0], (
+        f"{HOME_PT_BR.name}: the checked lines differ from the English page: {landing_checked}"
+    )
+    compare_checked = re.search(r'<p class="compare-checked" id="checked">(.*?)</p>', COMPARE.read_text(encoding="utf-8"), re.DOTALL)
+    assert compare_checked, f"{COMPARE.name}: missing its checked line"
+    compare_versions = sorted(re.findall(r"<code>((?:loco-rs|topcoat) [^<]+)</code>", compare_checked[1]))
+    for ident, values in landing_checked[0]:
+        versions = sorted(code for code, _date in values if code.startswith(("loco-rs ", "topcoat ")))
+        assert versions == compare_versions, f"landing #{ident} checked {versions}, the comparison page {compare_versions}"
     interface_text = set(re.findall(r"ui\.ui([A-Z]\w+)", (DOCS / "site.js").read_text(encoding="utf-8")))
     translated_text = {
         "".join(part.title() for part in name.split("-"))

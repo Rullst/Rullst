@@ -41,7 +41,7 @@ const server = createServer(async (request, response) => {
     const path = decodeURIComponent(url.pathname);
     if (path === "/_cache-probe.html") {
       response.writeHead(200, { "Content-Type": "text/html", "Cache-Control": "no-store" });
-      response.end(`<!doctype html><html lang="en"><head><link rel="icon" href="data:,"><link rel="stylesheet" href="${assetPaths[0]}"><script src="${assetPaths[1]}"></script></head><body><div class="engine-module">Old presentation</div></body></html>`);
+      response.end(`<!doctype html><html lang="en"><head><link rel="icon" href="data:,"><link rel="stylesheet" href="${assetPaths[0]}"><script src="${assetPaths[1]}"></script></head><body><div class="proof-card">Old presentation</div></body></html>`);
       return;
     }
     if (oldAssetReads.has(path) && !url.search) {
@@ -49,7 +49,7 @@ const server = createServer(async (request, response) => {
       // Only the content-versioned URLs may load the current presentation.
       oldAssetReads.set(path, oldAssetReads.get(path) + 1);
       response.writeHead(200, { "Content-Type": types[extname(path)], "Cache-Control": "public, max-age=14400" });
-      response.end(path.endsWith(".css") ? ".engine-module { position: static; border: 0; }" : "window.__oldSiteScript = true;");
+      response.end(path.endsWith(".css") ? ".proof-card { position: static; border: 0; }" : "window.__oldSiteScript = true;");
       return;
     }
     let base = root;
@@ -63,7 +63,7 @@ const server = createServer(async (request, response) => {
       if (organization) base = organization;
       relative = rootSite[path][organization ? 0 : 1];
     }
-    else if (path === "/_rendered/compare/" || path === "/_rendered/pt-br/comparar/") { base = join(rendered, "site"); relative = path.slice(11) + "index.html"; }
+    else if (["/_rendered/", "/_rendered/pt-br/", "/_rendered/compare/", "/_rendered/pt-br/comparar/"].includes(path)) { base = join(rendered, "site"); relative = path.slice(11) + "index.html"; }
     else if (path === "/Rullst/Rullst.png") relative = "docs/Rullst.png";
     else if (path.startsWith("/Rullst/book/")) { base = join(root, "docs/book"); relative = path.slice(13) || "index.html"; }
     else if (path.startsWith("/Rullst/images/")) { base = join(root, "images"); relative = path.slice(15); }
@@ -207,10 +207,13 @@ try {
     assert(await evaluate("[...document.images].filter(i => i.loading !== 'lazy').every(i => i.complete && i.naturalWidth > 0)"), "Hero image failed");
     assert(await evaluate(`document.body.innerText.includes(${JSON.stringify(route === "/pt-br/" ? "Pré-lançamento do Rullst v13" : "Rullst v13 prerelease")})`));
     assert.equal(await evaluate("window.__oldSiteScript === true"), false, "A cached old script must not run with new HTML");
-    assert.deepEqual(await evaluate(`Array.from(document.querySelectorAll('.engine-module'), element => {
+    assert.deepEqual(await evaluate(`Array.from(document.querySelectorAll('.proof-card'), element => {
       const style = getComputedStyle(element);
       return { position: style.position, border: style.borderTopWidth, background: style.backgroundImage !== 'none' };
-    })`), Array.from({length: 3}, () => ({position: "absolute", border: "1px", background: true})), "All three engine cards must load their actual layout and box styling");
+    })`), Array.from({length: 3}, () => ({position: "relative", border: "1px", background: true})), "All three proof cards must load their actual layout and box styling");
+    assert.deepEqual(await evaluate("[...document.querySelectorAll('main > section[id], main > header')].map(element => element.id || 'hero')"),
+      ["hero", "performance", "security", "included", "integrations", "examples", "academy", "community"], "Landing sections and their order");
+    assert.equal(await evaluate("document.querySelectorAll('.hero #install-command, .hero .proof-card').length"), 4, "The first screen shows the install command and three proof points");
     assert(await evaluate(`document.querySelector('#examples h2').textContent.includes(${JSON.stringify(route === "/pt-br/" ? "Não é só um framework." : "Not just a framework.")})`));
     if (output) {
       // Capture the settled identity, not an arbitrary color mid-intro.
@@ -229,7 +232,7 @@ try {
     }
   };
   await navigate(true, "/_cache-probe.html");
-  assert(await evaluate("window.__oldSiteScript === true && getComputedStyle(document.querySelector('.engine-module')).borderTopWidth === '0px'"));
+  assert(await evaluate("window.__oldSiteScript === true && getComputedStyle(document.querySelector('.proof-card')).borderTopWidth === '0px'"));
   await navigate(true, "/_cache-probe.html");
   assert.deepEqual([...oldAssetReads.values()], [1, 1], "The old CSS and script must actually be reused from browser cache");
   await layout(1440, 1100);
@@ -247,8 +250,8 @@ try {
   await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
   await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
   assert(await evaluate("document.activeElement.classList.contains('skip-link')"), "First keyboard target must skip navigation");
-  await evaluate("new Promise(resolve => { document.querySelector('#ecosystem').scrollIntoView({ behavior: 'instant', block: 'center' }); setTimeout(resolve, 120); })");
-  assert(await evaluate("document.querySelector('#ecosystem').classList.contains('is-visible')"), "Scroll reveal must initialize");
+  await evaluate("new Promise(resolve => { document.querySelector('#included').scrollIntoView({ behavior: 'instant', block: 'center' }); setTimeout(resolve, 120); })");
+  assert(await evaluate("document.querySelector('#included').classList.contains('is-visible')"), "Scroll reveal must initialize");
   assert(await evaluate("!document.querySelector('[data-academy-wave]').hidden"), "Academy greeting control must appear with motion allowed");
   await evaluate("document.querySelector('.academy-companion').scrollIntoView({ behavior: 'instant', block: 'center' }); new Promise(resolve => setTimeout(resolve, 200))");
   if (!await evaluate("document.querySelector('#academy').classList.contains('academy-is-waving')")) await evaluate("document.querySelector('[data-academy-wave]').click()");
@@ -308,11 +311,28 @@ try {
         topics: document.querySelectorAll('.compare-topic').length,
         columns: [...document.querySelectorAll('.compare-topic')].every(topic => topic.querySelectorAll('dt').length === 3),
         uiFrameworks: document.querySelectorAll('#ui-frameworks .compare-checked code').length,
-        benchmarks: document.querySelectorAll('.benchmark-pending, .benchmark-table').length,
+        // The pending text, or the results of an --organization-site assembled with --benchmarks.
+        benchmarks: document.querySelectorAll('.benchmark-pending').length + Math.min(1, document.querySelectorAll('.benchmark-table').length),
         current: document.querySelector('.lang-switch [aria-current=page]').getAttribute('href'),
         flags: [...document.querySelectorAll('.lang-switch img')].every(image => image.complete && image.naturalWidth > 0),
       }))()`);
       assert.deepEqual(page, { overflow: false, topics: 11, columns: true, uiFrameworks: 2, benchmarks: 1, current: route, flags: true }, `Comparison page ${route} at ${width}px`);
+    }
+  }
+  for (const route of ["/_rendered/", "/_rendered/pt-br/"]) {
+    for (const [width, height] of [[1440, 1100], [390, 844], [320, 740]]) {
+      await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false });
+      await navigate(true, route);
+      const page = await evaluate(`(() => ({
+        overflow: document.documentElement.scrollWidth > innerWidth,
+        pending: document.querySelectorAll('[data-landing-benchmarks] .benchmark-pending, [data-landing-proof] .benchmark-pending').length,
+        proof: document.querySelectorAll('[data-landing-proof] .proof-figure strong').length,
+        columns: [...document.querySelectorAll('.landing-bench-column')].map(column => column.getBoundingClientRect().right <= innerWidth + 0.5),
+        legend: document.querySelectorAll('.landing-bench-legend li').length,
+        score: document.querySelector('.landing-bench-score').textContent,
+      }))()`);
+      assert.deepEqual(page, { overflow: false, pending: 0, proof: 1, columns: [true, true], legend: 4, score: route.includes("pt-br") ? "0,61× ‡" : "0.61× ‡" },
+        `Rendered landing ${route} at ${width}px`);
     }
   }
   for (const [route, minimal] of [["/_rendered/compare/", "Rullst (minimal)"], ["/_rendered/pt-br/comparar/", "Rullst (mínimo)"]]) {
@@ -344,7 +364,7 @@ try {
   assert.deepEqual([...oldAssetReads.values()], [1, 1], "Current pages must not request the old unversioned assets again");
   assert([...requests].every(url => url.startsWith(origin + "/")), `External resource requests: ${[...requests].filter(url => !url.startsWith(origin + "/"))}`);
   assert.deepEqual(failures, [], "Browser errors, CSP failures or broken resources");
-  console.log(`PASS (${organization ? "assembled root site" : "sources"}): stale-cache upgrade, engine card styling, desktop/390px/320px, keyboard/mobile menu, animated intro/replay/stop, Academy greeting/stop, integrations, canonical URLs, English and Brazilian Portuguese pages with flag language switcher, comparison pages with fixture benchmark rows, clipboard success/denial, privacy summary and full notice, reduced motion, no-JS navigation, no storage or external landing requests.`);
+  console.log(`PASS (${organization ? "assembled root site" : "sources"}): stale-cache upgrade, proof card styling, landing section order, landing benchmark summary from the fixture, desktop/390px/320px, keyboard/mobile menu, animated intro/replay/stop, Academy greeting/stop, integrations, canonical URLs, English and Brazilian Portuguese pages with flag language switcher, comparison pages with fixture benchmark rows, clipboard success/denial, privacy summary and full notice, reduced motion, no-JS navigation, no storage or external landing requests.`);
   await call("Browser.close");
 } finally {
   socket?.close();
