@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795222289820,
+  "lastUpdate": 1795224742046,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -15783,6 +15783,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 532,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1df201ea042612ed98d9016208f77d573ed506c0",
+          "message": "Merge pull request #791 from Rullst/chore/v13-osv-scanner-ignores\n\nchore(security): ignore fixture and dev-only advisories in OpenSSF Scorecard",
+          "timestamp": "2026-11-20T22:12:43-03:00",
+          "tree_id": "feae6c50d252118e266392fca399e0293fdc2a33",
+          "url": "https://github.com/Rullst/Rullst/commit/1df201ea042612ed98d9016208f77d573ed506c0"
+        },
+        "date": 1795224741071,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 392,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
