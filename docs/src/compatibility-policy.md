@@ -288,7 +288,9 @@ and fixes ship in a new prerelease. From 13.0.0:
 - v14 development starts only when breaking changes justify it, and is not
   planned before those 12 months end.
 - After 14.0.0 is published, the maintainer intends to give 13.x security
-  fixes for 12 more months.
+  fixes for 1 to 3 more months; the exact end date is announced with 14.0.0.
+  Each change in 14.0 has a `cargo rullst upgrade` rule, so that period is
+  for upgrading, not for staying on 13.x.
 
 These periods are an intention, not a guarantee, and they may change for
 reasons nobody can foresee today. Any change will be announced in advance in
