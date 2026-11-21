@@ -214,8 +214,33 @@ Ideas, not commitments (8 October 2026; robotics on 19 November 2026):
 
 ## If a major version is ever needed
 
-None is scheduled, and the maintainer prefers a long 13.x. If the ecosystem
-forced one, it would also remove what 13.x deprecated:
+None is scheduled, and the maintainer prefers a long 13.x. The rule is no
+14.0 by choice, not never a 14.0: when one is needed, a planned major release
+is better than bending 13.x to avoid it.
+
+**When (decided 21 November 2026):** only for a reason that 13.x cannot
+absorb compatibly, for example:
+
+- an important security fix that exists only in a new major of a public
+  dependency, such as Axum or SQLx;
+- the ecosystem moving to such a major, so that the crates Rullst users need
+  no longer support the one 13.x exposes;
+- a design defect that cannot be fixed without breaking the public API.
+
+**How:**
+
+- **One batch.** Breaking changes needed meanwhile are recorded in this
+  section and ship together, so that a major release stays rare.
+- **Announced in 13.x first.** What 14.0 removes is deprecated in a 13.x
+  minor, with its replacement available there.
+- **Automatic upgrade.** Every change has a `cargo rullst upgrade` rule and a
+  migration-guide entry, as for 13.0.
+- **The same path as 13.0:** prereleases, the maintainer's applications
+  upgraded to them, release candidates and full release admission.
+- **13.x keeps security fixes** for the period in the
+  [supported release window](docs/src/compatibility-policy.md#supported-release-window).
+
+A 14.0 would also remove what 13.x deprecated:
 
 - the legacy cron syntax of messaging schedules;
 - the third-party public types that Rullst-owned types replaced.
