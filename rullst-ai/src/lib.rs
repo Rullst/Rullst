@@ -3,9 +3,10 @@
 //! [`AiClient`] wraps one [`AiProvider`] (OpenAI, Gemini, Anthropic, DeepSeek,
 //! Ollama or an OpenAI-compatible endpoint, see [`providers`]) and runs the
 //! prompt-injection and PII checks of [`guardrails`] before every provider call.
-//! [`AiClient::auto`] selects a provider from environment variables and otherwise
-//! uses a deterministic offline fixture; empty or `mock_*` credentials never
-//! reach the network.
+//! [`AiClient::auto`] selects a provider from environment variables. Without
+//! one it uses a deterministic offline fixture in development and test and
+//! returns [`AiError::ConfigError`] in staging and production; empty or
+//! `mock_*` credentials never reach the network.
 //!
 //! The crate also provides JSON mode and provider-enforced JSON Schema output
 //! ([`StructuredOutputSchema`]), bounded streaming with explicit cancellation

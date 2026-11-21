@@ -281,7 +281,8 @@ capabilities remain typed errors in offline mode.
 
 `AiClient::auto()` checks `OPENAI_API_KEY` (with `OPENAI_BASE_URL` and `OPENAI_MODEL` for a
 compatible endpoint), `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `GROQ_API_KEY`
-(with `GROQ_MODEL`) and `OLLAMA_HOST` (with `OLLAMA_MODEL`, default `llama3`). If none is configured, it selects an offline OpenAI fixture;
+(with `GROQ_MODEL`) and `OLLAMA_HOST` (with `OLLAMA_MODEL`, default `llama3`). If none is configured, it selects an offline OpenAI fixture
+in development and test and returns `AiError::ConfigError` naming the variables in staging and production (since 13.0.0-rc.1);
 it does not probe localhost implicitly. `OLLAMA_HOST` (and the host given to `OpenAiCompatibleProvider::ollama`)
 is read the way Ollama reads it: a scheme-less `127.0.0.1:11434` or `localhost` means `http` and
 port 11434 unless a port is named. A scheme-less host that is not loopback also means plain `http`,
