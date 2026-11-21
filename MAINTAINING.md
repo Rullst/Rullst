@@ -227,6 +227,20 @@ and fails on any surviving mutant.
   never be reviewed. Locally, `python3 .github/public-dependency-health.py`
   prints the same report (`GITHUB_TOKEN` is optional; the offline tests are
   `.github/test-public-dependency-health.py`).
+- **Offline-fallback inventory** (`workflow-lint.yml`, step "Keep
+  offline-mock fallbacks fail-closed"): `.github/check-fail-closed.py` scans
+  the non-test source and the generated-project templates for the signals of
+  a mock or local fallback chosen from a setting (a `mock` prefix check, a
+  credential-mode helper, a credential setting that defaults to empty, a local
+  SQLite default, …) and fails when a site is missing from
+  `.github/fail-closed-sites.json` or an entry matches nothing
+  ([AGENTS.md section 3.5](AGENTS.md)). Each entry is classified
+  `refuses-in-secure-environments` (with the identifier of its refusal, so
+  removing the staging/production check fails too), `explicit-mock-only`,
+  `caller-provided-values` or `documented-exception` (with the documents that
+  state it). `python3 .github/check-fail-closed.py --sites` prints what the
+  scan finds; a new credential-mode helper goes in its `HELPERS` list so its
+  callers are found too.
 - **Feature matrix** (`.github/check-feature-matrix.py`) and feature
   boundaries (`.github/check-feature-boundaries.sh`) must list every facade
   feature.

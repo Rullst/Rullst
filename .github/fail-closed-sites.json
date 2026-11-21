@@ -1,0 +1,667 @@
+{
+  "about": "Reviewed sites where an empty, missing or mock_ setting can select an offline mock or a local fallback (AGENTS.md section 3.5). .github/check-fail-closed.py fails on a site missing here and on an entry that matches no site; its docstring defines the classifications.",
+  "sites": [
+    {
+      "path": "cargo-rullst/src/blueprints/blank/fragments/artisan.turso.rs.template",
+      "anchor": "\"turso-development.db\"",
+      "classification": "refuses-in-secure-environments",
+      "refusal": "requires_secure_defaults",
+      "reason": "Turso starter: the offline file is used only for an explicit mock_ URL in staging and production"
+    },
+    {
+      "path": "cargo-rullst/src/blueprints/blank/fragments/artisan.turso.rs.template",
+      "anchor": "project_setting(\"TURSO_AUTH_TOKEN\")",
+      "classification": "refuses-in-secure-environments",
+      "refusal": "requires_secure_defaults",
+      "reason": "Turso starter: the token never selects the offline file by itself; the URL check of the same fragment does"
+    },
+    {
+      "path": "cargo-rullst/src/blueprints/blank/fragments/artisan.turso.rs.template",
+      "anchor": "project_setting(\"TURSO_DATABASE_URL\")",
+      "classification": "refuses-in-secure-environments",
+      "refusal": "requires_secure_defaults",
+      "reason": "Turso starter: an empty TURSO_DATABASE_URL stops start-up in staging and production before TursoOrm::init writes the offline file"
+    },
+    {
+      "path": "cargo-rullst/src/generators/add/capability.rs",
+      "anchor": "CAPABILITIES",
+      "classification": "explicit-mock-only",
+      "reason": "cargo rullst add writes OPENAI_API_KEY=mock_openai_key and commented mock_ examples into .env.example; only explicit values select a mock"
+    },
+    {
+      "path": "cargo-rullst/src/generators/billing_controller.rs.template",
+      "anchor": "billing_config",
+      "classification": "refuses-in-secure-environments",
+      "refusal": "requires_secure_defaults",
+      "reason": "Generated billing: an empty BILLING_API_KEY or BILLING_WEBHOOK_SECRET is BillingConfigError in staging and production"
+    },
+    {
+      "path": "cargo-rullst/src/generators/billing_controller.rs.template",
+      "anchor": "is_mock_credential",
+      "classification": "explicit-mock-only",
+      "reason": "Generated billing: detects an explicit mock_ value so production can refuse it"
+    },
+    {
+      "path": "cargo-rullst/src/generators/billing_controller.rs.template",
+      "anchor": "local_billing_fixture",
+      "classification": "refuses-in-secure-environments",
+      "refusal": "is_production",
+      "reason": "Generated billing: never the fixture in production; billing_config refuses empty values in staging first"
+    },
+    {
+      "path": "cargo-rullst/src/generators/billing_controller.rs.template",
+      "anchor": "strong_webhook_secret",
+      "classification": "explicit-mock-only",
+      "reason": "Generated billing: a mock_ webhook secret is never strong, so production refuses it"
+    },
+    {
+      "path": "cargo-rullst/src/generators/doctor/database.rs",
+      "anchor": "parse_target",
+      "classification": "explicit-mock-only",
+      "reason": "cargo rullst doctor does not probe an explicit mock URL; it selects no fallback"
+    },
+    {
+      "path": "cargo-rullst/src/generators/jwt_middleware.rs.template",
+      "anchor": "JwtConfig::from_env",
+      "classification": "refuses-in-secure-environments",
+      "refusal": "WeakSecret",
+      "reason": "Generated JWT middleware: a missing or mock_ JWT_SECRET is refused in every environment"
+    },
+    {
+      "path": "cargo-rullst/src/generators/oauth/apple.rs.template",
+      "anchor": "configured",
+      "classification": "refuses-in-secure-environments",
+      "refusal": "requires_secure_defaults",
+      "reason": "Generated Apple sign-in: mock credentials are refused in staging and production; no credentials turn sign-in off"
+    },
+    {
+      "path": "cargo-rullst/src/generators/oauth/apple.rs.template",
+      "anchor": "mock_callback",
+      "classification": "explicit-mock-only",
+      "reason": "Generated Apple sign-in: the GET callback serves only a provider in mock mode, which configured refuses in staging and production"
+    },
+    {
+      "path": "cargo-rullst/src/generators/oauth/apple.rs.template",
+      "anchor": "start",
+      "classification": "explicit-mock-only",
+      "reason": "Generated Apple sign-in: the cookie mode follows the mock mode that configured already allowed"
+    },
+    {
+      "path": "cargo-rullst/src/generators/oauth/github.rs.template",
+      "anchor": "configured",
+      "classification": "refuses-in-secure-environments",
+      "refusal": "requires_secure_defaults",
+      "reason": "Generated GitHub sign-in: mock credentials are refused in staging and production; no credentials turn sign-in off"
+    },
+    {
+      "path": "cargo-rullst/src/generators/oauth/google.rs.template",
+      "anchor": "configured",
+      "classification": "refuses-in-secure-environments",
+      "refusal": "requires_secure_defaults",
+      "reason": "Generated Google sign-in: mock credentials are refused in staging and production; no credentials turn sign-in off"
+    },
+    {
+      "path": "cargo-rullst/src/generators/oauth/microsoft.rs.template",
+      "anchor": "configured",
+      "classification": "refuses-in-secure-environments",
+      "refusal": "requires_secure_defaults",
+      "reason": "Generated Microsoft sign-in: mock credentials are refused in staging and production; no credentials turn sign-in off"
+    },
+    {
+      "path": "cargo-rullst/src/generators/oauth/providers.rs",
+      "anchor": "PROVIDERS",
+      "classification": "explicit-mock-only",
+      "reason": "make:oauth development settings use explicit mock_ values, which need the oauth-mock feature"
+    },
+    {
+      "path": "cargo-rullst/src/generators/project/env_config.rs",
+      "anchor": "generate_env_and_configs",
+      "classification": "explicit-mock-only",
+      "reason": "Generated development .env sets explicit mock_ Turso, SurrealDB and billing values; .env.example leaves them empty"
+    },
+    {
+      "path": "rullst-ai/src/ai/audit_delivery.rs",
+      "anchor": "AuditDeliveryClient::try_build",
+      "classification": "caller-provided-values",
+      "reason": "Audit delivery client built from a signing key the caller passes"
+    },
+    {
+      "path": "rullst-ai/src/ai/auto.rs",
+      "anchor": "AutoAiConfig::from_lookup",
+      "classification": "refuses-in-secure-environments",
+      "refusal": "missing_provider",
+      "reason": "AiClient::auto: no provider is AiError::ConfigError in staging and production; a mock behind a live provider is refused there"
+    },
+    {
+      "path": "rullst-ai/src/ai/auto.rs",
+      "anchor": "AutoAiConfig::into_client",
+      "classification": "refuses-in-secure-environments",
+      "refusal": "unconfigured",
+      "reason": "The mock_auto fixture is added only when from_lookup recorded no staging or production refusal"
+    },
+    {
+      "path": "rullst-ai/src/ai/auto.rs",
+      "anchor": "offline_credential",
+      "classification": "caller-provided-values",
+      "reason": "Labels a value offline exactly as the provider constructors do"
+    },
+    {
+      "path": "rullst-ai/src/ai/mock.rs",
+      "anchor": "ProviderMode::from_credential",
+      "classification": "caller-provided-values",
+      "reason": "Mode helper of the provider constructors, applied to the value the caller passes"
+    },
+    {
+      "path": "rullst-ai/src/ai/providers/anthropic.rs",
+      "anchor": "AnthropicProvider::new",
+      "classification": "caller-provided-values",
+      "reason": "Provider constructor; the key comes from the caller"
+    },
+    {
+      "path": "rullst-ai/src/ai/providers/gemini.rs",
+      "anchor": "GeminiProvider::new",
+      "classification": "caller-provided-values",
+      "reason": "Provider constructor; the key comes from the caller"
+    },
+    {
+      "path": "rullst-ai/src/ai/providers/openai.rs",
+      "anchor": "OpenAiProvider::new",
+      "classification": "caller-provided-values",
+      "reason": "Provider constructor; the key comes from the caller"
+    },
+    {
+      "path": "rullst-ai/src/ai/providers/openai_compatible.rs",
+      "anchor": "OpenAiCompatibleProvider::mock",
+      "classification": "explicit-mock-only",
+      "reason": "Explicit offline constructor named mock"
+    },
+    {
+      "path": "rullst-ai/src/ai/providers/openai_compatible.rs",
+      "anchor": "OpenAiCompatibleProvider::try_cloud",
+      "classification": "caller-provided-values",
+      "reason": "Provider constructor; the key comes from the caller"
+    },
+    {
+      "path": "rullst-ai/src/ai/providers/openai_compatible.rs",
+      "anchor": "OpenAiCompatibleProvider::try_local_with_bearer",
+      "classification": "caller-provided-values",
+      "reason": "Provider constructor; the key comes from the caller"
+    },
+    {
+      "path": "rullst-ai/src/ai/providers/openai_compatible/ollama.rs",
+      "anchor": "OpenAiCompatibleProvider::ollama",
+      "classification": "caller-provided-values",
+      "reason": "Ollama preset; the host comes from the caller"
+    },
+    {
+      "path": "rullst-auth/src/auth/app_key.rs",
+      "anchor": "validate_app_key",
+      "classification": "refuses-in-secure-environments",
+      "refusal": "MissingAppKey",
+      "reason": "A mock_ APP_KEY is refused in every environment; get_app_key refuses a missing key in staging and production"
+    },
+    {
+      "path": "rullst-capital/src/providers/infinitepay.rs",
+      "anchor": "InfinitePayProvider::is_mock",
+      "classification": "caller-provided-values",
+      "reason": "Mode of the handle or key the caller gave InfinitePayProvider::new"
+    },
+    {
+      "path": "rullst-capital/src/providers/infinitepay.rs",
+      "anchor": "InfinitePayProvider::webhook_verification_mode",
+      "classification": "caller-provided-values",
+      "reason": "Webhook mode of the secret the caller passed; an empty secret is an error"
+    },
+    {
+      "path": "rullst-capital/src/providers/mod.rs",
+      "anchor": "require_mock_operation",
+      "classification": "refuses-in-secure-environments",
+      "refusal": "UnsupportedOperation",
+      "reason": "Refuses operations without a live contract for a live key; only the offline fixture runs them"
+    },
+    {
+      "path": "rullst-capital/src/providers/mod.rs",
+      "anchor": "webhook_mode_from_secret",
+      "classification": "refuses-in-secure-environments",
+      "refusal": "ConfigurationError",
+      "reason": "An empty webhook secret is an error in every environment; only an explicit mock_ secret selects mock verification"
+    },
+    {
+      "path": "rullst-capital/src/providers/stripe.rs",
+      "anchor": "StripeProvider::cancel_subscription",
+      "classification": "caller-provided-values",
+      "reason": "Stripe operation on the key the caller gave StripeProvider::new; an empty or mock_ key returns the offline fixture"
+    },
+    {
+      "path": "rullst-capital/src/providers/stripe.rs",
+      "anchor": "StripeProvider::create_checkout_session",
+      "classification": "caller-provided-values",
+      "reason": "Stripe operation on the key the caller gave StripeProvider::new; an empty or mock_ key returns the offline fixture"
+    },
+    {
+      "path": "rullst-capital/src/providers/stripe.rs",
+      "anchor": "StripeProvider::create_customer_portal",
+      "classification": "caller-provided-values",
+      "reason": "Stripe operation on the key the caller gave StripeProvider::new; an empty or mock_ key returns the offline fixture"
+    },
+    {
+      "path": "rullst-capital/src/providers/stripe.rs",
+      "anchor": "StripeProvider::pause_subscription",
+      "classification": "caller-provided-values",
+      "reason": "Stripe operation on the key the caller gave StripeProvider::new; an empty or mock_ key returns the offline fixture"
+    },
+    {
+      "path": "rullst-capital/src/providers/stripe.rs",
+      "anchor": "StripeProvider::report_usage",
+      "classification": "caller-provided-values",
+      "reason": "Stripe operation on the key the caller gave StripeProvider::new; an empty or mock_ key returns the offline fixture"
+    },
+    {
+      "path": "rullst-capital/src/providers/stripe.rs",
+      "anchor": "StripeProvider::webhook_verification_mode",
+      "classification": "caller-provided-values",
+      "reason": "Webhook mode of the secret the caller gave StripeProvider::new; an empty secret is an error"
+    },
+    {
+      "path": "rullst-capital/src/providers/stripe_charge.rs",
+      "anchor": "execute",
+      "classification": "caller-provided-values",
+      "reason": "Stripe operation on the key the caller gave StripeProvider::new; an empty or mock_ key returns the offline fixture"
+    },
+    {
+      "path": "rullst-capital/src/providers/stripe_checkout.rs",
+      "anchor": "StripeProvider::create_subscription_checkout",
+      "classification": "caller-provided-values",
+      "reason": "Stripe operation on the key the caller gave StripeProvider::new; an empty or mock_ key returns the offline fixture"
+    },
+    {
+      "path": "rullst-capital/src/providers/stripe_customer.rs",
+      "anchor": "StripeProvider::create_customer",
+      "classification": "caller-provided-values",
+      "reason": "Stripe operation on the key the caller gave StripeProvider::new; an empty or mock_ key returns the offline fixture"
+    },
+    {
+      "path": "rullst-capital/src/providers/stripe_one_off.rs",
+      "anchor": "is_mock",
+      "classification": "caller-provided-values",
+      "reason": "Mode of the Stripe key the caller passed"
+    },
+    {
+      "path": "rullst-capital/src/providers/stripe_one_time.rs",
+      "anchor": "is_mock",
+      "classification": "caller-provided-values",
+      "reason": "Mode of the Stripe key the caller passed"
+    },
+    {
+      "path": "rullst-capital/src/providers/stripe_reconcile.rs",
+      "anchor": "StripeProvider::create_bound_customer_portal",
+      "classification": "caller-provided-values",
+      "reason": "Stripe operation on the key the caller gave StripeProvider::new; an empty or mock_ key returns the offline fixture"
+    },
+    {
+      "path": "rullst-capital/src/providers/stripe_reconcile.rs",
+      "anchor": "StripeProvider::read_mode",
+      "classification": "refuses-in-secure-environments",
+      "refusal": "UnsupportedOperation",
+      "reason": "Reconciliation reads have no offline fixture, so an empty or mock_ key is refused in every environment"
+    },
+    {
+      "path": "rullst-capital/src/providers/stripe_snapshot.rs",
+      "anchor": "StripeProvider::retrieve_subscription",
+      "classification": "caller-provided-values",
+      "reason": "Stripe operation on the key the caller gave StripeProvider::new; an empty or mock_ key returns the offline fixture"
+    },
+    {
+      "path": "rullst-capital/src/providers/stripe_snapshot.rs",
+      "anchor": "StripeProvider::retrieve_subscription_with_allowed_prices",
+      "classification": "caller-provided-values",
+      "reason": "Stripe operation on the key the caller gave StripeProvider::new; an empty or mock_ key returns the offline fixture"
+    },
+    {
+      "path": "rullst-capital/src/providers/stripe_subscription.rs",
+      "anchor": "apply_coupon_at",
+      "classification": "caller-provided-values",
+      "reason": "Stripe operation on the key the caller gave StripeProvider::new; an empty or mock_ key returns the offline fixture"
+    },
+    {
+      "path": "rullst-capital/src/providers/stripe_subscription.rs",
+      "anchor": "extend_trial_at",
+      "classification": "caller-provided-values",
+      "reason": "Stripe operation on the key the caller gave StripeProvider::new; an empty or mock_ key returns the offline fixture"
+    },
+    {
+      "path": "rullst-capital/src/providers/stripe_usage.rs",
+      "anchor": "execute_at",
+      "classification": "caller-provided-values",
+      "reason": "Stripe operation on the key the caller gave StripeProvider::new; an empty or mock_ key returns the offline fixture"
+    },
+    {
+      "path": "rullst-connect/src/configuration.rs",
+      "anchor": "checked_credential_mode",
+      "classification": "refuses-in-secure-environments",
+      "refusal": "require_mock_support",
+      "reason": "Empty or mock_ credentials need the mock feature (oauth-mock); otherwise try_new refuses them"
+    },
+    {
+      "path": "rullst-connect/src/configuration.rs",
+      "anchor": "checked_credential_mode_for_values",
+      "classification": "refuses-in-secure-environments",
+      "refusal": "require_mock_support",
+      "reason": "Empty or mock_ credentials need the mock feature (oauth-mock); otherwise try_new refuses them"
+    },
+    {
+      "path": "rullst-connect/src/configuration.rs",
+      "anchor": "credential_mode",
+      "classification": "caller-provided-values",
+      "reason": "Mode of the client credentials the caller passed"
+    },
+    {
+      "path": "rullst-connect/src/configuration.rs",
+      "anchor": "credential_mode_for_values",
+      "classification": "caller-provided-values",
+      "reason": "Mode of the values the caller passed"
+    },
+    {
+      "path": "rullst-connect/src/configuration.rs",
+      "anchor": "is_mock_credential",
+      "classification": "caller-provided-values",
+      "reason": "Empty-or-mock_ test applied to the values the caller passed"
+    },
+    {
+      "path": "rullst-core/src/storage/cloud/client.rs",
+      "anchor": "CloudClient::new",
+      "classification": "caller-provided-values",
+      "reason": "Uses the mock store only when the caller's CloudCredentials are both mock_ or both empty"
+    },
+    {
+      "path": "rullst-core/src/storage/cloud/config.rs",
+      "anchor": "CloudCredentials::new",
+      "classification": "caller-provided-values",
+      "reason": "Keys come from the caller; mixed empty and mock_ keys are refused"
+    },
+    {
+      "path": "rullst-core/src/telemetry/distributed/config.rs",
+      "anchor": "TelemetryConfig::build",
+      "classification": "caller-provided-values",
+      "reason": "Endpoint comes from the caller; require_production refuses the offline profile"
+    },
+    {
+      "path": "rullst-core/src/telemetry/distributed/mod.rs",
+      "anchor": "DistributedTelemetry::try_new",
+      "classification": "caller-provided-values",
+      "reason": "Offline destination follows the caller's TelemetryConfig"
+    },
+    {
+      "path": "rullst-mail/src/drivers/aws_ses.rs",
+      "anchor": "AwsSesDriver::delivery_mode",
+      "classification": "caller-provided-values",
+      "reason": "Mode of the proxy token the caller passed"
+    },
+    {
+      "path": "rullst-mail/src/drivers/aws_ses.rs",
+      "anchor": "AwsSesDriver::transport_label",
+      "classification": "caller-provided-values",
+      "reason": "Reports the mode of the proxy token the caller passed"
+    },
+    {
+      "path": "rullst-mail/src/drivers/aws_ses.rs",
+      "anchor": "AwsSesDriver::try_new",
+      "classification": "caller-provided-values",
+      "reason": "Driver constructor; the token comes from the caller"
+    },
+    {
+      "path": "rullst-mail/src/drivers/mock.rs",
+      "anchor": "credential_mode",
+      "classification": "caller-provided-values",
+      "reason": "Mode helper of the mail drivers, applied to the value the caller passes"
+    },
+    {
+      "path": "rullst-mail/src/drivers/resend.rs",
+      "anchor": "ResendDriver::delivery_mode",
+      "classification": "caller-provided-values",
+      "reason": "Mode of the API key the caller passed"
+    },
+    {
+      "path": "rullst-mail/src/drivers/sendpulse.rs",
+      "anchor": "SendPulseDriver::delivery_mode",
+      "classification": "caller-provided-values",
+      "reason": "Mode of the API key the caller passed"
+    },
+    {
+      "path": "rullst-mail/src/drivers/smtp.rs",
+      "anchor": "SmtpDriver::delivery_mode",
+      "classification": "caller-provided-values",
+      "reason": "Mode of the host and credentials the caller passed"
+    },
+    {
+      "path": "rullst-mail/src/facade/driver.rs",
+      "anchor": "DriverSpec::from_settings",
+      "classification": "refuses-in-secure-environments",
+      "refusal": "require_credential",
+      "reason": "Mail facade: an empty provider credential or SMTP host is MailError::ConfigError in staging and production"
+    },
+    {
+      "path": "rullst-mail/src/facade/driver.rs",
+      "anchor": "ses_credentials",
+      "classification": "refuses-in-secure-environments",
+      "refusal": "require_credential",
+      "reason": "Mail facade: an empty SES proxy token is MailError::ConfigError in staging and production"
+    },
+    {
+      "path": "rullst-mail/src/facade/settings.rs",
+      "anchor": "MailSettings::driver_name",
+      "classification": "refuses-in-secure-environments",
+      "refusal": "default_driver_name",
+      "reason": "Mail facade: no MAIL_DRIVER is MailError::ConfigError in staging and production; development logs"
+    },
+    {
+      "path": "rullst-mail/src/feedback.rs",
+      "anchor": "ResendFeedbackVerifier::new",
+      "classification": "caller-provided-values",
+      "reason": "Verifier constructor; the secret comes from the caller"
+    },
+    {
+      "path": "rullst-mail/src/feedback.rs",
+      "anchor": "ResendFeedbackVerifier::verify",
+      "classification": "refuses-in-secure-environments",
+      "refusal": "MockNotAllowed",
+      "reason": "An empty or mock_ secret never verifies feedback, in any environment"
+    },
+    {
+      "path": "rullst-media/src/bunny/config.rs",
+      "anchor": "BunnyCredentials::new",
+      "classification": "caller-provided-values",
+      "reason": "Credentials come from the caller; StoreConfig::production refuses the offline binding"
+    },
+    {
+      "path": "rullst-media/src/bunny/config.rs",
+      "anchor": "BunnyCredentials::upload_only",
+      "classification": "caller-provided-values",
+      "reason": "Credentials come from the caller; StoreConfig::production refuses the offline binding"
+    },
+    {
+      "path": "rullst-media/src/bunny/config.rs",
+      "anchor": "checked_mode",
+      "classification": "caller-provided-values",
+      "reason": "Mode helper of BunnyCredentials, applied to the values the caller passes"
+    },
+    {
+      "path": "rullst-media/src/s3/config.rs",
+      "anchor": "S3Credentials::from_env",
+      "classification": "documented-exception",
+      "docs": [
+        "ROADMAP.md",
+        "docs/src/spec.md",
+        "docs/src/managed-video.md",
+        "docs/src/migration-v13.md"
+      ],
+      "reason": "rullst-media cannot see the runtime environment, so unset keys select the offline mock everywhere; 13.1 item 2 of the ROADMAP"
+    },
+    {
+      "path": "rullst-media/src/s3/config.rs",
+      "anchor": "S3Credentials::new",
+      "classification": "caller-provided-values",
+      "reason": "Keys come from the caller; StoreConfig::production refuses the offline binding"
+    },
+    {
+      "path": "rullst-messaging/src/redis_streams/config.rs",
+      "anchor": "RedisBrokerConfig::is_mock",
+      "classification": "caller-provided-values",
+      "reason": "Mode of the password the caller passed; require_production refuses mock credentials"
+    },
+    {
+      "path": "rullst-messaging/src/redis_streams/config.rs",
+      "anchor": "RedisBrokerConfig::validate_credentials",
+      "classification": "caller-provided-values",
+      "reason": "Validates the credentials the caller passed"
+    },
+    {
+      "path": "rullst-messaging/src/redis_streams/mod.rs",
+      "anchor": "RedisBroker::open",
+      "classification": "caller-provided-values",
+      "reason": "Opens the in-memory broker for the caller's mock configuration"
+    },
+    {
+      "path": "rullst-messaging/src/webhooks/signature.rs",
+      "anchor": "WebhookSigningKey::new",
+      "classification": "caller-provided-values",
+      "reason": "Signing key constructor; the key comes from the caller"
+    },
+    {
+      "path": "rullst-orm/src/polyglot/surrealdb.rs",
+      "anchor": "SurrealDbStore::connect_or_mock",
+      "classification": "caller-provided-values",
+      "reason": "Configuration comes from the caller; the mock is named in the API"
+    },
+    {
+      "path": "rullst-orm/src/polyglot/surrealdb/config.rs",
+      "anchor": "SurrealAuth::requests_mock",
+      "classification": "caller-provided-values",
+      "reason": "Mode of the credentials the caller passed"
+    },
+    {
+      "path": "rullst-orm/src/polyglot/surrealdb/config.rs",
+      "anchor": "is_mock_credential",
+      "classification": "caller-provided-values",
+      "reason": "Empty-or-mock_ test applied to the values the caller passed"
+    },
+    {
+      "path": "rullst-orm/src/polyglot/turso.rs",
+      "anchor": "TursoConfig::is_mock",
+      "classification": "caller-provided-values",
+      "reason": "Mode of the URL the caller passed to TursoConfig::new"
+    },
+    {
+      "path": "rullst-orm/src/polyglot/turso.rs",
+      "anchor": "TursoStore::connect",
+      "classification": "documented-exception",
+      "docs": [
+        "ROADMAP.md",
+        "docs/src/spec.md",
+        "docs/src/scope-and-limits.md",
+        "docs/src/migration-v13.md"
+      ],
+      "reason": "rullst-orm cannot see the runtime environment, so an empty URL opens the offline file everywhere; 13.1 item 2 of the ROADMAP"
+    },
+    {
+      "path": "rullst-orm/src/polyglot/turso/primary.rs",
+      "anchor": "TursoOrm::init_from_env",
+      "classification": "documented-exception",
+      "docs": [
+        "ROADMAP.md",
+        "docs/src/spec.md",
+        "docs/src/scope-and-limits.md",
+        "docs/src/polyglot-persistence.md"
+      ],
+      "reason": "Reads TURSO_DATABASE_URL without the environment; the application (the generated starter) refuses an empty URL; 13.1 item 2"
+    },
+    {
+      "path": "rullst-orm/src/redis_data/config.rs",
+      "anchor": "is_mock_value",
+      "classification": "caller-provided-values",
+      "reason": "Empty-or-mock_ test applied to the values the caller passed"
+    },
+    {
+      "path": "rullst-orm/src/redis_data/mod.rs",
+      "anchor": "RedisDataStore::connect_or_mock",
+      "classification": "caller-provided-values",
+      "reason": "Configuration comes from the caller; the mock is named in the API"
+    },
+    {
+      "path": "rullst-orm/src/scout/providers/algolia.rs",
+      "anchor": "AlgoliaEngine::from_endpoint",
+      "classification": "caller-provided-values",
+      "reason": "Search engine constructor; the values come from the caller"
+    },
+    {
+      "path": "rullst-orm/src/scout/providers/algolia.rs",
+      "anchor": "AlgoliaEngine::new",
+      "classification": "caller-provided-values",
+      "reason": "Search engine constructor; the values come from the caller"
+    },
+    {
+      "path": "rullst-orm/src/scout/providers/algolia.rs",
+      "anchor": "AlgoliaEngine::offline",
+      "classification": "explicit-mock-only",
+      "reason": "Explicit offline constructor"
+    },
+    {
+      "path": "rullst-orm/src/scout/providers/algolia.rs",
+      "anchor": "AlgoliaEngine::with_endpoint",
+      "classification": "caller-provided-values",
+      "reason": "Search engine constructor; the values come from the caller"
+    },
+    {
+      "path": "rullst-orm/src/scout/providers/common.rs",
+      "anchor": "mock_requested",
+      "classification": "caller-provided-values",
+      "reason": "Mode helper of the search engine constructors, applied to the values the caller passes"
+    },
+    {
+      "path": "rullst-orm/src/scout/providers/elasticsearch.rs",
+      "anchor": "ElasticsearchEngine::new",
+      "classification": "caller-provided-values",
+      "reason": "Search engine constructor; the values come from the caller"
+    },
+    {
+      "path": "rullst-orm/src/scout/providers/elasticsearch.rs",
+      "anchor": "ElasticsearchEngine::offline",
+      "classification": "explicit-mock-only",
+      "reason": "Explicit offline constructor"
+    },
+    {
+      "path": "rullst-orm/src/scout/providers/meilisearch.rs",
+      "anchor": "MeilisearchEngine::new",
+      "classification": "caller-provided-values",
+      "reason": "Search engine constructor; the values come from the caller"
+    },
+    {
+      "path": "rullst-orm/src/scout/providers/meilisearch.rs",
+      "anchor": "MeilisearchEngine::offline",
+      "classification": "explicit-mock-only",
+      "reason": "Explicit offline constructor"
+    },
+    {
+      "path": "rullst-privacy/src/age_assurance/verifier.rs",
+      "anchor": "MockAgeProvider::new",
+      "classification": "explicit-mock-only",
+      "reason": "Explicit mock type; it refuses credentials that are neither empty nor mock_"
+    },
+    {
+      "path": "rullst-security/src/rate_limit/redis.rs",
+      "anchor": "RedisRateLimiter::new",
+      "classification": "caller-provided-values",
+      "reason": "Redis URL comes from the caller; require_distributed refuses the offline mock"
+    },
+    {
+      "path": "rullst-studio/src/data_browser/pool.rs",
+      "anchor": "resolve_db_url",
+      "classification": "documented-exception",
+      "docs": [
+        "rullst-studio/src/data_browser/pool.rs"
+      ],
+      "documented_as": "falls back to `sqlite://db.sqlite`",
+      "reason": "Legacy helper Studio no longer calls; its rustdoc states the sqlite://db.sqlite fallback"
+    }
+  ]
+}
