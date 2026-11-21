@@ -81,8 +81,10 @@ places when a tier changes.
 - Avoid introducing new `unsafe` blocks unless strictly necessary for OS FFI, and document safety invariants explicitly.
 
 ### 3.5. External Providers & Mock Fallbacks
-- All external service integrations (Payment Gateways, OAuth2 providers, Email transports, LLM APIs) must implement a deterministic offline mock fallback when initialized with empty or `mock_*` credentials.
-- This ensures test suites, local sandboxes, and developer tools run reliably offline without requiring live third-party API credentials.
+- All external service integrations (Payment Gateways, OAuth2 providers, Email transports, LLM APIs, storage and database adapters) implement a deterministic offline mock, so test suites, local sandboxes, and developer tools run reliably offline without live third-party API credentials.
+- An explicit `mock_*` value selects the mock in every environment; it is deliberate configuration.
+- An empty or missing credential, endpoint or URL selects the mock only in development and test. In staging and production (`Environment::requires_secure_defaults()`, resolved with Core's environment helpers rather than a new parser) it is a configuration error naming the setting (`MailError::ConfigError`, `AiError::ConfigError`, …), returned at start-up or first use, because a mock in a deployment reports success for work that never reaches the real service.
+- The rule applies where settings are read: facades, `from_env`/`from_settings` resolvers and generated project code. Constructors that receive the values from the caller (`StripeProvider::new`, `TursoStore::connect`) keep the empty-value convention. `rullst-orm` and `rullst-media` do not depend on Core and cannot see the environment, so their `from_env` helpers document that the application makes the check.
 
 ### 3.6. Studio & Observability Directives
 - Studio sub-routes must follow the clean URL standard without `/tools/` (e.g. `/studio/radar`, `/studio/capital`, `/studio/security`, `/studio/traces`).
