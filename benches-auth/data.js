@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795239564985,
+  "lastUpdate": 1795299510870,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -25653,6 +25653,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4592,
             "range": "± 25",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d82e5626d59baff7ce313a0d71fe32d996dec3a6",
+          "message": "Merge pull request #800 from Rullst/docs/v13-rc1-dash-arm-microbit\n\ndocs: record the rc.1 micro:bit run and production use on Arm, drop the v12 dash screenshot",
+          "timestamp": "2026-11-21T19:03:55-03:00",
+          "tree_id": "ff1d7f183969fb70609b3a08b261fc15ad8497f5",
+          "url": "https://github.com/Rullst/Rullst/commit/d82e5626d59baff7ce313a0d71fe32d996dec3a6"
+        },
+        "date": 1795299510576,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 717,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 548,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1269,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1947,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
