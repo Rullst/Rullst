@@ -145,6 +145,17 @@ where
 /// as Sign in with Apple, carries its parameters in a cross-site POST body; use
 /// [`AuthSessionForm`] for it. A `SameSite=Lax` or `Strict` session cookie is not sent with that
 /// POST.
+///
+/// # Deprecated `oauth_state` fallback
+///
+/// When the session holds no challenge from [`begin_oauth_session`] or [`begin_oidc_session`],
+/// the extractor still accepts a state that the application stored itself under the
+/// `oauth_state` session key, as applications did before 12.0. That state is removed before the
+/// comparison and compared in constant time, but it has no expiry, PKCE verifier or OIDC nonce.
+/// The fallback is deprecated and kept through 13.x; each callback that uses it logs a `tracing`
+/// warning (without the state). Start the login with [`begin_oauth_session`] or
+/// [`begin_oidc_session`] instead, or use the store-backed [`crate::challenge::begin_login`] and
+/// [`crate::challenge::finish_login`].
 #[derive(Clone)]
 pub struct AuthSession {
     /// Real callback parameters parsed from the query string.
@@ -159,7 +170,7 @@ impl AuthSession {
         self.expected_nonce.as_deref()
     }
 
-    /// Returns the consumed PKCE verifier. Legacy state-only sessions return `None`.
+    /// Returns the consumed PKCE verifier. The deprecated `oauth_state` fallback returns `None`.
     pub fn code_verifier(&self) -> Option<&str> {
         self.code_verifier.as_deref()
     }
@@ -259,6 +270,13 @@ async fn consume_challenge(
     let Some(legacy_state) = legacy_state else {
         return Err(invalid_callback("CSRF state mismatch"));
     };
+    // Deprecated fallback, kept through 13.x. The state value is never logged.
+    tracing::warn!(
+        session_key = LEGACY_STATE_KEY,
+        "deprecated `oauth_state` session key used for an OAuth callback (no expiry, PKCE \
+         verifier or OIDC nonce; kept through 13.x): start the login with `begin_oauth_session` \
+         or `begin_oidc_session`, or use `challenge::begin_login` and `finish_login`"
+    );
     session
         .save()
         .await
@@ -323,5 +341,7 @@ fn internal_error(message: &'static str) -> CallbackRejection {
     (axum::http::StatusCode::INTERNAL_SERVER_ERROR, message)
 }
 
+#[cfg(test)]
+mod legacy_tests;
 #[cfg(test)]
 mod tests;
