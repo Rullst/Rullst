@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795239689562,
+  "lastUpdate": 1795299780870,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -22964,6 +22964,54 @@ window.BENCHMARK_DATA = {
           {
             "name": "ai_pii_masking/mask_pii",
             "value": 362,
+            "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d82e5626d59baff7ce313a0d71fe32d996dec3a6",
+          "message": "Merge pull request #800 from Rullst/docs/v13-rc1-dash-arm-microbit\n\ndocs: record the rc.1 micro:bit run and production use on Arm, drop the v12 dash screenshot",
+          "timestamp": "2026-11-21T19:03:55-03:00",
+          "tree_id": "ff1d7f183969fb70609b3a08b261fc15ad8497f5",
+          "url": "https://github.com/Rullst/Rullst/commit/d82e5626d59baff7ce313a0d71fe32d996dec3a6"
+        },
+        "date": 1795299780580,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1166,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 253,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 278,
             "range": "± 1",
             "unit": "ns/iter"
           }
