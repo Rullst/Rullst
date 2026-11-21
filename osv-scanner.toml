@@ -1,0 +1,15 @@
+# OSV-Scanner configuration for Cargo.lock, read by OpenSSF Scorecard's
+# Vulnerabilities check. Each entry is governed in
+# docs/src/security-advisory-exceptions.md; cargo audit in CI keeps its own
+# configuration. RUSTSEC-2026-0459 (libsqlite3-sys) is deliberately not
+# ignored here: it reaches published crates.
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0440"
+ignoreUntil = 2027-01-28
+reason = "astral-tokio-tar is unmaintained (no known vulnerability) and is reached only through testcontainers, a dev-dependency of the database integration tests; no published Rullst crate depends on it."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0543"
+ignoreUntil = 2027-02-21
+reason = "chrono is unmaintained (no known vulnerability). Rullst replaced it with jiff; Cargo.lock lists it only because serde_with, under the testcontainers dev-dependency, names it in a weak optional feature that is never enabled or built."

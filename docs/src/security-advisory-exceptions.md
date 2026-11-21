@@ -4,7 +4,7 @@ Rullst does not treat an ignored scanner finding as remediated. Any temporary
 exception must have a narrow scope, a compensating control, an owner, and an
 expiry date. CI must fail for every advisory that is not actively governed here.
 
-Last reviewed: **2026-11-17**.
+Last reviewed: **2026-11-21**.
 
 ## Active exceptions
 
@@ -41,6 +41,29 @@ tests use it only to copy their own files into local containers. `testcontainers
 moving to it would not end the exception. The tests stay on 0.27.3 until
 `testcontainers-modules`, whose PostgreSQL, MySQL, MariaDB and SurrealDB images
 they use, publishes a release for 0.28: 0.15.0, the newest, requires 0.27.
+
+## OpenSSF Scorecard ignores
+
+OpenSSF Scorecard's Vulnerabilities check scans every `Cargo.lock` in the
+repository with OSV-Scanner, including test fixtures that CI's `cargo audit`
+does not read. It honors an `osv-scanner.toml` next to each lockfile. Since
+2026-11-21 two such files ignore advisories that reach no published crate,
+each with its reason and an expiry:
+
+- **`osv-scanner.toml`** (workspace `Cargo.lock`): `RUSTSEC-2026-0440`
+  (`astral-tokio-tar`, the active exception above, same expiry) and
+  `RUSTSEC-2026-0543` (`chrono`, listed in the lockfile only through a weak
+  optional feature of `serde_with`, see the remediation history; expiry
+  2027-02-21).
+- **`.github/fixtures/iot-microbit-v2/firmware/osv-scanner.toml`** (the BBC
+  micro:bit V2 test firmware, flashed to a maintainer-owned board and never
+  published): `RUSTSEC-2026-0110` (`bare-metal` deprecated, from the Cortex-M
+  support crates) and `RUSTSEC-2026-0574` to `RUSTSEC-2026-0582` (`heapless`
+  0.8.0, fixed in 0.9.4, pulled only by `usb-device` 0.3.2, whose newest
+  release still requires `heapless` ^0.8); expiry 2027-02-21.
+
+`RUSTSEC-2026-0459` (`libsqlite3-sys`) is not ignored there, because it
+reaches published crates.
 
 ## Remediation history
 
