@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795225115141,
+  "lastUpdate": 1795225329605,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -38311,6 +38311,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1490,
             "range": "± 19",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7cc1ac7a6ff1031b5a66baaef617e20270a0b061",
+          "message": "Merge pull request #793 from Rullst/fix/v13-rc1-fail-closed-audit\n\nfix(ai,cli): fail closed on empty settings in staging and production",
+          "timestamp": "2026-11-20T22:38:36-03:00",
+          "tree_id": "f5a2e67cc8cb6eae6cc65386b78c8988c5f14858",
+          "url": "https://github.com/Rullst/Rullst/commit/7cc1ac7a6ff1031b5a66baaef617e20270a0b061"
+        },
+        "date": 1795225324970,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 724,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 952,
+            "range": "± 45",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 430,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2002,
+            "range": "± 32",
             "unit": "ns/iter"
           }
         ]
