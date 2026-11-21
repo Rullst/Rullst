@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795215373553,
+  "lastUpdate": 1795221463689,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -38095,6 +38095,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1933,
             "range": "± 29",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "647e1d78a6add89535a83cc504a6aa638a55c03b",
+          "message": "Merge pull request #788 from Rullst/docs/v13-rc1-path-and-policy\n\ndocs(roadmap): record the path to 13.0.0, the 13.1 order and the 13.x compatibility rules",
+          "timestamp": "2026-11-20T21:31:29-03:00",
+          "tree_id": "0be58e851e88397296793e3cceaa6e9f60af67df",
+          "url": "https://github.com/Rullst/Rullst/commit/647e1d78a6add89535a83cc504a6aa638a55c03b"
+        },
+        "date": 1795221458620,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 689,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 921,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 430,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1981,
+            "range": "± 38",
             "unit": "ns/iter"
           }
         ]
