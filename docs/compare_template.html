@@ -16,7 +16,7 @@
   <link rel="alternate" hreflang="pt-BR" href="https://rullst.win/pt-br/comparar/">
   <link rel="alternate" hreflang="x-default" href="https://rullst.win/compare/">
   <link rel="icon" type="image/png" href="/Rullst/Rullst.png">
-  <link rel="stylesheet" href="/assets/site.css?v=b1d91f4bbb45ffdf">
+  <link rel="stylesheet" href="/assets/site.css?v=94602bfecf826cce">
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -138,19 +138,21 @@
 
     <section id="benchmarks" aria-labelledby="benchmarks-heading">
       <h2 id="benchmarks-heading">Performance</h2>
-      <p>These numbers are not written by hand: each daily build of this site inserts the latest published results of the <a href="/Benchmarks/">Rullst/Benchmarks</a> suite for the three frameworks, plus a minimal Rullst configuration.</p>
+      <p>These numbers are not written by hand: each daily build of this site inserts the latest published results of the <a href="/Benchmarks/">Rullst/Benchmarks</a> suite for the three frameworks, Actix Web and Gin, plus a minimal Rullst configuration. Rullst's maintainer also maintains that benchmark and wrote every implementation in it.</p>
       <div class="benchmark-howto">
         <h3>How to read these numbers</h3>
         <ul>
-          <li><strong>1.00× Axum means the same as Axum</strong>, a Rust framework used as the baseline and measured on the same machine in the same round. 0.50× is half of Axum's value; 2.00× is twice as much.</li>
-          <li><strong>Which direction is better:</strong> for responses per second, higher is better, so above 1× is faster than Axum; for latency and memory, lower is better, so below 1× is lower than Axum.</li>
-          <li><strong>Compare the ratios, not the absolute numbers.</strong> Each framework was measured on its own GitHub-hosted machine, and those machines differ, so the absolute number in parentheses depends partly on the hardware. The ratio compares a framework with Axum on the same machine, which cancels most of that difference.</li>
-          <li><strong>Rullst appears twice.</strong> "Rullst" is the application that <code>cargo rullst new</code> generates, with the production middleware it turns on: WAF, CSRF protection, secure cookies, security headers and an access log. "Rullst (minimal)" is the same router, ORM and <code>html!</code> templates without those layers, served like the Axum app. The gap between the two rows is what those layers cost.</li>
+          <li><strong>1.00× is Axum.</strong> Every score divides a framework's result by the result of Axum, a small Rust framework used as the reference, measured on the same machine in alternating rounds. 0.50× is half of Axum's result and 2.00× twice. Higher is better in every score: for memory and start-up time the ratio is turned around, so a higher score means less RAM or a faster start.</li>
+          <li><strong>Ties and ±.</strong> The machines are shared cloud machines, so results vary from run to run. "±6%" next to a score is the margin within which two scores cannot be told apart. Scores that close share a range of positions, such as "3–7": those implementations are in positions 3 to 7 in no particular order.</li>
+          <li><strong>The categories answer different questions.</strong> Hello world: what a framework costs per request when the page is trivial. Database: how it reads, writes and renders rows. Application: what it does with a real request (input, validation, a write, a form with CSRF protection, a signed-in user). Memory: how much RAM it needs under load. Startup: how fast it starts. Stability (pass or fail): whether it keeps working under heavier load.</li>
+          <li><strong>The database usually comes first.</strong> In a real application the database is usually the limit before the framework is, so a large gap in Hello world shrinks or disappears once requests read and write data; Database and Application are closer to what an application does.</li>
+          <li><strong>The overall score is a summary.</strong> It combines the five category scores, with Hello world, Database and Application counted twice and Memory and Startup once, for quick reading. The categories are the real result: other weights change the order, as the full results show.</li>
+          <li><strong>Rullst appears twice.</strong> "Rullst" is the application that <code>cargo rullst new</code> generates, with the production middleware it turns on: WAF, CSRF protection, secure cookies, security headers and an access log; it is the Rullst with a position. "Rullst (minimal)" is the same router, ORM and <code>html!</code> templates without those layers, served like the Axum app; it is a diagnostic, with scores and without a position. The gap between the two rows is what those layers cost.</li>
         </ul>
       </div>
       <div class="benchmark-results" data-benchmark-results>
 <!-- benchmark-results:start -->
-        <p class="benchmark-pending">The first measurement of Rullst, Loco and Topcoat is in progress. This section fills in automatically when its results are published; until then it shows no numbers.</p>
+        <p class="benchmark-pending">No current results are available. This section fills in automatically when Rullst/Benchmarks publishes results this page can read; until then it shows no numbers rather than older ones.</p>
 <!-- benchmark-results:end -->
       </div>
     </section>

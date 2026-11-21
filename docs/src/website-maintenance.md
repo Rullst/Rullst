@@ -144,56 +144,105 @@ Sources for every package a line names. Recheck the section when either project
 releases a new stable line.
 
 Its Performance section is filled at build time, never by hand. The
-deployment downloads the latest results that `Rullst/Benchmarks` publishes and
-saves them as `benchmarks.json` in the working directory and runs the
-assembler with `--benchmarks`, which renders the
-Rullst, Rullst (minimal), Loco and Topcoat rows into both languages. The page has no script and
-its CSP keeps `connect-src 'none'`. The file must be JSON of this shape:
+deployment downloads the site summary that `Rullst/Benchmarks` publishes with
+every set of results (`results/site.json` on its `main` branch, read from
+`raw.githubusercontent.com` because Cloudflare in front of `rullst.win`
+refuses runner requests), saves it as `benchmarks.json` in the working
+directory and runs the assembler with `--benchmarks`. The page has no script
+and its CSP keeps `connect-src 'none'`. Rullst/Benchmarks documents the file
+in its README ("Machine-readable results") and writes it with
+`bench/site_summary.py`; `results/latest.json` there (schema
+`rullst.benchmarks.latest.v1`, over 1 MiB since the v3 results) is no longer
+read by this site. The file must be JSON of this shape (abridged):
 
 ```json
 {
-  "schema": "rullst.benchmarks.latest.v1",
+  "schema": "rullst.benchmarks.site.v2",
   "measured_on": "2026-11-20",
-  "note": "Optional note about this run.",
-  "note_pt_br": "Nota opcional sobre esta rodada.",
-  "run": {"url": "https://github.com/Rullst/Benchmarks/actions/runs/1"},
-  "results": [
-    {"framework": "Rullst", "version": "13.0.0-alpha.6",
-     "json_rps": 90485.67, "db_single_rps": 16186.7,
-     "avg_latency_ms": 3.14, "peak_ram_mib": 20.83,
-     "vs_axum": {"json_rps": 0.48, "db_single_rps": 0.81,
-                 "avg_latency_ms": 2.1, "peak_ram_mib": 1.9}},
-    {"framework": "Rullst (minimal)", "variant": "minimal",
-     "version": "13.0.0-alpha.6", "json_rps": 114421.89,
-     "vs_axum": {"json_rps": 0.9958}}
-  ]
+  "rullst_version": "13.0.0-alpha.6",
+  "rullst_source": {"kind": "crates.io", "label": "crates.io"},
+  "run": {"id": "1", "url": "https://github.com/Rullst/Benchmarks/actions/runs/1"},
+  "reference": {"slug": "axum", "framework": "Axum", "version": "0.8.9"},
+  "ranked": 14,
+  "overall_published": true,
+  "weights": {"hello": 2, "database": 2, "application": 2, "memory": 1, "startup": 1},
+  "categories": [{"key": "hello", "title": "Hello world"}, {"key": "database", "title": "Database"},
+                 {"key": "application", "title": "Application"},
+                 {"key": "memory", "title": "Memory (high-water mark)"}, {"key": "startup", "title": "Startup"}],
+  "flags": {"cpu_cost": "*", "database_note": "†", "put_not_written": "‡", "within_reference_margin": "≈"},
+  "logins": 125,
+  "rows": [
+    {"slug": "rullst", "version": "13.0.0-alpha.6", "role": "ranked",
+     "overall": {"status": "ranked", "score": 0.7489, "position": [4, 5],
+                 "margin_percent": 5.48, "flags": ["put_not_written"]},
+     "categories": {"hello": {"status": "ranked", "score": 0.497, "position": [3, 6],
+                              "margin_percent": 8.98, "flags": ["cpu_cost"]}},
+     "stability": "pass",
+     "memory": {"peak_ram_mib": 12.1, "axum_peak_ram_mib": 16.6,
+                "after_logins_peak_ram_mib": 470.4, "axum_after_logins_peak_ram_mib": 927.2}}
+  ],
+  "reading": {"en": "Rullst as `cargo rullst new` generates it …", "pt_br": "O Rullst como o `cargo rullst new` o gera …"},
+  "note": "",
+  "note_pt_br": ""
 }
 ```
 
-`framework` is matched without regard to case; at least one of the four
-metrics is required per row and other frameworks are ignored. `Rullst` is the
-application `cargo rullst new` generates, with its security middleware on;
-`Rullst (minimal)` is the framework without that middleware (the
-`frameworks/rullst-minimal` folder of Rullst/Benchmarks). The minimal row is
-shown after Rullst, labelled "Rullst (minimal)" / "Rullst (mínimo)" with a line
-saying it lacks the generated app's security layers, and is left out without a
-placeholder when the data has no such row; a missing Rullst, Loco or Topcoat
-row says it is not in this run. When a row has
-`vs_axum` (each metric divided by Axum's, measured on the same machine in the
-same round), the page shows that ratio first and the absolute median in
-parentheses: the runs use different GitHub-hosted machines, so the ratio is
-the comparable number. Above the rows, a static "How to read these numbers"
-block in each template (`benchmark-howto`, four points) explains 1.00×, which
-direction is better, why ratios beat absolute numbers and the two Rullst rows;
-the validator requires it in both languages, before the results block, naming
-the minimal row as the assembler labels it. `note` is shown on the English page and `note_pt_br`
-on the Portuguese one (the English note, marked `lang="en"`, when there is no
-Portuguese note); `run.url` must be a `Rullst/Benchmarks` Actions run and is
-linked as the measurement run. An unknown schema, a bad date, a negative or
-non-finite number, an unexpected version string, a note longer than 1,000
-characters or another run URL discards the whole file: the page then keeps
-its "first measurement in progress" text and the deployment continues. `.github/fixtures/site-benchmarks.json`
-is the test fixture (its numbers are not measurements).
+The page shows the rows `rullst` (the application `cargo rullst new`
+generates, with its security middleware on), `loco`, `topcoat`, `actix`
+(Actix Web) and `gin`, ordered by overall position, then `rullst-minimal`
+("Rullst (minimal)" / "Rullst (mínimo)", the framework without that
+middleware, a diagnostic without a position) last and only when the data has
+it; other rows are ignored, and a missing compared framework says it is not
+in this run. Each cell shows the position range (a tie such as "3–7"), the
+score relative to Axum (1.00×, higher is better everywhere) with its flag
+signs and the tie margin (±); a score without a value shows its status
+(errors, incomplete, …). A legend under the table explains the position,
+margin and every sign that appears, so the ‡ caveat (a PUT that mostly did not
+write, which raises the Application and overall scores) is always explained
+where it is shown. A second table gives the RAM high-water mark under load
+and the peak after the logins of the application endpoints, each with Axum's
+on the same runners, and the generated "What this means for Rullst" reading
+follows in the page's language (`reading.en` or `reading.pt_br`; backtick
+spans become `<code>` as in notes). `note` is shown on the English page and
+`note_pt_br` on the Portuguese one (the English note, marked `lang="en"`,
+when there is no Portuguese note). The meta line names the date, the Rullst
+version and its source, Axum's version and links the measurement run and the
+[full results](https://rullst.win/Benchmarks/).
+
+Above the results, a static "How to read these numbers" block in each
+template (`benchmark-howto`, six points: 1.00× is Axum, ties and ±, the
+categories, the database usually comes first, the overall score is a summary
+with the 2:2:2:1:1 weights, and the two Rullst rows) follows the "How to read
+these results" section of the Rullst/Benchmarks README; the validator requires
+it in both languages, before the results block, naming the minimal row as the
+assembler labels it. Rullst's maintainer also maintains that benchmark: the
+section says so above the results and the reading ends with the same
+disclosure. Show Rullst's weaker results as plainly as its better ones; do
+not add wording that ranks or praises a framework beyond the data.
+
+Every value is checked before it reaches the page, and the whole file is
+discarded, leaving the template's "no current results" text, when any of
+these holds: another schema; a bad date, a date after the build day or a
+measurement more than 90 days old (`--benchmarks-max-age-days DAYS`, which
+`Rullst/Rullst.github.io` sets with its `BENCHMARKS_MAX_AGE_DAYS` variable);
+a category set, weighting (when the overall score is published), flag, flag
+sign, status, stability result or role the page does not explain; a
+position outside 1 to `ranked`; a negative or non-finite number; an
+unexpected version string; a reference other than Axum; a run URL outside
+`Rullst/Benchmarks` Actions runs; an empty reading or a note longer than 1,000
+characters. A file over 1 MiB is not downloaded. The deployment continues in
+every case and logs the reason as a warning, so the page never shows older or
+partially understood numbers. A change on the Benchmarks side that the page
+must show (a new flag, category, status or field) needs a new schema string
+there and a change to the assembler, the templates, this section and the
+fixture here.
+
+`.github/fixtures/site-benchmarks.json` is the test fixture (its numbers are
+not measurements); `validate-site.py` renders it as of 21 November 2026 and
+checks the rendered rows, cells, legend, memory table and reading in both
+languages, and that each kind of rejected data keeps the pending text;
+`site-browser-smoke.mjs` renders it dated the current day and checks the
+tables at three widths without horizontal page scrolling.
 
 ## How the root site is deployed
 

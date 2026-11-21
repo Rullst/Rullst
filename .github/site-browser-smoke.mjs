@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
 import { once } from "node:events";
 import { createServer } from "node:http";
-import { copyFile, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,9 +15,12 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const profile = await mkdtemp(join(tmpdir(), "rullst-site-chromium-"));
 // The comparison pages with benchmark rows, assembled from the test fixture
-// (its numbers are not measurements) and served under /_rendered/.
+// (its numbers are not measurements), dated today so that the assembler's
+// default age limit applies, and served under /_rendered/.
 const rendered = await mkdtemp(join(tmpdir(), "rullst-site-rendered-"));
-await copyFile(join(root, ".github/fixtures/site-benchmarks.json"), join(rendered, "benchmarks.json"));
+const fixture = JSON.parse(await readFile(join(root, ".github/fixtures/site-benchmarks.json"), "utf8"));
+fixture.measured_on = new Date().toISOString().slice(0, 10);
+await writeFile(join(rendered, "benchmarks.json"), JSON.stringify(fixture));
 // An absolute interpreter path, not a PATH lookup (Ubuntu and macOS both have it).
 execFileSync("/usr/bin/python3", [join(root, ".github/assemble-organization-site.py"), "--out", join(rendered, "site"), "--benchmarks"],
   { cwd: rendered, stdio: ["ignore", "ignore", "inherit"] });
@@ -305,7 +308,7 @@ try {
         topics: document.querySelectorAll('.compare-topic').length,
         columns: [...document.querySelectorAll('.compare-topic')].every(topic => topic.querySelectorAll('dt').length === 3),
         uiFrameworks: document.querySelectorAll('#ui-frameworks .compare-checked code').length,
-        benchmarks: document.querySelectorAll('.benchmark-pending, .benchmark-rows').length,
+        benchmarks: document.querySelectorAll('.benchmark-pending, .benchmark-table').length,
         current: document.querySelector('.lang-switch [aria-current=page]').getAttribute('href'),
         flags: [...document.querySelectorAll('.lang-switch img')].every(image => image.complete && image.naturalWidth > 0),
       }))()`);
@@ -319,10 +322,18 @@ try {
       const page = await evaluate(`(() => ({
         overflow: document.documentElement.scrollWidth > innerWidth,
         howto: document.querySelectorAll('.benchmark-howto li').length,
-        rows: [...document.querySelectorAll('.benchmark-rows > li > h3')].map(title => title.firstChild.textContent.trim()),
-        variants: document.querySelectorAll('.benchmark-rows .benchmark-variant').length,
+        pending: document.querySelectorAll('.benchmark-pending').length,
+        tables: [...document.querySelectorAll('.benchmark-table')].map(region => region.getBoundingClientRect().right <= innerWidth),
+        rows: [...document.querySelectorAll('.benchmark-table')[0].querySelectorAll('tbody th[scope=row]')].map(title => title.firstChild.textContent.trim()),
+        legend: document.querySelectorAll('.benchmark-legend li').length,
+        reading: document.querySelectorAll('.benchmark-reading code').length,
       }))()`);
-      assert.deepEqual(page, { overflow: false, howto: 4, rows: ["Rullst", minimal, "Loco", "Topcoat"], variants: 2 }, `Rendered comparison ${route} at ${width}px`);
+      assert.deepEqual(page, { overflow: false, howto: 6, pending: 0, tables: [true, true], rows: ["Actix Web", "Topcoat", "Loco", "Rullst", "Gin", minimal], legend: 5, reading: 1 }, `Rendered comparison ${route} at ${width}px`);
+      if (output) {
+        const clip = await evaluate(`(() => { const box = document.querySelector('#benchmarks').getBoundingClientRect(); return { x: 0, y: box.top + scrollY, width: innerWidth, height: box.height, scale: 1 }; })()`);
+        const { data } = await send("Page.captureScreenshot", { format: "png", clip, captureBeyondViewport: true });
+        await writeFile(join(output, `rullst-compare-${route.includes("/pt-br/") ? "pt-BR" : "en"}-${width}.png`), Buffer.from(data, "base64"));
+      }
     }
   }
   await navigate(true, "/privacy.html");
