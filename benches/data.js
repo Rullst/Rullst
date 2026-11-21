@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795223033584,
+  "lastUpdate": 1795224063013,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -38203,6 +38203,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1993,
             "range": "± 27",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1df201ea042612ed98d9016208f77d573ed506c0",
+          "message": "Merge pull request #791 from Rullst/chore/v13-osv-scanner-ignores\n\nchore(security): ignore fixture and dev-only advisories in OpenSSF Scorecard",
+          "timestamp": "2026-11-20T22:12:43-03:00",
+          "tree_id": "feae6c50d252118e266392fca399e0293fdc2a33",
+          "url": "https://github.com/Rullst/Rullst/commit/1df201ea042612ed98d9016208f77d573ed506c0"
+        },
+        "date": 1795224058731,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 544,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 743,
+            "range": "± 45",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 323,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1481,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
