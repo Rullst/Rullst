@@ -243,8 +243,8 @@ Depend on the crate with `default-features = false`. It uses `alloc`, so the
 firmware provides a `#[global_allocator]` (for example `embedded-alloc`) and a
 panic handler. Plan for about 8 KiB of stack in `begin_update` or
 `verify_update` and 2.6 KiB while building an `OtaManager`, plus your own
-frames (measured with `ed25519-dalek` 2.2, before 13.0.0-alpha.6 moved to
-`ed25519-dalek` 3; the board has not been re-run since); the heap needs little
+frames (measured on a BBC micro:bit V2 with `ed25519-dalek` 3 on
+2026-11-22); the heap needs little
 beyond the packets you encode. `rullst-iot` uses `ed25519-dalek` 3 without its
 precomputed tables; adding `ed25519-dalek = { version = "3",
 default-features = false, features = ["fast"] }` to the application turns them
@@ -256,17 +256,16 @@ copy and the tables stay off.
 ## Hardware validation
 
 A BBC micro:bit V2 (nRF52833, Cortex-M4F at 64 MHz, 128 KiB RAM) ran the
-fixture's checks, twice per boot, on 2026-11-10: telemetry JSON, digital-twin, Modbus
+fixture's checks, twice per boot, on 2026-11-22 with the 13.0.0-rc.1
+candidate: telemetry JSON, digital-twin, Modbus
 and I2C frames, MQTT 5 and CoAP encodings byte-identical to the host build,
 the anomaly detector, signed OTA verification (valid, tampered, wrong key,
 wrong target, rollback), streaming verification of a 32 KiB image in 4 KiB
 chunks from a manifest built from received fields, the rollback-counter
 compare-and-set contract with an in-RAM store, and allocation failure. The
-streamed verification took 62.8 ms (36.6 ms for the signature before the first
-chunk, 3.3 ms per chunk) with 7.6 KiB of stack; the heap peaked at 1,153 bytes.
-These times and stack depths were measured with `ed25519-dalek` 2.2
-(13.0.0-alpha.5); 13.0.0-alpha.6 moved to `ed25519-dalek` 3, and the board has
-not been re-run with it. The results are the maintainer's record of the run;
+streamed verification took 62.6 ms (36.6 ms for the signature before the first
+chunk, 3.2 ms per chunk) with 7.5 KiB of stack; the heap peaked at 1,153 bytes,
+with `ed25519-dalek` 3. The results are the maintainer's record of the run;
 no serial log is committed.
 Transports, other boards, external flash, a persistent counter store and the
 bootloader remain unvalidated. On the same day the `std` build ran end to end on a host: readings from an

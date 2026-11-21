@@ -264,11 +264,6 @@ h1 { margin: 0; font-size: clamp(3rem, 4.5vw, 4rem); line-height: 1.08; font-wei
 .journey-grid h3 { font-size: 1rem; font-weight: 550; margin: 1rem 0 0.6rem; }
 .journey-grid p { color: var(--muted); font-size: 0.85rem; margin: 0; }
 .journey-grid a { display: inline-block; }
-.product-shot { margin: 0; border: 1px solid #3f4e40; border-radius: 10px; overflow: hidden; background: #070b08; box-shadow: 0 20px 60px #0004; }
-.shot-heading { display: flex; align-items: center; gap: 0.5rem; padding: 1rem 1.2rem; background: #162018; font: 0.65rem var(--mono); color: #b7c9b5; }
-.shot-heading > span:last-child { margin-left: auto; color: var(--green); }
-.product-shot img { display: block; width: 100%; height: auto; }
-.product-shot figcaption { padding: 0.85rem 1rem; border-top: 1px solid var(--line); font-size: 0.7rem; color: var(--muted); }
 .evidence-section { padding-top: 1.5rem; }
 .evidence-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
 .evidence-card { position: relative; display: flex; flex-direction: column; padding: 1.7rem; border: 1px solid var(--line); border-radius: 12px; text-decoration: none; background: linear-gradient(150deg, #142033, #0e1622); overflow: hidden; transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease; }
@@ -568,8 +563,6 @@ h1 { margin: 0; font-size: clamp(3rem, 4.5vw, 4rem); line-height: 1.08; font-wei
   .crate-links a { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; }
   .crate-links small { margin: 0; text-align: right; font-size: 0.6rem; }
   .journey-grid { gap: 1.7rem; }
-  .shot-heading { font-size: 0.55rem; }
-  .shot-heading > span:last-child { display: none; }
   .community { padding: 1.6rem; }
   .community h2 { font-size: 1.95rem; }
   .community .button { width: 100%; }

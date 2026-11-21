@@ -310,9 +310,10 @@ security, identity, timing, correlation, retry and peer interoperability.
 
 ## Hardware validation (BBC micro:bit V2)
 
-On 2026-11-10 a BBC micro:bit V2 (nRF52833, Cortex-M4F at 64 MHz, 128 KiB
-RAM, 512 KiB flash) ran a firmware built on `rullst-iot` with
-`default-features = false`, `embedded-alloc` and a 32 KiB heap, on Rust 1.99.1
+On 2026-11-22 a BBC micro:bit V2 (nRF52833, Cortex-M4F at 64 MHz, 128 KiB
+RAM, 512 KiB flash) ran a firmware built on the 13.0.0-rc.1 candidate's
+`rullst-iot` (`ed25519-dalek` 3) with
+`default-features = false`, `embedded-alloc` and a 32 KiB heap, on Rust 1.100.0
 at `opt-level = 3` with LTO (the firmware is
 [`.github/fixtures/iot-microbit-v2`](https://github.com/Rullst/Rullst/tree/main/.github/fixtures/iot-microbit-v2);
 the results below are the maintainer's record of the run, and no serial log is
@@ -325,7 +326,7 @@ with no failure:
 | MQTT 5 PUBLISH | 6 | QoS 0/1/2, RETAIN, DUP and a two-byte Remaining Length; wildcard topics, packet identifier 0 and DUP on QoS 0 rejected |
 | CoAP | 8 | CON/NON GET, POST, PUT and DELETE with extended option lengths and a two-byte Content-Format; oversized tokens, segments and payloads, and `..`, rejected |
 | Anomaly detector | 2 | A 12-sample series, including NaN and infinity, and invalid configurations |
-| Signed OTA | 21 | Valid update verified and committed through a store; tampered image, signature or version, truncated image, short signature, wrong key, wrong target, lower or equal rollback counter and a weak key rejected; partition selection from bank A and B |
+| Signed OTA | 19 | Valid update verified and committed through a store; tampered image, signature or version, truncated image, short signature, wrong key, wrong target, lower or equal rollback counter and a weak key rejected; partition selection from bank A and B |
 | Streaming OTA | 7 | Manifest built from received fields and parsed from the host's signing bytes; the 32 KiB image verified in eight 4 KiB chunks and committed; a bad signature refused before the first chunk, a tampered chunk and a ninth chunk rejected |
 | Rollback-counter store | 9 | Compare-and-set success, stale expected value, non-increasing value, two managers committing from one store, replay after restart, a lost acknowledgement completed on retry, an unavailable store |
 | Allocation failure | 2 | A packet larger than the free heap returns `AllocationFailed`, and the next one encodes |
@@ -336,26 +337,26 @@ counter (cross-checked against a 1 MHz timer):
 
 | Operation | Time |
 | :--- | ---: |
-| SHA-256 of a 32 KiB image (`OtaManifest::from_firmware`) | 26.1 ms |
+| SHA-256 of a 32 KiB image (`OtaManifest::from_firmware`) | 26.0 ms |
 | `OtaManifest::new` / `from_signing_bytes` (no hashing) | under 0.03 ms |
 | `begin_update` (target, counter, Ed25519 signature) | 36.6 ms |
-| `OtaImageVerifier::update`, one 4 KiB chunk | 3.3 ms |
-| Streamed 32 KiB image: `begin_update`, 8 chunks, `finish` | 62.8 ms |
-| `verify_update`, 32 KiB slice | 62.7 ms |
+| `OtaImageVerifier::update`, one 4 KiB chunk | 3.2 ms |
+| Streamed 32 KiB image: `begin_update`, 8 chunks, `finish` | 62.6 ms |
+| `verify_update`, 32 KiB slice | 62.6 ms |
 | `MqttPublish` / `CoapRequest` encode, about 40 bytes | under 0.1 ms |
 | Rejection before the signature (wrong target, malformed signature) | under 0.01 ms |
 
 An earlier build of the same checks at `opt-level = "z"` verified the 32 KiB
 image in 83.3 ms and the Ed25519 signature alone in 53.3 ms. The whole test
 firmware, including the test harness, a 32 KiB test image and the expected
-vectors, used about 266 KB of flash. The heap peaked at 1,153 bytes; OTA
+vectors, used about 269 KB of flash (269,044 bytes of text). The heap peaked at 1,153 bytes; OTA
 verification itself needed 143 (159 streamed). Peak stack depth:
 
 | Call | Stack |
 | :--- | ---: |
-| `OtaManager::verify_update` (32 KiB slice) | 8,152 B |
-| `begin_update`, eight 4 KiB `update` calls and `finish` | 7,640 B |
-| `OtaManager::new_with_running_partition` | 2,600 B |
+| `OtaManager::verify_update` (32 KiB slice) | 8,168 B |
+| `begin_update`, eight 4 KiB `update` calls and `finish` | 7,656 B |
+| `OtaManager::new_with_running_partition` | 2,552 B |
 | `serde_json::from_slice::<SensorTelemetry>` | 492 B |
 | `OtaManifest::from_firmware` | 400 B |
 | `commit_verified_update_with_store` | 360 B |
@@ -370,12 +371,15 @@ to its own dependencies; the major must be the one `rullst-iot` uses (3 since
 micro:bit this made verification about 7% faster (34.2 ms and 59.8 ms), its
 stack 1.6 KiB smaller (6,144 B) and the firmware 7.5 KiB larger.
 
-The measurements on this page were taken with `ed25519-dalek` 2.2 (13.0.0-alpha.5).
-13.0.0-alpha.6 moves to `ed25519-dalek` 3 (`curve25519-dalek` 5): the same
-fixture's release build grows by about 3.3 KB of flash (269,652 bytes of text
-against 266,380, and 281,500 against 278,212 with the precomputed tables), and
-its signatures and expected vectors are byte-identical. The board has not been
-re-run with it, so the times and stack depths above are those of 2.2.
+The measurements above were taken on 2026-11-22 with `ed25519-dalek` 3
+(`curve25519-dalek` 5), which 13.0.0-alpha.6 adopted: on each of two boots the
+65 checks in the table passed with no failure (128 results per boot: the 63
+regular checks twice and the 2 allocation checks once). With
+`ed25519-dalek` 2.2 (13.0.0-alpha.5, 2026-11-10) the times were within 0.2 ms
+and the stack depths within 50 bytes; the firmware is about 3 KB larger with 3,
+and its signatures and expected vectors are byte-identical. The precomputed
+tables' figures above were measured with 2.2. 13.0.0-rc.1 removed two signed
+OTA checks with the `experimental-simulators` fixtures they used.
 
 **Streamed and hashed once.** With the manifest built by `OtaManifest::new`
 or `from_signing_bytes`, the device hashes the image once, inside the

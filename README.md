@@ -76,16 +76,9 @@ inside a project, its configuration, database and migrations. `cargo rullst --he
 lists every command, `cargo rullst tour` walks through the main ones, and
 `cargo rullst` alone opens an interactive menu.
 
-<details>
-<summary><strong>Prefer an interactive dashboard? Run <code>cargo rullst dash</code></strong></summary>
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/cargo-rullst-dash.png" alt="Rullst terminal dashboard with project information, logs and controls" width="100%"/>
-</p>
-
-Recorded screenshot; layout and controls can differ by version. [Development workflow](https://rullst.github.io/Rullst/book/tutorials/51-authenticated-hot-reload.html).
-
-</details>
+Prefer an interactive dashboard? `cargo rullst dash` opens one in the
+terminal, with the application's logs and development controls
+([CLI reference](https://rullst.github.io/Rullst/book/cli_reference.html#cargo-rullst-dash)).
 
 ## 🦀 Code that says what it does
 
