@@ -15,15 +15,18 @@ again later or pick another availability domain.
 
 This guide was written from Oracle's documentation and has not been followed
 end to end on a real account. Rullst's CI builds and starts the generated
-deployment on x86-64 Linux only: an Arm (`linux/arm64`) image and an Ampere
-machine are not tested.
+deployment on x86-64 Linux only, so CI does not test an Arm (`linux/arm64`)
+image or an Ampere machine. The maintainer's production applications (Academy,
+capoeira and vene.win) do run on one Ampere A1 machine, each built as a
+`linux/arm64` image and served behind a shared Caddy.
 
 ## Arm or x86?
 
 - **Ampere A1 (Arm).** Build for `linux/arm64`. Rust targets Arm, and the
   generated `Dockerfile` names no architecture, so the simplest way is to
   **build on the VM itself** with `docker compose up -d --build` (step 4A of
-  the shared guide); Rullst's CI does not build or run it on Arm.
+  the shared guide); Rullst's CI does not build or run it on Arm, and the
+  maintainer's production applications run this way on Ampere A1.
   Ampere VMs are usually fast enough for this.
 - **Building elsewhere.** On an x86-64 computer, build for Arm with
   `docker buildx build --platform linux/arm64 -t my-app:<tag> --load .`. This

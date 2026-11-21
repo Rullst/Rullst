@@ -188,7 +188,10 @@ Os pacotes promovidos ao nível Extension mantêm o escopo documentado
   endurecimento do contêiner, as migrações, o volume SQLite em modo WAL após
   um reinício e os comandos de backup e restauração. Domínios reais, DNS e
   Let's Encrypt, contas e firewalls de provedores, máquinas Arm,
-  reinicializações e deploys com PostgreSQL/MySQL não são testados, e no
+  reinicializações e deploys com PostgreSQL/MySQL não são testados no CI (as
+  aplicações do mantenedor em produção, Academy, capoeira e vene.win, rodam
+  em domínios reais numa mesma máquina Oracle Ampere A1 Arm, atrás de um Caddy
+  compartilhado com certificados Let's Encrypt), e no
   Ubuntu 26.04 o `podman compose restart` pode deixar o Caddy parado (use
   `podman compose down` e `up -d`). Os guias de provedores e a página
   Advanced deployment foram escritos a partir da documentação dos provedores e

@@ -174,7 +174,9 @@ The packages promoted to the Extension tier keep their documented scope
   hardening, migrations, the SQLite volume in WAL mode across a restart and
   the backup and restore commands. Real domains, DNS and Let's Encrypt,
   provider accounts and firewalls, Arm machines, reboots and PostgreSQL/MySQL
-  deployments are not tested, and on Ubuntu 26.04 `podman compose restart`
+  deployments are not tested in CI (the maintainer's production applications,
+  Academy, capoeira and vene.win, run on real domains on one Oracle Ampere A1
+  Arm machine behind a shared Caddy with its Let's Encrypt certificates), and on Ubuntu 26.04 `podman compose restart`
   can leave Caddy stopped (use `podman compose down` and `up -d`). The
   provider guides and the Advanced deployment page were written from the
   providers' and tools' documentation, not followed end to end on real
