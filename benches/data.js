@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795221463689,
+  "lastUpdate": 1795223033584,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -38149,6 +38149,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1981,
             "range": "± 38",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e3d34325de985a22f2adecea10b78006efd48e01",
+          "message": "Merge pull request #790 from Rullst/docs/v13-major-version-criteria\n\ndocs(roadmap): state when and how a 14.0 would happen, and shorten 13.x fixes after it",
+          "timestamp": "2026-11-20T21:55:00-03:00",
+          "tree_id": "6c9a2ed90f3a67ef18e75df7bde3d2be0c19c637",
+          "url": "https://github.com/Rullst/Rullst/commit/e3d34325de985a22f2adecea10b78006efd48e01"
+        },
+        "date": 1795223029137,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 661,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 912,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 416,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1993,
+            "range": "± 27",
             "unit": "ns/iter"
           }
         ]
