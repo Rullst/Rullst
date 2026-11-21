@@ -219,6 +219,37 @@ fn turso_primary_scaffold_compiles_and_runs_its_real_migration() {
             .contains("Rolled back Turso migration m20260829000000_create_users_table")
     );
 
+    // In production an empty URL stops the application before the offline
+    // fallback writes its local file; an explicit `mock_` value keeps it.
+    let production = |url: &str| {
+        nested_cargo::output(
+            Command::new("cargo")
+                .current_dir(&project)
+                .args(["run", "--quiet", "--", "db:status"])
+                .env("CARGO_TARGET_DIR", workspace.join("target"))
+                .env("RULLST_ENV", "production")
+                .env("TURSO_DATABASE_URL", url)
+                .env("TURSO_OFFLINE_PATH", "production-offline.db"),
+            &workspace.join("target"),
+        )
+        .expect("run generated Turso project in production")
+    };
+    let refused = production("");
+    let stderr = String::from_utf8_lossy(&refused.stderr);
+    assert!(!refused.status.success(), "{stderr}");
+    assert!(
+        stderr.contains("TURSO_DATABASE_URL is empty or unset in the production environment"),
+        "{stderr}"
+    );
+    assert!(!project.join("production-offline.db").exists());
+    let mocked = production("mock_production");
+    assert!(
+        mocked.status.success(),
+        "{}",
+        String::from_utf8_lossy(&mocked.stderr)
+    );
+    assert!(project.join("production-offline.db").exists());
+
     clean_generated_package(&project, workspace);
     fs::remove_dir_all(&project).expect("remove generated Turso-primary test project");
 }

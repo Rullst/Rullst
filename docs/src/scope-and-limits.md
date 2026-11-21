@@ -70,11 +70,14 @@ release's source, work scheduled for the next one) are in that release's
   The client follows a same-origin `base_url` from a multi-instance server
   (such as Turso Cloud); a `base_url` at another origin is refused with
   `PolyglotError::CrossOriginEndpoint` and the insert is not committed.
-  When `TURSO_DATABASE_URL` is empty or a `mock_` value, the store is a local
-  SQLite file (`TURSO_OFFLINE_PATH` in the generated starter, by default
-  `turso-development.db`) in every environment, production included: a
-  deployment that does not set the variable writes to that file instead of
-  Turso.
+  An empty or `mock_` URL makes `TursoStore::connect` and
+  `TursoOrm::init_from_env` use a local SQLite file (`TURSO_OFFLINE_PATH`, by
+  default `turso-development.db`) in every environment, production included,
+  because `rullst-orm` does not read the runtime environment: an application
+  that calls them directly must refuse an empty URL in production itself.
+  Since 13.0.0-rc.1 the generated starter does: in staging and production it
+  stops at start-up when `TURSO_DATABASE_URL` is empty or unset, and only an
+  explicit `mock_` value selects the local file.
 - `save()` writes only the changed columns for a model with a `RowSnapshot`
   field. A model with `#[orm(full_row_save)]`, and every Turso model, writes
   every column, so two requests that change different columns of one row can

@@ -125,6 +125,24 @@ section 5, and the v13 Extension crates `rullst-privacy`, `rullst-supervision`,
 published in the 13.0.0-alpha.1 prerelease); the v13 sections below specify
 their boundaries.
 
+### Offline mocks and deployment environments
+
+External integrations (payment gateways, OAuth2 providers, mail transports,
+LLM providers, storage and database adapters) have a deterministic offline
+mock, so tests, local sandboxes and developer tools run without live
+credentials. An explicit `mock_*` value selects it in every environment. An
+empty or missing credential, endpoint or URL selects it only in development
+and test: in staging and production (`Environment::requires_secure_defaults()`)
+the code that reads the settings returns its typed configuration error naming
+the setting, at start-up or first use, because the mock would report success
+for work that never reached the service. This applies to the `Mail` facade,
+`AiClient::auto()` and the code `cargo rullst` generates (the Turso starter
+and billing). Constructors that take the values from the caller, such as
+`StripeProvider::new` or `TursoStore::connect`, keep the empty-value
+convention, and `rullst-orm` and `rullst-media` do not read the runtime
+environment, so `TursoOrm::init_from_env` and `S3Credentials::from_env` leave
+that check to the application (see [scope and limits](scope-and-limits.md)).
+
 ### v13 roadmap package boundaries
 
 The [`rullst-labs`](rullst-labs-roadmap.md) library is an implementation
@@ -4504,7 +4522,10 @@ provider](capital-custom-provider.md)); the
 ### 9.1. Guarded AI Client
 * `AiClient::auto()` and Nexus share `AutoAiConfig`. Resolution uses one
   snapshot in OpenAI/custom, Anthropic, Gemini, DeepSeek, Groq, Ollama order.
-  Empty environment values are absent; explicit mocks remain offline. Groq
+  Empty environment values are absent; explicit mocks remain offline. With no
+  provider, development and test get the offline fixture, while staging and
+  production return `AiError::ConfigError` from `AiClient::auto()` (a client
+  from `AutoAiConfig::into_client()` has no provider, so requests fail). Groq
   requires `GROQ_API_KEY` plus `GROQ_MODEL`; a custom `OPENAI_BASE_URL` requires
   `OPENAI_API_KEY` plus `OPENAI_MODEL` and uses the HTTPS chat-only compatible
   adapter. Configuration indicators do not attest network/account health.

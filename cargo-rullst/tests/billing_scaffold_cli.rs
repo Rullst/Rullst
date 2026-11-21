@@ -433,6 +433,26 @@ fn verify_backend(database: &str) {
         }
     }
 
+    // Staging refuses an empty credential before any I/O, as production does,
+    // instead of selecting the local fixture; `mock_` values keep it.
+    for (api_key, webhook_secret) in [("", ""), ("mock_key", ""), ("", "mock_webhook")] {
+        let staging = run(
+            Command::new("cargo")
+                .current_dir(&project)
+                .args(["run", "--quiet", "--bin", "billing_contract"])
+                .env("RULLST_ENV", "staging")
+                .env("BILLING_PROVIDER", "stripe")
+                .env("BILLING_API_KEY", api_key)
+                .env("BILLING_WEBHOOK_SECRET", webhook_secret)
+                .env("BILLING_ALLOWED_PLAN_IDS", "price_pro")
+                .env("BILLING_CONTRACT_REAL_CREDENTIALS", "1")
+                .env("CARGO_TARGET_DIR", target_directory(workspace))
+                .env("CARGO_NET_OFFLINE", "true"),
+            "refuse empty staging billing credentials",
+        );
+        assert_success(&staging, "empty staging billing credentials");
+    }
+
     let controller_before = controller;
     let duplicate = run(
         Command::new(cli)

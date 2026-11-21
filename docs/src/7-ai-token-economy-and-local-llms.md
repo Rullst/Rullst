@@ -49,8 +49,9 @@ println!("{response}");
 ```
 
 `AiClient::auto()` also recognizes the built-in cloud-provider API-key
-variables. With no configured provider it selects a deterministic offline mock;
-that fallback is not a live model.
+variables. With no configured provider it selects a deterministic offline mock
+in development and test; that fallback is not a live model. In staging and
+production it returns `AiError::ConfigError` instead (since 13.0.0-rc.1).
 
 ## OpenAI-compatible endpoints
 

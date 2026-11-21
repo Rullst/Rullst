@@ -20,7 +20,10 @@ An unreadable or malformed `.env` makes billing unavailable instead of falling
 back to defaults. Production checks use the environment the running server
 enforces (`RULLST_ENV`, then `APP_ENV`, from the process and then from the
 `.env` the server read, then `[app].env` in `Rullst.toml`); an invalid value is
-treated as production.
+treated as production. Empty `BILLING_API_KEY` and `BILLING_WEBHOOK_SECRET`
+select the local billing fixture, whose checkout never reaches Stripe, only in
+development and test: staging and production make billing unavailable instead.
+Explicit `mock_` values keep the fixture in staging; production refuses them.
 
 Live keys alone do not activate real charges. After reviewing the deployed
 offer, merchant settings, webhook, reconciliation and sandbox evidence, set

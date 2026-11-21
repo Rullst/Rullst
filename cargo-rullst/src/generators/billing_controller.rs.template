@@ -61,6 +61,15 @@ fn is_production() -> bool {
     }
 }
 
+/// Staging or production, resolved as [`is_production`] does; an invalid
+/// value fails closed.
+fn requires_secure_defaults() -> bool {
+    match rullst::RullstConfig::global().environment() {
+        Ok(environment) => environment.requires_secure_defaults(),
+        Err(_) => true,
+    }
+}
+
 fn is_mock_credential(value: &str) -> bool {
     value
         .get(..5)
@@ -110,6 +119,17 @@ fn billing_config() -> Result<BillingConfig, BillingConfigError> {
     {
         return Err(BillingConfigError(
             "BILLING_ALLOWED_PLAN_IDS must contain 1 to 64 comma-separated provider plan IDs",
+        ));
+    }
+
+    // Empty credentials select the local billing fixture, whose checkout never
+    // reaches Stripe. Staging refuses them as production does; explicit
+    // `mock_` values keep the fixture in staging on purpose.
+    if requires_secure_defaults()
+        && (api_key.trim().is_empty() || webhook_secret.trim().is_empty())
+    {
+        return Err(BillingConfigError(
+            "staging and production billing require BILLING_API_KEY and BILLING_WEBHOOK_SECRET; set `mock_` values to keep the local billing fixture in staging",
         ));
     }
 

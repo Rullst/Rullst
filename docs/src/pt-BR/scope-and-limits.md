@@ -74,11 +74,14 @@ próxima) estão nas "Known limitations" dessa versão no
   do ROADMAP). O cliente segue um `base_url` de mesma origem enviado por um
   servidor com várias instâncias (como o Turso Cloud); um `base_url` de outra
   origem é recusado com `PolyglotError::CrossOriginEndpoint`, e o insert não é
-  confirmado. Quando o `TURSO_DATABASE_URL` está vazio ou é um valor `mock_`,
-  o armazenamento é um arquivo SQLite local (`TURSO_OFFLINE_PATH` no starter
-  gerado, por padrão `turso-development.db`) em qualquer ambiente, inclusive
-  produção: um deploy que não define a variável grava nesse arquivo em vez de
-  no Turso.
+  confirmado. Com uma URL vazia ou `mock_`, `TursoStore::connect` e
+  `TursoOrm::init_from_env` usam um arquivo SQLite local (`TURSO_OFFLINE_PATH`,
+  por padrão `turso-development.db`) em qualquer ambiente, inclusive produção,
+  porque o `rullst-orm` não lê o ambiente de execução: uma aplicação que os
+  chama diretamente precisa recusar, ela mesma, uma URL vazia em produção.
+  Desde a 13.0.0-rc.1 o starter gerado faz isso: em staging e produção ele
+  para na inicialização quando o `TURSO_DATABASE_URL` está vazio ou ausente, e
+  só um valor `mock_` explícito seleciona o arquivo local.
 - O `save()` grava apenas as colunas alteradas de um model com um campo
   `RowSnapshot`. Um model com `#[orm(full_row_save)]`, e todo model Turso,
   grava todas as colunas, então duas requisições que alteram colunas

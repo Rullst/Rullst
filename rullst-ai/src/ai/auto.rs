@@ -10,6 +10,9 @@ use std::sync::Arc;
 /// The end of every label of a provider in offline mode.
 const OFFLINE_LABEL: &str = "(offline mock)";
 
+/// The error for a `RULLST_ENV` or `APP_ENV` that names no Rullst environment.
+const INVALID_ENVIRONMENT: &str = "RULLST_ENV or APP_ENV is not a valid Rullst environment";
+
 /// Labels a value offline exactly when the provider constructor selects mock mode.
 fn offline_credential(credential: &str) -> bool {
     ProviderMode::from_credential(credential).is_mock()
@@ -23,6 +26,9 @@ fn offline_credential(credential: &str) -> bool {
 pub struct AutoAiConfig {
     providers: Vec<Arc<dyn AiProvider>>,
     names: Vec<&'static str>,
+    /// Why a snapshot without providers gets no offline fixture: set in
+    /// staging and production, and when the environment cannot be resolved.
+    unconfigured: Option<String>,
 }
 
 impl std::fmt::Debug for AutoAiConfig {
@@ -45,13 +51,27 @@ impl AutoAiConfig {
     }
 
     /// Builds a guarded client from this exact snapshot. No network is used.
-    /// With no configured provider, preserves the deterministic offline fallback.
+    ///
+    /// With no configured provider, development and test get the
+    /// deterministic offline fixture. In staging and production (`RULLST_ENV`,
+    /// then `APP_ENV`, from the process environment) the client has no
+    /// provider instead, so every request fails with [`AiError::ConfigError`]
+    /// rather than answering with fixture text (since 13.0.0-rc.1).
     pub fn into_client(mut self) -> AiClient {
-        if self.providers.is_empty() {
+        if self.providers.is_empty() && self.unconfigured.is_none() {
             self.providers
                 .push(Arc::new(OpenAiProvider::new("mock_auto")));
         }
         AiClient::new(FallbackProvider::new(self.providers))
+    }
+
+    /// The client of [`AiClient::auto`]: a snapshot without any provider is a
+    /// configuration error in staging and production.
+    pub(super) fn into_auto_client(self) -> Result<AiClient, AiError> {
+        match &self.unconfigured {
+            Some(reason) => Err(AiError::ConfigError(reason.clone())),
+            None => Ok(self.into_client()),
+        }
     }
 
     fn push(&mut self, provider: impl AiProvider + 'static, name: &'static str) {
@@ -64,6 +84,7 @@ impl AutoAiConfig {
         let mut config = Self {
             providers: Vec::new(),
             names: Vec::new(),
+            unconfigured: None,
         };
         let base_url = get("OPENAI_BASE_URL");
         let openai_key = get("OPENAI_API_KEY");
@@ -148,19 +169,40 @@ impl AutoAiConfig {
             let model = get("OLLAMA_MODEL").unwrap_or_else(|| "llama3".into());
             config.push(OpenAiCompatibleProvider::ollama(host, model)?, name);
         }
-        config.refuse_offline_fallback(|| {
+        let environment = || {
             Environment::resolve(
                 get("RULLST_ENV").as_deref(),
                 get("APP_ENV").as_deref(),
                 None,
             )
-            .map_err(|_| {
-                AiError::ConfigError(
-                    "RULLST_ENV or APP_ENV is not a valid Rullst environment".into(),
-                )
-            })
-        })?;
+            .map_err(|_| AiError::ConfigError(INVALID_ENVIRONMENT.into()))
+        };
+        config.refuse_offline_fallback(environment)?;
+        config.unconfigured = config.missing_provider(environment);
         Ok(config)
+    }
+
+    /// With no provider, [`Self::into_client`] answers with an offline
+    /// fixture as if a model had replied. In staging and production that
+    /// means no key was set, so the snapshot records why instead. An explicit
+    /// `mock_*` value is a configured provider and keeps the fixture.
+    fn missing_provider(
+        &self,
+        environment: impl FnOnce() -> Result<Environment, AiError>,
+    ) -> Option<String> {
+        if !self.providers.is_empty() {
+            return None;
+        }
+        match environment() {
+            Ok(environment) if !environment.requires_secure_defaults() => None,
+            Ok(environment) => Some(format!(
+                "no AI provider is configured in the {environment} environment, so the client \
+                 would answer with offline fixture text; set OPENAI_API_KEY, ANTHROPIC_API_KEY, \
+                 GEMINI_API_KEY, DEEPSEEK_API_KEY, GROQ_API_KEY or OLLAMA_HOST, or a `mock_` \
+                 value to keep the offline fixture on purpose"
+            )),
+            Err(_) => Some(INVALID_ENVIRONMENT.into()),
+        }
     }
 
     /// The chain tries the next provider after any error, so an offline mock
@@ -384,6 +426,64 @@ mod tests {
             with(&[("RULLST_ENV", "not-an-environment")]),
             Err(AiError::ConfigError(text)) if text.contains("RULLST_ENV")
         ));
+    }
+
+    #[tokio::test]
+    async fn production_refuses_to_answer_without_any_provider() {
+        for (variable, name) in [("RULLST_ENV", "production"), ("APP_ENV", "staging")] {
+            let unconfigured = || resolve(&[(variable, name), ("OPENAI_API_KEY", " ")]).unwrap();
+            // The snapshot itself stays valid: Nexus reports "no provider".
+            assert!(unconfigured().provider_names().is_empty());
+            let error = unconfigured().into_auto_client().err().unwrap();
+            assert!(
+                matches!(&error, AiError::ConfigError(text) if text.contains(name)
+                    && text.contains("OPENAI_API_KEY") && text.contains("OLLAMA_HOST")
+                    && text.contains("mock_")),
+                "{error}"
+            );
+            // A client built anyway has no provider, so requests fail.
+            let reply = unconfigured().into_client().prompt("Hello").await;
+            assert!(matches!(reply, Err(AiError::ConfigError(_))), "{reply:?}");
+
+            // An explicit mock is deliberate and answers offline.
+            let mock = resolve(&[(variable, name), ("GEMINI_API_KEY", "mock_gemini")]).unwrap();
+            let reply = mock.into_auto_client().unwrap().prompt("Hello").await;
+            assert!(reply.unwrap().starts_with("Mock response"));
+            // A live provider is used as configured.
+            let live = resolve(&[(variable, name), ("OPENAI_API_KEY", "sk-fixture-live")]);
+            assert!(live.unwrap().into_auto_client().is_ok());
+        }
+        // An environment that cannot be resolved fails closed as well.
+        assert!(matches!(
+            resolve(&[("RULLST_ENV", "not-an-environment")]).unwrap().into_auto_client(),
+            Err(AiError::ConfigError(text)) if text == INVALID_ENVIRONMENT
+        ));
+    }
+
+    #[tokio::test]
+    async fn development_and_test_keep_the_offline_fixture_without_a_provider() {
+        for environment in [
+            &[("RULLST_ENV", "development")][..],
+            &[("APP_ENV", "test")],
+            &[("OPENAI_API_KEY", "")],
+        ] {
+            let client = resolve(environment).unwrap().into_auto_client().unwrap();
+            assert!(
+                client
+                    .prompt("Hello")
+                    .await
+                    .unwrap()
+                    .starts_with("Mock response")
+            );
+            let client = resolve(environment).unwrap().into_client();
+            assert!(
+                client
+                    .prompt("Hello")
+                    .await
+                    .unwrap()
+                    .starts_with("Mock response")
+            );
+        }
     }
 
     #[test]

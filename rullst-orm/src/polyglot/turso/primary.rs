@@ -34,7 +34,11 @@ impl TursoOrm {
     /// Initializes from the generated Turso environment contract.
     ///
     /// Empty or `mock_*` endpoints select the deterministic fallback persisted
-    /// at `TURSO_OFFLINE_PATH` (default: `turso-development.db`).
+    /// at `TURSO_OFFLINE_PATH` (default: `turso-development.db`). This crate
+    /// does not read the runtime environment, so an empty or unset
+    /// `TURSO_DATABASE_URL` writes that local file in staging and production
+    /// too; refuse it there before calling, as the generated starter does
+    /// with `rullst::config::Environment`.
     pub async fn init_from_env() -> Result<(), PolyglotError> {
         let url = std::env::var("TURSO_DATABASE_URL").unwrap_or_default();
         let token = std::env::var("TURSO_AUTH_TOKEN").unwrap_or_default();

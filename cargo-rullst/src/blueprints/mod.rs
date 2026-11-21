@@ -82,6 +82,8 @@ mod dirty_tracking_tests;
 #[cfg(test)]
 mod monitor_tests;
 #[cfg(test)]
+mod turso_starter_tests;
+#[cfg(test)]
 mod tests {
     use super::*;
 

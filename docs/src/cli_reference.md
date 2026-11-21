@@ -1076,7 +1076,11 @@ Turso is supported only as the primary database of the Blank and API starters.
     gives `team_id`).
 
 Empty or `mock_*` credentials select a local development fixture, which is
-refused in production. Other credentials select the real Stripe profile
+refused in production. Since 13.0.0-rc.1 staging refuses empty credentials too
+(`BillingConfigError`, HTTP 503 from the billing routes), so only explicit `mock_*`
+values keep the fixture there; the SaaS starter's development `.env` sets them
+(`mock_billing_api_key`, `mock_billing_webhook_secret`) and its `.env.example`
+leaves them empty. Other credentials select the real Stripe profile
 (`BILLING_PROVIDER=stripe`, the only accepted value), which creates provider
 customers, checkout sessions and portal sessions, persists the
 owner/customer/attempt bindings and processes signed webhooks atomically. It
