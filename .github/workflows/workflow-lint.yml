@@ -109,6 +109,14 @@ jobs:
           python3 .github/test-rust-cache-policy.py
           python3 .github/check-rust-cache-policy.py
 
+      - name: Keep offline-mock fallbacks fail-closed
+        # AGENTS.md section 3.5: every site where an empty or mock_ setting can
+        # select an offline mock or a local fallback is classified in
+        # .github/fail-closed-sites.json.
+        run: |
+          python3 .github/test-check-fail-closed.py
+          python3 .github/check-fail-closed.py
+
       - name: Parse workflows and enforce immutable Action references
         uses: zgosalvez/github-actions-ensure-sha-pinned-actions@76ed8a4c86957c2d27d44bab47f172193149d926 # v5.0.11
 
