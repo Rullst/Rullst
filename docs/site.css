@@ -340,7 +340,7 @@ h1 { margin: 0; font-size: clamp(3rem, 4.5vw, 4rem); line-height: 1.08; font-wei
 .proof-security { border-color: #3e5a3c; background: linear-gradient(150deg, #15261c, #0e1719); }
 .proof-verification { border-color: #5c4431; background: linear-gradient(150deg, #241c16, #121014); }
 .proof-index, .security-index, .included-index { color: var(--green); font: 0.6rem/1.5 var(--mono); letter-spacing: 0.06em; }
-.proof-memory .proof-index, .security-optin .security-index { color: var(--blue); }
+.proof-memory .proof-index, .security-opt-in .security-index { color: var(--blue); }
 .proof-verification .proof-index, .security-verification .security-index, .included-index { color: var(--orange); }
 .proof-title { margin: 0.55rem 0 0.45rem; color: var(--text); font-size: 1.05rem; font-weight: 600; letter-spacing: -0.02em; }
 .proof-figure, .proof-meta { margin: 0; color: var(--muted); font-size: 0.84rem; line-height: 1.55; }
