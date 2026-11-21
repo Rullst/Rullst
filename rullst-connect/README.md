@@ -446,6 +446,16 @@ registered redirect URLs, account-linking policy, and post-login session
 rotation. See the
 [server-bound OAuth/OIDC tutorial](https://rullst.github.io/Rullst/book/tutorials/42-server-bound-oauth-sessions.html).
 
+**Deprecated `oauth_state` fallback.** When the session holds no challenge
+from `begin_oauth_session` or `begin_oidc_session`, `AuthSession` and
+`AuthSessionForm` still accept a state that the application stored itself
+under the `oauth_state` session key, as applications did before 12.0. It is
+consumed once and compared in constant time, but it has no expiry, PKCE
+verifier or OIDC nonce. Since 13.0.0-rc.1 each callback that uses it logs a
+`tracing` warning (without the state); the fallback is kept through 13.x.
+Start the login with `begin_oauth_session` or `begin_oidc_session` instead,
+or use `begin_login` and `finish_login` above.
+
 ### Safe profile serialization
 
 `ConnectUser` contains live credentials. Its Serde representation deliberately

@@ -20,7 +20,8 @@ const MAX_FORM_CALLBACK_BYTES: usize = 16 * 1024;
 /// a POST body (`response_mode=form_post`), such as Sign in with Apple. It
 /// consumes the same challenge that [`super::begin_oidc_session`] or
 /// [`super::begin_oauth_session`] stored and applies the same expiry,
-/// constant-time state comparison and single use as [`AuthSession`].
+/// constant-time state comparison and single use as [`AuthSession`]. Like
+/// [`AuthSession`], it also accepts the deprecated `oauth_state` fallback.
 ///
 /// The request must be a `POST` with an `application/x-www-form-urlencoded`
 /// body of at most 16 KiB; otherwise it is rejected before the challenge is

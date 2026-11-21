@@ -381,10 +381,22 @@ under an ID that SurrealDB parsed as a number, `NULL` or an exponent (for
 example `9`, `null` or `1e5`) keep that non-string key and are not found by
 these string IDs; rewrite them under their string key when upgrading.
 
-Graph queries must start with `MATCH`; semicolons, caller-provided `LIMIT`, and
-the `INSERT`, `SET`, `REMOVE`, and `DELETE` tokens are rejected. The adapter
-then appends its own 1–1,000 row limit. This is a conservative read boundary,
-not arbitrary SurrealQL execution or a graph mutation API. The `/gql` endpoint
+`GraphQuery::read_only` accepts only a fixed read grammar, an allowlist: `MATCH`,
+one or more comma-separated paths of nodes `(variable:label)` and edges
+`-[variable:label]->`, `<-[variable:label]-` or `-[variable:label]-` (variable
+and label optional), an optional `WHERE`, `RETURN` and an optional `ORDER BY`.
+`WHERE` compares a variable or property with `=`, `<>`, `<`, `<=`, `>` or `>=`
+to another one, an unsigned number or a quoted string without backslashes, or
+tests it with `IS [NOT] NULL`, joined with `AND`, `OR` and `NOT` (no
+parentheses). `RETURN` lists variables or properties with optional `AS`
+aliases, and `ORDER BY` lists them with optional `ASC` or `DESC`. Keywords are
+case-insensitive, and the grammar's keywords and `LIMIT` cannot be names.
+Everything else is refused with `PolyglotError::InvalidIdentifier` before any
+request: every write or catalog clause, including ones a later SurrealDB
+release may add, procedure and function calls, comments, parameters,
+semicolons and a caller-provided `LIMIT`. The adapter then appends its own
+1–1,000 row limit. This is a conservative read boundary, not arbitrary
+SurrealQL execution or a graph mutation API. The `/gql` endpoint
 requires SurrealDB 3.2 or newer and explicit experimental enablement on the
 3.2 release line; the live contract pins 3.2.4 and enables that capability.
 
