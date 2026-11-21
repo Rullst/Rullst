@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795226085110,
+  "lastUpdate": 1795230084437,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -22869,6 +22869,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 359,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e0ee395352152724f77f1b1f24b2e14f03abfe73",
+          "message": "Merge pull request #794 from Rullst/docs/v13-13-1-deep-performance-tests\n\ndocs(roadmap): record the 13.1 deep performance tests and the ORM/Media environment API",
+          "timestamp": "2026-11-20T23:46:12-03:00",
+          "tree_id": "0a54fcc7cac448948b3a039ecc69081bc3a64f9c",
+          "url": "https://github.com/Rullst/Rullst/commit/e0ee395352152724f77f1b1f24b2e14f03abfe73"
+        },
+        "date": 1795230083808,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1648,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 384,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 415,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
