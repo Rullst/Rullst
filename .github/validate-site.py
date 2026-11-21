@@ -338,6 +338,7 @@ LANGUAGES = {
            "slogan": "Intelligent, Security-Conscious, and Designed for Effortless Productivity",
            "performance": "measures each new Rullst release",
            "lede": "A full-stack web framework for Rust, built on <strong>Axum</strong> and <strong>SQLx</strong>",
+           "illustration": "Not live telemetry.",
            "disclosure": "Rullst's maintainer also maintains that benchmark",
            "no_audit": "no external audit has been completed",
            "maintainer": "Rullst has one maintainer",
@@ -349,6 +350,7 @@ LANGUAGES = {
               "slogan": "Inteligente, consciente da segurança e feito para uma produtividade sem esforço",
               "performance": "mede cada nova versão do Rullst",
               "lede": "Um framework web full-stack para Rust, construído sobre <strong>Axum</strong> e <strong>SQLx</strong>",
+              "illustration": "Não é telemetria ao vivo.",
               "disclosure": "O mantenedor do Rullst também mantém esse benchmark",
               "no_audit": "nenhuma auditoria externa foi concluída",
               "maintainer": "O Rullst tem um único mantenedor",
@@ -447,6 +449,10 @@ def validate_landing_sections(path: Path, source: str, home: Document, facts: di
     assert facts["lede"] in hero, f"{path.name}: the first screen must say what Rullst is in one sentence"
     assert hero.count('<li class="proof-card ') == 3, f"{path.name}: the first screen needs three proof points"
     assert INSTALL_PIN.search(hero), f"{path.name}: the first screen must show the install command"
+    engine = re.search(r'<div class="engine" aria-label="([^"]+)">', hero)
+    assert engine and facts["illustration"] in engine[1] and hero.count('class="engine-module ') == 3, (
+        f"{path.name}: the first screen keeps the animated concept illustration, labelled as not live telemetry"
+    )
     for start, end in (ASSEMBLER_BLOCKS["proof"], ASSEMBLER_BLOCKS["summary"]):
         assert source.count(start) == 1 == source.count(end), f"{path.name}: needs one {start} block"
         assert 'class="benchmark-pending' in source[source.index(start):source.index(end)], f"{path.name}: {start} needs its pending text"

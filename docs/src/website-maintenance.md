@@ -51,10 +51,13 @@ it names the guideline.
 
 The landing's sections come in this order, with the same ids in both
 languages: the first screen (what Rullst is in one sentence, the install
-command and three proof points), `#performance`, `#security` (with the
-`#verification` list), `#included`, `#integrations`, `#examples`, `#academy`
-and `#community`, then the release notice. The validator checks the order, the
-sentence, the install command and the three proof points.
+command, the animated concept illustration labelled as not live telemetry, and
+three proof points), `#performance`, `#security` (with the `#verification`
+list), `#included`, `#integrations`, `#examples`, `#academy` and `#community`,
+then the release notice. The validator checks the order, the sentence, the
+install command, the illustration and the three proof points; the browser test
+checks that the install command and the illustration fit in a 1440 × 1100
+first screen, and that every animation stops under reduced motion.
 
 - **Performance** shows Rullst as `cargo rullst new` generates it, from the
   same Rullst/Benchmarks `results/site.json` as the comparison page and with

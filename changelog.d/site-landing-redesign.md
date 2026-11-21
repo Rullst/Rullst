@@ -1,10 +1,10 @@
 ### Changed
 
 - The landing page (`https://rullst.win/` and `/pt-br/`) is reorganized around
-  evidence. The first screen says what Rullst is in one sentence, shows the
-  install command and three proof points with links (the security layers on
-  in every generated application, measured memory against Axum, the automated
-  verification). New sections follow: Performance, a summary of the latest
+  evidence. The first screen says what Rullst is in one sentence and shows the
+  install command, the animated concept illustration and three proof points
+  with links (the security layers on in every generated application, measured
+  memory against Axum, the automated verification). New sections follow: Performance, a summary of the latest
   Rullst/Benchmarks results (overall position range and score, the group that
   shares it, the categories level with or below Axum, memory, the minimal row
   and the ‡ caveat), filled at build time from the same `results/site.json` as

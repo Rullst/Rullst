@@ -211,6 +211,14 @@ try {
       const style = getComputedStyle(element);
       return { position: style.position, border: style.borderTopWidth, background: style.backgroundImage !== 'none' };
     })`), Array.from({length: 3}, () => ({position: "relative", border: "1px", background: true})), "All three proof cards must load their actual layout and box styling");
+    assert.deepEqual(await evaluate(`Array.from(document.querySelectorAll('.engine-module'), element => {
+      const style = getComputedStyle(element);
+      return { position: style.position, border: style.borderTopWidth, background: style.backgroundImage !== 'none' };
+    })`), Array.from({length: 3}, () => ({position: "absolute", border: "1px", background: true})), "All three engine cards must load their actual layout and box styling");
+    if (width === 1440) {
+      assert(await evaluate("scrollY === 0 && document.querySelector('#install-command').getBoundingClientRect().bottom <= innerHeight && document.querySelector('.engine').getBoundingClientRect().bottom <= innerHeight"),
+        "The install command and the concept illustration must be in the first screen");
+    }
     assert.deepEqual(await evaluate("[...document.querySelectorAll('main > section[id], main > header')].map(element => element.id || 'hero')"),
       ["hero", "performance", "security", "included", "integrations", "examples", "academy", "community"], "Landing sections and their order");
     assert.equal(await evaluate("document.querySelectorAll('.hero #install-command, .hero .proof-card').length"), 4, "The first screen shows the install command and three proof points");
