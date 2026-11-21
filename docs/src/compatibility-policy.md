@@ -168,6 +168,37 @@ normally minor-compatible. Changing default features is treated as an
 operationally significant minor change and requires package and generated-app
 regression tests.
 
+## Keeping 13.x compatible
+
+The maintainer intends a long 13.x line and no 14.0 by choice
+([release rule](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#release-rule)).
+These rules, adopted on 21 November 2026, keep later 13.x changes additive:
+
+- **Public types can grow.** Public enums, and structs with public fields
+  that may gain one, are `#[non_exhaustive]` (audited in 13.0.0-alpha.6).
+  New options go into an options struct or a builder method, not a new
+  positional parameter.
+- **Traits that applications implement** (for example `MailDriver` and
+  `VideoProvider`) gain methods only with a default implementation. A trait
+  that only Rullst implements may be sealed.
+- **No new third-party type in a public signature** unless its crate is in
+  [`.github/public-dependencies.json`](#public-dependencies); prefer a
+  Rullst-owned type, as the ORM's date and time types wrap jiff's.
+- **The `prelude` grows with care:** a new name in a glob-imported prelude
+  can make an application's own name ambiguous.
+- **A replaced API is deprecated, never removed in 13.x.** The replacement
+  ships in the same release with a `cargo rullst upgrade` rule and a
+  migration-guide entry, and the deprecated API keeps working until a major
+  release.
+- **Stored and wire formats are versioned.** Database rows, signed receipts,
+  protocols (such as the Labs runner protocol v1), configuration keys and CLI
+  flags keep their meaning; a rename keeps the stored form, as the Labs
+  variant renames of 13.0.0-rc.1 did.
+- **Safer defaults reach new projects first:** a changed default goes to the
+  generated project or behind an opt-in setting; existing applications keep
+  the old default until they opt in. The exception is the security rule
+  above: compatibility never overrides safety or fail-closed behavior.
+
 ## Public dependencies
 
 Some third-party crates are part of Rullst's public API: their types appear in

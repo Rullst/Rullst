@@ -46,7 +46,13 @@ limits of each capability, and [`CHANGELOG.md`](CHANGELOG.md) what shipped.
    after the freeze; it adds no feature.
 3. **13.0.0** follows once rc.1 leaves no open defect in the stability scope;
    the [maturity tiers](docs/src/maturity.md) and the 13.x support window
-   apply from it.
+   apply from it. It adds no new code: the maintainer's applications run rc.1
+   in production for about a week, only defects found in rc.1 are fixed, and
+   a fix that is not trivial means a `13.0.0-rc.2`. An independent skeptic
+   review of the changes since rc.1 runs before publication
+   ([MAINTAINING](MAINTAINING.md#7-releasing-a-prerelease)), and publication
+   needs the maintainer's explicit approval. Performance work does not hold
+   13.0.0; it goes to [13.1](#next-131).
 
 ### Planned after 13.0.0-alpha.6
 
@@ -74,10 +80,48 @@ Merged into `main` for rc.1:
   after 500 ms idle, instead of on every acquisition
   ([#780](https://github.com/Rullst/Rullst/pull/780)).
 
-Still in progress: the fixes from the applications upgraded to alpha.6 and an
-independent review of what the documentation claims.
+Also merged: the fixes from the applications upgraded to alpha.6
+([#781](https://github.com/Rullst/Rullst/pull/781)) and those from an
+independent review of what the documentation claims
+([#784](https://github.com/Rullst/Rullst/pull/784) to
+[#787](https://github.com/Rullst/Rullst/pull/787)).
+
+Planned on 21 November 2026 to close rc.1; anything else goes to 13.1:
+
+- **No silent mock or local fallback in staging or production:** one audit
+  of every provider and store, after three instances were found one by one
+  (mail, the AI provider chain and Turso). In staging and production an empty
+  or missing credential or URL is a configuration error, and only an explicit
+  `mock_*` value selects the offline mock.
+- **SurrealDB graph queries:** the read-only check accepts known read forms
+  instead of refusing known writing ones.
+- **The legacy `oauth_state` session key** of `rullst-connect` keeps working
+  through 13.x and logs a deprecation warning.
+- **Documentation:** the README features image regenerated, a "How Rullst is
+  verified" page and the compatibility rules for 13.x
+  ([compatibility policy](docs/src/compatibility-policy.md#keeping-13x-compatible)).
+  The comparison page takes the Benchmarks v3 results after their skeptic
+  review; the website is published from `main`, so it does not hold rc.1.
 
 ## Next: 13.1
+
+In this order (decided 21 November 2026), with no new crate:
+
+1. **Performance measured by Benchmarks v3,** with before-and-after numbers
+   and no public API change: `save()` without a transaction per row, the cost
+   of the generated middleware stack, `html!` loops and the pools built
+   outside `Orm`.
+2. **A design study, before any code, of Axum and SQLx at the public
+   boundary.** Their types appear in Rullst's public API listings (117 Axum
+   and 87 SQLx mentions), and both are before 1.0. Handlers and extractors
+   are Axum by design, so the goal is not to hide Axum: applications should
+   name `rullst::` paths, and a `cargo rullst upgrade` rule should carry an
+   Axum or SQLx move, so that it can stay inside 13.x.
+3. **A behavior version** (for example `[app] behavior = "13.2"`): new
+   projects get the newest safer defaults, existing projects keep theirs
+   until they opt in, and `cargo rullst upgrade` shows what changes. A first
+   use: refusing to start in a release build without `RULLST_ENV`.
+4. **The additions decided on 19 November 2026,** below.
 
 Additive, decided with the maintainer on 19 November 2026:
 
@@ -246,7 +290,7 @@ an independent review ([audit kit](docs/src/external-audit-kit.md)).
 | Live provider sandbox conformance | **Next (13.1):** Stripe and Bunny Stream nightly; Resend and OAuth providers later. |
 | Verus proofs | **13.x: hosted acceptance** of the manual-only `AgePolicy::permits` pilot, outside release admission ([scope](docs/src/verus-roadmap.md)). |
 | Shuttle (in place of Loom) | **Optional, no date** (31 October 2026): only the in-memory broker and the rate limiter; Loom does not model Tokio. |
-| Chaos testing with `fail-rs` | **Not planned** (31 October 2026): global failpoints are implicit runtime behaviour; injectable `Clock` traits and failing doubles instead. |
+| Chaos testing with `fail-rs` | **Not planned** (31 October 2026): global failpoints are implicit runtime behavior; injectable `Clock` traits and failing doubles instead. |
 | `cargo-vet` | **Not planned with a sole maintainer** (31 October 2026): exemptions become a rubber stamp; `cargo-deny`, `cargo audit`, SBOMs and attested releases cover the supply chain. |
 | Zero-allocation assertions, PGO/BOLT, AFL.rs, Cosign | **Deferred** until benchmarks, production profiles, healthy corpora for the 42 fuzz targets or separately distributed binaries exist. |
 | Cross-platform CI acceleration | **Deferred.** Acceptable only with (1) distinct target roots for repository and generated-project builds; (2) cold and warm times, cache hits, test and doctest counts recorded on all three systems; (3) the all-feature, outbox and live-provider matrices preserved; (4) caches keyed by OS, compiler, lockfile and profile, bounded, never evidence, not writable by untrusted pull requests; (5) nextest only with equivalent semantics, separate doctests and `cargo test` as recovery; (6) repeated green cold and warm runs on every OS, a material gain, no new flakes or lost tests, and a rollback path. |
