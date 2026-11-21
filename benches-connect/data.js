@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795225921046,
+  "lastUpdate": 1795229931755,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -15843,6 +15843,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 491,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e0ee395352152724f77f1b1f24b2e14f03abfe73",
+          "message": "Merge pull request #794 from Rullst/docs/v13-13-1-deep-performance-tests\n\ndocs(roadmap): record the 13.1 deep performance tests and the ORM/Media environment API",
+          "timestamp": "2026-11-20T23:46:12-03:00",
+          "tree_id": "0a54fcc7cac448948b3a039ecc69081bc3a64f9c",
+          "url": "https://github.com/Rullst/Rullst/commit/e0ee395352152724f77f1b1f24b2e14f03abfe73"
+        },
+        "date": 1795229931365,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 542,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
