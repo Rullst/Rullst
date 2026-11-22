@@ -6,25 +6,42 @@ deployments publish it:
 
 | Address | Built by | Contents |
 | --- | --- | --- |
-| `https://rullst.win/`, `/privacy.html`, `/compare/`, `/pt-br/`, `/pt-br/privacy.html`, `/pt-br/comparar/`, `/assets/` | `Rullst/Rullst.github.io`, workflow `deploy.yml` | The landing, privacy and comparison pages in both languages, the stylesheet, script and language-switcher flags |
+| `https://rullst.win/`, `/privacy.html`, `/compare/`, `/pt-br/`, `/pt-br/privacy.html`, `/pt-br/comparar/`, `/assets/` | `Rullst/Rullst.github.io`, workflow `deploy.yml`, which runs this repository's site generator | The landing, privacy and comparison pages in both languages, the stylesheet, script and language-switcher flags |
 | `https://rullst.win/Rullst/` | This repository's `pages.yml` | Only a redirect page to `https://rullst.win/`; nothing else moved |
 | `https://rullst.win/Rullst/book/`, `/Rullst/benches/`, `/Rullst/images/`, `/Rullst/llms.txt` | This repository's `pages.yml` | The mdBook, the benchmark dashboards, images and the LLM text indexes |
 | `https://rullst.win/Benchmarks/` | `Rullst/Benchmarks` | The cross-framework comparison (a separate project) |
 | `gh-pages` branch in this repository | Benchmark workflow data | Criterion history consumed by the Pages build; not a development branch |
 
-The landing design and copy have one editable source, in `docs/`:
+The pages are written by a Rust program in `site/` with Rullst's own `html!`
+macro: the design and copy are its source. It is a package of its own
+(`rullst-site`, `publish = false`, with its own `Cargo.lock` and an empty
+`[workspace]` table), outside the framework workspace and
+`.github/release-order.json`, so it is never published and the workspace build
+never compiles it. It depends on the published `rullst` crate, pinned exactly
+in `site/Cargo.toml`, rather than on this repository's path: the website then
+builds the same way whatever `main`'s workspace contains, a dependency change in
+the framework cannot break the site's `--locked` build, and the version the
+footer names is a release anyone can install. Moving the site to a newer
+Rullst is a change to that pin and to `site/Cargo.lock`.
 
-| File | Published at |
+| Source | Published at |
 | --- | --- |
-| `home_template.html` | `/` |
-| `home_template.pt-BR.html` | `/pt-br/` |
-| `privacy_template.html` | `/privacy.html` |
-| `privacy_template.pt-BR.html` | `/pt-br/privacy.html` |
-| `compare_template.html` | `/compare/` |
-| `compare_template.pt-BR.html` | `/pt-br/comparar/` |
-| `site.css`, `site.js` | `/assets/site.css`, `/assets/site.js` |
-| `flags/us.svg`, `flags/br.svg` | `/assets/flags/` |
-| `redirect_template.html` | `/Rullst/` (by `pages.yml`) |
+| `site/src/pages/landing/en_top.rs`, `en_bottom.rs` | `/` |
+| `site/src/pages/landing/pt_top.rs`, `pt_bottom.rs` | `/pt-br/` |
+| `site/src/pages/landing/art.rs` | the landing's illustrations, shared by both languages |
+| `site/src/pages/landing/mod.rs`, `site/src/pages/blocks.rs` | markup both languages share: the Included and example cards, head links, language switcher, static-page navigation and comparison topics |
+| `site/src/pages/made_with.rs` | the Made with Rullst card and footer line |
+| `site/src/pages/privacy/en.rs`, `pt.rs` | `/privacy.html`, `/pt-br/privacy.html` |
+| `site/src/pages/compare/en.rs`, `pt.rs` | `/compare/`, `/pt-br/comparar/` |
+| `site/src/benchmarks/` | the benchmark blocks of the landing and comparison pages |
+| `docs/site.css`, `docs/site.js` | `/assets/site.css`, `/assets/site.js` (embedded by the generator) |
+| `docs/flags/us.svg`, `docs/flags/br.svg` | `/assets/flags/` |
+| `docs/redirect_template.html` | `/Rullst/` (copied by `pages.yml`) |
+
+Text in the pages is written as `html!` string literals, which are the page's
+own source and are written as they are (`&amp;` stays an entity); every value
+that comes from data (benchmark results, page weights, versions) is
+interpolated with `{…}` and escaped by `html!`.
 
 Change both languages in the same pull request: `validate-site.py` fails when
 the two landing pages differ in section ids, external links (apart from the
@@ -50,19 +67,45 @@ it names the guideline.
 ## The landing page
 
 The landing's sections come in this order, with the same ids in both
-languages: the first screen (what Rullst is in one sentence, the install
-command, the animated concept illustration labelled as not live telemetry, and
-three proof points), `#performance`, `#security` (with the `#verification`
-list), `#included`, `#integrations`, `#examples`, `#academy` and `#community`,
-then the release notice. The validator checks the order, the sentence, the
-install command, the illustration and the three proof points; the browser test
-checks that the install command and the illustration fit in a 1440 × 1100
-first screen, and that every animation stops under reduced motion.
+languages: the first screen (what Rullst is in one sentence, a line naming the
+optional packages around it, the install command, the animated concept
+illustration labelled as not live telemetry, and three proof points),
+`#performance`, `#security` (with the `#verification` list), `#included`,
+`#integrations`, `#examples` (with the `#made-with` card), `#academy` and
+`#community`, then the release notice. The validator checks the order, the
+sentence, the install command, the illustration and the three proof points;
+the browser test checks that the install command and the illustration fit in a
+1440 × 1100 first screen, and that every animation stops under reduced motion.
+
+- **The first screen** keeps its first sentence for web developers (a
+  full-stack framework for Rust on Axum and SQLx with Blank, API and SaaS
+  starters) and adds one line on the parts around it, each an optional
+  Extension package linked to its documentation: AI (`crates/ai`), payments
+  (`crates/capital`), mail (`crates/mail`), messaging (`crates/messaging`),
+  IoT devices (`crates/iot`), learning platforms (the Labs runner contract)
+  and privacy (the `rullst-privacy` README). The validator requires the line
+  and its seven links in both languages. Name only parts whose documentation
+  and [maturity tier](maturity.md) support them.
+- **Made with Rullst** (`#made-with`, inside `#examples`) lists the
+  maintainer's applications that are live and built with Rullst: Rullst
+  Academy, Capoeira Vene, vene.win, the Rullst/Benchmarks results website and
+  these pages, each with a link and one line taken from its own front page
+  (checked on 22 November 2026; no figures). The card says that Academy,
+  capoeira and vene.win run on one Oracle Ampere A1 Arm machine and that the
+  two static websites are on GitHub Pages. Recheck the lines when an
+  application changes what it offers; add an application only when it is live
+  and built with Rullst, and leave out any application the maintainer has not
+  made public. The validator requires the five links in both languages.
+- **The footer of every page** says "Made with Rullst <version>" (Portuguese
+  "Feito com Rullst"), linked to `site/`, where the version is the `rullst`
+  crate in `site/Cargo.lock` (the validator checks it). On the two landings it
+  continues with the page's weight when the deployment measured it (see
+  [How the root site is deployed](#how-the-root-site-is-deployed)).
 
 - **Performance** shows Rullst as `cargo rullst new` generates it, from the
   same Rullst/Benchmarks `results/site.json` as the comparison page and with
   the same checks (see [the comparison page](#the-comparison-page)). The
-  assembler fills two blocks of each landing: `landing-proof` (the first
+  generator fills two blocks of each landing: `landing-proof` (the first
   screen's memory proof point: RAM under load and after the logins against
   Axum's, and Rullst's lowest speed score) and `landing-benchmarks` (the
   overall score and position range, who shares that range among the rows the
@@ -94,6 +137,8 @@ From the framework checkout, using Node 24 and a locally installed Chromium
 (`google-chrome`, or set `CHROME_BIN`):
 
 ```bash
+cargo test --locked --manifest-path site/Cargo.toml
+cargo build --locked --manifest-path site/Cargo.toml
 mdbook build docs
 python3 .github/set-book-language.py
 python3 .github/validate-site.py
@@ -121,8 +166,8 @@ with `python3 .github/generate-llms-txt.py --out <directory>`.
 The browser test checks both languages at desktop and 390/320-pixel layouts,
 the flag language switcher, keyboard and mobile navigation, the Academy
 greeting, clipboard success/denial, both privacy pages, both comparison pages
-and both landings at three widths (as written and with benchmark results
-assembled from the fixture, served under `/_rendered/`), reduced motion,
+and both landings at three widths (as generated without data and with
+benchmark results from the fixture, served under `/_rendered/`), reduced motion,
 no-JavaScript navigation, resource failures, CSP errors, external requests and
 browser storage. It is not a complete accessibility audit or cross-browser
 certification. Optional `--screenshots /absolute/output/directory` records
@@ -131,10 +176,12 @@ viewport previews without adding binary artifacts to the repository.
 ### Keep cached assets in sync with the page
 
 The landing references CSS and JavaScript with a content version, such as
-`/assets/site.css?v=<first-16-hex-digits-of-SHA-256>`. After editing either
-asset, compute its SHA-256 and update its reference in all four page
-templates. The validator and the assembler reject stale versions. This is cache
-invalidation, not an artifact-signing or browser integrity guarantee.
+`/assets/site.css?v=<first-16-hex-digits-of-SHA-256>`. The generator embeds
+`docs/site.css` and `docs/site.js` when it is built and computes that version
+from their bytes, so a rebuilt generator always writes the current one; it
+refuses to write a page whose asset reference is stale, unpublished or
+missing, and the validator checks the published asset against `docs/`. This is
+cache invalidation, not an artifact-signing or browser integrity guarantee.
 
 The browser regression check first stores an old unversioned stylesheet and
 script in a real four-hour browser cache, confirms they are reused, then loads
@@ -192,7 +239,7 @@ deployment downloads the site summary that `Rullst/Benchmarks` publishes with
 every set of results (`results/site.json` on its `main` branch, read from
 `raw.githubusercontent.com` because Cloudflare in front of `rullst.win`
 refuses runner requests), saves it as `benchmarks.json` in the working
-directory and runs the assembler with `--benchmarks`. The page has no script
+directory and runs the generator with `--benchmarks`. The page has no script
 and its CSP keeps `connect-src 'none'`. Rullst/Benchmarks documents the file
 in its README ("Machine-readable results") and writes it with
 `bench/site_summary.py`; `results/latest.json` there (schema
@@ -253,19 +300,19 @@ when there is no Portuguese note). The meta line names the date, the Rullst
 version and its source, Axum's version and links the measurement run and the
 [full results](https://rullst.win/Benchmarks/).
 
-Above the results, a static "How to read these numbers" block in each
-template (`benchmark-howto`, six points: 1.00× is Axum, ties and ±, the
+Above the results, a static "How to read these numbers" block on each
+comparison page (`benchmark-howto`, six points: 1.00× is Axum, ties and ±, the
 categories, the database usually comes first, the overall score is a summary
 with the 2:2:2:1:1 weights, and the two Rullst rows) follows the "How to read
 these results" section of the Rullst/Benchmarks README; the validator requires
 it in both languages, before the results block, naming the minimal row as the
-assembler labels it. Rullst's maintainer also maintains that benchmark: the
+generator labels it. Rullst's maintainer also maintains that benchmark: the
 section says so above the results and the reading ends with the same
 disclosure. Show Rullst's weaker results as plainly as its better ones; do
 not add wording that ranks or praises a framework beyond the data.
 
 Every value is checked before it reaches the page, and the whole file is
-discarded, leaving the template's "no current results" text, when any of
+discarded, leaving the page's "no current results" text, when any of
 these holds: another schema; a bad date, a date after the build day or a
 measurement more than 90 days old (`--benchmarks-max-age-days DAYS`, which
 `Rullst/Rullst.github.io` sets with its `BENCHMARKS_MAX_AGE_DAYS` variable);
@@ -274,12 +321,14 @@ sign, status, stability result or role the page does not explain; a
 position outside 1 to `ranked`; a negative or non-finite number; an
 unexpected version string; a reference other than Axum; a run URL outside
 `Rullst/Benchmarks` Actions runs; an empty reading or a note longer than 1,000
-characters. A file over 1 MiB is not downloaded. The deployment continues in
+characters; a file that is not a regular file of at most 1 MiB inside the
+working directory (a link out of it included). A file over 1 MiB is not
+downloaded. The deployment continues in
 every case and logs the reason as a warning, so the page never shows older or
 partially understood numbers. A change on the Benchmarks side that the page
 must show (a new flag, category, status or field) needs a new schema string
-there and a change to the assembler, the templates, this section and the
-fixture here.
+there and a change to the generator (`site/src/benchmarks/`), this section
+and the fixture here.
 
 `.github/fixtures/site-benchmarks.json` is the test fixture (its numbers are
 not measurements); `validate-site.py` renders it as of 21 November 2026 and
@@ -290,25 +339,65 @@ overall score and a category without a score), and that each kind of rejected
 data keeps the pending text on every page; `site-browser-smoke.mjs` renders it
 dated the current day and checks the tables and the landing summary at three
 widths without horizontal page scrolling. Passing `--organization-site` a
-directory assembled with `--benchmarks` previews the pages with real results.
+directory generated with `--benchmarks` previews the pages with real results.
+The checks that are about the program rather than its pages (dates, number
+formatting, note rendering) are its unit tests (`cargo test`).
 
 ## How the root site is deployed
 
 `Rullst/Rullst.github.io` has no copy of these files. Its `deploy.yml`
 workflow runs daily, on a push to that repository and on demand: it checks out
-this repository's `main` branch read-only (no token beyond its own read-only
-`GITHUB_TOKEN`, no secret), runs
+`site/` and `docs/`'s assets from this repository's `main` branch read-only (no
+token beyond its own read-only `GITHUB_TOKEN`, no secret), installs the Rust
+toolchain that `rust-toolchain.toml` names, builds the generator with
+`--locked`, downloads the benchmark summary, weighs the published landing
+pages and runs
 
 ```bash
-python3 .github/assemble-organization-site.py --out public_site
+site/target/debug/rullst-site --out public_site [--benchmarks] [--benchmarks-max-age-days DAYS] --footprint
 ```
 
-and deploys the result with `actions/deploy-pages`. The assembler refuses a
-stale asset version, a missing canonical URL or CSP, or an asset the pages
-reference but the site does not publish. To preview the root site locally:
+then deploys the result with `actions/deploy-pages`. A manual run can name
+another branch or commit of this repository (`rullst-ref`); it then builds and
+uploads the site without deploying it.
+
+The page weight is measured by `cargo rullst footprint`, the CLI release of the
+same version as the `rullst` crate the site is made with:
+`site/cargo-rullst.sha256` names the release file
+(`cargo-rullst-<version>-x86_64-unknown-linux-gnu`) and its SHA-256, which the
+workflow checks before running it, and the validator checks that its version
+is the one in `site/Cargo.lock`. Before generating, the workflow runs
 
 ```bash
-python3 .github/assemble-organization-site.py --out /path/to/empty/directory
+cargo-rullst rullst footprint --url https://rullst.win --path / --page-weight --json > footprint.json
+cargo-rullst rullst footprint --url https://rullst.win --path /pt-br/ --page-weight --json > footprint-pt-br.json
+```
+
+so the figure is the page as published before that deployment (the previous
+day's build, as visitors download it through Cloudflare, with its compression
+and anything Cloudflare adds). `--footprint` reads both reports from the
+working directory and shows "This page: N kB in M requests on a first visit …"
+on each landing only when its report passes every check: schema
+`rullst.footprint.v1`, the CLI version the site is made with, the published
+origin and that page's path, a measurement from the build day or the day
+before (UTC), no failure, every resource answered with 200, nothing left
+unfetched and no third-party origin. Otherwise the line is left out and the
+deployment logs why; it never shows an older number. Cloudflare answers most
+requests from GitHub's runners with 403, but on 22 November 2026 it let the
+`cargo-rullst-footprint/<version>` client through; if that changes, the
+reports fail their checks and the line disappears.
+`.github/fixtures/site-footprint.json` is a report of `/` measured on 22
+November 2026 (with the machine section replaced): the validator renders it,
+in both languages, and rejects an older report, another CLI version, a failed
+run, a refused resource, a third-party origin, another site, an unmeasured
+page and unfetched resources. The generator refuses an
+output directory that is not empty, and a page without its canonical URL or
+CSP or with an asset reference that is stale or not published. To preview the
+root site locally:
+
+```bash
+cargo build --locked --manifest-path site/Cargo.toml
+site/target/debug/rullst-site --out /path/to/empty/directory
 node .github/site-browser-smoke.mjs --organization-site /path/to/empty/directory
 ```
 

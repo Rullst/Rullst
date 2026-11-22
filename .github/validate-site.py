@@ -1,28 +1,31 @@
 #!/usr/bin/env python3
-"""Validate the static landing pages and benchmark templates without network I/O.
+"""Validate the generated root site and the benchmark templates without network I/O.
 
-The landing page and the full privacy notice, in English
-(docs/home_template.html, docs/privacy_template.html) and Brazilian
-Portuguese (docs/*.pt-BR.html), are published at https://rullst.win/ and
-https://rullst.win/pt-br/ by Rullst/Rullst.github.io through
-assemble-organization-site.py; /Rullst/ only serves
-docs/redirect_template.html, pointing there. The two languages must keep the
-same section ids, external links and integration names.
+The landing, privacy and comparison pages of https://rullst.win/, in English
+and Brazilian Portuguese, are written by the Rust program in site/ with
+Rullst's html! macro; Rullst/Rullst.github.io runs it to deploy them, and
+/Rullst/ only serves docs/redirect_template.html, pointing there. This script
+runs the built generator (RULLST_SITE_BIN, default
+site/target/debug/rullst-site; build it with
+`cargo build --locked --manifest-path site/Cargo.toml`) and checks what it
+writes: the two languages must keep the same section ids, external links and
+integration names, and the benchmark and page-weight data must render only
+when every check passes.
 """
 
 from __future__ import annotations
 
-from contextlib import redirect_stderr
 import copy
 from datetime import date
 from html import unescape
-import io
 import json
 import os
 from html.parser import HTMLParser
 from hashlib import sha256
 import importlib.util
 import re
+import shutil
+import subprocess
 import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
@@ -30,13 +33,28 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
-HOME = DOCS / "home_template.html"
-PRIVACY = DOCS / "privacy_template.html"
-HOME_PT_BR = DOCS / "home_template.pt-BR.html"
-PRIVACY_PT_BR = DOCS / "privacy_template.pt-BR.html"
-COMPARE = DOCS / "compare_template.html"
-COMPARE_PT_BR = DOCS / "compare_template.pt-BR.html"
+# The generated pages, written by main() into a temporary directory.
+SITE = Path()
+HOME = SITE / "index.html"
+PRIVACY = SITE / "privacy.html"
+HOME_PT_BR = SITE / "pt-br/index.html"
+PRIVACY_PT_BR = SITE / "pt-br/privacy.html"
+COMPARE = SITE / "compare/index.html"
+COMPARE_PT_BR = SITE / "pt-br/comparar/index.html"
+GENERATOR = Path(os.environ.get("RULLST_SITE_BIN") or ROOT / "site/target/debug/rullst-site")
+# Published path -> the file it comes from, for the generated assets.
+PUBLISHED = (
+    "index.html", "privacy.html", "pt-br/index.html", "pt-br/privacy.html", "compare/index.html",
+    "pt-br/comparar/index.html", "assets/site.css", "assets/site.js", "assets/flags/us.svg", "assets/flags/br.svg",
+)
+ASSET_SOURCES = {
+    "assets/site.css": DOCS / "site.css", "assets/site.js": DOCS / "site.js",
+    "assets/flags/us.svg": DOCS / "flags/us.svg", "assets/flags/br.svg": DOCS / "flags/br.svg",
+}
 BENCHMARK_FIXTURE = ROOT / ".github" / "fixtures" / "site-benchmarks.json"
+FOOTPRINT_FIXTURE = ROOT / ".github" / "fixtures" / "site-footprint.json"
+# The day the footprint fixture was measured (its measured_at).
+FOOTPRINT_DAY = "2026-11-22"
 # The day the fixture is rendered as of (its measured_on is the day before).
 FIXTURE_DAY = date(2026, 11, 21)
 REDIRECT = DOCS / "redirect_template.html"
@@ -56,11 +74,15 @@ PT_BR_COUNTERPARTS = {
 }
 BENCH_TEMPLATES = sorted(DOCS.glob("benches*_template.html"))
 README = ROOT / "README.md"
-# The blocks assemble-organization-site.py fills on each landing page.
-ASSEMBLER_BLOCKS = {
-    "proof": ("<!-- landing-proof:start -->", "<!-- landing-proof:end -->"),
-    "summary": ("<!-- landing-benchmarks:start -->", "<!-- landing-benchmarks:end -->"),
+# The blocks the generator fills on each landing page: from its container to the
+# markup that follows it.
+GENERATOR_BLOCKS = {
+    "proof": ("<div class=\"proof-data\" data-landing-proof>", "</div>"),
+    "summary": ("<div class=\"landing-bench\" data-landing-benchmarks>", "<div class=\"performance-links\">"),
 }
+RESULTS_BLOCK = ("<div class=\"benchmark-results\" data-benchmark-results>", "</section>")
+MINIMAL_NAMES = {"en": "Rullst (minimal)", "pt-BR": "Rullst (mínimo)"}
+FLAG_SIGNS = ("*", "†", "‡", "≈")
 
 
 LLMS_INDEX_LIMIT = 128 * 1024
@@ -339,6 +361,9 @@ LANGUAGES = {
            "performance": "measures each new Rullst release",
            "lede": "A full-stack web framework for Rust, built on <strong>Axum</strong> and <strong>SQLx</strong>",
            "illustration": "Not live telemetry.",
+           "around": "…and the pieces around it, each an optional package:",
+           "made_with": "Made with ",
+           "page_weight": "This page: 484 kB in 7 requests on a first visit",
            "disclosure": "Rullst's maintainer also maintains that benchmark",
            "no_audit": "no external audit has been completed",
            "maintainer": "Rullst has one maintainer",
@@ -351,13 +376,16 @@ LANGUAGES = {
               "performance": "mede cada nova versão do Rullst",
               "lede": "Um framework web full-stack para Rust, construído sobre <strong>Axum</strong> e <strong>SQLx</strong>",
               "illustration": "Não é telemetria ao vivo.",
+              "around": "…e as peças ao redor dele, cada uma um pacote opcional:",
+              "made_with": "Feito com ",
+              "page_weight": "Esta página: 484 kB em 7 requisições na primeira visita",
               "disclosure": "O mantenedor do Rullst também mantém esse benchmark",
               "no_audit": "nenhuma auditoria externa foi concluída",
               "maintainer": "O Rullst tem um único mantenedor",
               "banned": ("revolucionári", "o melhor", "nenhum outro framework", "o único framework", "framework único",
                          "mais seguro", "experimental", "de classe mundial")},
 }
-# The landing sections, in page order, and the blocks the assembler fills.
+# The landing sections, in page order.
 LANDING_SECTIONS = ("performance", "security", "included", "integrations", "examples", "academy", "community")
 LANDING_CHECKED = re.compile(r'<p class="(?:landing-checked|security-compare)" id="(checked-[a-z]+)">(.*?)</p>', re.DOTALL)
 
@@ -371,7 +399,7 @@ def validate_language_links(path: Path, source: str, page: str, lang: str, pt_pa
     english, portuguese = f"/{page}", f"/pt-br/{page}" if pt_page is None else f"/{pt_page}"
     assert f'<html lang="{lang}">' in source, f"{path.name}: <html lang> must be {lang}"
     for hreflang, href in (("en", english), ("pt-BR", portuguese), ("x-default", english)):
-        alternate = f'<link rel="alternate" hreflang="{hreflang}" href="{SITE_URL}{href[1:]}">'
+        alternate = f'<link rel="alternate" hreflang="{hreflang}" href="{SITE_URL}{href[1:]}" />'
         assert alternate in source, f"{path.name}: missing {alternate}"
     switcher = re.search(r'<div class="lang-switch" role="group" aria-label="[^"]+">(.*?)</div>', source, re.DOTALL)
     assert switcher, f"{path.name}: missing the language switcher"
@@ -404,13 +432,14 @@ def validate_landing(lang: str) -> tuple[Document, str]:
         f"{path.name}: install command must pin the current CLI version ={cli_version[1]}: {pins}"
     )
     assert "Content-Security-Policy" in source, f"{path.name}: must declare a CSP"
-    assert f'<link rel="canonical" href="{facts["url"]}">' in source, f"{path.name}: canonical must be {facts['url']}"
-    assert f'<meta property="og:url" content="{facts["url"]}">' in source, f"{path.name}: og:url must be {facts['url']}"
-    assert f'<meta property="og:locale" content="{facts["locale"]}">' in source, f"{path.name}: og:locale"
+    assert f'<link rel="canonical" href="{facts["url"]}" />' in source, f"{path.name}: canonical must be {facts['url']}"
+    assert f'<meta property="og:url" content="{facts["url"]}" />' in source, f"{path.name}: og:url must be {facts['url']}"
+    assert f'<meta property="og:locale" content="{facts["locale"]}" />' in source, f"{path.name}: og:locale"
     assert "academy" in home.ids and any(link.startswith("https://academy.rullst.win/") for link in home.links), (
         f"{path.name}: must keep the Academy section"
     )
     validate_landing_sections(path, source, home, facts)
+    validate_made_with(path, source, facts)
     assert source.count('class="demo-host-note"') == 4, f"{path.name}: every Azure-hosted demo needs its startup note"
     assert not home.inline_behavior, f"{path.name}: inline behavior/style: {home.inline_behavior}"
     for references, filename in ((home.stylesheets, "site.css"), (home.scripts, "site.js")):
@@ -435,7 +464,7 @@ def validate_landing(lang: str) -> tuple[Document, str]:
 
 
 def section_text(source: str, ident: str) -> str:
-    match = re.search(rf'<section id="{ident}" .*?\n    </section>\n', source, re.DOTALL)
+    match = re.search(rf'<section id="{ident}" .*?</section>', source, re.DOTALL)
     assert match, f"landing is missing the #{ident} section"
     return match[0]
 
@@ -453,15 +482,16 @@ def validate_landing_sections(path: Path, source: str, home: Document, facts: di
     assert engine and facts["illustration"] in engine[1] and hero.count('class="engine-module ') == 3, (
         f"{path.name}: the first screen keeps the animated concept illustration, labelled as not live telemetry"
     )
-    for start, end in (ASSEMBLER_BLOCKS["proof"], ASSEMBLER_BLOCKS["summary"]):
-        assert source.count(start) == 1 == source.count(end), f"{path.name}: needs one {start} block"
-        assert 'class="benchmark-pending' in source[source.index(start):source.index(end)], f"{path.name}: {start} needs its pending text"
+    for name in ("proof", "summary"):
+        start = GENERATOR_BLOCKS[name][0]
+        assert source.count(start) == 1, f"{path.name}: needs one {start} block"
+        assert landing_pending(source, name), f"{path.name}: {start} needs its pending text"
     performance = section_text(source, "performance")
     assert {"/Rullst/benches/", "/Benchmarks/"} <= set(re.findall(r'href="([^"]+)"', performance)), (
         f"{path.name}: Performance must link the microbenchmarks and the full results"
     )
     assert facts["performance"] in performance, f"{path.name}: Performance must say when the cross-framework comparison is measured"
-    assert facts["disclosure"] in performance and performance.index(facts["disclosure"]) < performance.index(ASSEMBLER_BLOCKS["summary"][0]), (
+    assert facts["disclosure"] in performance and performance.index(facts["disclosure"]) < performance.index(GENERATOR_BLOCKS["summary"][0]), (
         f"{path.name}: Performance must say who maintains the benchmark before the results"
     )
     security = section_text(source, "security")
@@ -506,7 +536,7 @@ def validate_static_page(path: Path, lang: str, page: str, pt_page: str | None, 
     assert "script-src 'none'" in source, f"{path.name}: must forbid scripts"
     assert not privacy.scripts and not privacy.inline_behavior and not privacy.embeds, f"{path.name}: must stay static"
     url = SITE_URL + (page if lang == "en" else (pt_page or f"pt-br/{page}"))
-    assert f'<link rel="canonical" href="{url}">' in source, f"{path.name}: canonical URL must be {url}"
+    assert f'<link rel="canonical" href="{url}" />' in source, f"{path.name}: canonical URL must be {url}"
     assert "connect-src 'none'" in source, f"{path.name}: must forbid connections"
     assert 'name="referrer" content="no-referrer"' in source, f"{path.name}: must suppress outgoing referrers"
     css_version = sha256((DOCS / "site.css").read_bytes()).hexdigest()[:16]
@@ -532,7 +562,7 @@ CHECKED_PACKAGE_VERSION = re.compile(r"([a-z0-9_-]+) [0-9][0-9A-Za-z.+-]*")
 UI_FRAMEWORKS = re.compile(r'<section id="ui-frameworks" [^>]*>(.*?)</section>', re.DOTALL)
 
 
-def validate_comparison(home: Document, home_pt: Document, assembler) -> None:
+def validate_comparison(home: Document, home_pt: Document) -> None:
     """The comparison pages: same facts in both languages, data-driven benchmarks."""
     compare, source = validate_static_page(COMPARE, "en", "compare/", "pt-br/comparar/", home)
     compare_pt, source_pt = validate_static_page(COMPARE_PT_BR, "pt-BR", "compare/", "pt-br/comparar/", home_pt)
@@ -565,22 +595,22 @@ def validate_comparison(home: Document, home_pt: Document, assembler) -> None:
     for text, name in ((source, COMPARE.name), (source_pt, COMPARE_PT_BR.name)):
         for topic in re.findall(r'<div class="compare-topic" id="[a-z-]+">(.*?)</dl>', text, re.DOTALL):
             assert re.findall(r"<dt>(.*?)</dt>", topic) == ["Rullst", "Loco", "Topcoat"], f"{name}: each topic covers the three"
-        assert text.count(assembler.BENCHMARK_START) == 1 and 'class="benchmark-pending"' in text, (
+        assert text.count(RESULTS_BLOCK[0]) == 1 and 'class="benchmark-pending"' in text, (
             f"{name}: needs the benchmark-results block with its pending text"
         )
     # "How to read these numbers": the same six points in both languages, naming
-    # the minimal row as the assembler labels it, before the results block.
+    # the minimal row as the generator labels it, before the results block.
     for text, name, lang in ((source, COMPARE.name, "en"), (source_pt, COMPARE_PT_BR.name, "pt-BR")):
         howto = re.search(r'<div class="benchmark-howto">(.*?)</div>', text, re.DOTALL)
         assert howto and len(re.findall(r"<li>", howto[1])) == 6, f"{name}: needs the six-point benchmark-howto block"
-        assert text.index('class="benchmark-howto"') < text.index(assembler.BENCHMARK_START), f"{name}: benchmark-howto goes before the results"
-        minimal = assembler.TEXT[lang]["names"][assembler.MINIMAL]
+        assert text.index('class="benchmark-howto"') < text.index(RESULTS_BLOCK[0]), f"{name}: benchmark-howto goes before the results"
+        minimal = MINIMAL_NAMES[lang]
         assert f'"{minimal}"' in howto[1] and "cargo rullst new" in howto[1], f"{name}: benchmark-howto must explain {minimal}"
         assert all(sign in howto[1] for sign in ("1.00×" if lang == "en" else "1,00×", "±", "3–7")), (
             f"{name}: benchmark-howto must explain the 1.00× reference, the ± margin and position ranges"
         )
     assert "/compare/" in home.links and "/pt-br/comparar/" in home_pt.links, "landing pages must link the comparison"
-    validate_benchmark_rendering(assembler)
+    validate_benchmark_rendering()
 
 
 PENDING = 'class="benchmark-pending"'
@@ -651,22 +681,58 @@ LANDING_RENDERING = {
 
 
 def landing_block(rendered: str, name: str) -> str:
-    start, end = ASSEMBLER_BLOCKS[name]
-    return rendered[rendered.index(start):rendered.index(end)]
+    start, end = GENERATOR_BLOCKS[name]
+    begin = rendered.index(start) + len(start)
+    return rendered[begin:rendered.index(end, begin)]
 
 
 def landing_pending(rendered: str, name: str) -> bool:
     return 'class="benchmark-pending' in landing_block(rendered, name)
 
 
-def results_block(rendered: str, assembler) -> str:
-    return rendered[rendered.index(assembler.BENCHMARK_START):rendered.index(assembler.BENCHMARK_END)]
+def results_block(rendered: str) -> str:
+    start, end = RESULTS_BLOCK
+    begin = rendered.index(start) + len(start)
+    return rendered[begin:rendered.index(end, begin)]
 
 
 def table_rows(results: str) -> list[str]:
     """The row names of the first (scores) table."""
     table = results[:results.index("</table>")]
     return re.findall(r'<tr(?: class="benchmark-diagnostic")?><th scope="row">([^<]+)<', table)
+
+
+# The files the generator reads from its working directory, by fixed name.
+BENCHMARK_INPUT = "benchmarks.json"
+FOOTPRINT_INPUTS = ("footprint.json", "footprint-pt-br.json")
+
+
+def write_input(path: Path, text: str) -> None:
+    """Write one downloaded-data stand-in for the generator."""
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(text)
+
+
+def generate(work: Path, benchmarks: str | None = None, today: str | None = None, max_age_days: int | None = None,
+             footprint: dict[str, str] | None = None) -> tuple[Path, str]:
+    """Run the generator in WORK (a new directory) with the given downloaded data; its output and warnings."""
+    work.mkdir(parents=True)
+    args = [str(GENERATOR), "--out", str(work / "site")]
+    if benchmarks is not None:
+        write_input(work / BENCHMARK_INPUT, benchmarks)
+        args.append("--benchmarks")
+    if max_age_days is not None:
+        args += ["--benchmarks-max-age-days", str(max_age_days)]
+    if footprint is not None:
+        for name in FOOTPRINT_INPUTS:
+            if name in footprint:
+                write_input(work / name, footprint[name])
+        args.append("--footprint")
+    if today is not None:
+        args += ["--today", today]
+    result = subprocess.run(args, cwd=work, capture_output=True, text=True, timeout=60, check=False)
+    assert result.returncode == 0, f"the generator failed: {result.stderr}"
+    return work / "site", result.stderr
 
 
 def fixture_variant(change) -> str:
@@ -701,30 +767,33 @@ REJECTED = (
 )
 
 
-def validate_benchmark_rendering(assembler) -> None:
+UNPUBLISHED = "This run publishes no overall score; the categories are the result."
+BENCHMARK_MAX_AGE_DAYS = 90
+
+
+def validate_benchmark_rendering() -> None:
     """The results block rendered from the fixture, and the data that must keep the pending text."""
     with tempfile.TemporaryDirectory(prefix="rullst-root-site-") as temp:
-        assembler.assemble(Path(temp) / "data", benchmarks=BENCHMARK_FIXTURE, today=FIXTURE_DAY)
+        site, _warnings = generate(Path(temp) / "data", BENCHMARK_FIXTURE.read_text(encoding="utf-8"), FIXTURE_DAY.isoformat())
         for page, (lang, expected) in FIXTURE_RENDERING.items():
-            rendered = (Path(temp) / "data" / page).read_text(encoding="utf-8")
+            rendered = (site / page).read_text(encoding="utf-8")
             document = Document()
             document.feed(rendered)
             validate_document(Path(page), document)
             assert PENDING not in rendered, f"{page}: benchmark rows were not rendered"
             missing = [text for text in expected if text not in rendered]
             assert not missing, f"{page}: unexpected benchmark rendering, missing {missing}"
-            results = results_block(rendered, assembler)
+            results = results_block(rendered)
             # The fixture's FastAPI row is not one the page shows.
             assert "FastAPI" not in results, f"{page}: renders a framework outside the comparison"
             # By overall position (Loco before Rullst in their shared 3–4 by score),
             # the row without an overall position after them, the diagnostic last.
-            minimal = assembler.TEXT[lang]["names"][assembler.MINIMAL]
             rows = table_rows(results)
-            assert rows == ["Actix Web", "Topcoat", "Loco", "Rullst", "Gin", minimal], f"{page}: benchmark rows {rows}"
+            assert rows == ["Actix Web", "Topcoat", "Loco", "Rullst", "Gin", MINIMAL_NAMES[lang]], f"{page}: benchmark rows {rows}"
             legend = re.search(r'<ul class="benchmark-legend">(.*?)</ul>', results, re.DOTALL)
-            assert legend and all(sign in legend[1] for sign in assembler.FLAGS.values()), f"{page}: the legend must explain every sign shown"
+            assert legend and all(sign in legend[1] for sign in FLAG_SIGNS), f"{page}: the legend must explain every sign shown"
         for page, (lang, expected) in LANDING_RENDERING.items():
-            rendered = (Path(temp) / "data" / page).read_text(encoding="utf-8")
+            rendered = (site / page).read_text(encoding="utf-8")
             document = Document()
             document.feed(rendered)
             validate_document(Path(page), document)
@@ -736,67 +805,65 @@ def validate_benchmark_rendering(assembler) -> None:
             cells = re.findall(r'<span class="landing-bench-value">([^<]*)</span>|<strong class="landing-bench-score">([^<]*)</strong>', summary)
             values = "".join(value + score for value, score in cells)
             values += re.search(r'<p class="landing-bench-minimal">(.*?)</p>', summary, re.DOTALL)[1]
-            signs = {sign for sign in assembler.FLAGS.values() if sign in values}
+            signs = {sign for sign in FLAG_SIGNS if sign in values}
             assert legend and signs and all(f"<li>{sign} " in legend[1] for sign in signs), f"{page}: the legend must explain {signs}"
             assert "database_note" not in summary and "†" not in summary, f"{page}: the landing explains a sign it does not show"
-    # Backtick spans of a note: only short, balanced ones without markup become <code>.
-    for note, html in (("`a` & `b`", "<code>a</code> &amp; <code>b</code>"), ("`a", "`a"), ("``", "``"), ("` `", "` `"),
-                       ("`" + "x" * 81 + "`", "`" + "x" * 81 + "`"), ("`x\ny`", "`x\ny`"), ('`"q"`', "<code>&quot;q&quot;</code>"),
-                       ("`<i>` `ok` `", "`&lt;i&gt;` <code>ok</code> `")):
-        assert assembler.render_note(note) == html, f"note {note!r} rendered as {assembler.render_note(note)!r}"
-    assert (FIXTURE_DAY - date(2026, 8, 22)).days > assembler.BENCHMARK_MAX_AGE_DAYS >= (FIXTURE_DAY - date(2026, 11, 20)).days, (
+    # Note rendering (backtick spans) is unit-tested in site/src/benchmarks/format.rs.
+    assert (FIXTURE_DAY - date(2026, 8, 22)).days > BENCHMARK_MAX_AGE_DAYS >= (FIXTURE_DAY - date(2026, 11, 20)).days, (
         "the fixture's dates must test both sides of the default age limit"
     )
-    # The assembler reads results only from inside the working directory.
-    with tempfile.TemporaryDirectory(prefix=".validate-site-", dir=ROOT) as temp:
-        data = Path(temp) / "data.json"
+    with tempfile.TemporaryDirectory(prefix="rullst-root-site-") as temp:
         for index, (label, change, warning) in enumerate(REJECTED):
-            data.write_text(fixture_variant(change), encoding="utf-8")
-            with redirect_stderr(io.StringIO()) as warnings:
-                assembler.assemble(Path(temp) / f"rejected-{index}", benchmarks=data, today=FIXTURE_DAY)
-            assert warning in warnings.getvalue(), f"{label}: expected a warning with {warning!r}, got {warnings.getvalue()!r}"
+            site, warnings = generate(Path(temp) / f"rejected-{index}", fixture_variant(change), FIXTURE_DAY.isoformat())
+            assert warning in warnings, f"{label}: expected a warning with {warning!r}, got {warnings!r}"
             for page in FIXTURE_RENDERING:
-                rendered = (Path(temp) / f"rejected-{index}" / page).read_text(encoding="utf-8")
+                rendered = (site / page).read_text(encoding="utf-8")
                 assert PENDING in rendered and "benchmark-table" not in rendered, f"{label}: {page} must keep the pending text"
             for page in LANDING_RENDERING:
-                rendered = (Path(temp) / f"rejected-{index}" / page).read_text(encoding="utf-8")
+                rendered = (site / page).read_text(encoding="utf-8")
                 assert landing_pending(rendered, "proof") and landing_pending(rendered, "summary"), f"{label}: {page} must keep the pending text"
                 assert "landing-bench-split" not in rendered and "MiB" not in rendered, f"{label}: {page} shows numbers"
         # The age limit is configurable: the same results within a longer limit are shown.
-        data.write_text(fixture_variant(lambda d: d.update(measured_on="2026-08-22")), encoding="utf-8")
-        assembler.assemble(Path(temp) / "longer-limit", benchmarks=data, today=FIXTURE_DAY, max_age_days=100)
-        assert PENDING not in (Path(temp) / "longer-limit" / COMPARE_PAGE).read_text(encoding="utf-8"), "--benchmarks-max-age-days must apply"
+        site, _warnings = generate(Path(temp) / "longer-limit", fixture_variant(lambda d: d.update(measured_on="2026-08-22")),
+                                   FIXTURE_DAY.isoformat(), max_age_days=100)
+        assert PENDING not in (site / COMPARE_PAGE).read_text(encoding="utf-8"), "--benchmarks-max-age-days must apply"
+        # The generator reads only benchmarks.json in its working directory, never a link out of it.
+        work = Path(temp) / "outside"
+        work.mkdir()
+        shutil.copyfile(BENCHMARK_FIXTURE, Path(temp) / "elsewhere.json")
+        (work / BENCHMARK_INPUT).symlink_to(Path(temp) / "elsewhere.json")
+        result = subprocess.run([str(GENERATOR), "--out", str(work / "site"), "--benchmarks", "--today", FIXTURE_DAY.isoformat()],
+                                cwd=work, capture_output=True, text=True, timeout=60, check=False)
+        assert result.returncode == 0 and "inside the working directory" in result.stderr, f"a results link out of the working directory: {result.stderr!r}"
+        assert PENDING in (work / "site" / COMPARE_PAGE).read_text(encoding="utf-8"), "results read through a link must not be shown"
         # The minimal row is extra: data without it shows the other rows and no
         # placeholder for it; a missing compared framework says it is not in this run.
-        data.write_text(fixture_variant(lambda d: d.update(rows=[r for r in d["rows"] if r["slug"] not in ("rullst-minimal", "gin")])), encoding="utf-8")
-        assembler.assemble(Path(temp) / "no-minimal", benchmarks=data, today=FIXTURE_DAY)
-        results = results_block((Path(temp) / "no-minimal" / COMPARE_PAGE).read_text(encoding="utf-8"), assembler)
+        site, _warnings = generate(Path(temp) / "no-minimal", fixture_variant(
+            lambda d: d.update(rows=[r for r in d["rows"] if r["slug"] not in ("rullst-minimal", "gin")])), FIXTURE_DAY.isoformat())
+        results = results_block((site / COMPARE_PAGE).read_text(encoding="utf-8"))
         assert table_rows(results) == ["Actix Web", "Topcoat", "Loco", "Rullst", "Gin"], f"rows without the minimal one: {table_rows(results)}"
         assert '<td colspan="7">Not in this measurement run.</td>' in results, "a missing framework must say it is not in this run"
         # Without a published overall score the page has no Overall column and says so.
-        data.write_text(fixture_variant(lambda d: d.update(overall_published=False, weights={})), encoding="utf-8")
-        assembler.assemble(Path(temp) / "no-overall", benchmarks=data, today=FIXTURE_DAY)
-        results = results_block((Path(temp) / "no-overall" / COMPARE_PAGE).read_text(encoding="utf-8"), assembler)
-        assert ">Overall<" not in results and assembler.TEXT["en"]["unpublished"] in results, "an unpublished overall score must not be shown"
+        site, _warnings = generate(Path(temp) / "no-overall", fixture_variant(lambda d: d.update(overall_published=False, weights={})),
+                                   FIXTURE_DAY.isoformat())
+        results = results_block((site / COMPARE_PAGE).read_text(encoding="utf-8"))
+        assert ">Overall<" not in results and UNPUBLISHED in results, "an unpublished overall score must not be shown"
         assert table_rows(results)[:3] == ["Rullst", "Loco", "Topcoat"], "without an overall score the rows keep the fixed order"
         # A source the page does not name is left out of the meta line, not rendered.
-        data.write_text(fixture_variant(lambda d: d.update(rullst_source={"kind": ["crates.io"]})), encoding="utf-8")
-        assembler.assemble(Path(temp) / "other-source", benchmarks=data, today=FIXTURE_DAY)
-        results = results_block((Path(temp) / "other-source" / COMPARE_PAGE).read_text(encoding="utf-8"), assembler)
+        site, _warnings = generate(Path(temp) / "other-source", fixture_variant(lambda d: d.update(rullst_source={"kind": ["crates.io"]})),
+                                   FIXTURE_DAY.isoformat())
+        results = results_block((site / COMPARE_PAGE).read_text(encoding="utf-8"))
         assert "with Rullst 13.0.0-alpha.6, against Axum" in results, "an unknown Rullst source must be left out"
-        validate_landing_variants(assembler, Path(temp), data)
+        validate_landing_variants(Path(temp))
 
 
-def assemble_variant(assembler, temp: Path, data: Path, name: str, change) -> tuple[str, str, str]:
+def generate_variant(temp: Path, name: str, change) -> tuple[str, str, str]:
     """English landing, comparison page and warnings for one fixture variant."""
-    data.write_text(fixture_variant(change), encoding="utf-8")
-    with redirect_stderr(io.StringIO()) as warnings:
-        assembler.assemble(temp / name, benchmarks=data, today=FIXTURE_DAY)
-    return ((temp / name / "index.html").read_text(encoding="utf-8"),
-            (temp / name / COMPARE_PAGE).read_text(encoding="utf-8"), warnings.getvalue())
+    site, warnings = generate(temp / name, fixture_variant(change), FIXTURE_DAY.isoformat())
+    return ((site / "index.html").read_text(encoding="utf-8"), (site / COMPARE_PAGE).read_text(encoding="utf-8"), warnings)
 
 
-def validate_landing_variants(assembler, temp: Path, data: Path) -> None:
+def validate_landing_variants(temp: Path) -> None:
     """How the landing summary words groups, a missing Rullst row, memory or overall score."""
     def position(slugs, first, last):
         return lambda d: [fixture_row(d, slug)["overall"].update(position=[first, last]) for slug in slugs]
@@ -807,31 +874,131 @@ def validate_landing_variants(assembler, temp: Path, data: Path) -> None:
         ("group-alone", position(("rullst",), 4, 4), "No other implementation shares its position."),
         ("group-named", position(("rullst", "loco", "topcoat"), 3, 5), "It shares positions 3–5 with Topcoat (0.99×) and Loco (0.63×)."),
     ):
-        landing, _compare, _warnings = assemble_variant(assembler, temp, data, name, change)
+        landing, _compare, _warnings = generate_variant(temp, name, change)
         assert sentence in landing, f"{name}: expected {sentence!r} in {landing_block(landing, 'summary')[:600]!r}"
     # Gin's fixture overall has no score, so a shared range does not name it.
-    landing, _compare, _warnings = assemble_variant(assembler, temp, data, "no-gin-score", position(("rullst", "loco", "gin"), 3, 5))
+    landing, _compare, _warnings = generate_variant(temp, "no-gin-score", position(("rullst", "loco", "gin"), 3, 5))
     assert "Gin" not in landing_block(landing, "summary"), "a row without an overall score is not named in the group"
-    landing, compare, warnings = assemble_variant(assembler, temp, data, "no-rullst",
-                                                  lambda d: d.update(rows=[r for r in d["rows"] if r["slug"] != "rullst"]))
+    landing, compare, warnings = generate_variant(temp, "no-rullst", lambda d: d.update(rows=[r for r in d["rows"] if r["slug"] != "rullst"]))
     assert PENDING not in compare and landing_pending(landing, "summary") and landing_pending(landing, "proof"), (
         "without a Rullst row the comparison renders and the landing keeps its pending text"
     )
     assert "no Rullst row" in warnings, f"a missing Rullst row must be logged: {warnings!r}"
-    landing, _compare, _warnings = assemble_variant(assembler, temp, data, "no-memory", lambda d: fixture_row(d, "rullst").update(memory={}))
+    landing, _compare, _warnings = generate_variant(temp, "no-memory", lambda d: fixture_row(d, "rullst").update(memory={}))
     assert landing_pending(landing, "proof") and not landing_pending(landing, "summary") and "RAM:" not in landing, (
         "without Rullst's RAM the proof point stays pending and the summary leaves memory out"
     )
-    landing, _compare, _warnings = assemble_variant(assembler, temp, data, "landing-no-overall",
-                                                    lambda d: d.update(overall_published=False, weights={}))
+    landing, _compare, _warnings = generate_variant(temp, "landing-no-overall", lambda d: d.update(overall_published=False, weights={}))
     summary = landing_block(landing, "summary")
-    assert assembler.TEXT["en"]["unpublished"] in summary and "Overall score" not in summary, "an unpublished overall score is not shown"
-    landing, _compare, _warnings = assemble_variant(assembler, temp, data, "landing-errors",
-                                                    lambda d: fixture_row(d, "rullst")["categories"]["database"].update(score=None, position=None, status="errors"))
+    assert UNPUBLISHED in summary and "Overall score" not in summary, "an unpublished overall score is not shown"
+    landing, _compare, _warnings = generate_variant(
+        temp, "landing-errors", lambda d: fixture_row(d, "rullst")["categories"]["database"].update(score=None, position=None, status="errors"))
     summary = landing_block(landing, "summary")
     assert '<h3>Without a score</h3><ul><li><span class="landing-bench-category">Database</span><span class="landing-bench-value">errors</span>' in summary, (
         "a category without a score is listed with its status"
     )
+
+
+# The first screen's line on the parts around the framework, each linked to its documentation.
+AROUND_LINKS = [
+    "/Rullst/book/crates/ai.html", "/Rullst/book/crates/capital.html", "/Rullst/book/crates/mail.html",
+    "/Rullst/book/crates/messaging.html", "/Rullst/book/crates/iot.html", "/Rullst/book/labs-runner-contract.html",
+    "https://github.com/Rullst/Rullst/tree/main/rullst-privacy",
+]
+# The "Made with Rullst" card: the maintainer's live applications built with Rullst.
+MADE_WITH_LINKS = {
+    "en": ["https://academy.rullst.win/", "https://capoeira.vene.win/", "https://vene.win/", "/Benchmarks/",
+           "https://github.com/Rullst/Rullst/tree/main/site"],
+    "pt-BR": ["https://academy.rullst.win/pt-BR", "https://capoeira.vene.win/", "https://vene.win/", "/Benchmarks/",
+              "https://github.com/Rullst/Rullst/tree/main/site"],
+}
+SITE_LOCK_RULLST = re.compile(r'^name = "rullst"\nversion = "([^"]+)"$', re.MULTILINE)
+CLI_PIN = re.compile(r"([0-9a-f]{64})  cargo-rullst-(\S+)-x86_64-unknown-linux-gnu\n")
+
+
+def site_rullst_version() -> str:
+    """The `rullst` version the generator is built with (site/Cargo.lock)."""
+    match = SITE_LOCK_RULLST.search((ROOT / "site/Cargo.lock").read_text(encoding="utf-8"))
+    assert match, "site/Cargo.lock has no rullst package"
+    return match[1]
+
+
+def made_with_line(source: str) -> str:
+    match = re.search(r'<(p|span) class="made-with-line">(.*?)</\1>', source, re.DOTALL)
+    return match[2] if match else ""
+
+
+def validate_made_with(path: Path, source: str, facts: dict) -> None:
+    """The first screen's line on the parts around the framework, the card and the footer line."""
+    hero = source[source.index('<header class="hero'):source.index("</header>")]
+    around = re.search(r'<p class="hero-around">(.*?)</p>', hero, re.DOTALL)
+    assert around and around[1].startswith(facts["around"]), f"{path}: the first screen names the parts around the framework"
+    assert re.findall(r'href="([^"]+)"', around[1]) == AROUND_LINKS, f"{path}: each part around the framework links its documentation"
+    card = re.search(r'<article class="made-with" id="made-with" [^>]*>(.*?)</article>', section_text(source, "examples"), re.DOTALL)
+    lang = "en" if facts["locale"] == "en_US" else "pt-BR"
+    assert card and re.findall(r'<li><a href="([^"]+)">', card[1]) == MADE_WITH_LINKS[lang], f"{path}: the Made with Rullst card lists the live applications"
+    line = made_with_line(source[source.index("<footer"):])
+    assert line.startswith(f'{facts["made_with"]}<a href="https://github.com/Rullst/Rullst/tree/main/site">Rullst {site_rullst_version()}</a>'), (
+        f"{path}: the footer says which Rullst version made the page: {line[:200]!r}"
+    )
+    assert "This page:" not in line and "Esta página:" not in line, f"{path}: no page weight without a measurement"
+
+
+def validate_footer_lines(site: Path) -> None:
+    for page in site.rglob("*.html"):
+        text = page.read_text(encoding="utf-8")
+        assert f">Rullst {site_rullst_version()}</a>" in made_with_line(text), f"{page.relative_to(site)}: needs the Made with Rullst footer line"
+
+
+def validate_cli_pin() -> None:
+    """The CLI the deployment installs to weigh the landing is the release of the Rullst the site is made with."""
+    match = CLI_PIN.fullmatch((ROOT / "site/cargo-rullst.sha256").read_text(encoding="utf-8"))
+    assert match and match[2] == site_rullst_version(), (
+        "site/cargo-rullst.sha256 must pin the cargo-rullst release binary of the rullst version in site/Cargo.lock"
+    )
+
+
+def footprint_variant(change=None, path: str = "/") -> str:
+    data = copy.deepcopy(json.loads(FOOTPRINT_FIXTURE.read_text(encoding="utf-8")))
+    if path != "/":
+        data["target"]["url"] = SITE_URL + path[1:]
+        data["page_weight"]["path"] = path
+        data["page_weight"]["resources"][0]["url"] = path
+    if change:
+        change(data)
+    return json.dumps(data)
+
+
+def validate_footprint_rendering() -> None:
+    """The landing's page weight from a report of the published site, and the reports it must not show."""
+    reports = {"footprint.json": footprint_variant(), "footprint-pt-br.json": footprint_variant(path="/pt-br/")}
+    with tempfile.TemporaryDirectory(prefix="rullst-root-site-") as temp:
+        site, warnings = generate(Path(temp) / "measured", today=FOOTPRINT_DAY, footprint=reports)
+        assert not warnings, f"the footprint fixture must be shown: {warnings!r}"
+        for lang, page in (("en", "index.html"), ("pt-BR", "pt-br/index.html")):
+            line = made_with_line((site / page).read_text(encoding="utf-8").split("<footer", 1)[1])
+            assert LANGUAGES[lang]["page_weight"] in line and '<time datetime="2026-11-22">' in line, f"{page}: page weight {line!r}"
+            assert "footprint 13.0.0-alpha.6</a>" in line, f"{page}: the page weight names the CLI version"
+        for page in ("compare/index.html", "privacy.html"):
+            assert "This page:" not in (site / page).read_text(encoding="utf-8"), f"{page}: only the landing is weighed"
+        # A day later the report is still shown; two days later it is not.
+        later = date.fromordinal(date.fromisoformat(FOOTPRINT_DAY).toordinal() + 2).isoformat()
+        rejected = (
+            ("an older report", None, later, "not today or yesterday"),
+            ("another CLI version", lambda d: d.update(cli_version="13.0.0-alpha.5"), FOOTPRINT_DAY, "measured with cargo-rullst"),
+            ("a failed run", lambda d: d.update(failure={"stage": "reach"}), FOOTPRINT_DAY, "failure"),
+            ("a resource refused", lambda d: d["page_weight"]["resources"][1].update(status=403), FOOTPRINT_DAY, "did not load with 200"),
+            ("a third party", lambda d: d["page_weight"].update(third_party_origins=["https://cdn.example"]), FOOTPRINT_DAY, "third-party"),
+            ("another site", lambda d: d["target"].update(url="https://example.com/"), FOOTPRINT_DAY, "not of the published page"),
+            ("an unmeasured page", lambda d: d["page_weight"].update(status="not_measured"), FOOTPRINT_DAY, "was not measured"),
+            ("unfetched resources", lambda d: d["page_weight"].update(unfetched=1), FOOTPRINT_DAY, "not fetched"),
+        )
+        for index, (label, change, today, warning) in enumerate(rejected):
+            site, warnings = generate(Path(temp) / f"rejected-{index}", today=today,
+                                      footprint={"footprint.json": footprint_variant(change)})
+            assert warning in warnings, f"{label}: expected a warning with {warning!r}, got {warnings!r}"
+            landing = (site / "index.html").read_text(encoding="utf-8")
+            assert "This page:" not in landing and "kB" not in landing, f"{label}: the landing must leave the page weight out"
 
 
 DEMO_LINKS = {
@@ -854,8 +1021,38 @@ SOCIAL_LINKS = {
 }
 
 
+def use_generated_site(site: Path) -> None:
+    """Point the page paths at the generator's output."""
+    global SITE, HOME, PRIVACY, HOME_PT_BR, PRIVACY_PT_BR, COMPARE, COMPARE_PT_BR
+    SITE = site
+    HOME, PRIVACY = site / "index.html", site / "privacy.html"
+    HOME_PT_BR, PRIVACY_PT_BR = site / "pt-br/index.html", site / "pt-br/privacy.html"
+    COMPARE, COMPARE_PT_BR = site / "compare/index.html", site / "pt-br/comparar/index.html"
+    LANGUAGES["en"].update(home=HOME, privacy=PRIVACY)
+    LANGUAGES["pt-BR"].update(home=HOME_PT_BR, privacy=PRIVACY_PT_BR)
+
+
 def main() -> None:
     os.chdir(ROOT)
+    assert GENERATOR.is_file(), (
+        f"{GENERATOR} is missing: build it with `cargo build --locked --manifest-path site/Cargo.toml` "
+        "or set RULLST_SITE_BIN"
+    )
+    with tempfile.TemporaryDirectory(prefix="rullst-root-site-") as temp:
+        site, warnings = generate(Path(temp) / "plain")
+        assert not warnings, f"the generator warned without data: {warnings!r}"
+        published = sorted(str(path.relative_to(site)) for path in site.rglob("*") if path.is_file())
+        assert published == sorted(PUBLISHED), f"unexpected root site files: {published}"
+        for name, origin in ASSET_SOURCES.items():
+            assert (site / name).read_bytes() == origin.read_bytes(), f"generated {name} differs from {origin.relative_to(ROOT)}"
+        use_generated_site(site)
+        validate(site)
+        validate_footer_lines(site)
+    validate_cli_pin()
+    validate_footprint_rendering()
+
+
+def validate(site: Path) -> None:
     readme = README.read_text(encoding="utf-8")
     home, source = validate_landing("en")
     home_pt, source_pt = validate_landing("pt-BR")
@@ -882,11 +1079,7 @@ def main() -> None:
     privacy, privacy_source = validate_privacy("en", home)
     privacy_pt, privacy_source_pt = validate_privacy("pt-BR", home_pt)
     validate_translation(privacy, privacy_source, privacy_pt, privacy_source_pt, PRIVACY_PT_BR.name)
-    spec = importlib.util.spec_from_file_location("assemble_site", ROOT / ".github/assemble-organization-site.py")
-    assert spec is not None and spec.loader is not None, "cannot load assemble-organization-site.py"
-    assembler = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(assembler)
-    validate_comparison(home, home_pt, assembler)
+    validate_comparison(home, home_pt)
 
     slogan = LANGUAGES["en"]["slogan"]
     assert all(link in readme for link in DEMO_LINKS), "README is missing a published example link"
@@ -917,12 +1110,6 @@ def main() -> None:
     assert SITE_URL in redirect.links, "/Rullst/ needs a visible link to the root"
     assert not redirect.scripts and not redirect.stylesheets and not redirect.inline_behavior, "/Rullst/ stays static"
 
-    with tempfile.TemporaryDirectory(prefix="rullst-root-site-") as temp:
-        published = assembler.assemble(Path(temp) / "site")
-        assert published == list(assembler.FILES), f"unexpected root site files: {published}"
-        for name, origin in assembler.FILES.items():
-            assert (Path(temp) / "site" / name).read_bytes() == (ROOT / origin).read_bytes(), f"assembled {name} differs"
-
     for template in BENCH_TEMPLATES:
         document, benchmark_source = parse(template)
         validate_document(template, document)
@@ -936,7 +1123,7 @@ def main() -> None:
     for required_copy in ("docs/site.css", "docs/site.js", "images"):
         assert required_copy in workflow, f"pages workflow does not publish {required_copy}"
     assert "cp docs/redirect_template.html public_site/index.html" in workflow, "/Rullst/ must serve the redirect page"
-    assert "cp docs/home_template.html" not in workflow, "the landing page is published only at the site root"
+    assert "home_template" not in workflow, "the landing page is published only at the site root"
 
     assert (DOCS / "site.css").read_text(encoding="utf-8").count("{") == (
         DOCS / "site.css"
@@ -945,8 +1132,8 @@ def main() -> None:
     print(
         f"validated English and Brazilian Portuguese landing, privacy and comparison pages ({integration_count} "
         f"integration entries matching README; same ids, external links, integration names and checked versions "
-        f"in both languages; benchmark rows rendered from a fixture), "
-        f"/Rullst/ redirect, assembled root site, {len(BENCH_TEMPLATES)} benchmark templates "
+        f"in both languages; benchmark rows and page weight rendered from fixtures; Made with Rullst card and footer line), "
+        f"/Rullst/ redirect, generated root site, {len(BENCH_TEMPLATES)} benchmark templates "
         f"and llms.txt/llms-full.txt for {llms_pages} book pages"
     )
 

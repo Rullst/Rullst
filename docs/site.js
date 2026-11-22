@@ -1,7 +1,7 @@
 document.documentElement.classList.add("js");
 
 // Interface text: English unless the page translates it with data-ui-*
-// attributes on <body> (docs/home_template.pt-BR.html does).
+// attributes on <body> (the Portuguese landing, site/src/pages/landing/pt_top.rs, does).
 const ui = document.body.dataset;
 const text = {
   copied: ui.uiCopied ?? "Command copied.",

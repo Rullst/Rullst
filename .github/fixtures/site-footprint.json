@@ -1,0 +1,265 @@
+{
+  "schema_version": "rullst.footprint.v1",
+  "schema": "rullst.footprint.v1",
+  "cli_version": "13.0.0-alpha.6",
+  "measured_at": "2026-11-22T01:26:12Z",
+  "machine": {
+    "os": "linux",
+    "arch": "x86_64",
+    "logical_cpus": 4,
+    "cpu_model": null
+  },
+  "target": {
+    "mode": "remote_url",
+    "url": "https://rullst.win/",
+    "pid": null,
+    "process_lookup": "not measured for a published https:// site: footprint weighs only its page",
+    "executable": null,
+    "environment": null
+  },
+  "measured": {
+    "binary_size_bytes": {
+      "status": "not_measured",
+      "value": null,
+      "unit": "bytes",
+      "method": null,
+      "reason": "not measured for a published https:// site: footprint weighs only its page"
+    },
+    "image_size_bytes": {
+      "status": "not_measured",
+      "value": null,
+      "unit": "bytes",
+      "method": null,
+      "reason": "not measured for a published https:// site: footprint weighs only its page"
+    },
+    "idle_rss_bytes": {
+      "status": "not_measured",
+      "value": null,
+      "unit": "bytes",
+      "method": null,
+      "reason": "not measured for a published https:// site: footprint weighs only its page"
+    },
+    "dependency_count": {
+      "status": "not_measured",
+      "value": null,
+      "unit": "packages",
+      "method": null,
+      "reason": "not measured for a published https:// site: footprint weighs only its page"
+    },
+    "compiled_dependency_count": {
+      "status": "not_measured",
+      "value": null,
+      "unit": "packages",
+      "method": null,
+      "reason": "not measured for a published https:// site: footprint weighs only its page"
+    }
+  },
+  "startup": {
+    "status": "not_measured",
+    "reason": "not measured for a published https:// site: footprint weighs only its page",
+    "method": null,
+    "path": null,
+    "runs": null,
+    "samples_ms": [],
+    "median_ms": null,
+    "min_ms": null,
+    "max_ms": null
+  },
+  "benchmark": {
+    "status": "not_run",
+    "method": null,
+    "path": null,
+    "duration_seconds": null,
+    "concurrency": null,
+    "elapsed_seconds": null,
+    "requests": null,
+    "transport_errors": null,
+    "http_errors": null,
+    "cpu_time_seconds": {
+      "status": "not_measured",
+      "value": null,
+      "unit": "seconds",
+      "method": null,
+      "reason": "not measured for a published https:// site: footprint weighs only its page"
+    },
+    "cpu_ms_per_request": {
+      "status": "not_measured",
+      "value": null,
+      "unit": "milliseconds",
+      "method": null,
+      "reason": "not measured for a published https:// site: footprint weighs only its page"
+    },
+    "accept_encoding": null,
+    "response_bytes": {
+      "status": "not_measured",
+      "value": null,
+      "unit": "bytes",
+      "method": null,
+      "reason": "not measured for a published https:// site: footprint weighs only its page"
+    },
+    "bytes_per_request": {
+      "status": "not_measured",
+      "value": null,
+      "unit": "bytes",
+      "method": null,
+      "reason": "not measured for a published https:// site: footprint weighs only its page"
+    },
+    "content_encodings": []
+  },
+  "page_weight": {
+    "status": "measured",
+    "reason": null,
+    "method": "GET of the page and of the same-origin stylesheets, scripts, fonts, images, icons and manifest it references (with the stylesheets' url() and @import), each once, with Accept-Encoding: zstd, br, gzip; bytes are response bodies as served, without headers. The repeat visit reuses a response while Cache-Control max-age (or Expires) keeps it fresh, revalidates it with If-None-Match or If-Modified-Since when it has a validator, and fetches it again otherwise.",
+    "path": "/",
+    "accept_encoding": "zstd, br, gzip",
+    "first_visit": {
+      "bytes": 483633,
+      "requests": 7,
+      "from_cache": null,
+      "not_modified": null
+    },
+    "repeat_visit": {
+      "bytes": 0,
+      "requests": 0,
+      "from_cache": 7,
+      "not_modified": 0
+    },
+    "resources": [
+      {
+        "url": "/",
+        "kind": "document",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "content_encoding": "zstd",
+        "bytes": 18065,
+        "repeat": "cache",
+        "repeat_bytes": 0,
+        "error": null
+      },
+      {
+        "url": "/Rullst/Rullst.png",
+        "kind": "image",
+        "status": 200,
+        "content_type": "image/png",
+        "content_encoding": null,
+        "bytes": 448299,
+        "repeat": "cache",
+        "repeat_bytes": 0,
+        "error": null
+      },
+      {
+        "url": "/assets/site.css?v=30ed871c96a5b773",
+        "kind": "stylesheet",
+        "status": 200,
+        "content_type": "text/css; charset=utf-8",
+        "content_encoding": "gzip",
+        "bytes": 12546,
+        "repeat": "cache",
+        "repeat_bytes": 0,
+        "error": null
+      },
+      {
+        "url": "/assets/site.js?v=662d08b21f63ee4d",
+        "kind": "script",
+        "status": 200,
+        "content_type": "application/javascript; charset=utf-8",
+        "content_encoding": "gzip",
+        "bytes": 1843,
+        "repeat": "cache",
+        "repeat_bytes": 0,
+        "error": null
+      },
+      {
+        "url": "/assets/flags/us.svg",
+        "kind": "image",
+        "status": 200,
+        "content_type": "image/svg+xml",
+        "content_encoding": "gzip",
+        "bytes": 1936,
+        "repeat": "cache",
+        "repeat_bytes": 0,
+        "error": null
+      },
+      {
+        "url": "/assets/flags/br.svg",
+        "kind": "image",
+        "status": 200,
+        "content_type": "image/svg+xml",
+        "content_encoding": "gzip",
+        "bytes": 283,
+        "repeat": "cache",
+        "repeat_bytes": 0,
+        "error": null
+      },
+      {
+        "url": "/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js",
+        "kind": "script",
+        "status": 200,
+        "content_type": "application/javascript",
+        "content_encoding": "zstd",
+        "bytes": 661,
+        "repeat": "cache",
+        "repeat_bytes": 0,
+        "error": null
+      }
+    ],
+    "third_party_origins": [],
+    "third_party_references": 0,
+    "unfetched": 0
+  },
+  "production": {
+    "status": "not_run",
+    "reason": "pass --monitor-url to read what the app served in production",
+    "source": null,
+    "application": null,
+    "uptime_seconds": null,
+    "window_seconds": null,
+    "bytes_reported": null,
+    "requests_total": null,
+    "bytes_total": null,
+    "path_route": null,
+    "routes": []
+  },
+  "sci_estimate": {
+    "status": "not_computed",
+    "label": "estimate",
+    "standard": "Software Carbon Intensity (SCI), ISO/IEC 21031:2024",
+    "formula": "SCI = ((E × I) + M) / R",
+    "energy_method": "E = measured app CPU time × --cpu-watts (your power figure per busy CPU second), plus the network term when --network-kwh-per-gb is given",
+    "network_method": "E_network = measured response body bytes ÷ 10^9 × --network-kwh-per-gb (your energy figure per gigabyte transferred)",
+    "functional_unit": "one HTTP request; R = requests completed in the benchmark",
+    "inputs": {
+      "cpu_time_seconds": null,
+      "cpu_watts": null,
+      "grid_intensity_g_per_kwh": null,
+      "embodied_g": null,
+      "requests": null,
+      "network_kwh_per_gb": null,
+      "response_bytes": null
+    },
+    "energy_kwh": null,
+    "cpu_energy_kwh": null,
+    "network_energy_kwh": null,
+    "sci_g_per_request": null,
+    "missing_inputs": [
+      "cpu_time_seconds",
+      "cpu_watts",
+      "grid_intensity_g_per_kwh",
+      "requests"
+    ]
+  },
+  "budgets": {
+    "status": "not_checked",
+    "source": null,
+    "passed": 0,
+    "exceeded": 0,
+    "skipped": 0,
+    "limits": []
+  },
+  "notes": [
+    "Only the page weight was measured: footprint fetched the published site's page and same-origin resources, and measured no binary, memory, start-up, CPU or dependency figure.",
+    "Page bytes are response bodies as the site sent them to this machine, compressed as served, without headers; a visitor elsewhere, a CDN cache in another state, cookies or a signed-in session can receive different bytes.",
+    "This report is a measurement, not a certification, an environmental claim or a comparison with other software; if you publish these figures, you are responsible for how you word them."
+  ],
+  "failure": null
+}

@@ -1,0 +1,25 @@
+# The https://rullst.win/ root site (landing, comparison and privacy pages in
+# English and Brazilian Portuguese), written as static files by Rullst's own
+# html! macro. A package of its own, outside the framework workspace and the
+# release inventory, never published. It depends on the published `rullst`
+# crate (pinned below), so the website builds the same way whatever main's
+# workspace is doing; the footer of every page names that version.
+[package]
+name = "rullst-site"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.96.0"
+publish = false
+license = "MIT"
+
+[dependencies]
+# No features: html! and Markup come with the facade's empty default set.
+rullst = { version = "=13.0.0-alpha.6", default-features = false }
+serde_json = "1.0"
+# Already in rullst-core's graph; content versions of the stylesheet and script.
+sha2 = "0.11"
+
+[profile.dev]
+debug = 0
+
+[workspace]

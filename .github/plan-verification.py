@@ -19,7 +19,7 @@ MAX_BYTES = 16 * 1024 * 1024
 MAX_FILES = 10000
 SHA = re.compile(r"[0-9a-f]{40}")
 NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
-SITE_FILES = {"docs/home_template.html", "docs/site.css", "docs/site.js"}
+SITE_FILES = {"docs/site.css", "docs/site.js"}
 CRITICAL_PACKAGES = {
     "rullst", "rullst-core", "rullst-auth", "rullst-security", "rullst-connect",
     "rullst-capital", "rullst-orm", "rullst-macros", "rullst-orm-macros",
