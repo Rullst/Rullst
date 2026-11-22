@@ -157,9 +157,11 @@ fn project_preparations_apply_every_rule() {
         report["rule_selection"],
         serde_json::json!({
             "current_version": null,
+            "from_version": null,
             "all_rules": true,
             "skipped_rules": 0,
             "hidden_findings": 0,
+            "target_rules_skipped": false,
         })
     );
     let page = report["source_findings"]

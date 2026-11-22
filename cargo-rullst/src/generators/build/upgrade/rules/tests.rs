@@ -35,6 +35,7 @@ mod rc1_gaps;
 mod releases;
 mod reviewed;
 mod scanner;
+mod session_epoch;
 mod syntax;
 mod test_code;
 

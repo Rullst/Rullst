@@ -115,6 +115,61 @@ fn router() -> axum::Router {
     );
 }
 
+/// `GET` routes that serve files outside the static prefixes: a
+/// `get_service` file service, and a `get` route at a path alpha.5 treated as
+/// static by its extension (#826).
+#[test]
+fn get_routes_that_serve_files_outside_the_static_paths_are_reviewed() {
+    let source = r#"
+use tower_http::services::{ServeDir, ServeFile};
+fn router() -> axum::Router {
+    axum::Router::new()
+        .route("/feed.xml", get(feed))
+        .route("/data/report.json", axum::routing::get(report).post(save))
+        .route("/downloads/{*path}", get_service(ServeDir::new("downloads")))
+        .route("/terms", get_service(ServeFile::new("terms.html")))
+        .route("/robots.txt", get(robots))
+        .route("/static/app.css", get(css))
+        .route("/.well-known/security.txt", get(security_txt))
+        .route("/api/users", get(users))
+        .route("/upload.json", post(upload))
+        .route("/assets/app.CSS", get(css))
+}
+fn pages() -> Router {
+    routes![
+        get("/sitemap.xml" => sitemap),
+        get("/manifest.json" => manifest),
+        get("/about" => about),
+        post("/hooks.json" => hook),
+    ]
+}
+"#;
+    assert_eq!(
+        found(source),
+        [
+            (STATIC, 5),
+            (STATIC, 6),
+            (STATIC, 7),
+            (STATIC, 8),
+            (STATIC, 19)
+        ]
+    );
+    // `get(handler)` alone, a path that is not absolute, a template string
+    // and other methods are not routes of a file.
+    assert_only(
+        "fn r() -> Router { Router::new().route(PATH, get(feed)).route(\"feed.xml\", get(feed)).merge(get(\"/x.json\")) }\n",
+        &[],
+    );
+    assert_only(
+        "fn r() -> Router { Router::new().route(\"/files\", get_service(other_service())) }\n",
+        &[],
+    );
+    assert_only(
+        "fn r() -> Router { routes![get(\"/feed.xml\" => feed)] }\n",
+        &[STATIC],
+    );
+}
+
 /// The `get_csrf_token` helper `make:auth` generated before 13.0.0-alpha.6.
 const RAW_COOKIE_HELPER: &str = r#"
 pub(crate) fn get_csrf_token(headers: &HeaderMap) -> String {
@@ -158,11 +213,59 @@ fn reading_the_raw_csrf_cookie_outside_tests_is_reviewed() {
     }
     for source in [
         "fn f(c: &str) -> Option<&str> { c.strip_prefix(\"rullst_session=\") }\n",
-        "fn f(c: &str) -> Option<&str> { c.strip_suffix(\"rullst_csrf=\") }\n",
         "fn f(c: &str, p: &str) -> Option<&str> { c.strip_prefix(p) }\n",
+        // Sending the cookie, or text that only contains its name.
+        "fn f(token: &str) -> String { format!(\"rullst_csrf={token}\") }\n",
+        "fn f() -> (&'static str, &'static str) { (\"rullst_csrf_hint\", \"the rullst_csrf cookie\") }\n",
+        "// cookie(headers, \"rullst_csrf\")\nfn f() {}\n",
     ] {
         assert_eq!(found("src/lib.rs", source), [], "{source}");
     }
+}
+
+/// An application's own helper that reads the CSRF cookie by name into a
+/// page, as migration-guide step 12 describes (#824).
+const OWN_COOKIE_HELPER: &str = r#"
+fn cookie(headers: &HeaderMap, name: &str) -> Option<String> {
+    headers.get(COOKIE)?.to_str().ok()?.split(';').find_map(|pair| {
+        let (key, value) = pair.trim().split_once('=')?;
+        (key == name).then(|| value.to_string())
+    })
+}
+pub fn layout(headers: &HeaderMap) -> Markup {
+    let token = cookie(headers, "rullst_csrf").unwrap_or_default();
+    html! { <meta name="csrf-token" content={token}> }
+}
+fn from_jar(jar: &CookieJar) -> Option<String> {
+    jar.get("rullst_csrf").map(|cookie| cookie.value().to_owned())
+}
+fn by_name(cookies: &[Cookie]) -> Option<&str> {
+    cookies.iter().find(|c| c.name() == "rullst_csrf").map(Cookie::value)
+}
+"#;
+
+#[test]
+fn reading_the_csrf_cookie_by_name_is_reviewed_unless_the_file_masks_it() {
+    let found = |file: &str, source: &str| scan_with(source, file, &WorkspaceFacts::default());
+    assert_eq!(
+        found("src/views/layout.rs", OWN_COOKIE_HELPER),
+        [(COOKIE, 9), (COOKIE, 13), (COOKIE, 16)]
+    );
+    let masked = OWN_COOKIE_HELPER.replace(
+        "cookie(headers, \"rullst_csrf\").unwrap_or_default()",
+        "cookie(headers, \"rullst_csrf\").and_then(|value| rullst::security::mask_csrf_token(&value)).unwrap_or_default()",
+    );
+    assert_ne!(masked, OWN_COOKIE_HELPER);
+    assert_eq!(found("src/views/layout.rs", &masked), []);
+    assert_eq!(found("tests/layout.rs", OWN_COOKIE_HELPER), []);
+    // A constant holding the name is reviewed where it is written.
+    assert_eq!(
+        found(
+            "src/csrf.rs",
+            "const CSRF_COOKIE: &str = \"rullst_csrf\";\nfn token(headers: &HeaderMap) -> Option<String> { cookie(headers, CSRF_COOKIE) }\n"
+        ),
+        [(COOKIE, 1)]
+    );
 }
 
 #[test]

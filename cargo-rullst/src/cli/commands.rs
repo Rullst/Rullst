@@ -236,6 +236,10 @@ pub enum Commands {
         /// otherwise sees only the rules introduced after its version
         #[arg(long, conflicts_with = "restore")]
         all_rules: bool,
+        /// Applies the rules introduced after this exact version instead of
+        /// after the project's, such as the version the project was upgraded from
+        #[arg(long, value_name = "VERSION", conflicts_with_all = ["restore", "all_rules"])]
+        from: Option<String>,
         /// Restores a backup previously created under target/rullst-upgrades
         #[arg(
             long,

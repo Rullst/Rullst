@@ -2,8 +2,9 @@
 //! one of these rules asks how the deployed application behaves: which CSRF
 //! value a page embeds, which static paths skip the CSRF check, which layers
 //! a router that `Server` serves adds again, whether request code bounds
-//! password hashing, how a starter's handler pages, reads or reserves. The
-//! same code in a test does not run in production, so it is not a finding.
+//! password hashing, how a starter's handler pages, reads or reserves, which
+//! session cookies sign-in issues and accepts. The same code in a test does
+//! not run in production, so it is not a finding.
 //!
 //! Test code is a file below a `tests` directory or named `tests.rs`,
 //! `*_tests.rs` or `*_test.rs`, and, in any file, an item marked
@@ -16,9 +17,9 @@
 
 use super::Rule;
 use super::catalog::{
-    CREDENTIAL_RATE_LIMIT, CSRF_COOKIE_IN_PAGE, CSRF_STATIC_PREFIXES, ERP_DASHBOARD_ACCESS,
-    ERP_STORE_ORDER, LMS_RECORD_PROGRESS, PAGE_BOUNDS, PAGE_CSP_NONCE, PROFILE_FIND,
-    ROUTER_BASELINE_LAYERS,
+    AUTH_SESSION_EPOCH_CALLS, AUTH_SESSION_REGISTRY, CREDENTIAL_RATE_LIMIT, CSRF_COOKIE_IN_PAGE,
+    CSRF_STATIC_PREFIXES, ERP_DASHBOARD_ACCESS, ERP_STORE_ORDER, LMS_RECORD_PROGRESS, PAGE_BOUNDS,
+    PAGE_CSP_NONCE, PROFILE_FIND, ROUTER_BASELINE_LAYERS,
 };
 use std::path::{Component, Path};
 use syn::Attribute;
@@ -37,6 +38,8 @@ pub(super) const PRODUCTION_ONLY: &[&Rule] = &[
     &PAGE_CSP_NONCE,
     &PAGE_BOUNDS,
     &PROFILE_FIND,
+    &AUTH_SESSION_REGISTRY,
+    &AUTH_SESSION_EPOCH_CALLS,
 ];
 
 /// Whether `rule` is about production behaviour, so test code is skipped.

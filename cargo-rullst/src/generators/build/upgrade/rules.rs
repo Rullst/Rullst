@@ -32,6 +32,7 @@ mod rc1_experimental;
 mod removed_adapters;
 mod reviewed;
 mod rust;
+mod selection;
 mod test_code;
 mod tokens;
 
@@ -43,6 +44,7 @@ use walkdir::WalkDir;
 
 pub(crate) use catalog::{CATALOG, REMOVED_API_RULES};
 pub(crate) use reviewed::MARKER as REVIEWED_MARKER;
+pub(crate) use selection::{RuleSelection, release_before};
 
 /// Catalog identifier recorded in plans and preparations.
 pub(crate) const RULE_CATALOG_VERSION: &str = "rullst-upgrade-rules-v4";
@@ -138,46 +140,12 @@ pub(crate) struct SourceScan {
     pub reviewed: Vec<&'static Rule>,
 }
 
-/// The rules a plan applies: by default only those introduced after the
-/// Rullst version the application already uses.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub(crate) struct RuleSelection {
-    /// The oldest Rullst version the manifests require or `Cargo.lock` holds.
-    pub current: Option<Version>,
-    /// Every rule applies, whatever `current` is (`--all-rules`).
-    pub all_rules: bool,
-    /// Catalog rules introduced in or before `current`, not applied.
-    pub skipped_rules: usize,
-    /// Findings of the skipped rules, left out of the plan.
-    pub hidden_findings: usize,
-}
-
 impl SourceScan {
     pub(crate) fn count(&self, kind: FindingKind) -> usize {
         self.findings
             .iter()
             .filter(|finding| finding.rule.kind == kind)
             .count()
-    }
-
-    /// Keeps the findings of rules introduced after `current` (all of them
-    /// with `all_rules` or an unknown version) and records what was skipped.
-    pub(crate) fn select(&mut self, current: Option<Version>, all_rules: bool) {
-        let applies = |rule: &Rule| {
-            all_rules
-                || current
-                    .as_ref()
-                    .is_none_or(|current| rule.introduced_after(current))
-        };
-        let found = self.findings.len();
-        self.findings.retain(|finding| applies(finding.rule));
-        self.reviewed.retain(|rule| applies(rule));
-        self.selection = RuleSelection {
-            skipped_rules: CATALOG.iter().filter(|rule| !applies(rule)).count(),
-            hidden_findings: found - self.findings.len(),
-            current,
-            all_rules,
-        };
     }
 }
 
