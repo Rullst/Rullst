@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795299567133,
+  "lastUpdate": 1795307350248,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -15933,6 +15933,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 342,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a0ee8c3fbf1ff13d67732ebd81fd80e99e2af691",
+          "message": "Merge pull request #829 from Rullst/feat/v13-site-landing-redesign\n\nfeat(site): redesign the landing around performance, security and what Rullst includes",
+          "timestamp": "2026-11-21T21:15:15-03:00",
+          "tree_id": "d445f0666c245b64dfcc75fd981eed72fab60e6c",
+          "url": "https://github.com/Rullst/Rullst/commit/a0ee8c3fbf1ff13d67732ebd81fd80e99e2af691"
+        },
+        "date": 1795307349609,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 383,
+            "range": "± 20",
             "unit": "ns/iter"
           }
         ]
