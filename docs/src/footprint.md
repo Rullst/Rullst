@@ -30,7 +30,7 @@ for example by Directive (EU) 2024/825 from 27 September 2026.
 `footprint` is part of the CLI; nothing else to install:
 
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.6 --locked
+cargo install cargo-rullst --version =13.0.0-rc.1 --locked
 ```
 
 Its flags are listed in [the CLI reference](cli_reference.md#cargo-rullst-footprint).
@@ -377,7 +377,7 @@ credentials and checks the budget:
       - name: Set up Rust with a dependency cache
         uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
       - name: Install the Rullst CLI
-        run: cargo install cargo-rullst --version =13.0.0-alpha.6 --locked
+        run: cargo install cargo-rullst --version =13.0.0-rc.1 --locked
       - name: Measure and check the budget
         run: cargo rullst footprint --env staging --bench --duration 5s --page-weight --check-budget --json > footprint.json
       - name: Keep the report

@@ -237,7 +237,7 @@ the v12 line reached end of life, see the [release record](../v12.md)):
 
 ```toml
 [dependencies]
-rullst-connect = { version = "=13.0.0-alpha.6", features = ["axum-session"] }
+rullst-connect = { version = "=13.0.0-rc.1", features = ["axum-session"] }
 tower-sessions = "0.15"
 ```
 

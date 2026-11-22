@@ -2,7 +2,7 @@
 # see docs/src/mail-custom-transport.md.
 [package]
 name = "rullst-mail-postmark-example"
-version = "13.0.0-alpha.6"
+version = "13.0.0-rc.1"
 edition = "2024"
 rust-version = "1.96.0"
 publish = false

@@ -311,7 +311,7 @@ another amount, currency or order, offline determinism and typed errors, and
 returns a `ConformanceReport`:
 
 ```rust,ignore
-// [dev-dependencies] rullst-capital = { version = "=13.0.0-alpha.6", features = ["conformance"] }
+// [dev-dependencies] rullst-capital = { version = "=13.0.0-rc.1", features = ["conformance"] }
 let report = rullst_capital::conformance::check_billing_provider(&provider, &harness).await;
 report.assert_passed(); // or inspect report.cases()
 ```
@@ -591,7 +591,7 @@ prerelease; Cargo never selects a prerelease on its own, so pin it exactly
 
 ```toml
 [dependencies]
-rullst-capital = "=13.0.0-alpha.6"
+rullst-capital = "=13.0.0-rc.1"
 ```
 
 The default `axum` feature provides the Axum webhook middleware; everything
@@ -610,8 +610,8 @@ else is opt-in, directly or through the umbrella `rullst` crate, whose
 For example:
 
 ```toml
-rullst = { version = "=13.0.0-alpha.6", features = ["capital-quota-sql"] }
-# Or directly: rullst-capital = { version = "=13.0.0-alpha.6", features = ["quota-sql"] }
+rullst = { version = "=13.0.0-rc.1", features = ["capital-quota-sql"] }
+# Or directly: rullst-capital = { version = "=13.0.0-rc.1", features = ["quota-sql"] }
 ```
 
 Applications using the umbrella crate (feature `capital`) can derive the bounded billing facade on

@@ -9,6 +9,739 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+## [13.0.0-rc.1] - 2026-11-24
+
+First release candidate for 13.0.0, for evaluation. It carries the fixes
+reported by the applications upgraded to 13.0.0-alpha.6 and by an independent
+review of what the documentation claims, and the changes the maintainer
+approved one by one after the alpha.6 feature and public API freeze:
+
+- **No silent mock in staging and production:** where an empty or missing
+  setting selected an offline mock, staging and production now return a
+  configuration error: `AiClient::auto()` with no AI provider, an AI chain
+  with a `mock_*` provider behind a live one, the `Mail` facade with an empty
+  Resend, SendPulse, SES proxy or SMTP setting, newly generated Turso
+  starters without `TURSO_DATABASE_URL` and newly generated billing code
+  without its keys in staging. Staging and production are resolved as
+  `Server` resolves them (the process `RULLST_ENV`, then `APP_ENV`, then
+  `.env`, then `[app] env` in `Rullst.toml`), which `AiClient::auto()`, the
+  Turso starter and the code `make:oauth` generates now also do. Only an
+  explicit `mock_*` value selects the mock there, and a CI check fails on an
+  unclassified offline fallback that matches its known patterns. Constructors
+  that take their values from the caller and four helpers keep their
+  fallback (see Known limitations).
+- **Security:** the standalone Studio answers only the browser that opened
+  the address it prints with a random launch key; the local Studio and a
+  loopback Nexus refuse forwarded requests, HTTP/1.0 and staging or
+  production; `GraphQuery::read_only` accepts only an allowlisted SurrealDB
+  read grammar; and the `rullst-connect` Axum examples verify the OAuth state
+  with PKCE and the OIDC nonce and escape profile fields.
+- **From the applications upgraded to alpha.6 and the review:** requests
+  that `Server`'s own layers refuse (CSRF, WAF, rate limiter, Traffic
+  Shield, lifecycle, machine endpoints) get an access-log line; the session
+  table that `cargo rullst auth` and the SaaS starter generate deletes an
+  account's sessions with it; a release build running as development or
+  test on a non-loopback address logs a warning; the migration guide has an
+  alpha.6 to rc.1 checklist, which `cargo rullst upgrade` links;
+  `cargo rullst upgrade` warns when the target's own rules did not run, gains
+  `--from <VERSION>` and finds what five alpha.6 rules missed
+  (`V13-CSRF-TOKEN-COMPARED`, `V13-CSRF-COOKIE-IN-PAGE`,
+  `V13-CSRF-STATIC-PREFIXES`, `V13-AUTH-SESSION-REGISTRY`,
+  `V13-NON-EXHAUSTIVE-LITERAL`), while two (`V13-LOCALE-JIFF-DATES`,
+  `V13-CAPITAL-INVOICE-JIFF-DATE`) no longer report jiff values; the page of
+  `make:controller` passes the default CSP; the Resend and SendPulse mocks
+  refuse what live delivery refuses; and the OpenAI-compatible adapter has a
+  five-second connect deadline.
+- **Approved after the freeze:** `rullst-iot` drops the
+  `experimental-simulators` feature and its fixtures, and `rullst-labs`
+  renames `ExecutionProfile::LinuxExperimental` to `PinnedRunner` and
+  `ResultEvidence::Experimental` to `SignedReceipt`, keeping their stored
+  form (both breaking); PostgreSQL and MySQL pools ping a connection before
+  handing it out only after 500 ms idle; and the legacy `oauth_state`
+  session key of `rullst-connect` is deprecated and logs a warning.
+- **Documentation and policy:** no Experimental tier (every package is Core
+  or Extension, and the documentation says what each part is tested
+  against), a "Reporting problems" section in every crate and an issue form,
+  the rules that keep 13.x compatible, security fixes for 1 to 3 months of
+  13.x after a 14.0.0, the claims the review found unsupported corrected, a
+  robotics and IoT classroom guide, and a website generated with Rullst's
+  own `html!`.
+
+The release still has twenty packages. Pin `=13.0.0-rc.1`. Upgrade steps are
+in the
+[v13 migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md#upgrading-an-alpha6-application-to-rc1).
+
+**Breaking:** code that enables the `experimental-simulators` feature of
+`rullst-iot` or uses `SimulatedHsmDevice`, `SimulatedHsmProfile`,
+`SimulatedPqcFixture` or `SimulatedMqttPayloadFormatter`, or that names
+`ExecutionProfile::LinuxExperimental` or `ResultEvidence::Experimental`, no
+longer compiles. At run time, staging and production return a configuration
+error where an empty AI or mail setting selected an offline mock;
+`GraphQuery::read_only` refuses a query outside its read grammar (such as
+`OPTIONAL MATCH`, `DISTINCT`, a function call or a caller-provided `LIMIT`)
+with `PolyglotError::InvalidIdentifier`; the local Studio and a loopback
+Nexus refuse requests that carry a forwarding header, use HTTP/1.0 or reach
+a `Server` running as staging or production, and their policy fails to
+build with `LocalAccessRequiresDebugBuild` in a debug build whose
+`RULLST_ENV` or `APP_ENV` is staging, production or invalid; the standalone
+Studio answers `403` until the address it printed at start-up is opened;
+the access log has a line for each request a framework layer refused; and a
+pooled PostgreSQL or MySQL connection that dies less than 500 ms after its
+release fails its next query. `cargo rullst upgrade` has 3 rules for rc.1,
+2 of them must-change (`V13-IOT-SIMULATORS-REMOVED`,
+`V13-LABS-VARIANTS-RENAMED`).
+
+### Known limitations
+
+What Rullst does not do by design, and what depends on external services,
+hardware or upstream releases, is on the
+[Scope and limits](https://github.com/Rullst/Rullst/blob/main/docs/src/scope-and-limits.md)
+page; the items below are specific to this release.
+
+- Applications generated by earlier prereleases are not changed
+  automatically. Follow the
+  [alpha.6 to rc.1 checklist](https://github.com/Rullst/Rullst/blob/main/docs/src/migration-v13.md#upgrading-an-alpha6-application-to-rc1),
+  which `cargo rullst upgrade` links for an application on alpha.6 or a
+  later 13.0 prerelease; an application on alpha.5 or earlier follows the
+  earlier checklists first, and the known limitations of 13.0.0-alpha.6
+  (dates and times, messaging schedules, the Studio project list, the WAL
+  journal, the Caddyfile) apply to that part of its upgrade. On an alpha.6
+  project the rc.1 CLI applies only the three rules introduced in rc.1: the
+  five alpha.6 rules this release widened (`V13-CSRF-TOKEN-COMPARED`,
+  `V13-CSRF-COOKIE-IN-PAGE`, `V13-CSRF-STATIC-PREFIXES`,
+  `V13-AUTH-SESSION-REGISTRY`, `V13-NON-EXHAUSTIVE-LITERAL`) run on it only
+  with `cargo rullst upgrade --dry-run --from 13.0.0-alpha.5`, which the
+  checklist does not mention. No rule locates the run-time changes listed
+  under Breaking. Code generated before rc.1 keeps its behaviour: a Turso
+  starter still writes to the local file when `TURSO_DATABASE_URL` is
+  empty, billing code still selects the local fixture in staging,
+  `make:oauth` code still reads the environment before `Server` starts (see
+  [#858](https://github.com/Rullst/Rullst/issues/858) below), and a
+  `make:controller` page keeps its inline styles.
+- A project generated by `cargo rullst auth` or the SaaS starter before
+  rc.1 has no foreign key from `rullst_auth_sessions.user_id` to
+  `users (id)`, so an account deleted with SQL (a retention job, a deletion
+  request) keeps its session rows, with the browser and platform family and
+  the sign-in times, until they expire (30 days by default). Add the key as
+  [accounts deleted with SQL](https://github.com/Rullst/Rullst/blob/main/docs/src/session-management.md#accounts-deleted-with-sql)
+  describes; on SQLite that recreates the table and signs everyone out once.
+  No upgrade rule reports it.
+- The staging and production refusal covers the code that reads settings:
+  the `Mail` facade, `AiClient::auto()` and the generated Turso, billing and
+  sign-in code. Constructors that take their values from the caller
+  (`StripeProvider::new`, the Connect providers, Bunny, SurrealDB, Scout,
+  Redis data) still select the offline mock for an empty value in every
+  environment. `TursoOrm::init_from_env`, `TursoStore::connect`,
+  `S3Credentials::from_env` and Studio's database URL cannot see the runtime
+  environment and stay documented exceptions: the Turso helpers use a local
+  SQLite file for an empty URL, and `S3Credentials::from_env` the offline
+  mock when both AWS keys are unset, in production too. An application that
+  calls them refuses an empty value in production itself; a `rullst-media`
+  store opened with `StoreConfig::production` refuses the offline mock.
+  Making them refuse is planned for 13.1
+  ([#835](https://github.com/Rullst/Rullst/issues/835)).
+  `.github/check-fail-closed.py` catches an unreviewed fallback only when it
+  matches its known patterns, and cannot see an environment resolved in
+  another file.
+- Reading `RullstConfig::global()` before `Server` starts, for example from
+  code the router calls while it is built, fixes the global configuration
+  to its defaults for the rest of the process: `Server` cannot install its
+  own, and later reads do not see `[app] env` or the other `Rullst.toml`
+  settings ([#858](https://github.com/Rullst/Rullst/issues/858)). Code that
+  `make:oauth` generates no longer does this
+  ([#854](https://github.com/Rullst/Rullst/pull/854)); code it generated
+  earlier does, so its start-up checks take a staging or production
+  environment set only in `.env` or `[app] env` for development and accept
+  `mock_` credentials. Copy the `environment()` helper of a newly generated
+  `src/controllers/oauth/mod.rs`, and read the global configuration only
+  after `Server` starts.
+- The access-log layer that writes the lines of refused requests runs on
+  every request while the access log is on (one more middleware; nothing
+  with `RULLST_ACCESS_LOG=off`). Its own cost was not measured: the
+  generated-stack throughput job on `main` passed its budget after it, with
+  the Blank stack at 0.575 of the minimal stack's requests per second
+  ([run 44981955082](https://github.com/Rullst/Rullst/actions/runs/44981955082)),
+  against 0.528 and 0.782 in the two runs before it on shared runners, so
+  these runs do not isolate the layer's cost.
+- The loopback checks of the local Studio and a loopback Nexus refuse only
+  the listed forwarding headers (`Forwarded`, `X-Forwarded-For`,
+  `X-Forwarded-Host`, `X-Forwarded-Proto`, `X-Forwarded-Server`,
+  `X-Real-IP`, `Via`, `CF-Connecting-IP`, `True-Client-IP`; not
+  `X-Forwarded-Port`, `X-Forwarded-Prefix` or `X-Client-IP`), so a forwarder
+  on the same machine that adds none of them and speaks HTTP/1.1 still
+  looks like a local browser: never publish them through a proxy or tunnel.
+  Anyone who can read the address the standalone Studio prints can use it
+  until it restarts. Its session cookie carries the key, and browsers send
+  it to every other server on `127.0.0.1` they visit (cookies are not kept
+  apart by port), including one another account of the machine runs, which
+  can then use Studio.
+- Without `RULLST_ENV` (or `APP_ENV`, or `[app] env`) an application runs as
+  development, where the WAF only reports and `Strict-Transport-Security` is
+  sent only over HTTPS. A release build on a non-loopback address now logs a
+  warning about it, but it still starts.
+- Providers: CI exercises every payment, video, OAuth, mail and AI provider
+  against local mocks, fixtures and test servers. Microsoft, Apple, Auth0,
+  AWS Cognito, Facebook, X, Discord, LinkedIn and generic OpenID Connect
+  sign-in, OpenAI, Anthropic Claude, DeepSeek and Ollama, AWS SES and
+  SendPulse, and the S3/R2 adapter of `rullst-media` have never run against
+  a real account; Turso, Meilisearch, SurrealDB, Redis, MySQL and pgvector
+  ran only against local containers. The tracking issue
+  [#801](https://github.com/Rullst/Rullst/issues/801) lists the runs that
+  would validate them, apart from Apple sign-in. The InfinitePay payment
+  method, instalments and per-checkout notification URL added in alpha.6 are
+  tested against local fixtures only.
+- No external security audit has been completed. One maintainer reviews
+  changes, and AI-assisted review and automated checks are not independent
+  human review
+  ([assurance case](https://github.com/Rullst/Rullst/blob/main/docs/src/assurance-case.md)).
+- `RUSTSEC-2026-0459`: every SQLite feature still bundles SQLite 3.53
+  through `libsqlite3-sys` 0.37.0, because `sqlx-sqlite` 0.9.0 does not
+  accept the fixed 0.39; the exception expires on 2027-01-28. Do not open
+  SQLite files that a less trusted party can write (Scope and limits,
+  [Security Advisory Exceptions](https://github.com/Rullst/Rullst/blob/main/docs/src/security-advisory-exceptions.md)).
+- Mutation testing: 28 targeted cargo-mutants campaigns ran on 22 November
+  2026 in a maintainer's fork, on files changed since alpha.6, at
+  `a0ee8c3f` (the source before
+  [#847](https://github.com/Rullst/Rullst/pull/847) to
+  [#857](https://github.com/Rullst/Rullst/pull/857)). 15 left no missed
+  mutant. 13 ended with missed mutants or a failed run that is still being
+  analysed: nine `cargo-rullst` upgrade-rule files (`rules.rs`,
+  `rules/catalog.rs`, `rules/files.rs`, `rules/rc1_experimental.rs`,
+  `rules/rust/non_exhaustive.rs`, `rules/alpha6_non_exhaustive.rs`,
+  `rules/non_exhaustive_globs.rs`, `rules/files/csrf_scripts.rs` and
+  `rules/files/script_tokens.rs`), `generators/controller.rs`,
+  `generators/project/env_config.rs`, `rullst-iot/src/lib.rs` and
+  `rullst-privacy/src/lib.rs`. That analysis, and any test it calls for,
+  comes before 13.0.0. The changes merged after `a0ee8c3f` (among them the
+  access-log refusal layer, the session migration, `rules/selection.rs`,
+  `rules/alpha6_jiff/jiff_values.rs` and the environment resolution of #854)
+  were in no campaign: the pull-request gate mutated the lines they touch in
+  the library crates and in the `cargo-rullst` files listed in
+  `.github/mutants-pr-cli.txt`, and the other `cargo-rullst` files were
+  tested but not mutated. The
+  [campaign status](https://github.com/Rullst/Rullst/blob/main/docs/src/mutation-testing.md#campaign-status)
+  still records the alpha.6 campaigns, and their gaps remain: 30
+  `cargo-rullst` mutants from its first campaign, the CLI's frontend toolkit
+  and parts of `footprint` outside the gate, one unresolved `rullst-orm`
+  mutant and 17 timeouts, 29 `rullst-capital` mutants reachable only through
+  a live Stripe response and three `rullst-ai` mutants reachable only through
+  a live HTTPS origin.
+- The start-up retry of the Labs, Media, Supervision and Privacy SQLite
+  stores, of `SqliteBroker::connect` and of `WebhookOutbox::open` is tested
+  with a file held under SQLite's exclusive lock; the disk stall that first
+  made the stores fail on hosted Windows runners is not reproduced, and a
+  lock or stall that outlasts all three attempts ends the call with a
+  timeout error.
+- The first-build times in the alpha.6 notes (about 54 s for the SQLite
+  Blank starter and 81 s for SaaS on a hosted runner) were measured with the
+  alpha.6 source and not repeated for rc.1.
+- cargo-semver-checks has no 13.x baseline until 13.0.0 is published; until
+  then the public API listings in `.github/public-api/` are the only check of
+  API changes between prereleases. This release changes the listings of
+  `rullst-iot` and `rullst-labs`, for the two breaking changes approved
+  after the freeze.
+
+### Added
+
+- The book has a "Robotics and IoT in the Classroom" guide, in English and
+  Brazilian Portuguese
+  ([Robotics and IoT in the Classroom](https://rullst.github.io/Rullst/book/iot-classroom.html),
+  [Robótica e IoT em sala de aula](https://rullst.github.io/Rullst/book/pt-BR/iot-classroom.html)):
+  six boards (BBC micro:bit V2, Arduino Uno R3, ESP32-C3, Raspberry Pi
+  Pico 2 W, ESP32-S3, Raspberry Pi Zero 2 W) with their connectivity, Rust
+  support and whether Rullst has validated them, five project ideas that name
+  the Rullst parts they would use and what Rullst does not provide, and safety
+  notes for classes. Only the micro:bit V2 and the Arduino Uno have run with
+  Rullst; the projects are ideas, not shipped examples. The `rullst-iot`
+  README and crate guide link it, and `.github/check-translations.py` checks
+  the translation.
+- The documentation of every crate on docs.rs, and every crate README, now
+  says how to report a problem: open an issue with the Rullst version, enabled
+  features, platform and a minimal reproduction, without secrets or private
+  data, and report security vulnerabilities privately as `SECURITY.md`
+  describes. The bug report template is now an issue form with those fields,
+  an optional question on whether an AI assistant helped, and a required
+  confirmation that the report contains no secrets or private data; the
+  new-issue page links security reports to `SECURITY.md`.
+- The comparison page (`https://rullst.win/compare/`, `/pt-br/comparar/`)
+  has a "Why not Leptos or Dioxus?" section ("Por que não Leptos ou
+  Dioxus?"). It says they are UI frameworks whose components render on the
+  server and run in the browser as WebAssembly, with server functions, and
+  that they ship no ORM, migrations or authentication. They are not in the
+  benchmark because their server side runs on Axum (Leptos also on Actix Web),
+  which is already the benchmark's baseline. A Leptos or Dioxus interface can
+  call a Rullst HTTP API. Facts checked against `leptos 0.8.23` and
+  `dioxus 0.7.10` on 19 November 2026.
+- The landing page, in both languages, and the README link the Scope and
+  limits page.
+- The landing page (`https://rullst.win/`, `/pt-br/`) has a "Made with Rullst"
+  card listing the maintainer's live applications built with Rullst (Rullst
+  Academy, Capoeira Vene, vene.win, the Rullst/Benchmarks results website and
+  these pages), each with a link and one line from its own front page, and
+  its first screen names the optional packages around the framework (AI,
+  payments, mail, messaging, IoT devices, learning platforms and privacy),
+  each linked to its documentation. Every page's footer says which Rullst
+  version made it. Each landing's footer also shows its page weight ("This
+  page: N kB in M requests on a first visit"), measured on the published site
+  with `cargo rullst footprint --page-weight` during the daily deployment and
+  left out when that measurement fails or does not pass its checks.
+- The v13 migration guide has an
+  [alpha.6 to rc.1 checklist](https://rullst.github.io/Rullst/book/migration-v13.html#upgrading-an-alpha6-application-to-rc1):
+  the two API changes, the empty settings that staging and production now
+  refuse, the AI chain with a mock behind a live provider, the remote
+  Studio's launch key, the loopback checks of Studio and Nexus, SurrealDB
+  graph reads, logs and pools. `cargo rullst upgrade` links it, in the plan
+  and in the JSON plan's `migration_guide`, for an application on
+  13.0.0-alpha.6 or a later 13.0 prerelease, instead of the alpha.5 to
+  alpha.6 checklist.
+
+### Changed
+
+- In staging and production, `AiClient::auto()` no longer answers with the
+  offline OpenAI fixture when no AI provider is configured. With no
+  `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`,
+  `GROQ_API_KEY` or `OLLAMA_HOST` (empty values count as unset), it returned
+  fixture text for every prompt as if a model had replied. It now returns
+  `AiError::ConfigError` naming those variables, so a misconfigured staging or
+  production application fails at start-up, or wherever it builds the client.
+  A client built with `AutoAiConfig::into_client()` from such a snapshot has no
+  provider, so each request fails with `AiError::ConfigError`;
+  `AutoAiConfig::from_env()` still succeeds with no provider names, which Nexus
+  reports as no provider. Provider variables are read from the process
+  environment; the environment is resolved as `Server` resolves it, from the
+  working directory: the process `RULLST_ENV`, then `APP_ENV`, then either one
+  from `.env`, then `[app] env` in `Rullst.toml`. An invalid value, or a `.env`
+  or `Rullst.toml` that cannot be read, fails closed. Set a provider, or an
+  explicit `mock_*` value to keep the offline fixture on purpose. Development
+  and test keep the fallback.
+- `cargo rullst audit --idor` now prints that its guard evidence is crate-wide:
+  one `RbacGuard::authorize_owner_or_role` call anywhere in a crate satisfies
+  every `owner` route of that crate (likewise for `role` and `admin`), so each
+  handler still needs its own check.
+- The Turso Blank and API starters (`cargo rullst new --database turso`) stop
+  at start-up with an error naming `TURSO_DATABASE_URL` when it is empty or
+  unset in staging or production, resolved as `Server` resolves them (the
+  process `RULLST_ENV`, then `APP_ENV`, then either one from `.env`, then
+  `[app] env` in `Rullst.toml`). Until now `TursoOrm` then used its offline
+  fallback and wrote the application's data to the local SQLite file
+  `TURSO_OFFLINE_PATH` (`turso-development.db`) instead of the database. An
+  explicit `mock_` URL keeps the local file on purpose, and development and
+  test keep the fallback. Projects generated earlier keep their code; the
+  check can be copied from the `main` of a newly generated starter.
+- Billing code generated by `cargo rullst make:billing` and the SaaS starter
+  refuses an empty `BILLING_API_KEY` or `BILLING_WEBHOOK_SECRET` in staging, as
+  it already did in production: `initialize_billing_provider` returns
+  `BillingConfigError` and the billing routes answer HTTP 503. Until now
+  staging selected the local billing fixture, whose checkout never reached
+  Stripe. Explicit `mock_` values keep the fixture in staging (production still
+  refuses them), and development and test keep the empty-value fallback. The
+  SaaS starter's development `.env` now sets
+  `BILLING_API_KEY=mock_billing_api_key` and
+  `BILLING_WEBHOOK_SECRET=mock_billing_webhook_secret` (its `.env.example`
+  leaves both empty), so `cargo rullst footprint --env staging` still starts
+  it with the fixture. Billing code generated earlier is unchanged.
+- The `.env` notes that `cargo rullst add ai` writes now say that no AI key
+  selects the offline mock only in development and test.
+- The [compatibility policy](https://github.com/Rullst/Rullst/blob/main/docs/src/compatibility-policy.md#keeping-13x-compatible)
+  states the rules that keep 13.x additive: public types stay
+  `#[non_exhaustive]` and gain options through options structs or builders,
+  traits that applications implement gain only default methods, no new
+  third-party type enters a public signature outside the listed public
+  dependencies, a replaced API is deprecated with a `cargo rullst upgrade`
+  rule and keeps working, stored and wire formats are versioned, and safer
+  defaults reach new projects first unless safety requires otherwise.
+- The opt-in features that earlier prereleases called candidates (email
+  login, scoped API tokens, session management, S3/R2 storage and resumable
+  uploads, outgoing webhooks, recurring publications, Redis Streams messaging
+  and distributed tracing) have the tier of their package and its 13.x
+  stability promise from 13.0.0; their documentation now says what each one
+  is tested against instead of "final release admission remains separate".
+- The documentation now states limits it left out: without `RULLST_ENV`
+  (or `APP_ENV`, or `[app] env`) an application runs as development, where
+  the WAF only logs and `Strict-Transport-Security` is sent only over HTTPS;
+  a forwarder on the same machine that adds no forwarding header and speaks
+  HTTP/1.1 defeats the loopback check of local Studio and of Nexus in a debug
+  build, and anyone who can read the address the remote Studio prints can use
+  it until it restarts; `html!` only
+  HTML-escapes `<script>` and `<style>` bodies, `srcdoc` and htmx's
+  `hx-vals`/`hx-headers`, so they take trusted values only; a signed-webhook
+  handler that fails keeps the payload's replay claim, so the provider's
+  retry gets `409` for the replay TTL; the Ollama preset accepts plain HTTP to
+  any host; a client with a /50 or larger IPv6 allocation can fill the
+  `rate_limit_middleware` table; and an
+  empty `TURSO_DATABASE_URL` selects a local SQLite file in every
+  environment. Claims that went beyond the evidence were corrected: CI denies
+  `unwrap`/`expect`/`panic!`/`todo!`/`unimplemented!` rather than every
+  panic, coverage is enforced on pushes to `main`, provider guides were not
+  followed on real accounts, rustls offers `X25519MLKEM768` first only when
+  `prefer-post-quantum` is enabled, and Google, GitHub, Resend, SMTP,
+  Gemini and Bunny Stream are used by the maintainer's production
+  applications without an automated live test.
+- **Breaking:** `rullst-labs` renamed two public enum variants that carried the
+  word Experimental, which was never a maturity label: the profile whose
+  signed receipts `complete` and `reconcile_cleanup` accept,
+  `ExecutionProfile::LinuxExperimental`, is now `ExecutionProfile::PinnedRunner`
+  (the operator pins its tools and receipt key; the crate never checked that
+  the runner is Linux), and the evidence of a graded or rejected signed
+  receipt, `ResultEvidence::Experimental`, is now
+  `ResultEvidence::SignedReceipt`. Only the Rust names changed: both are still
+  serialized as `LinuxExperimental` and `Experimental`, so profile digests,
+  store bindings, job records and receipt bindings are byte-identical, and
+  stores created by an earlier release open and verify unchanged. Rename the
+  paths in code; `cargo rullst upgrade` reports them
+  (`V13-LABS-VARIANTS-RENAMED`). A JSON or TOML configuration that names the
+  profile keeps `LinuxExperimental`.
+- Rullst no longer has an Experimental maturity tier: every package is Core
+  or Extension, and no package, adapter, feature or generator is labelled
+  experimental. The opt-in `s3` adapter of `rullst-media` (AWS S3,
+  Cloudflare R2, MinIO) is now an Extension feature like the rest of the
+  crate, covered by the 13.x stability policy from 13.0.0; it is still tested
+  offline only, and no automated test runs against a live S3, R2 or MinIO
+  service. `#[memoize]` also has its package's tier, and the
+  `experimental-simulators` fixtures of `rullst-iot` were removed (see
+  Removed).
+  The documentation states what each part is tested against, what was
+  validated in real use and what never ran against a live service
+  ([maturity tiers](https://rullst.github.io/Rullst/book/maturity.html)).
+- A PostgreSQL or MySQL pool created by `Orm::init`, `Orm::init_with_config`,
+  `Orm::init_with_options` or `Orm::init_with_replicas` now pings a
+  connection before handing it out only when the connection has been idle
+  for at least 500 ms, instead of before every acquisition (SQLx's
+  `test_before_acquire` is off). A connection that fails that ping is closed
+  and replaced. The ping when a connection returns to the pool is unchanged,
+  so a one-statement request takes two round trips instead of three. A
+  connection that dies less than 500 ms after its release fails its next
+  query, and SQLx then closes it. SQLite pools still never ping before
+  handing out a connection.
+- A `Server` running as development or test on a non-loopback address now logs
+  a `warn` event in release builds too, naming `RULLST_ENV` and saying that the
+  WAF only reports (development) or is off (test) and that HSTS is not sent
+  over plain HTTP. With no `RULLST_ENV`, `APP_ENV` or `[app].env`, the
+  environment is development, so a release binary started with `HOST=0.0.0.0`
+  previously ran with development defaults without any message. It still
+  starts.
+- After a 14.0.0 is published, the maintainer intends to give 13.x security
+  fixes for 1 to 3 more months, instead of 12, with the exact end date
+  announced with 14.0.0
+  ([support window](https://github.com/Rullst/Rullst/blob/main/docs/src/compatibility-policy.md#supported-release-window)).
+  13.x stays the active line for 12 months after 13.0.0, and no 14.0 is
+  planned.
+- The pages of `https://rullst.win/` (the landing, comparison and privacy
+  pages in English and Brazilian Portuguese) are generated by a Rust program
+  in `site/` with Rullst's own `html!` macro, built against the published
+  `rullst` crate (pinned to `=13.0.0-alpha.6`), instead of by
+  `.github/assemble-organization-site.py` from hand-written HTML templates;
+  the templates and the Python assembler are removed. The pages look and
+  behave as before (the same elements, text, illustrations and animations; the
+  element boxes and full-page screenshots at 1440 and 390 pixels match).
+  Every value from the Rullst/Benchmarks summary is checked by the same rules
+  as before and escaped by `html!`, and the stylesheet and script versions
+  (`?v=`) are now computed by the generator instead of edited by hand.
+- The landing page (`https://rullst.win/` and `/pt-br/`) is reorganized around
+  evidence. The first screen says what Rullst is in one sentence and shows the
+  install command, the animated concept illustration and three proof points
+  with links (the security layers on in every generated application, measured
+  memory against Axum, the automated verification). New sections follow: Performance, a summary of the latest
+  Rullst/Benchmarks results (overall position range and score, the group that
+  shares it, the categories level with or below Axum, memory, the minimal row
+  and the ‡ caveat), filled at build time from the same `results/site.json` as
+  the comparison page with the same checks, and saying that Rullst's
+  maintainer maintains that benchmark; Security, with what is on by default,
+  what is opt-in and the CI checks, each linked, and the statements that
+  Rullst has one maintainer and that no external audit has been completed;
+  Included in Rullst, with what Loco 1.3.1 and Topcoat 0.12.1 document checked
+  on 21 November 2026. The Integrations section adds the maintainer's
+  production use on an Oracle Ampere A1 Arm machine. The "Why Rullst",
+  ecosystem, journey and evidence sections were folded into these.
+- The privacy notice of `https://rullst.win/` (and its summary on the
+  landing, in both languages) names Cloudflare, the content delivery and
+  security service in front of GitHub Pages: it receives every request to
+  rullst.win and, unless those features are turned off for the domain, can
+  add its own email-obfuscation and bot-detection scripts to the pages and
+  asks browsers to send it network-error reports.
+- The landing and comparison pages state what their evidence supports: the
+  fail-closed check catches unreviewed fallbacks that match its known
+  patterns; without `RULLST_ENV=production` (or staging) an application runs
+  as development, where the WAF only logs; rc.1 also changes what a working
+  alpha.6 deployment does (with a link to the new checklist); the memory
+  proof point shows the benchmark's Memory score (a tie with Axum in the
+  current run) and that the RAM after the logins is in no score; the
+  results of the run measured on 20–21 November 2026 carry a note that an
+  automatic Rullst/Benchmarks run would not publish them; Stripe is
+  described as used for real purchases in the maintainer's production SaaS,
+  with no recorded acceptance run; and the comparison page says when its
+  rows were last checked, that every starter mounts CSRF protection, and
+  which of the seven GitHub contributors are bots or an AI agent's account.
+
+### Deprecated
+
+- The `oauth_state` session-key fallback of `rullst-connect`'s `AuthSession`
+  and `AuthSessionForm`: a state that the application stored itself under
+  that key before 12.0, which has no expiry, PKCE verifier or OIDC nonce. It
+  still works and is kept through 13.x, but each callback that uses it now
+  logs a `tracing` warning (without the state). Start the login with
+  `begin_oauth_session` or `begin_oidc_session`, or use the store-backed
+  `challenge::begin_login` and `finish_login`.
+
+### Removed
+
+- **Breaking:** the `experimental-simulators` feature of `rullst-iot` and the
+  types behind it, `SimulatedHsmDevice`, `SimulatedHsmProfile`,
+  `SimulatedPqcFixture` and `SimulatedMqttPayloadFormatter` (with the `hsm` and
+  `pqc` modules), were removed. They only hashed bytes with SHA-256 or
+  formatted a number, implemented no HSM, post-quantum cryptography or MQTT
+  client, and their tests only tested themselves. Cargo now refuses the
+  feature: remove it from the `rullst-iot` dependency and give a test that
+  used a fixture its own fixed bytes. `cargo rullst upgrade` reports the
+  feature in manifests and the type names in code
+  (`V13-IOT-SIMULATORS-REMOVED`).
+
+### Fixed
+
+- The telemetry guide, the specification and the alpha.5 to alpha.6
+  checklist now say that access-log lines are written in the order in which
+  responses finished, not in which requests arrived, and that a line carries
+  no arrival time or request id, so a script that reads the log as a
+  sequence of requests matches lines by path and status, or uses its own
+  request ids or the OpenTelemetry spans (#828).
+- Requests that one of `Server`'s own layers answered before the
+  application's handler (the CSRF check, the authentication of
+  `Server::with_machine_endpoints` routes, the WAF in staging and production,
+  the rate limiter of `Server::rate_limit`, Traffic Shield and lifecycle
+  admission) reached no access-log line, because the access log runs inside
+  those layers; since 13.0.0-alpha.6 this also hid refused form submissions
+  in development. They now get a line with their status and the layer, such
+  as `[HTTP] POST /login -> 403 (0.31 ms) refused by csrf`, in every
+  environment and in the hot-reload server of `cargo rullst dev`: each layer
+  marks its response, and a layer outside them writes the line, with the
+  usual path, `RULLST_ACCESS_LOG` and health-probe rules and without the
+  request's body or headers. A refusal inside the application's own router
+  is written once (#845).
+- `AiClient::auto()` and `AutoAiConfig` built a fallback chain in which a
+  leftover `mock_*` credential could sit behind a live provider; the chain
+  tries the next provider after any error, so in production every failed live
+  request was answered with offline fixture text as a success. In staging and
+  production (resolved as `Server` resolves them: the process `RULLST_ENV`,
+  then `APP_ENV`, then either one from `.env`, then `[app] env` in
+  `Rullst.toml`) such a mixed chain now fails with `AiError::ConfigError`
+  naming the offline provider. A chain of mocks only, a chain of live providers only, and
+  development and test are unchanged.
+- `OpenAiCompatibleProvider` (and its DeepSeek and Ollama presets) had no
+  connection deadline, although the README promised the five seconds the
+  native adapters use: a host that never completed the connection held the
+  request until its whole-request deadline. It now uses the native adapters'
+  pooled HTTP client, with the five-second connect deadline, no redirects and
+  no ambient proxy; `with_request_timeout` still sets the whole-request
+  deadline.
+- The `rullst_auth_sessions` table that `cargo rullst auth` and the SaaS
+  starter create had no foreign key on `user_id`, because the session
+  registry does not know the application's accounts table, so an account
+  deleted with SQL (a retention job, a deletion request) left its sessions,
+  with the browser family and times, until they expired (30 days by
+  default). The generated `*_create_rullst_auth_sessions_table` migration now
+  links `user_id` to `users (id)` with `ON DELETE CASCADE`: on SQLite it
+  creates the registry's table with the key before
+  `SessionRegistry::create_table` adds the indexes, and on PostgreSQL and
+  MySQL/MariaDB it adds the constraint after. `cargo rullst auth` gives the
+  migration a later stamp than the users migration it writes, so that it
+  runs after it. `SessionRegistry::create_table`, `open`, the session
+  management guide and the alpha.5 to alpha.6 checklist describe the case and
+  how an existing application adds the key (#827).
+- The Resend and SendPulse offline mocks (empty or `mock_*` API keys) accepted
+  messages their live delivery refuses, so a test could pass for mail
+  production rejects. They now run the same checks before capturing: a
+  missing sender and a Resend schedule beyond 30 days ahead, and for SendPulse
+  a future schedule, an empty body, inline CID attachments, unsubscribe
+  headers and duplicate attachment names. A test that sent such a message
+  through a mock now gets the error live delivery returns.
+- In staging and production, the `Mail` facade no longer reports success for
+  mail it never sends when the selected driver's credential is missing. An
+  empty or unset `RESEND_API_KEY`, `SENDPULSE_API_KEY` or SES proxy token
+  (`AWS_SES_TOKEN`/`AWS_SES_BEARER_TOKEN` when no AWS keys select native SES),
+  or an empty `MAIL_HOST` (an unset one means `127.0.0.1` and real delivery),
+  selected the offline mock, which captured every message
+  (password resets included) and returned `Ok`, with one warning per process.
+  It now returns `MailError::ConfigError` naming the setting, so a worker fails
+  the job. This changes behaviour only for a misconfigured staging or
+  production application: set the credential, or an explicit `mock_*` value
+  to keep the offline mock on purpose. Development and test keep the
+  empty-credential fallback, and drivers built with `try_new` are unchanged.
+  The environment is read as `Server` reads it, now including `[app] env`
+  from `Rullst.toml` when `MAIL_DRIVER` and `MAIL_FROM` are both set.
+- The HTML page of `cargo rullst make:controller` used inline `style`
+  attributes, which the default Content-Security-Policy
+  (`style-src 'self' 'nonce-…'`) blocks, so it rendered unstyled and the
+  browser logged violations. Its styles are now classes in a `<style>` element
+  that carries the request's CSP nonce (`index` takes
+  `Option<Extension<CspNonce>>`). Controllers generated earlier keep their
+  attributes until edited.
+- Sign-in code generated by `cargo rullst make:oauth` read the environment
+  through `RullstConfig::global()` in `initialize()`, which the router calls
+  before `Server` has read `.env` and `Rullst.toml`: a staging or production
+  environment set only in `.env` or `[app] env` was taken for development, so
+  the startup checks allowed `mock_` provider credentials and fell back to
+  `http://localhost:3000` for a missing callback origin. That early call also
+  fixed `RullstConfig::global()` to the default configuration for the rest of
+  the process, so later checks, such as generated billing's, no longer saw
+  `[app] env`. The generated `environment()` now resolves the environment as
+  `Server` does, from the process `RULLST_ENV`, then `APP_ENV`, then `.env`,
+  then `[app] env`, once per process, and no longer touches the global
+  configuration. Code generated earlier is unchanged; the new helper can be
+  copied from a newly generated `src/controllers/oauth/mod.rs`.
+- The Performance section of the comparison page (`https://rullst.win/compare/`
+  and `/pt-br/comparar/`) shows the current Rullst/Benchmarks results again: a
+  table of the overall and category scores (Hello world, Database,
+  Application, Memory, Startup) with position ranges, tie margins, the stability
+  result and every flag explained (‡ included), for Rullst as `cargo rullst new`
+  generates it, Loco, Topcoat, Actix Web and Gin, plus Rullst (minimal) as a
+  diagnostic; the RAM under load and after the logins; and the generated "What
+  this means for Rullst" reading in both languages. It reads the compact
+  `results/site.json` (schema `rullst.benchmarks.site.v2`). The page had kept
+  the 15 November 2026 measurement of 13.0.0-alpha.5. Data with an unknown
+  schema, flag, category or status, or measured more than 90 days earlier, now
+  leaves the "no current results" text instead of older numbers. The landing
+  page no longer dates the cross-framework comparison to June 2026.
+- `cargo rullst upgrade` did not report browser and smoke tests that compare
+  the `rullst_csrf` cookie with the form's `_token`, which fail since
+  13.0.0-alpha.6 masks the token per response; `cargo test` does not run such
+  scripts, so the failure first appeared in CI. `V13-CSRF-TOKEN-COMPARED` now
+  also reads the application's JavaScript, TypeScript and Python files that
+  mention CSRF (outside `target`, `node_modules` and similar folders) and
+  reports a line that expects the cookie and the token to be equal: an
+  `==`/`===`, a `!=`/`!==` in the condition of an `if` that fails the test, an
+  equality assertion such as `expect(token).toBe(cookie.value)` or
+  `assertEqual`, or a check that the page contains the cookie's value. The
+  fix is to assert that the token is present and differs from the raw cookie.
+  Sending the cookie's value as `_token` or `X-CSRF-Token`, which the
+  middleware still accepts, is not reported.
+- `V13-CSRF-COOKIE-IN-PAGE` recognised only the `.strip_prefix("rullst_csrf=")`
+  of the `get_csrf_token` helper that the generators wrote before
+  13.0.0-alpha.6, so an application's own helper that read the cookie with
+  `cookie(headers, "rullst_csrf")` and put the raw value in a page went
+  unreported. The rule now reports every `"rullst_csrf"` or `"rullst_csrf="`
+  string outside test code in a file that never calls `mask_csrf_token`
+  (`jar.get("rullst_csrf")`, `c.name() == "rullst_csrf"`, a constant holding
+  the name); a string that only contains the name, such as the
+  `format!("rullst_csrf={token}")` of a request that sends the cookie, and a
+  file that masks the value are not reported (#824).
+- `V13-CSRF-STATIC-PREFIXES` reported `nest_service` and `route_service`
+  calls but not the `GET` routes that serve files outside
+  `csrf_static_prefixes` and `csrf_static_paths`, which the same CSRF change
+  concerns. It now also reports, for review, `.route("/path",
+  get_service(..))` with a `ServeDir` or `ServeFile`, and a
+  `.route("/path", get(..))` or `routes!` `get("/path" => ..)` whose path ends
+  in an extension that 13.0.0-alpha.5 treated as static (`.xml`, `.json`,
+  `.txt`, `.css`, `.js`, images, `.wasm`), unless the default settings cover
+  it (#826).
+- `cargo rullst upgrade --dry-run` on a project whose manifests already pin
+  the target version (for example right after switching to
+  `=13.0.0-alpha.6`) skipped the rules introduced in that version with the
+  earlier ones and printed `0 must-change, 0 review` with only a discreet
+  `earlier rules skipped` line, which read as if those rules had passed. The
+  plan now prints a `WARNING:` line saying that the target's own rules did
+  not run, and the new `--from <VERSION>` option applies the rules introduced
+  after that exact version instead of after the project's, such as
+  `--from 13.0.0-alpha.5` for an alpha.6 project. `--from` cannot be newer
+  than the project's version or be combined with `--all-rules`, and is
+  refused when the project's version cannot be read, because every rule
+  applies then; the plan
+  names both versions and links the checklist for the `--from` version. The
+  JSON plan's `rule_selection` gains `from_version` and `target_rules_skipped`
+  (#823).
+- `cargo rullst upgrade` reported a literal of a non-exhaustive Rullst struct
+  in a test module that reaches it through `use super::*;`, such as
+  `HttpResponse { status, body }` in a `#[path = "x_tests.rs"] mod tests;`
+  file, only for review (`V13-NON-EXHAUSTIVE-LITERAL-GLOB`), because each file
+  was read alone. The rules now follow the package's `mod` declarations to the
+  parent module (and further `use super::*;` links): when it imports the name
+  from the struct's Rullst crate the literal is `V13-NON-EXHAUSTIVE-LITERAL`,
+  which must change, and when it defines the name or imports it from another
+  crate, the application's own type is no longer reported. Literals whose
+  origin the module tree cannot tell are still reported for review.
+- With `--all-rules`, `V13-LOCALE-JIFF-DATES` and
+  `V13-CAPITAL-INVOICE-JIFF-DATE` reported as must-change every
+  `format_date`/`format_time`/`format_datetime` call and every
+  `Invoice::new`, including code that already passes jiff values, so an
+  application that finished the move to jiff still saw required changes. Both
+  rules now leave a call alone when its value is a jiff one: a path through
+  `jiff`, `civil`, `Zoned`, `Timestamp` or Rullst's ORM types, a parameter,
+  binding, struct field or function of the file with such a type, a chain
+  through `.in_tz(..)` or `.to_zoned(..)`, or a read of a field the file does
+  not declare as chrono (a model's chrono field is reported where the model
+  is declared, by `V13-ORM-CHRONO-TYPES`). Chrono values, and other values
+  whose type the file does not show, are still reported. A field read is not
+  one of them: a chrono field of a struct declared in another file that is
+  not a model is reported by no rule, and the compiler reports the call
+  instead (#844).
+- `V13-AUTH-SESSION-REGISTRY` only inspected the five file names the
+  generators wrote and went silent once a manifest enabled a session
+  registry, although the registry's middleware refuses the session-epoch
+  cookies that `decrypt_session_claims` reads and `make_login_cookie_with_epoch`
+  issues: such code compiles and passes the tests that need no database, but
+  fails at run time (the `cookie_epoch` of the `password_controller.rs` that
+  `cargo rullst auth` generated before alpha.6 sends every password change
+  back to sign-in without changing the password). The rule now reports each
+  of those calls, not `use` lines, in any file outside tests, and the new
+  review rule `V13-AUTH-SESSION-EPOCH-CALLS` reports each call that remains
+  once a manifest enables `auth-session-registry-*` (or `rullst-auth`'s
+  `session-registry-*`). Step 16 of the alpha.5 to alpha.6 checklist names the
+  old generated `cookie_epoch` (#825).
+
+### Security
+
+- The `rullst-connect` Axum examples (`axum_server`, described as a complete
+  server, and `axum_example`) redirected without a verified OAuth `state`
+  (login CSRF: a callback with an attacker's code was accepted), sent no PKCE
+  or nonce, and `axum_server` wrote the provider's profile name into HTML
+  unescaped (XSS). Both now use `begin_login`/`finish_login` with a
+  `MemoryChallengeStore` (state, PKCE and, for Google, the OIDC nonce, with a
+  single-use challenge cookie) and escape every profile field. They need the
+  `axum` feature: `cargo run -p rullst-connect --example axum_server
+  --features axum,mock`. `axum_server`'s offline tests now run in
+  `cargo test` and check that a callback without its challenge, with a
+  swapped state or replayed is refused.
+- The credential-free loopback access of Studio (`LocalStudioAccess`) and
+  Nexus (`NexusAuthPolicy::LoopbackOnly`) trusted any request from a loopback
+  peer with a local `Host`, so a reverse proxy or tunnel on the same machine
+  (for example nginx's default `proxy_pass http://127.0.0.1:3000`) made every
+  remote client local. Both now refuse requests with a forwarding header
+  (`Forwarded`, `X-Forwarded-For`, `X-Forwarded-Host`, `X-Forwarded-Proto`,
+  `X-Forwarded-Server`, `X-Real-IP`, `Via`, `CF-Connecting-IP`,
+  `True-Client-IP`; other names such as `X-Forwarded-Port` or `X-Client-IP`
+  are not checked) or over HTTP/1.0, and requests whose `Server` resolved
+  staging or production. Building the policy now also fails with
+  `LocalAccessRequiresDebugBuild` in a debug build whose process `RULLST_ENV`
+  or `APP_ENV` is staging, production or invalid, and
+  `NexusAuthPolicy::local_development_or_application` and
+  `local_development_or_basic_from_env` then select the application's sign-in
+  or Basic Auth. A proxy that adds no forwarding header and speaks HTTP/1.1
+  still looks like a local browser; never publish Studio or a loopback Nexus
+  through one.
+- The standalone `rullst-studio` (remote projects) answered every local
+  account of the machine, because it checked only for a loopback peer: another
+  user could open it on `127.0.0.1:5556`, read the monitoring documents it
+  fetches with the decrypted tokens and change its projects and settings. Each
+  start now prints `http://127.0.0.1:<port>/studio?key=<key>` with a random
+  256-bit key; opening it sets an `HttpOnly`, `SameSite=Strict` session cookie,
+  and every request without that cookie gets `403`. Open the printed address
+  after each start; anyone who can read it can use Studio until it restarts.
+  The cookie carries the key, and browsers send it to every other server on
+  `127.0.0.1` they visit (cookies are not kept apart by port), including one
+  another account runs, which can then use Studio with it.
+- `GraphQuery::read_only` (SurrealDB graph queries in `rullst-orm`) now
+  accepts only an allowlisted read grammar: `MATCH` paths of nodes and edges,
+  an optional `WHERE` of comparisons and `IS [NOT] NULL` tests joined with
+  `AND`, `OR` and `NOT`, `RETURN` items with optional `AS` aliases and an
+  optional `ORDER BY` with `ASC` or `DESC`. It used to refuse only the
+  `INSERT`, `SET`, `REMOVE`, `DELETE` and `LIMIT` tokens, so a write clause
+  that a later SurrealDB release implements (`CREATE`, `MERGE`, `CALL`, …)
+  would have passed the read-only check. Every other clause, function or
+  procedure call, comment, parameter, escaped string and caller-provided
+  `LIMIT` is now refused with `PolyglotError::InvalidIdentifier`; a read
+  query outside the grammar, such as `OPTIONAL MATCH` or `DISTINCT`, must be
+  rewritten in it. A keyword inside a string literal no longer causes a false
+  refusal.
+
 ## [13.0.0-alpha.6] - 2026-11-20
 
 Sixth v13 prerelease, for evaluation, and the 13.0 feature and public API

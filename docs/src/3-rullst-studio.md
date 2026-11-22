@@ -21,7 +21,7 @@ v13): it reports request rates, latency, errors, queues, N+1
 findings and (since 13.0.0-alpha.6) sampled request traces and the security
 radar behind a token or the application's own sign-in. The standalone
 `rullst-studio` binary
-(`cargo install rullst-studio --version =13.0.0-alpha.6 --no-default-features --features remote --locked`,
+(`cargo install rullst-studio --version =13.0.0-rc.1 --no-default-features --features remote --locked`,
 then `rullst-studio` or `cargo rullst studio --remote`) reads it for several projects from your
 machine, with a project switcher and encrypted local tokens; see
 [Watch your projects from Studio](production-monitoring.md#watch-your-projects-from-studio).

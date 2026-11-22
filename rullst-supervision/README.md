@@ -15,7 +15,7 @@ camera findings include `Obscured`);
 combining it with `sqlite` adds authorization, concurrency leases and deadline
 checks around invocation. There are no default
 features or Core dependencies. Pin the prerelease exactly, for example
-`rullst-supervision = { version = "=13.0.0-alpha.6", features = ["sqlite"] }`.
+`rullst-supervision = { version = "=13.0.0-rc.1", features = ["sqlite"] }`.
 
 An application can opt into visibility, focus, clipboard occurrence and
 fullscreen events. No clipboard contents, camera/audio model, media capture,
@@ -62,7 +62,7 @@ supported scope and its validation evidence. Source increments entered
 repaired retrospectively, as recorded in the
 [delivery evidence](https://rullst.github.io/Rullst/book/v13-delivery-plan.html).
 The standalone package is included in the v13 release inventory and was
-first published on crates.io as `13.0.0-alpha.1`; `13.0.0-alpha.6` is a
+first published on crates.io as `13.0.0-alpha.1`; `13.0.0-rc.1` is a
 prerelease, not a stable release. Applications
 opt in explicitly; no default framework dependency is added.
 

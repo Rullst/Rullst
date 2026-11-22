@@ -11,7 +11,7 @@ changed. Its [maturity tier](maturity.md) has been Extension since
 has the same tier and is tested offline only.
 
 The [crate integration guide](../../rullst-media/README.md) describes installation
-(`rullst-media = { version = "=13.0.0-alpha.6", features = ["bunny", "sqlite"] }`),
+(`rullst-media = { version = "=13.0.0-rc.1", features = ["bunny", "sqlite"] }`),
 separate provider keys, required embed/CDN/direct-file
 protection, HTTP security composition, browser uploads, captions/transcripts,
 typed failure handling, SQLite retention and backup responsibilities.

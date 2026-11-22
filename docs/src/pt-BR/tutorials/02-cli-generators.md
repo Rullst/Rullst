@@ -5,7 +5,7 @@
 **Seu objetivo:** gerar uma pequena parte da aplicação, encontrar os arquivos
 resultantes e entender o que ainda precisa do seu código. Você precisa da CLI
 instalada no [Tutorial 01](01-hello-world.md#6-continue-com-a-cli)
-(`cargo rullst --version` mostra `rullst 13.0.0-alpha.6`).
+(`cargo rullst --version` mostra `rullst 13.0.0-rc.1`).
 
 O Rullst oferece geradores de código opinativos (`make:*`) para controllers,
 modelos, migrações e recursos. Os geradores atuais registram os módulos Rust
