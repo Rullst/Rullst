@@ -31,6 +31,7 @@ fn application() -> Router {
     Router::new()
         .route("/", axum::routing::get(|| async { "home" }))
         .route("/submit", axum::routing::post(|| async { "saved" }))
+        // rullst-access: public — test fixture whose WAF refusal shows the route, not the path.
         .route("/files/{name}", axum::routing::get(|| async { "file" }))
         .route(
             "/webhooks/billing",
