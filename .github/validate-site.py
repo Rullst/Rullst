@@ -24,6 +24,7 @@ from html.parser import HTMLParser
 from hashlib import sha256
 import importlib.util
 import re
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -701,19 +702,31 @@ def table_rows(results: str) -> list[str]:
     return re.findall(r'<tr(?: class="benchmark-diagnostic")?><th scope="row">([^<]+)<', table)
 
 
+# The files the generator reads from its working directory, by fixed name.
+BENCHMARK_INPUT = "benchmarks.json"
+FOOTPRINT_INPUTS = ("footprint.json", "footprint-pt-br.json")
+
+
+def write_input(path: Path, text: str) -> None:
+    """Write one downloaded-data stand-in for the generator."""
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(text)
+
+
 def generate(work: Path, benchmarks: str | None = None, today: str | None = None, max_age_days: int | None = None,
              footprint: dict[str, str] | None = None) -> tuple[Path, str]:
     """Run the generator in WORK (a new directory) with the given downloaded data; its output and warnings."""
     work.mkdir(parents=True)
     args = [str(GENERATOR), "--out", str(work / "site")]
     if benchmarks is not None:
-        (work / "benchmarks.json").write_text(benchmarks, encoding="utf-8")
+        write_input(work / BENCHMARK_INPUT, benchmarks)
         args.append("--benchmarks")
     if max_age_days is not None:
         args += ["--benchmarks-max-age-days", str(max_age_days)]
     if footprint is not None:
-        for name, report in footprint.items():
-            (work / name).write_text(report, encoding="utf-8")
+        for name in FOOTPRINT_INPUTS:
+            if name in footprint:
+                write_input(work / name, footprint[name])
         args.append("--footprint")
     if today is not None:
         args += ["--today", today]
@@ -817,8 +830,8 @@ def validate_benchmark_rendering() -> None:
         # The generator reads only benchmarks.json in its working directory, never a link out of it.
         work = Path(temp) / "outside"
         work.mkdir()
-        (Path(temp) / "elsewhere.json").write_text(BENCHMARK_FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
-        (work / "benchmarks.json").symlink_to(Path(temp) / "elsewhere.json")
+        shutil.copyfile(BENCHMARK_FIXTURE, Path(temp) / "elsewhere.json")
+        (work / BENCHMARK_INPUT).symlink_to(Path(temp) / "elsewhere.json")
         result = subprocess.run([str(GENERATOR), "--out", str(work / "site"), "--benchmarks", "--today", FIXTURE_DAY.isoformat()],
                                 cwd=work, capture_output=True, text=True, timeout=60, check=False)
         assert result.returncode == 0 and "inside the working directory" in result.stderr, f"a results link out of the working directory: {result.stderr!r}"
