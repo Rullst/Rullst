@@ -9,7 +9,9 @@
   not run, and the new `--from <VERSION>` option applies the rules introduced
   after that exact version instead of after the project's, such as
   `--from 13.0.0-alpha.5` for an alpha.6 project. `--from` cannot be newer
-  than the project's version or be combined with `--all-rules`; the plan
+  than the project's version or be combined with `--all-rules`, and is
+  refused when the project's version cannot be read, because every rule
+  applies then; the plan
   names both versions and links the checklist for the `--from` version. The
   JSON plan's `rule_selection` gains `from_version` and `target_rules_skipped`
   (#823).

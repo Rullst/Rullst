@@ -18,13 +18,15 @@ pub(super) const ALPHA3_CHECKLIST: &str = "upgrading-an-alpha3-application-to-al
 /// Its checklist for 13.0.0-alpha.4 applications.
 pub(super) const ALPHA4_CHECKLIST: &str = "upgrading-an-alpha4-application-to-alpha5";
 /// Its checklist for 13.0.0-alpha.5 applications, which also explains the
-/// rules a later 13.0 prerelease adds for alpha.6 changes.
+/// alpha.6 changes that later rules locate.
 pub(super) const ALPHA5_CHECKLIST: &str = "upgrading-an-alpha5-application-to-alpha6";
+/// Its checklist for 13.0.0-alpha.6 applications, the changes of
+/// 13.0.0-rc.1.
+pub(super) const ALPHA6_CHECKLIST: &str = "upgrading-an-alpha6-application-to-rc1";
 
 /// The checklist for an application on the 13.0 prerelease `current`, if
-/// the guide has one: alpha.2 to alpha.5 have their own; a later alpha, beta
-/// or release candidate gets only rules for alpha.6 changes, which the
-/// alpha.5 checklist describes. alpha.1 has none.
+/// the guide has one: alpha.2 to alpha.6 have their own; a later alpha, beta
+/// or release candidate gets the alpha.6 one, the latest. alpha.1 has none.
 fn checklist(current: &Version) -> Option<&'static str> {
     if (current.major, current.minor, current.patch) != (13, 0, 0) || current.pre.is_empty() {
         return None;
@@ -34,10 +36,11 @@ fn checklist(current: &Version) -> Option<&'static str> {
         Some(Ok(2)) => Some(ALPHA2_CHECKLIST),
         Some(Ok(3)) => Some(ALPHA3_CHECKLIST),
         Some(Ok(4)) => Some(ALPHA4_CHECKLIST),
-        Some(Ok(number)) if number >= 5 => Some(ALPHA5_CHECKLIST),
+        Some(Ok(5)) => Some(ALPHA5_CHECKLIST),
+        Some(Ok(number)) if number >= 6 => Some(ALPHA6_CHECKLIST),
         Some(_) => None,
         None if pre.starts_with("alpha") => None,
-        None => Some(ALPHA5_CHECKLIST),
+        None => Some(ALPHA6_CHECKLIST),
     }
 }
 

@@ -94,6 +94,7 @@ fn the_guide_link_follows_the_project_version() {
     let alpha3 = format!("{}#{}", report::GUIDE, report::ALPHA3_CHECKLIST);
     let alpha4 = format!("{}#{}", report::GUIDE, report::ALPHA4_CHECKLIST);
     let alpha5 = format!("{}#{}", report::GUIDE, report::ALPHA5_CHECKLIST);
+    let alpha6 = format!("{}#{}", report::GUIDE, report::ALPHA6_CHECKLIST);
     for (current, expected) in [
         (None, table.to_string()),
         (Some("12.3.0"), table.to_string()),
@@ -105,10 +106,10 @@ fn the_guide_link_follows_the_project_version() {
         (Some("13.0.0-alpha.3"), alpha3.clone()),
         (Some("13.0.0-alpha.4"), alpha4.clone()),
         (Some("13.0.0-alpha.5"), alpha5.clone()),
-        (Some("13.0.0-alpha.6"), alpha5.clone()),
-        (Some("13.0.0-alpha.7"), alpha5.clone()),
-        (Some("13.0.0-beta.1"), alpha5.clone()),
-        (Some("13.0.0-rc.1"), alpha5.clone()),
+        (Some("13.0.0-alpha.6"), alpha6.clone()),
+        (Some("13.0.0-alpha.7"), alpha6.clone()),
+        (Some("13.0.0-beta.1"), alpha6.clone()),
+        (Some("13.0.0-rc.1"), alpha6.clone()),
         (Some("13.0.0"), table.to_string()),
         (Some("13.1.0-rc.1"), table.to_string()),
         (Some("13.0.1-rc.1"), table.to_string()),
@@ -196,6 +197,10 @@ fn the_linked_sections_exist_in_the_migration_guide() {
         anchor("Upgrading an alpha.5 application to alpha.6"),
         report::ALPHA5_CHECKLIST
     );
+    assert_eq!(
+        anchor("Upgrading an alpha.6 application to rc.1"),
+        report::ALPHA6_CHECKLIST
+    );
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../docs/src/migration-v13.md");
     // Packaged crates do not ship the repository documentation.
     let Ok(guide) = std::fs::read_to_string(path) else {
@@ -216,6 +221,7 @@ fn the_linked_sections_exist_in_the_migration_guide() {
         report::ALPHA3_CHECKLIST,
         report::ALPHA4_CHECKLIST,
         report::ALPHA5_CHECKLIST,
+        report::ALPHA6_CHECKLIST,
     ] {
         assert!(
             anchors.iter().any(|anchor| anchor == expected),
