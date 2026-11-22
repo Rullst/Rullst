@@ -3,7 +3,7 @@
 use rullst::html;
 use rullst::html::Markup;
 
-use crate::pages::{Context, Lang, made_with};
+use crate::pages::{Context, Lang, blocks, made_with};
 
 /// The Brazilian Portuguese comparison page (`/pt-br/comparar/`).
 pub fn page(cx: &Context, results: Markup) -> Markup {
@@ -21,22 +21,10 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                 <meta property="og:locale" content="pt_BR" />
                 <meta property="og:locale:alternate" content="en_US" />
                 <title>"Rullst, Loco e Topcoat comparados — Rullst"</title>
-                <link rel="canonical" href="https://rullst.win/pt-br/comparar/" />
-                <link rel="alternate" hreflang="en" href="https://rullst.win/compare/" />
-                <link rel="alternate" hreflang="pt-BR" href="https://rullst.win/pt-br/comparar/" />
-                <link rel="alternate" hreflang="x-default" href="https://rullst.win/compare/" />
-                <link rel="icon" type="image/png" href="/Rullst/Rullst.png" />
-                <link rel="stylesheet" href={cx.assets.css.as_str()} />
+                {blocks::head_links("https://rullst.win/pt-br/comparar/", "https://rullst.win/compare/", "https://rullst.win/pt-br/comparar/", &cx.assets.css)}
             </head>
             <body>
-                <a class="skip-link" href="#main">"Pular para o conteúdo"</a>" "
-                <nav class="site-nav" aria-label="Navegação principal">
-                    <div class="shell nav-inner">
-                        <a class="brand" href="/pt-br/">"rullst"<span class="brand-period">"."</span></a>
-                        <div class="lang-switch" role="group" aria-label="Idioma"><a href="/compare/" hreflang="en" lang="en"><img src="/assets/flags/us.svg" alt="" width="27" height="14" />"English"</a><a href="/pt-br/comparar/" hreflang="pt-BR" lang="pt-BR" aria-current="page" aria-label="Português (Brasil)"><img src="/assets/flags/br.svg" alt="" width="20" height="14" />"Português"</a></div>
-                        <a href="/pt-br/#performance">"Voltar ao site ↗"</a>
-                    </div>
-                </nav>
+                {blocks::static_nav(Lang::PtBr, "/compare/", "/pt-br/comparar/", "/pt-br/#performance")}
                 <main id="main" class="shell section compare-page">
                     <p class="eyebrow">"Três frameworks web em Rust. Fatos verificados."</p>
                     <h1>"Rullst, Loco e Topcoat."</h1>
@@ -64,193 +52,83 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                     </section>
                     <section id="topics" aria-labelledby="topics-heading">
                         <h2 id="topics-heading">"Tema a tema"</h2>
-                        <div class="compare-topic" id="topic-rendering">
-                            <h3>"Modelo de renderização"</h3>
-                            <dl>
-                                <div>
-                                    <dt>"Rullst"</dt>
-                                    <dd>"HTML renderizado no servidor pela macro "<code>"html!"</code>", com escape por padrão, e htmx e a build CSP do Alpine.js para interatividade. Sem bundle no cliente por padrão."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Loco"</dt>
-                                    <dd>"Templates no servidor com Tera 2, por trás de um renderizador substituível. Também um modo SPA no cliente (Vite e React) e um modo de binário único com assets embutidos."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Topcoat"</dt>
-                                    <dd>"Renderização no servidor com a macro "<code>"view!"</code>" e componentes assíncronos. As expressões "<code>"$(...)"</code>" são Rust com checagem de tipos, também traduzido para JavaScript para dar reatividade no navegador. Integrações opcionais com htmx, Alpine AJAX e Datastar."</dd>
-                                </div>
-                            </dl>
-                        </div>
-                        <div class="compare-topic" id="topic-database">
-                            <h3>"Banco de dados e ORM"</h3>
-                            <dl>
-                                <div>
-                                    <dt>"Rullst"</dt>
-                                    <dd>"ORM próprio ("<code>"#[derive(Orm)]"</code>") sobre SQLx para SQLite, PostgreSQL e MySQL/MariaDB, com migrações "<code>"Schema"</code>". Turso/libSQL, SurrealDB e estruturas de dados do Redis por adaptadores separados."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Loco"</dt>
-                                    <dd>"Sea-ORM 2.0 com migrações. Os drivers de banco documentados são SQLite e PostgreSQL."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Topcoat"</dt>
-                                    <dd>"Sem ORM no crate "<code>"topcoat"</code>". "<code>"topcoat new --database toasty"</code>" gera uma aplicação que usa o Toasty sobre SQLite, com as migrações do Toasty."</dd>
-                                </div>
-                            </dl>
-                        </div>
-                        <div class="compare-topic" id="topic-security">
-                            <h3>"Autenticação e segurança padrão"</h3>
-                            <dl>
-                                <div>
-                                    <dt>"Rullst"</dt>
-                                    <dd>"Hash de senha com Argon2, sessões criptografadas, passkeys, RBAC e login OAuth2/OIDC. O starter SaaS já liga o middleware de CSRF; o "<code>"rullst-security"</code>" também oferece cabeçalhos seguros, uma camada de WAF e bloqueio de login."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Loco"</dt>
-                                    <dd>"JWT por padrão, com hash argon2 e chaves de API. Sessões em cookie assinado ou criptografado e OAuth2/OIDC com presets de GitHub e Google são opcionais. O middleware de cabeçalhos seguros existe, mas vem desligado; middleware de CSRF não está documentado."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Topcoat"</dt>
-                                    <dd>"Tokens de sessão com armazenamento fornecido por você, em cookies "<code>"__Host-"</code>", Secure, HttpOnly e SameSite=Lax. Uma política de origem padrão rejeita requisições de outras origens que alteram estado. Autenticação está no roadmap; hash de senha, cabeçalhos seguros e tokens de CSRF não estão documentados."</dd>
-                                </div>
-                            </dl>
-                        </div>
-                        <div class="compare-topic" id="topic-jobs">
-                            <h3>"Jobs em segundo plano"</h3>
-                            <dl>
-                                <div>
-                                    <dt>"Rullst"</dt>
-                                    <dd>"Filas no "<code>"rullst-core"</code>" (em processo, SQLite e Redis). O "<code>"rullst-messaging"</code>" acrescenta novas tentativas, filas de mensagens mortas, um relay de outbox e mensageria com Redis Streams."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Loco"</dt>
-                                    <dd>"Filas em Redis, PostgreSQL ou SQLite, modos em processo e um agendador no estilo cron."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Topcoat"</dt>
-                                    <dd>"Não há suporte embutido. Jobs em segundo plano estão no roadmap."</dd>
-                                </div>
-                            </dl>
-                        </div>
-                        <div class="compare-topic" id="topic-mail">
-                            <h3>"E-mail"</h3>
-                            <dl>
-                                <div>
-                                    <dt>"Rullst"</dt>
-                                    <dd><code>"rullst-mail"</code>": e-mail com templates via Resend, AWS SES, SendPulse ou SMTP, entregue em segundo plano, com supressão de destinatários e um kit de conformidade para o seu próprio transporte."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Loco"</dt>
-                                    <dd>"Um mailer SMTP embutido que envia pela fila de jobs, com um modo stub para testes. Um recurso opcional de notificações acrescenta Slack e webhooks."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Topcoat"</dt>
-                                    <dd>"Um recurso opcional de e-mail com transportes SMTP, arquivo (.eml) e em memória."</dd>
-                                </div>
-                            </dl>
-                        </div>
-                        <div class="compare-topic" id="topic-billing">
-                            <h3>"Pagamentos e cobrança"</h3>
-                            <dl>
-                                <div>
-                                    <dt>"Rullst"</dt>
-                                    <dd><code>"rullst-capital"</code>": adaptadores Stripe e InfinitePay, webhooks verificados com proteção contra replay, cotas, direitos de acesso e faturas."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Loco"</dt>
-                                    <dd>"Não documentado."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Topcoat"</dt>
-                                    <dd>"Não documentado."</dd>
-                                </div>
-                            </dl>
-                        </div>
-                        <div class="compare-topic" id="topic-admin">
-                            <h3>"Admin e observabilidade"</h3>
-                            <dl>
-                                <div>
-                                    <dt>"Rullst"</dt>
-                                    <dd>"Nexus, um admin gerado para os modelos registrados; Studio, uma sala de controle local para desenvolvimento; exportação de traces distribuídos via OpenTelemetry, testada na CI com um OpenTelemetry Collector em um contêiner local."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Loco"</dt>
-                                    <dd>"Nenhuma interface de admin documentada. Logs com "<code>"tracing"</code>", endpoints "<code>"/_ping"</code>", "<code>"/_health"</code>" e "<code>"/_readiness"</code>" e "<code>"cargo loco doctor"</code>"."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Topcoat"</dt>
-                                    <dd>"Sem framework de admin (existe uma aplicação de demonstração de admin). Logs e endpoints de saúde não estão documentados; a geração de OpenAPI chegou na 0.12.1."</dd>
-                                </div>
-                            </dl>
-                        </div>
-                        <div class="compare-topic" id="topic-cli">
-                            <h3>"CLI e geradores"</h3>
-                            <dl>
-                                <div>
-                                    <dt>"Rullst"</dt>
-                                    <dd><code>"cargo rullst new"</code>" (starters Blank, API e SaaS) e geradores "<code>"make:*"</code>" para modelos, migrações, controllers, resources, workers, e-mail, cobrança, MFA, OAuth e outros; "<code>"dev"</code>", "<code>"doctor"</code>" e "<code>"upgrade"</code>" assistido."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Loco"</dt>
-                                    <dd><code>"loco new"</code>" (templates SaaS, REST API, lightweight e advanced) e "<code>"cargo loco generate"</code>" para modelos, migrações, scaffolds, controllers, tasks, workers, mailers e arquivos de deploy."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Topcoat"</dt>
-                                    <dd><code>"topcoat new"</code>", "<code>"dev"</code>", "<code>"fmt"</code>", "<code>"ui"</code>" (copia componentes para o projeto), "<code>"asset bundle"</code>" e "<code>"l10n check"</code>". Geradores de modelos ou controllers não estão documentados."</dd>
-                                </div>
-                            </dl>
-                        </div>
-                        <div class="compare-topic" id="topic-deployment">
-                            <h3>"Orientação de deploy"</h3>
-                            <dl>
-                                <div>
-                                    <dt>"Rullst"</dt>
-                                    <dd>"Guias para DigitalOcean, Hetzner, Oracle Cloud e Google Cloud. A CI testa o deploy gerado para VM dos starters Blank e SaaS, com SQLite, no Docker e no Podman em um runner x86_64; máquinas Arm não são testadas, e os guias dos provedores foram escritos a partir da documentação deles, sem serem seguidos de ponta a ponta em contas reais."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Loco"</dt>
-                                    <dd>"Um binário de release, mais configurações geradas de Docker, nginx ou AWS Lambda, e "<code>"loco doctor"</code>" antes de ir para produção."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Topcoat"</dt>
-                                    <dd>"A documentação de deploy está no roadmap. Há um exemplo para Cloudflare Workers e hospedagem própria via "<code>"serve()"</code>" ou "<code>"Router::handle"</code>"."</dd>
-                                </div>
-                            </dl>
-                        </div>
-                        <div class="compare-topic" id="topic-stability">
-                            <h3>"Estabilidade, versionamento e janela de suporte"</h3>
-                            <dl>
-                                <div>
-                                    <dt>"Rullst"</dt>
-                                    <dd>"A 13.0 está em pré-lançamento; a 13.0.0-alpha.6 congelou as funcionalidades e a API pública, e a 13.0.0-rc.1 traz correções, documentação e as mudanças que o mantenedor aprovou uma a uma depois do congelamento, duas delas incompatíveis. Depois da 13.0.0, o mantenedor pretende manter a 13.x como linha ativa por 12 meses e, depois da 14.0.0, dar a ela correções de segurança por mais 1 a 3 meses (uma intenção, não uma garantia). Versionamento semântico; MSRV Rust 1.96."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Loco"</dt>
-                                    <dd>"A 1.0.0 (julho de 2026) foi a primeira versão estável. As notas de atualização listam mudanças incompatíveis; uma declaração de semver e uma janela de suporte não estão documentadas. MSRV Rust 1.94."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Topcoat"</dt>
-                                    <dd>"O README diz: inicial e experimental, espere mudanças incompatíveis. O changelog diz que segue o versionamento semântico. Nenhuma janela de suporte documentada. MSRV Rust 1.99."</dd>
-                                </div>
-                            </dl>
-                        </div>
-                        <div class="compare-topic" id="topic-maturity">
-                            <h3>"Maturidade e comunidade"</h3>
-                            <dl>
-                                <div>
-                                    <dt>"Rullst"</dt>
-                                    <dd>"Publicado pela primeira vez em maio de 2026. Licença MIT. 21 estrelas e 7 contribuidores no GitHub em 14 de novembro de 2026."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Loco"</dt>
-                                    <dd>"Primeira versão em novembro de 2023. Licença Apache-2.0. 9.629 estrelas e 157 contribuidores no GitHub em 14 de novembro de 2026."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Topcoat"</dt>
-                                    <dd>"Repositório criado em abril de 2026, primeira versão funcional em julho de 2026, na organização tokio-rs do GitHub. Licença MIT. 7.221 estrelas e 41 contribuidores no GitHub em 14 de novembro de 2026."</dd>
-                                </div>
-                            </dl>
-                        </div>
+                        {blocks::topic(
+                            "topic-rendering",
+                            "Modelo de renderização",
+                            html! { "HTML renderizado no servidor pela macro "<code>"html!"</code>", com escape por padrão, e htmx e a build CSP do Alpine.js para interatividade. Sem bundle no cliente por padrão." },
+                            html! { "Templates no servidor com Tera 2, por trás de um renderizador substituível. Também um modo SPA no cliente (Vite e React) e um modo de binário único com assets embutidos." },
+                            html! { "Renderização no servidor com a macro "<code>"view!"</code>" e componentes assíncronos. As expressões "<code>"$(...)"</code>" são Rust com checagem de tipos, também traduzido para JavaScript para dar reatividade no navegador. Integrações opcionais com htmx, Alpine AJAX e Datastar." },
+                        )}
+                        {blocks::topic(
+                            "topic-database",
+                            "Banco de dados e ORM",
+                            html! { "ORM próprio ("<code>"#[derive(Orm)]"</code>") sobre SQLx para SQLite, PostgreSQL e MySQL/MariaDB, com migrações "<code>"Schema"</code>". Turso/libSQL, SurrealDB e estruturas de dados do Redis por adaptadores separados." },
+                            html! { "Sea-ORM 2.0 com migrações. Os drivers de banco documentados são SQLite e PostgreSQL." },
+                            html! { "Sem ORM no crate "<code>"topcoat"</code>". "<code>"topcoat new --database toasty"</code>" gera uma aplicação que usa o Toasty sobre SQLite, com as migrações do Toasty." },
+                        )}
+                        {blocks::topic(
+                            "topic-security",
+                            "Autenticação e segurança padrão",
+                            html! { "Hash de senha com Argon2, sessões criptografadas, passkeys, RBAC e login OAuth2/OIDC. O starter SaaS já liga o middleware de CSRF; o "<code>"rullst-security"</code>" também oferece cabeçalhos seguros, uma camada de WAF e bloqueio de login." },
+                            html! { "JWT por padrão, com hash argon2 e chaves de API. Sessões em cookie assinado ou criptografado e OAuth2/OIDC com presets de GitHub e Google são opcionais. O middleware de cabeçalhos seguros existe, mas vem desligado; middleware de CSRF não está documentado." },
+                            html! { "Tokens de sessão com armazenamento fornecido por você, em cookies "<code>"__Host-"</code>", Secure, HttpOnly e SameSite=Lax. Uma política de origem padrão rejeita requisições de outras origens que alteram estado. Autenticação está no roadmap; hash de senha, cabeçalhos seguros e tokens de CSRF não estão documentados." },
+                        )}
+                        {blocks::topic(
+                            "topic-jobs",
+                            "Jobs em segundo plano",
+                            html! { "Filas no "<code>"rullst-core"</code>" (em processo, SQLite e Redis). O "<code>"rullst-messaging"</code>" acrescenta novas tentativas, filas de mensagens mortas, um relay de outbox e mensageria com Redis Streams." },
+                            html! { "Filas em Redis, PostgreSQL ou SQLite, modos em processo e um agendador no estilo cron." },
+                            html! { "Não há suporte embutido. Jobs em segundo plano estão no roadmap." },
+                        )}
+                        {blocks::topic(
+                            "topic-mail",
+                            "E-mail",
+                            html! { <code>"rullst-mail"</code>": e-mail com templates via Resend, AWS SES, SendPulse ou SMTP, entregue em segundo plano, com supressão de destinatários e um kit de conformidade para o seu próprio transporte." },
+                            html! { "Um mailer SMTP embutido que envia pela fila de jobs, com um modo stub para testes. Um recurso opcional de notificações acrescenta Slack e webhooks." },
+                            html! { "Um recurso opcional de e-mail com transportes SMTP, arquivo (.eml) e em memória." },
+                        )}
+                        {blocks::topic(
+                            "topic-billing",
+                            "Pagamentos e cobrança",
+                            html! { <code>"rullst-capital"</code>": adaptadores Stripe e InfinitePay, webhooks verificados com proteção contra replay, cotas, direitos de acesso e faturas." },
+                            html! { "Não documentado." },
+                            html! { "Não documentado." },
+                        )}
+                        {blocks::topic(
+                            "topic-admin",
+                            "Admin e observabilidade",
+                            html! { "Nexus, um admin gerado para os modelos registrados; Studio, uma sala de controle local para desenvolvimento; exportação de traces distribuídos via OpenTelemetry, testada na CI com um OpenTelemetry Collector em um contêiner local." },
+                            html! { "Nenhuma interface de admin documentada. Logs com "<code>"tracing"</code>", endpoints "<code>"/_ping"</code>", "<code>"/_health"</code>" e "<code>"/_readiness"</code>" e "<code>"cargo loco doctor"</code>"." },
+                            html! { "Sem framework de admin (existe uma aplicação de demonstração de admin). Logs e endpoints de saúde não estão documentados; a geração de OpenAPI chegou na 0.12.1." },
+                        )}
+                        {blocks::topic(
+                            "topic-cli",
+                            "CLI e geradores",
+                            html! { <code>"cargo rullst new"</code>" (starters Blank, API e SaaS) e geradores "<code>"make:*"</code>" para modelos, migrações, controllers, resources, workers, e-mail, cobrança, MFA, OAuth e outros; "<code>"dev"</code>", "<code>"doctor"</code>" e "<code>"upgrade"</code>" assistido." },
+                            html! { <code>"loco new"</code>" (templates SaaS, REST API, lightweight e advanced) e "<code>"cargo loco generate"</code>" para modelos, migrações, scaffolds, controllers, tasks, workers, mailers e arquivos de deploy." },
+                            html! { <code>"topcoat new"</code>", "<code>"dev"</code>", "<code>"fmt"</code>", "<code>"ui"</code>" (copia componentes para o projeto), "<code>"asset bundle"</code>" e "<code>"l10n check"</code>". Geradores de modelos ou controllers não estão documentados." },
+                        )}
+                        {blocks::topic(
+                            "topic-deployment",
+                            "Orientação de deploy",
+                            html! { "Guias para DigitalOcean, Hetzner, Oracle Cloud e Google Cloud. A CI testa o deploy gerado para VM dos starters Blank e SaaS, com SQLite, no Docker e no Podman em um runner x86_64; máquinas Arm não são testadas, e os guias dos provedores foram escritos a partir da documentação deles, sem serem seguidos de ponta a ponta em contas reais." },
+                            html! { "Um binário de release, mais configurações geradas de Docker, nginx ou AWS Lambda, e "<code>"loco doctor"</code>" antes de ir para produção." },
+                            html! { "A documentação de deploy está no roadmap. Há um exemplo para Cloudflare Workers e hospedagem própria via "<code>"serve()"</code>" ou "<code>"Router::handle"</code>"." },
+                        )}
+                        {blocks::topic(
+                            "topic-stability",
+                            "Estabilidade, versionamento e janela de suporte",
+                            html! { "A 13.0 está em pré-lançamento; a 13.0.0-alpha.6 congelou as funcionalidades e a API pública, e a 13.0.0-rc.1 traz correções, documentação e as mudanças que o mantenedor aprovou uma a uma depois do congelamento, duas delas incompatíveis. Depois da 13.0.0, o mantenedor pretende manter a 13.x como linha ativa por 12 meses e, depois da 14.0.0, dar a ela correções de segurança por mais 1 a 3 meses (uma intenção, não uma garantia). Versionamento semântico; MSRV Rust 1.96." },
+                            html! { "A 1.0.0 (julho de 2026) foi a primeira versão estável. As notas de atualização listam mudanças incompatíveis; uma declaração de semver e uma janela de suporte não estão documentadas. MSRV Rust 1.94." },
+                            html! { "O README diz: inicial e experimental, espere mudanças incompatíveis. O changelog diz que segue o versionamento semântico. Nenhuma janela de suporte documentada. MSRV Rust 1.99." },
+                        )}
+                        {blocks::topic(
+                            "topic-maturity",
+                            "Maturidade e comunidade",
+                            html! { "Publicado pela primeira vez em maio de 2026. Licença MIT. 21 estrelas e 7 contribuidores no GitHub em 14 de novembro de 2026." },
+                            html! { "Primeira versão em novembro de 2023. Licença Apache-2.0. 9.629 estrelas e 157 contribuidores no GitHub em 14 de novembro de 2026." },
+                            html! { "Repositório criado em abril de 2026, primeira versão funcional em julho de 2026, na organização tokio-rs do GitHub. Licença MIT. 7.221 estrelas e 41 contribuidores no GitHub em 14 de novembro de 2026." },
+                        )}
                     </section>
                     <section id="ui-frameworks" aria-labelledby="ui-frameworks-heading">
                         <h2 id="ui-frameworks-heading">"Por que não Leptos ou Dioxus?"</h2>

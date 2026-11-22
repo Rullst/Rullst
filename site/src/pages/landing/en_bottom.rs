@@ -3,7 +3,7 @@
 use rullst::html;
 use rullst::html::Markup;
 
-use super::art;
+use super::{Demo, art, demo_card, included_card};
 use crate::footprint;
 use crate::pages::made_with;
 use crate::pages::{Context, Lang};
@@ -19,84 +19,18 @@ pub fn included() -> Markup {
             </div>
             <p class="landing-checked" id="checked-included">"What a card says about Loco and Topcoat was checked on "<time datetime="2026-11-21">"21 November 2026"</time>" in Loco "<code>"loco-rs 1.3.1"</code>" and Topcoat "<code>"topcoat 0.12.1"</code>", their latest releases then."</p>
             <div class="included-grid">
-                <article class="included-card">
-                    <span class="included-index">"CLI · RESOURCES"</span>" "
-                    <h3><code>"cargo rullst footprint"</code></h3>
-                    <p>"Measures your application's binary size, idle memory, start-up time, CPU time per request and page weight, says how it measured each one, and can fail CI when a budget grows. Its carbon figure is an SCI estimate from inputs you give, not a measurement."</p>
-                    <p class="included-elsewhere">"Loco and Topcoat document no such command."</p>" "
-                    <a href="/Rullst/book/footprint.html">"Footprint guide "<span aria-hidden="true">"↗"</span></a>
-                </article>
-                <article class="included-card">
-                    <span class="included-index">"CLI · UPGRADES"</span>" "
-                    <h3><code>"cargo rullst upgrade"</code></h3>
-                    <p><code>"--dry-run"</code>" lists each source change a newer Rullst needs, at "<code>"file:line"</code>", with a rule code and its migration-guide row; applying backs up the files, updates the versions and runs "<code>"cargo fix"</code>" and "<code>"cargo check"</code>". It does not migrate data."</p>
-                    <p class="included-elsewhere">"Loco documents an upgrade guide and no upgrade command; Topcoat documents neither."</p>" "
-                    <a href="/Rullst/book/tutorials/36-assisted-framework-upgrades.html">"Assisted upgrades "<span aria-hidden="true">"↗"</span></a>
-                </article>
-                <article class="included-card">
-                    <span class="included-index">"CLI · TESTS"</span>" "
-                    <h3>"Tests from the first commit"</h3>
-                    <p>"Every project "<code>"cargo rullst new"</code>" creates has a smoke test of each page (status, security headers, HTML hygiene) and, unless you pass "<code>"--no-ci"</code>", a CI workflow with Clippy, tests, "<code>"cargo audit"</code>" and a secret scan. "<code>"cargo rullst add browser-tests"</code>" opens every page in Chromium, Firefox and WebKit with axe-core."</p>" "
-                    <a href="/Rullst/book/testing-your-app.html">"Testing your application "<span aria-hidden="true">"↗"</span></a>
-                </article>
-                <article class="included-card">
-                    <span class="included-index">"DEVELOPMENT · STUDIO"</span>" "
-                    <h3>"A developer control room"</h3>
-                    <p>"Studio runs as a local debug server on "<code>"127.0.0.1:5555"</code>": a database inspector with an ER diagram, queues, feature flags, request traces and the security events of the running process."</p>
-                    <p class="included-elsewhere">"Loco and Topcoat document no development dashboard."</p>" "
-                    <a href="/Rullst/book/3-rullst-studio.html">"Studio guide "<span aria-hidden="true">"↗"</span></a>
-                </article>
-                <article class="included-card">
-                    <span class="included-index">"ADMIN · NEXUS"</span>" "
-                    <h3>"A generated admin"</h3>
-                    <p>"Nexus builds server-rendered list, search, create, edit and batch views for the ORM models you register, with field policies and RBAC; release builds need your application's sign-in or Basic Auth over TLS."</p>
-                    <p class="included-elsewhere">"Loco and Topcoat document no generated admin (Topcoat has a hand-written admin demo)."</p>" "
-                    <a href="/Rullst/book/4-rullst-nexus.html">"Nexus guide "<span aria-hidden="true">"↗"</span></a>
-                </article>
-                <article class="included-card">
-                    <span class="included-index">"BILLING · CAPITAL"</span>" "
-                    <h3>"Payments with fail-closed checks"</h3>
-                    <p>"Stripe and InfinitePay adapters, signed webhooks with replay protection, quotas, entitlements and invoices in minor units. The generated billing code refuses empty payment keys in production."</p>
-                    <p class="included-elsewhere">"Loco and Topcoat document no payments."</p>" "
-                    <a href="/Rullst/book/crates/capital.html">"Billing guide "<span aria-hidden="true">"↗"</span></a>
-                </article>
-                <article class="included-card">
-                    <span class="included-index">"MAIL"</span>" "
-                    <h3>"Transactional mail"</h3>
-                    <p>"Resend, AWS SES, SendPulse or SMTP, sent in the background, with recipient suppression and opt-in attachment inspection. In 13.0.0-rc.1, a missing provider key in staging or production is an error, not a send that only looked successful."</p>" "
-                    <a href="/Rullst/book/crates/mail.html">"Mail guide "<span aria-hidden="true">"↗"</span></a>
-                </article>
-                <article class="included-card">
-                    <span class="included-index">"AI"</span>" "
-                    <h3>"One guarded AI client"</h3>
-                    <p>"Gemini, OpenAI, Claude and OpenAI-compatible endpoints (DeepSeek and Ollama presets), with a prompt-injection filter, PII masking and offline fixtures for tests."</p>" "
-                    <a href="/Rullst/book/ai-provider-capabilities.html">"Provider boundaries "<span aria-hidden="true">"↗"</span></a>
-                </article>
-                <article class="included-card">
-                    <span class="included-index">"IOT · SIGNED OTA"</span>" "
-                    <h3>"Firmware updates you can verify"</h3>
-                    <p><code>"no_std"</code>" telemetry helpers, MQTT 5 and CoAP encoders and Ed25519-signed OTA manifest verification with a rollback-counter contract, run on a BBC micro:bit V2. Transports, flashing and bootloaders stay the application's."</p>
-                    <p class="included-elsewhere">"Loco and Topcoat document no IoT or OTA support."</p>" "
-                    <a href="/Rullst/book/crates/iot.html">"IoT guide "<span aria-hidden="true">"↗"</span></a>
-                </article>
-                <article class="included-card">
-                    <span class="included-index">"LABS"</span>" "
-                    <h3>"Graded exercises, your runner"</h3>
-                    <p>"Contracts for exercise jobs that a separately deployed runner claims: leases, cancellation, retention and signed receipts. Labs itself never runs learner code."</p>" "
-                    <a href="/Rullst/book/labs-runner-contract.html">"Runner contract "<span aria-hidden="true">"↗"</span></a>
-                </article>
-                <article class="included-card">
-                    <span class="included-index">"PRIVACY"</span>" "
-                    <h3>"Age policies and consent"</h3>
-                    <p>"Proportional age policies, signed threshold attestations and versioned consent and withdrawal, on SQLite or PostgreSQL; "<code>"make:age-gate"</code>" and "<code>"make:privacy"</code>" wire them into an application. No live age provider is included."</p>" "
-                    <a href="https://github.com/Rullst/Rullst/tree/main/rullst-privacy">"rullst-privacy "<span aria-hidden="true">"↗"</span></a>
-                </article>
-                <article class="included-card">
-                    <span class="included-index">"SUPERVISION"</span>" "
-                    <h3>"Transparent exam supervision"</h3>
-                    <p>"Exam and parental contracts with an explicit collection acknowledgement, typed browser observations and camera-presence and audio-activity adapters. No media model, automatic grading or device-wide control is included."</p>" "
-                    <a href="/Rullst/book/supervision.html">"Supervision guide "<span aria-hidden="true">"↗"</span></a>
-                </article>
+                {included_card("CLI · RESOURCES", html! { <code>"cargo rullst footprint"</code> }, html! { "Measures your application's binary size, idle memory, start-up time, CPU time per request and page weight, says how it measured each one, and can fail CI when a budget grows. Its carbon figure is an SCI estimate from inputs you give, not a measurement." }, Some("Loco and Topcoat document no such command."), ("/Rullst/book/footprint.html", "Footprint guide"))}
+                {included_card("CLI · UPGRADES", html! { <code>"cargo rullst upgrade"</code> }, html! { <code>"--dry-run"</code>" lists each source change a newer Rullst needs, at "<code>"file:line"</code>", with a rule code and its migration-guide row; applying backs up the files, updates the versions and runs "<code>"cargo fix"</code>" and "<code>"cargo check"</code>". It does not migrate data." }, Some("Loco documents an upgrade guide and no upgrade command; Topcoat documents neither."), ("/Rullst/book/tutorials/36-assisted-framework-upgrades.html", "Assisted upgrades"))}
+                {included_card("CLI · TESTS", html! { "Tests from the first commit" }, html! { "Every project "<code>"cargo rullst new"</code>" creates has a smoke test of each page (status, security headers, HTML hygiene) and, unless you pass "<code>"--no-ci"</code>", a CI workflow with Clippy, tests, "<code>"cargo audit"</code>" and a secret scan. "<code>"cargo rullst add browser-tests"</code>" opens every page in Chromium, Firefox and WebKit with axe-core." }, None, ("/Rullst/book/testing-your-app.html", "Testing your application"))}
+                {included_card("DEVELOPMENT · STUDIO", html! { "A developer control room" }, html! { "Studio runs as a local debug server on "<code>"127.0.0.1:5555"</code>": a database inspector with an ER diagram, queues, feature flags, request traces and the security events of the running process." }, Some("Loco and Topcoat document no development dashboard."), ("/Rullst/book/3-rullst-studio.html", "Studio guide"))}
+                {included_card("ADMIN · NEXUS", html! { "A generated admin" }, html! { "Nexus builds server-rendered list, search, create, edit and batch views for the ORM models you register, with field policies and RBAC; release builds need your application's sign-in or Basic Auth over TLS." }, Some("Loco and Topcoat document no generated admin (Topcoat has a hand-written admin demo)."), ("/Rullst/book/4-rullst-nexus.html", "Nexus guide"))}
+                {included_card("BILLING · CAPITAL", html! { "Payments with fail-closed checks" }, html! { "Stripe and InfinitePay adapters, signed webhooks with replay protection, quotas, entitlements and invoices in minor units. The generated billing code refuses empty payment keys in production." }, Some("Loco and Topcoat document no payments."), ("/Rullst/book/crates/capital.html", "Billing guide"))}
+                {included_card("MAIL", html! { "Transactional mail" }, html! { "Resend, AWS SES, SendPulse or SMTP, sent in the background, with recipient suppression and opt-in attachment inspection. In 13.0.0-rc.1, a missing provider key in staging or production is an error, not a send that only looked successful." }, None, ("/Rullst/book/crates/mail.html", "Mail guide"))}
+                {included_card("AI", html! { "One guarded AI client" }, html! { "Gemini, OpenAI, Claude and OpenAI-compatible endpoints (DeepSeek and Ollama presets), with a prompt-injection filter, PII masking and offline fixtures for tests." }, None, ("/Rullst/book/ai-provider-capabilities.html", "Provider boundaries"))}
+                {included_card("IOT · SIGNED OTA", html! { "Firmware updates you can verify" }, html! { <code>"no_std"</code>" telemetry helpers, MQTT 5 and CoAP encoders and Ed25519-signed OTA manifest verification with a rollback-counter contract, run on a BBC micro:bit V2. Transports, flashing and bootloaders stay the application's." }, Some("Loco and Topcoat document no IoT or OTA support."), ("/Rullst/book/crates/iot.html", "IoT guide"))}
+                {included_card("LABS", html! { "Graded exercises, your runner" }, html! { "Contracts for exercise jobs that a separately deployed runner claims: leases, cancellation, retention and signed receipts. Labs itself never runs learner code." }, None, ("/Rullst/book/labs-runner-contract.html", "Runner contract"))}
+                {included_card("PRIVACY", html! { "Age policies and consent" }, html! { "Proportional age policies, signed threshold attestations and versioned consent and withdrawal, on SQLite or PostgreSQL; "<code>"make:age-gate"</code>" and "<code>"make:privacy"</code>" wire them into an application. No live age provider is included." }, None, ("https://github.com/Rullst/Rullst/tree/main/rullst-privacy", "rullst-privacy"))}
+                {included_card("SUPERVISION", html! { "Transparent exam supervision" }, html! { "Exam and parental contracts with an explicit collection acknowledgement, typed browser observations and camera-presence and audio-activity adapters. No media model, automatic grading or device-wide control is included." }, None, ("/Rullst/book/supervision.html", "Supervision guide"))}
             </div>
             <p class="section-note">"Core packages are in every application; Extension packages are optional and carry the same 13.x stability promise for their documented scope ("<a href="/Rullst/book/maturity.html">"maturity tiers"</a>"). "<a href="/Rullst/book/scope-and-limits.html">"Scope and limits"</a>" lists what Rullst does not do and what its tests cannot establish."</p>
         </section>
@@ -168,62 +102,10 @@ pub fn examples() -> Markup {
             </div>
             <p class="demo-startup-note"><strong>"Demo startup notice."</strong>" These applications may scale to zero when idle. The next request triggers a cold start while Azure Container Apps starts a container instance and initializes the application. This can temporarily increase the initial response time. Please allow a moment for the site to load."</p>
             <div class="demo-grid">
-                <article class="demo-card demo-showcase">
-                    <div class="demo-art" aria-hidden="true">
-                        <span class="demo-orbit"></span>" "
-                        {art::demo_showcase()}" "
-                        <span class="demo-art-caption">"ROUTES / DATA / IDEAS"</span>
-                    </div>
-                    <div class="demo-content">
-                        <span class="demo-kicker">"01 / EXPLORE THE BUILDING BLOCKS"</span>
-                        <h3>"Rullst Showcase"</h3>
-                        <p>"A blog and application showcase. Explore server-rendered pages and selected integration demonstrations."</p>
-                        <p class="demo-host-note">"Runs in an Azure container that sleeps when idle, so the first load can take about 20–30 seconds."</p>
-                        <a class="button button-secondary" href="https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/" data-demo-link>"Explore Showcase "<span aria-hidden="true">"↗"</span></a>
-                    </div>
-                </article>
-                <article class="demo-card demo-lms">
-                    <div class="demo-art" aria-hidden="true">
-                        <span class="demo-orbit"></span>" "
-                        {art::demo_lms()}" "
-                        <span class="demo-art-caption">"LESSONS / QUIZZES / PROGRESS"</span>
-                    </div>
-                    <div class="demo-content">
-                        <span class="demo-kicker">"02 / MAKE ROOM FOR LEARNING"</span>
-                        <h3>"LMS Academy"</h3>
-                        <p>"Discover a learning-platform example, with a public course catalog and account entry points."</p>
-                        <p class="demo-host-note">"Runs in an Azure container that sleeps when idle, so the first load can take about 20–30 seconds."</p>
-                        <a class="button button-secondary" href="https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/" data-demo-link>"Explore the LMS "<span aria-hidden="true">"↗"</span></a>
-                    </div>
-                </article>
-                <article class="demo-card demo-portfolio">
-                    <div class="demo-art" aria-hidden="true">
-                        <span class="demo-orbit"></span>" "
-                        {art::demo_portfolio()}" "
-                        <span class="demo-art-caption">"PROJECTS / SKILLS / YOUR STORY"</span>
-                    </div>
-                    <div class="demo-content">
-                        <span class="demo-kicker">"03 / PUT YOUR WORK OUT THERE"</span>
-                        <h3>"Developer Portfolio"</h3>
-                        <p>"A portfolio starting point for presenting projects, skills and experience in a focused web application."</p>
-                        <p class="demo-host-note">"Runs in an Azure container that sleeps when idle, so the first load can take about 20–30 seconds."</p>
-                        <a class="button button-secondary" href="https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/" data-demo-link>"Explore Portfolio "<span aria-hidden="true">"↗"</span></a>
-                    </div>
-                </article>
-                <article class="demo-card demo-saas">
-                    <div class="demo-art" aria-hidden="true">
-                        <span class="demo-orbit"></span>" "
-                        {art::demo_saas()}" "
-                        <span class="demo-art-caption">"BLUEPRINT / PRODUCT / POSSIBILITIES"</span>
-                    </div>
-                    <div class="demo-content">
-                        <span class="demo-kicker">"04 / START YOUR NEXT PRODUCT"</span>
-                        <h3>"SaaS Blueprint"</h3>
-                        <p>"A SaaS application blueprint. Explore a starting point for building your own software-as-a-service product."</p>
-                        <p class="demo-host-note">"Runs in an Azure container that sleeps when idle, so the first load can take about 20–30 seconds."</p>
-                        <a class="button button-secondary" href="https://saas.rullst.win/" data-demo-link>"Explore SaaS "<span aria-hidden="true">"↗"</span></a>
-                    </div>
-                </article>
+                {demo_card(&Demo { class: "demo-showcase", caption: "ROUTES / DATA / IDEAS", kicker: "01 / EXPLORE THE BUILDING BLOCKS", title: "Rullst Showcase", text: "A blog and application showcase. Explore server-rendered pages and selected integration demonstrations.", href: "https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/", button: "Explore Showcase", art: art::demo_showcase() })}
+                {demo_card(&Demo { class: "demo-lms", caption: "LESSONS / QUIZZES / PROGRESS", kicker: "02 / MAKE ROOM FOR LEARNING", title: "LMS Academy", text: "Discover a learning-platform example, with a public course catalog and account entry points.", href: "https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/", button: "Explore the LMS", art: art::demo_lms() })}
+                {demo_card(&Demo { class: "demo-portfolio", caption: "PROJECTS / SKILLS / YOUR STORY", kicker: "03 / PUT YOUR WORK OUT THERE", title: "Developer Portfolio", text: "A portfolio starting point for presenting projects, skills and experience in a focused web application.", href: "https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/", button: "Explore Portfolio", art: art::demo_portfolio() })}
+                {demo_card(&Demo { class: "demo-saas", caption: "BLUEPRINT / PRODUCT / POSSIBILITIES", kicker: "04 / START YOUR NEXT PRODUCT", title: "SaaS Blueprint", text: "A SaaS application blueprint. Explore a starting point for building your own software-as-a-service product.", href: "https://saas.rullst.win/", button: "Explore SaaS", art: art::demo_saas() })}
             </div>
             <div class="demo-footnote">
                 <p>"Public demos, not production certifications. Each demo is upgraded on its own schedule and can run an earlier Rullst release than 13.0.0-alpha.6. The SaaS checkout is live and charges real money; the Showcase payment fixtures are not live checkout. Apart from a purchase you intend to make, use test data, not sensitive information. Availability is managed separately."</p>

@@ -3,7 +3,7 @@
 use rullst::html;
 use rullst::html::Markup;
 
-use crate::pages::{Context, Lang, made_with};
+use crate::pages::{Context, Lang, blocks, made_with};
 
 /// The English privacy notice (`/privacy.html`).
 pub fn page(cx: &Context) -> Markup {
@@ -17,22 +17,10 @@ pub fn page(cx: &Context) -> Markup {
                 <meta name="description" content="Rullst website privacy: responsible person, hosting and email data, purposes, retention, international processing and your privacy rights." />
                 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'none'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'" />
                 <title>"Website privacy notice — Rullst"</title>
-                <link rel="canonical" href="https://rullst.win/privacy.html" />
-                <link rel="alternate" hreflang="en" href="https://rullst.win/privacy.html" />
-                <link rel="alternate" hreflang="pt-BR" href="https://rullst.win/pt-br/privacy.html" />
-                <link rel="alternate" hreflang="x-default" href="https://rullst.win/privacy.html" />
-                <link rel="icon" type="image/png" href="/Rullst/Rullst.png" />
-                <link rel="stylesheet" href={cx.assets.css.as_str()} />
+                {blocks::head_links("https://rullst.win/privacy.html", "https://rullst.win/privacy.html", "https://rullst.win/pt-br/privacy.html", &cx.assets.css)}
             </head>
             <body>
-                <a class="skip-link" href="#main">"Skip to content"</a>" "
-                <nav class="site-nav" aria-label="Primary navigation">
-                    <div class="shell nav-inner">
-                        <a class="brand" href="/">"rullst"<span class="brand-period">"."</span></a>
-                        <div class="lang-switch" role="group" aria-label="Language"><a href="/privacy.html" hreflang="en" lang="en" aria-current="page"><img src="/assets/flags/us.svg" alt="" width="27" height="14" />"English"</a><a href="/pt-br/privacy.html" hreflang="pt-BR" lang="pt-BR" aria-label="Português (Brasil)"><img src="/assets/flags/br.svg" alt="" width="20" height="14" />"Português"</a></div>
-                        <a href="/#privacy">"Back to the website ↗"</a>
-                    </div>
-                </nav>
+                {blocks::static_nav(Lang::En, "/privacy.html", "/pt-br/privacy.html", "/#privacy")}
                 <main id="main" class="shell section privacy-page">
                     <p class="eyebrow">"A small footprint. Clear information."</p>
                     <h1>"Website privacy notice."</h1>

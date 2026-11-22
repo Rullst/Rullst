@@ -3,7 +3,7 @@
 use rullst::html;
 use rullst::html::Markup;
 
-use crate::pages::{Context, Lang, made_with};
+use crate::pages::{Context, Lang, blocks, made_with};
 
 /// The English comparison page (`/compare/`): Rullst, Loco and Topcoat topic by topic.
 pub fn page(cx: &Context, results: Markup) -> Markup {
@@ -21,22 +21,10 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                 <meta property="og:locale" content="en_US" />
                 <meta property="og:locale:alternate" content="pt_BR" />
                 <title>"Rullst, Loco and Topcoat compared — Rullst"</title>
-                <link rel="canonical" href="https://rullst.win/compare/" />
-                <link rel="alternate" hreflang="en" href="https://rullst.win/compare/" />
-                <link rel="alternate" hreflang="pt-BR" href="https://rullst.win/pt-br/comparar/" />
-                <link rel="alternate" hreflang="x-default" href="https://rullst.win/compare/" />
-                <link rel="icon" type="image/png" href="/Rullst/Rullst.png" />
-                <link rel="stylesheet" href={cx.assets.css.as_str()} />
+                {blocks::head_links("https://rullst.win/compare/", "https://rullst.win/compare/", "https://rullst.win/pt-br/comparar/", &cx.assets.css)}
             </head>
             <body>
-                <a class="skip-link" href="#main">"Skip to content"</a>" "
-                <nav class="site-nav" aria-label="Primary navigation">
-                    <div class="shell nav-inner">
-                        <a class="brand" href="/">"rullst"<span class="brand-period">"."</span></a>
-                        <div class="lang-switch" role="group" aria-label="Language"><a href="/compare/" hreflang="en" lang="en" aria-current="page"><img src="/assets/flags/us.svg" alt="" width="27" height="14" />"English"</a><a href="/pt-br/comparar/" hreflang="pt-BR" lang="pt-BR" aria-label="Português (Brasil)"><img src="/assets/flags/br.svg" alt="" width="20" height="14" />"Português"</a></div>
-                        <a href="/#performance">"Back to the website ↗"</a>
-                    </div>
-                </nav>
+                {blocks::static_nav(Lang::En, "/compare/", "/pt-br/comparar/", "/#performance")}
                 <main id="main" class="shell section compare-page">
                     <p class="eyebrow">"Three Rust web frameworks. Checked facts."</p>
                     <h1>"Rullst, Loco and Topcoat."</h1>
@@ -64,193 +52,83 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                     </section>
                     <section id="topics" aria-labelledby="topics-heading">
                         <h2 id="topics-heading">"Topic by topic"</h2>
-                        <div class="compare-topic" id="topic-rendering">
-                            <h3>"Rendering model"</h3>
-                            <dl>
-                                <div>
-                                    <dt>"Rullst"</dt>
-                                    <dd>"Server-rendered HTML from the "<code>"html!"</code>" macro, escaped by default, with htmx and the CSP build of Alpine.js for interactivity. No client bundle by default."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Loco"</dt>
-                                    <dd>"Server templates with Tera 2 behind a swappable renderer. Also a client-side SPA mode (Vite and React) and a single-binary mode with embedded assets."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Topcoat"</dt>
-                                    <dd>"Server rendering with the "<code>"view!"</code>" macro and async components. "<code>"$(...)"</code>" expressions are type-checked Rust, also translated to JavaScript for reactivity in the browser. Optional htmx, Alpine AJAX and Datastar integrations."</dd>
-                                </div>
-                            </dl>
-                        </div>
-                        <div class="compare-topic" id="topic-database">
-                            <h3>"Database and ORM"</h3>
-                            <dl>
-                                <div>
-                                    <dt>"Rullst"</dt>
-                                    <dd>"Its own ORM ("<code>"#[derive(Orm)]"</code>") on SQLx for SQLite, PostgreSQL and MySQL/MariaDB, with "<code>"Schema"</code>" migrations. Turso/libSQL, SurrealDB and Redis data structures through separate adapters."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Loco"</dt>
-                                    <dd>"Sea-ORM 2.0 with migrations. The documented database drivers are SQLite and PostgreSQL."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Topcoat"</dt>
-                                    <dd>"No ORM in the "<code>"topcoat"</code>" crate. "<code>"topcoat new --database toasty"</code>" generates an app that uses Toasty on SQLite, with Toasty's migrations."</dd>
-                                </div>
-                            </dl>
-                        </div>
-                        <div class="compare-topic" id="topic-security">
-                            <h3>"Authentication and security defaults"</h3>
-                            <dl>
-                                <div>
-                                    <dt>"Rullst"</dt>
-                                    <dd>"Argon2 password hashing, encrypted sessions, passkeys, RBAC and OAuth2/OIDC sign-in. The SaaS starter wires CSRF middleware; "<code>"rullst-security"</code>" also provides secure headers, a WAF layer and a login jail."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Loco"</dt>
-                                    <dd>"JWT by default, with argon2 hashing and API keys. Opt-in signed or encrypted cookie sessions and OAuth2/OIDC with GitHub and Google presets. Secure-headers middleware exists but is disabled by default; CSRF middleware is not documented."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Topcoat"</dt>
-                                    <dd>"Session tokens with storage you provide, in "<code>"__Host-"</code>", Secure, HttpOnly, SameSite=Lax cookies. A default origin policy rejects cross-origin state-changing requests. Authentication is on the roadmap; password hashing, secure headers and CSRF tokens are not documented."</dd>
-                                </div>
-                            </dl>
-                        </div>
-                        <div class="compare-topic" id="topic-jobs">
-                            <h3>"Background jobs"</h3>
-                            <dl>
-                                <div>
-                                    <dt>"Rullst"</dt>
-                                    <dd>"Queues in "<code>"rullst-core"</code>" (in-process, SQLite and Redis). "<code>"rullst-messaging"</code>" adds retries, dead-letter queues, an outbox relay and Redis Streams messaging."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Loco"</dt>
-                                    <dd>"Queues on Redis, PostgreSQL or SQLite, in-process modes, and a cron-like scheduler."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Topcoat"</dt>
-                                    <dd>"Not built in. Background jobs are on the roadmap."</dd>
-                                </div>
-                            </dl>
-                        </div>
-                        <div class="compare-topic" id="topic-mail">
-                            <h3>"Mail"</h3>
-                            <dl>
-                                <div>
-                                    <dt>"Rullst"</dt>
-                                    <dd><code>"rullst-mail"</code>": templated mail through Resend, AWS SES, SendPulse or SMTP, delivered in the background, with recipient suppression and a conformance kit for your own transport."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Loco"</dt>
-                                    <dd>"A built-in SMTP mailer that sends through the job queue, with a stub mode for tests. An opt-in notifications feature adds Slack and webhooks."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Topcoat"</dt>
-                                    <dd>"An opt-in mail feature with SMTP, file (.eml) and in-memory transports."</dd>
-                                </div>
-                            </dl>
-                        </div>
-                        <div class="compare-topic" id="topic-billing">
-                            <h3>"Payments and billing"</h3>
-                            <dl>
-                                <div>
-                                    <dt>"Rullst"</dt>
-                                    <dd><code>"rullst-capital"</code>": Stripe and InfinitePay adapters, verified webhooks with replay protection, quotas, entitlements and invoices."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Loco"</dt>
-                                    <dd>"Not documented."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Topcoat"</dt>
-                                    <dd>"Not documented."</dd>
-                                </div>
-                            </dl>
-                        </div>
-                        <div class="compare-topic" id="topic-admin">
-                            <h3>"Admin and observability"</h3>
-                            <dl>
-                                <div>
-                                    <dt>"Rullst"</dt>
-                                    <dd>"Nexus, an admin generated for registered models; Studio, a local developer control room; OpenTelemetry export for distributed traces, tested in CI against an OpenTelemetry Collector in a local container."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Loco"</dt>
-                                    <dd>"No admin UI documented. Logging with "<code>"tracing"</code>", "<code>"/_ping"</code>", "<code>"/_health"</code>" and "<code>"/_readiness"</code>" endpoints, and "<code>"cargo loco doctor"</code>"."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Topcoat"</dt>
-                                    <dd>"No admin framework (an admin demo app exists). Logging and health endpoints are not documented; OpenAPI generation arrived in 0.12.1."</dd>
-                                </div>
-                            </dl>
-                        </div>
-                        <div class="compare-topic" id="topic-cli">
-                            <h3>"CLI and generators"</h3>
-                            <dl>
-                                <div>
-                                    <dt>"Rullst"</dt>
-                                    <dd><code>"cargo rullst new"</code>" (Blank, API and SaaS starters) and "<code>"make:*"</code>" generators for models, migrations, controllers, resources, workers, mail, billing, MFA, OAuth and more; "<code>"dev"</code>", "<code>"doctor"</code>" and assisted "<code>"upgrade"</code>"."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Loco"</dt>
-                                    <dd><code>"loco new"</code>" (SaaS, REST API, lightweight and advanced templates) and "<code>"cargo loco generate"</code>" for models, migrations, scaffolds, controllers, tasks, workers, mailers and deployment files."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Topcoat"</dt>
-                                    <dd><code>"topcoat new"</code>", "<code>"dev"</code>", "<code>"fmt"</code>", "<code>"ui"</code>" (copies components into the project), "<code>"asset bundle"</code>" and "<code>"l10n check"</code>". Model or controller generators are not documented."</dd>
-                                </div>
-                            </dl>
-                        </div>
-                        <div class="compare-topic" id="topic-deployment">
-                            <h3>"Deployment guidance"</h3>
-                            <dl>
-                                <div>
-                                    <dt>"Rullst"</dt>
-                                    <dd>"Guides for DigitalOcean, Hetzner, Oracle Cloud and Google Cloud. CI tests the generated VM deployment of the Blank and SaaS starters, on SQLite, with Docker and Podman on an x86_64 runner; Arm machines are not tested, and the provider guides were written from the providers' documentation, not followed end to end on real accounts."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Loco"</dt>
-                                    <dd>"A release binary, plus generated Docker, nginx or AWS Lambda setups, and "<code>"loco doctor"</code>" before going live."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Topcoat"</dt>
-                                    <dd>"Deployment docs are on the roadmap. A Cloudflare Workers example, and custom hosting through "<code>"serve()"</code>" or "<code>"Router::handle"</code>"."</dd>
-                                </div>
-                            </dl>
-                        </div>
-                        <div class="compare-topic" id="topic-stability">
-                            <h3>"Stability, versioning and support window"</h3>
-                            <dl>
-                                <div>
-                                    <dt>"Rullst"</dt>
-                                    <dd>"13.0 is in prerelease; 13.0.0-alpha.6 froze its features and public API, and 13.0.0-rc.1 adds fixes, documentation and the changes the maintainer approved one by one after the freeze, two of them breaking. After 13.0.0, the maintainer intends to keep 13.x the active line for 12 months, then give it security fixes for 1 to 3 more months after 14.0.0 (an intention, not a guarantee). Semantic Versioning; MSRV Rust 1.96."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Loco"</dt>
-                                    <dd>"1.0.0 (July 2026) was its first stable release. Upgrade notes list breaking changes; a semver statement and a support window are not documented. MSRV Rust 1.94."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Topcoat"</dt>
-                                    <dd>"Its README says: early-stage and experimental, expect breaking changes. Its changelog says it follows Semantic Versioning. No support window documented. MSRV Rust 1.99."</dd>
-                                </div>
-                            </dl>
-                        </div>
-                        <div class="compare-topic" id="topic-maturity">
-                            <h3>"Maturity and community"</h3>
-                            <dl>
-                                <div>
-                                    <dt>"Rullst"</dt>
-                                    <dd>"First published in May 2026. MIT license. 21 GitHub stars and 7 contributors on 14 November 2026."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Loco"</dt>
-                                    <dd>"First release in November 2023. Apache-2.0 license. 9,629 GitHub stars and 157 contributors on 14 November 2026."</dd>
-                                </div>
-                                <div>
-                                    <dt>"Topcoat"</dt>
-                                    <dd>"Repository created in April 2026, first functional release in July 2026, in the tokio-rs GitHub organization. MIT license. 7,221 GitHub stars and 41 contributors on 14 November 2026."</dd>
-                                </div>
-                            </dl>
-                        </div>
+                        {blocks::topic(
+                            "topic-rendering",
+                            "Rendering model",
+                            html! { "Server-rendered HTML from the "<code>"html!"</code>" macro, escaped by default, with htmx and the CSP build of Alpine.js for interactivity. No client bundle by default." },
+                            html! { "Server templates with Tera 2 behind a swappable renderer. Also a client-side SPA mode (Vite and React) and a single-binary mode with embedded assets." },
+                            html! { "Server rendering with the "<code>"view!"</code>" macro and async components. "<code>"$(...)"</code>" expressions are type-checked Rust, also translated to JavaScript for reactivity in the browser. Optional htmx, Alpine AJAX and Datastar integrations." },
+                        )}
+                        {blocks::topic(
+                            "topic-database",
+                            "Database and ORM",
+                            html! { "Its own ORM ("<code>"#[derive(Orm)]"</code>") on SQLx for SQLite, PostgreSQL and MySQL/MariaDB, with "<code>"Schema"</code>" migrations. Turso/libSQL, SurrealDB and Redis data structures through separate adapters." },
+                            html! { "Sea-ORM 2.0 with migrations. The documented database drivers are SQLite and PostgreSQL." },
+                            html! { "No ORM in the "<code>"topcoat"</code>" crate. "<code>"topcoat new --database toasty"</code>" generates an app that uses Toasty on SQLite, with Toasty's migrations." },
+                        )}
+                        {blocks::topic(
+                            "topic-security",
+                            "Authentication and security defaults",
+                            html! { "Argon2 password hashing, encrypted sessions, passkeys, RBAC and OAuth2/OIDC sign-in. The SaaS starter wires CSRF middleware; "<code>"rullst-security"</code>" also provides secure headers, a WAF layer and a login jail." },
+                            html! { "JWT by default, with argon2 hashing and API keys. Opt-in signed or encrypted cookie sessions and OAuth2/OIDC with GitHub and Google presets. Secure-headers middleware exists but is disabled by default; CSRF middleware is not documented." },
+                            html! { "Session tokens with storage you provide, in "<code>"__Host-"</code>", Secure, HttpOnly, SameSite=Lax cookies. A default origin policy rejects cross-origin state-changing requests. Authentication is on the roadmap; password hashing, secure headers and CSRF tokens are not documented." },
+                        )}
+                        {blocks::topic(
+                            "topic-jobs",
+                            "Background jobs",
+                            html! { "Queues in "<code>"rullst-core"</code>" (in-process, SQLite and Redis). "<code>"rullst-messaging"</code>" adds retries, dead-letter queues, an outbox relay and Redis Streams messaging." },
+                            html! { "Queues on Redis, PostgreSQL or SQLite, in-process modes, and a cron-like scheduler." },
+                            html! { "Not built in. Background jobs are on the roadmap." },
+                        )}
+                        {blocks::topic(
+                            "topic-mail",
+                            "Mail",
+                            html! { <code>"rullst-mail"</code>": templated mail through Resend, AWS SES, SendPulse or SMTP, delivered in the background, with recipient suppression and a conformance kit for your own transport." },
+                            html! { "A built-in SMTP mailer that sends through the job queue, with a stub mode for tests. An opt-in notifications feature adds Slack and webhooks." },
+                            html! { "An opt-in mail feature with SMTP, file (.eml) and in-memory transports." },
+                        )}
+                        {blocks::topic(
+                            "topic-billing",
+                            "Payments and billing",
+                            html! { <code>"rullst-capital"</code>": Stripe and InfinitePay adapters, verified webhooks with replay protection, quotas, entitlements and invoices." },
+                            html! { "Not documented." },
+                            html! { "Not documented." },
+                        )}
+                        {blocks::topic(
+                            "topic-admin",
+                            "Admin and observability",
+                            html! { "Nexus, an admin generated for registered models; Studio, a local developer control room; OpenTelemetry export for distributed traces, tested in CI against an OpenTelemetry Collector in a local container." },
+                            html! { "No admin UI documented. Logging with "<code>"tracing"</code>", "<code>"/_ping"</code>", "<code>"/_health"</code>" and "<code>"/_readiness"</code>" endpoints, and "<code>"cargo loco doctor"</code>"." },
+                            html! { "No admin framework (an admin demo app exists). Logging and health endpoints are not documented; OpenAPI generation arrived in 0.12.1." },
+                        )}
+                        {blocks::topic(
+                            "topic-cli",
+                            "CLI and generators",
+                            html! { <code>"cargo rullst new"</code>" (Blank, API and SaaS starters) and "<code>"make:*"</code>" generators for models, migrations, controllers, resources, workers, mail, billing, MFA, OAuth and more; "<code>"dev"</code>", "<code>"doctor"</code>" and assisted "<code>"upgrade"</code>"." },
+                            html! { <code>"loco new"</code>" (SaaS, REST API, lightweight and advanced templates) and "<code>"cargo loco generate"</code>" for models, migrations, scaffolds, controllers, tasks, workers, mailers and deployment files." },
+                            html! { <code>"topcoat new"</code>", "<code>"dev"</code>", "<code>"fmt"</code>", "<code>"ui"</code>" (copies components into the project), "<code>"asset bundle"</code>" and "<code>"l10n check"</code>". Model or controller generators are not documented." },
+                        )}
+                        {blocks::topic(
+                            "topic-deployment",
+                            "Deployment guidance",
+                            html! { "Guides for DigitalOcean, Hetzner, Oracle Cloud and Google Cloud. CI tests the generated VM deployment of the Blank and SaaS starters, on SQLite, with Docker and Podman on an x86_64 runner; Arm machines are not tested, and the provider guides were written from the providers' documentation, not followed end to end on real accounts." },
+                            html! { "A release binary, plus generated Docker, nginx or AWS Lambda setups, and "<code>"loco doctor"</code>" before going live." },
+                            html! { "Deployment docs are on the roadmap. A Cloudflare Workers example, and custom hosting through "<code>"serve()"</code>" or "<code>"Router::handle"</code>"." },
+                        )}
+                        {blocks::topic(
+                            "topic-stability",
+                            "Stability, versioning and support window",
+                            html! { "13.0 is in prerelease; 13.0.0-alpha.6 froze its features and public API, and 13.0.0-rc.1 adds fixes, documentation and the changes the maintainer approved one by one after the freeze, two of them breaking. After 13.0.0, the maintainer intends to keep 13.x the active line for 12 months, then give it security fixes for 1 to 3 more months after 14.0.0 (an intention, not a guarantee). Semantic Versioning; MSRV Rust 1.96." },
+                            html! { "1.0.0 (July 2026) was its first stable release. Upgrade notes list breaking changes; a semver statement and a support window are not documented. MSRV Rust 1.94." },
+                            html! { "Its README says: early-stage and experimental, expect breaking changes. Its changelog says it follows Semantic Versioning. No support window documented. MSRV Rust 1.99." },
+                        )}
+                        {blocks::topic(
+                            "topic-maturity",
+                            "Maturity and community",
+                            html! { "First published in May 2026. MIT license. 21 GitHub stars and 7 contributors on 14 November 2026." },
+                            html! { "First release in November 2023. Apache-2.0 license. 9,629 GitHub stars and 157 contributors on 14 November 2026." },
+                            html! { "Repository created in April 2026, first functional release in July 2026, in the tokio-rs GitHub organization. MIT license. 7,221 GitHub stars and 41 contributors on 14 November 2026." },
+                        )}
                     </section>
                     <section id="ui-frameworks" aria-labelledby="ui-frameworks-heading">
                         <h2 id="ui-frameworks-heading">"Why not Leptos or Dioxus?"</h2>

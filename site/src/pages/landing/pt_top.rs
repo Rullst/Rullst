@@ -4,7 +4,7 @@ use rullst::html;
 use rullst::html::Markup;
 
 use super::{art, pt_bottom as bottom};
-use crate::pages::{Context, INSTALL_VERSION};
+use crate::pages::{Context, INSTALL_VERSION, Lang, blocks};
 
 /// The Brazilian Portuguese landing, with the benchmark blocks `proof` and `summary` (or their pending text).
 pub fn page(cx: &Context, proof: Markup, summary: Markup) -> Markup {
@@ -30,12 +30,7 @@ pub fn page(cx: &Context, proof: Markup, summary: Markup) -> Markup {
                 <meta name="twitter:description" content="Um framework web full-stack para Rust sobre Axum e SQLx, com os starters Blank, API e SaaS. Conheça a v13, o código-fonte e as evidências." />
                 <meta name="twitter:image" content="https://rullst.win/Rullst/Rullst.png" />
                 <title>"Rullst — Inteligente, consciente da segurança e feito para uma produtividade sem esforço"</title>
-                <link rel="canonical" href="https://rullst.win/pt-br/" />
-                <link rel="alternate" hreflang="en" href="https://rullst.win/" />
-                <link rel="alternate" hreflang="pt-BR" href="https://rullst.win/pt-br/" />
-                <link rel="alternate" hreflang="x-default" href="https://rullst.win/" />
-                <link rel="icon" type="image/png" href="/Rullst/Rullst.png" />
-                <link rel="stylesheet" href={cx.assets.css.as_str()} />
+                {blocks::head_links("https://rullst.win/pt-br/", "https://rullst.win/", "https://rullst.win/pt-br/", &cx.assets.css)}
                 <script src={cx.assets.js.as_str()} defer></script>
             </head>
             <body data-ui-copied="Comando copiado." data-ui-copied-button="Copiado" data-ui-copy-failed="Área de transferência indisponível. Selecione e copie o comando exibido." data-ui-copy-failed-button="Selecione o texto" data-ui-replay-intro="Repetir introdução" data-ui-stop-intro="Parar introdução" data-ui-say-hello="Dizer olá ↗" data-ui-stop-waving="Parar de acenar">
@@ -68,7 +63,7 @@ fn nav() -> Markup {
         <nav class="site-nav" aria-label="Navegação principal">
             <div class="shell nav-inner">
                 <a class="brand" href="https://rullst.win/pt-br/" aria-label="Página inicial do Rullst"><img src="/Rullst/Rullst.png" alt="" width="40" height="40" />" "<span>"rullst"<span class="brand-period">"."</span></span></a>" "
-                <div class="lang-switch" role="group" aria-label="Idioma"><a href="/" hreflang="en" lang="en"><img src="/assets/flags/us.svg" alt="" width="27" height="14" />"English"</a>" "<a href="/pt-br/" hreflang="pt-BR" lang="pt-BR" aria-current="page" aria-label="Português (Brasil)"><img src="/assets/flags/br.svg" alt="" width="20" height="14" />"Português"</a></div>" "
+                {blocks::lang_switch(Lang::PtBr, "/", "/pt-br/", true)}" "
                 <button class="nav-toggle" type="button" aria-label="Abrir ou fechar a navegação" aria-controls="navigation" aria-expanded="false" data-nav-toggle>"☰"</button>" "
                 <div class="nav-links" id="navigation" data-navigation><a href="#performance">"Desempenho"</a>" "<a href="#security">"Segurança"</a>" "<a href="#included">"Incluído"</a>" "<a href="#examples">"Exemplos"</a>" "<a class="nav-academy" href="#academy">"Academy "<span aria-hidden="true">"↗"</span></a>" "<a href="/Rullst/book/">"Documentação"</a>" "<a href="#community">"Comunidade"</a>" "<a class="nav-source" href="https://github.com/Rullst/Rullst">"Código-fonte ↗"</a></div>
             </div>

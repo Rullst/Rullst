@@ -29,6 +29,8 @@ Rullst is a change to that pin and to `site/Cargo.lock`.
 | `site/src/pages/landing/en_top.rs`, `en_bottom.rs` | `/` |
 | `site/src/pages/landing/pt_top.rs`, `pt_bottom.rs` | `/pt-br/` |
 | `site/src/pages/landing/art.rs` | the landing's illustrations, shared by both languages |
+| `site/src/pages/landing/mod.rs`, `site/src/pages/blocks.rs` | markup both languages share: the Included and example cards, head links, language switcher, static-page navigation and comparison topics |
+| `site/src/pages/made_with.rs` | the Made with Rullst card and footer line |
 | `site/src/pages/privacy/en.rs`, `pt.rs` | `/privacy.html`, `/pt-br/privacy.html` |
 | `site/src/pages/compare/en.rs`, `pt.rs` | `/compare/`, `/pt-br/comparar/` |
 | `site/src/benchmarks/` | the benchmark blocks of the landing and comparison pages |

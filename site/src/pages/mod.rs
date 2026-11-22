@@ -1,5 +1,6 @@
 //! The six pages of the root site, in both languages.
 
+pub mod blocks;
 mod compare;
 mod landing;
 pub mod made_with;
