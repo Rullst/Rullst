@@ -1,7 +1,7 @@
 //! The 13.0.0-alpha.6 changes the first alpha.6 rules left to the checklist:
 //! refused cron literals, CSRF tokens compared with the cookie, `jsonwebtoken`
 //! 11 key constructors, `ed25519-dalek` 2 beside Rullst's 3, SQLite without a
-//! journal-mode setting, pre-alpha.6 session-epoch files and the `new` of a
+//! journal-mode setting and the `new` of a
 //! `define_provider!` type.
 
 use super::super::alpha6_gaps::refused_cron;
@@ -427,73 +427,6 @@ fn a_journal_mode_or_another_database_is_not_reviewed() {
     let reviewed = super::super::reviewed::drop_reviewed(&mut found);
     assert!(found.is_empty(), "{found:?}");
     assert_eq!(reviewed.len(), 1);
-}
-
-/// The middleware `cargo rullst auth` and the SaaS starter generated before
-/// 13.0.0-alpha.6, and a sign-in of the controller.
-const EPOCH_MIDDLEWARE: &str = r#"
-use crate::models::user::User;
-pub async fn auth_middleware(mut req: Request, next: Next) -> Response {
-    let Some(cookie) = rullst::auth::extract_session_cookie(req.headers()) else {
-        return Redirect::to("/login").into_response();
-    };
-    let Ok(claims) = rullst::auth::decrypt_session_claims(&cookie, &app_key) else {
-        return Redirect::to("/login").into_response();
-    };
-    next.run(req).await
-}
-fn login_cookie(user: &User, epoch: i64) -> Result<String, rullst_auth::AuthError> {
-    rullst_auth::make_login_cookie_with_epoch(user.id, epoch, rullst_auth::DEFAULT_SESSION_MAX_AGE)
-}
-"#;
-
-#[test]
-fn generated_session_epoch_files_are_reviewed_until_the_registry_is_enabled() {
-    for file in [
-        "src/middlewares/auth_middleware.rs",
-        "src/controllers/auth_controller.rs",
-        "src/controllers/password_controller.rs",
-        "src/controllers/mfa/account.rs",
-        "src/controllers/oauth/mod.rs",
-    ] {
-        let found = scan_with(EPOCH_MIDDLEWARE, file, &WorkspaceFacts::default());
-        assert_eq!(
-            lines_of("V13-AUTH-SESSION-REGISTRY", &found),
-            [7, 13],
-            "{file}"
-        );
-    }
-    let found = scan_with(EPOCH_MIDDLEWARE, "src/auth.rs", &WorkspaceFacts::default());
-    assert_eq!(
-        lines_of("V13-AUTH-SESSION-REGISTRY", &found),
-        Vec::<usize>::new()
-    );
-    for dependency in [
-        r#"rullst = { version = "=13.0.0-alpha.6", features = ["auth-session-registry-sqlite"] }"#,
-        r#"rullst = { version = "=13.0.0-alpha.6", features = ["auth-session-registry-mysql"] }"#,
-        r#"rullst-auth = { version = "=13.0.0-alpha.6", features = ["session-registry-postgres"] }"#,
-    ] {
-        let manifest = format!("{PACKAGE}[dependencies]\n{dependency}\n");
-        let facts = facts(&[("Cargo.toml", manifest.as_str())]);
-        assert!(facts.session_registry, "{dependency}");
-        let found = scan_with(
-            EPOCH_MIDDLEWARE,
-            "src/middlewares/auth_middleware.rs",
-            &facts,
-        );
-        assert_eq!(
-            lines_of("V13-AUTH-SESSION-REGISTRY", &found),
-            Vec::<usize>::new()
-        );
-    }
-    let referenced = format!(
-        "{PACKAGE}[dependencies]\nrullst = {{ version = \"=13.0.0-alpha.6\", features = [\"auth\"] }}\n\n[features]\nsessions = [\"rullst/auth-session-registry-postgres\"]\n"
-    );
-    assert!(facts(&[("Cargo.toml", referenced.as_str())]).session_registry);
-    let auth_only = format!(
-        "{PACKAGE}[dependencies]\nrullst = {{ version = \"=13.0.0-alpha.5\", features = [\"auth\", \"auth-sqlite\"] }}\n"
-    );
-    assert!(!facts(&[("Cargo.toml", auth_only.as_str())]).session_registry);
 }
 
 #[test]

@@ -453,6 +453,12 @@ impl Scanner<'_, '_> {
         if let Some(rule) = super::alpha6_public_deps::call_rule(&names, &args) {
             self.hit(rule, at);
         }
+        if let Some(rule) = super::alpha6_gaps::session_call_rule(&names, self.context.facts) {
+            self.hit(rule, at);
+        }
+        if let Some(rule) = super::alpha6_defaults::call_rule(&names, &args) {
+            self.hit(rule, at);
+        }
         if let Some(rule) =
             super::alpha6_jiff::call_rule(&names, &args, self.context.text, &self.chrono)
         {
@@ -524,9 +530,6 @@ impl Scanner<'_, '_> {
             self.hit(rule, at);
         }
         if let Some(rule) = super::alpha6_defaults::layer_rule(name, &args) {
-            self.hit(rule, at);
-        }
-        if let Some(rule) = super::alpha6_defaults::cookie_rule(name, &args, self.context.text) {
             self.hit(rule, at);
         }
         if let Some(rule) = super::alpha6_gaps::cron_rule(name, &args, self.context.text) {
@@ -601,6 +604,9 @@ impl Scanner<'_, '_> {
             self.hit(&MAIL_REMOVED, at);
         }
         if let Some(rule) = super::alpha6_defaults::string_rule(value, self.context.text) {
+            self.hit(rule, at);
+        }
+        if let Some(rule) = super::alpha6_defaults::cookie_rule(value, self.context.text) {
             self.hit(rule, at);
         }
     }

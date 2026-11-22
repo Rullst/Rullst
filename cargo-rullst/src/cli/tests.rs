@@ -274,6 +274,7 @@ fn parses_transactional_upgrade_options() {
             keep_on_failure: true,
             restore: None,
             all_rules: false,
+            from: None,
         } if target == "12.0.0-rc.1"
     ));
     let all = Cli::try_parse_from(["rullst", "upgrade", "--dry-run", "--all-rules"])
@@ -288,6 +289,35 @@ fn parses_transactional_upgrade_options() {
     assert!(
         Cli::try_parse_from(["rullst", "upgrade", "--all-rules", "--restore", "backup"]).is_err()
     );
+    let from = Cli::try_parse_from(["rullst", "upgrade", "--dry-run", "--from", "13.0.0-alpha.5"])
+        .expect("upgrade --from");
+    assert!(matches!(
+        from.command,
+        Commands::Upgrade {
+            from: Some(ref version),
+            all_rules: false,
+            ..
+        } if version == "13.0.0-alpha.5"
+    ));
+    // `--from` selects rules as `--all-rules` does, and a restore selects none.
+    for conflicting in [
+        [
+            "rullst",
+            "upgrade",
+            "--from",
+            "13.0.0-alpha.5",
+            "--all-rules",
+        ],
+        [
+            "rullst",
+            "upgrade",
+            "--from",
+            "13.0.0-alpha.5",
+            "--restore=backup",
+        ],
+    ] {
+        assert!(Cli::try_parse_from(conflicting).is_err(), "{conflicting:?}");
+    }
 }
 
 #[test]

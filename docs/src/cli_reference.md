@@ -497,6 +497,9 @@ cargo rullst upgrade --dry-run --json
 # Apply every source rule, not only those introduced after the project's version
 cargo rullst upgrade --dry-run --all-rules
 
+# Apply the rules introduced after 13.0.0-alpha.5, for a project already on alpha.6
+cargo rullst upgrade --dry-run --from 13.0.0-alpha.5
+
 # Backed-up apply + cargo fix + cargo check
 cargo rullst upgrade
 
@@ -546,15 +549,21 @@ project's Rullst version (the oldest version a Rullst requirement admits or
 the rules introduced after that version and prints how many earlier rules it
 skipped and how many findings they would have added. `--all-rules` applies
 every rule; a v12 project, or one whose version cannot be read, gets every
-rule anyway.
+rule anyway. `--from <VERSION>` applies the rules introduced after that exact
+version instead, to run again the rules of releases the project already moved
+past (since the 13.0.0-rc.1 CLI); it cannot be newer than the project's
+version or be combined with `--all-rules`. When the project already uses the
+target version, the rules introduced in it were skipped too, and the plan says
+so with a `WARNING:` line that suggests `--from` with the release before it
+(`rule_selection.target_rules_skipped` in JSON).
 `update project verify`/`review`/`apply` refuse a preparation with must-change
 findings; preparations apply every rule. In JSON, each
 `source_findings` element keeps `path`, `line`, `code`, `severity` (`BLOCKER`
 or `REVIEW`) and `message` and adds `kind`, `introduced_in`, `migration_row`,
 `migration_url` and `note` (what the location needs beyond the rule's
 guidance, or `null`); the root adds `finding_counts`, `unscanned_sources`,
-`migration_guide` and `rule_selection` (`current_version`, `all_rules`,
-`skipped_rules`, `hidden_findings`). See the [tutorial](tutorials/36-assisted-framework-upgrades.md#v12-to-v13-source-findings)
+`migration_guide` and `rule_selection` (`current_version`, `from_version`,
+`all_rules`, `skipped_rules`, `hidden_findings`, `target_rules_skipped`). See the [tutorial](tutorials/36-assisted-framework-upgrades.md#v12-to-v13-source-findings)
 and its [rule classification](tutorials/36-assisted-framework-upgrades.md#v12--v13-rule-classification).
 
 Since 12.1, managed requirements use exact `=VERSION` pins. The final

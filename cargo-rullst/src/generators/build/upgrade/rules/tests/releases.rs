@@ -168,11 +168,18 @@ fn rules_carry_the_release_of_their_change() {
             "V13-MESSAGING-CRON-POSIX",
         ]
     );
-    // The maintainer-approved API changes of rc.1: no public name says
-    // Experimental.
+    // The maintainer-approved API changes of rc.1 (no public name says
+    // Experimental), and the rules the applications' alpha.6 upgrades asked
+    // for.
     assert_eq!(
         codes_introduced_in("13.0.0-rc.1"),
-        ["V13-LABS-VARIANTS-RENAMED", "V13-IOT-SIMULATORS-REMOVED"]
+        [
+            "V13-LABS-VARIANTS-RENAMED",
+            "V13-IOT-SIMULATORS-REMOVED",
+            // Applications that enabled the alpha.6 session registry found
+            // epoch-cookie calls that fail at run time (#825).
+            "V13-AUTH-SESSION-EPOCH-CALLS",
+        ]
     );
     let alpha4 = version("13.0.0-alpha.4");
     let alpha5 = version("13.0.0-alpha.5");
@@ -226,7 +233,7 @@ fn three_release_scan() -> SourceScan {
 
 fn selected(current: Option<&str>, all_rules: bool) -> (Vec<&'static str>, RuleSelection) {
     let mut scan = three_release_scan();
-    scan.select(current.map(version), all_rules);
+    scan.select(current.map(version), None, all_rules);
     let codes = scan
         .findings
         .iter()
@@ -243,6 +250,7 @@ fn a_prerelease_application_sees_only_the_rules_introduced_after_it() {
         selection,
         RuleSelection {
             current: Some(version("13.0.0-alpha.2")),
+            from: None,
             all_rules: false,
             skipped_rules: 99,
             hidden_findings: 2,
@@ -279,4 +287,50 @@ fn v12_unknown_versions_and_all_rules_keep_every_finding() {
         assert_eq!(selection.all_rules, all_rules);
         assert_eq!(selection.current, current.map(version));
     }
+}
+
+/// `--from` replaces the project's version as the version whose later rules
+/// apply, so an alpha.3 project can run the alpha.2 and alpha.3 rules again.
+#[test]
+fn a_from_version_selects_the_rules_introduced_after_it() {
+    let mut scan = three_release_scan();
+    scan.select(
+        Some(version("13.0.0-alpha.3")),
+        Some(version("13.0.0-alpha.1")),
+        false,
+    );
+    let codes: Vec<_> = scan
+        .findings
+        .iter()
+        .map(|finding| finding.rule.code)
+        .collect();
+    assert_eq!(
+        codes,
+        ["V13-ORM-CONSTRAINT-ERRORS", "V13-ORM-TRANSACTION-ERRORS"]
+    );
+    assert_eq!(
+        scan.selection,
+        RuleSelection {
+            current: Some(version("13.0.0-alpha.3")),
+            from: Some(version("13.0.0-alpha.1")),
+            all_rules: false,
+            skipped_rules: 94,
+            hidden_findings: 1,
+        }
+    );
+    assert_eq!(scan.selection.baseline(), Some(&version("13.0.0-alpha.1")));
+    // Without `--from`, the project's own version selects.
+    let (_, selection) = selected(Some("13.0.0-alpha.3"), false);
+    assert_eq!(selection.baseline(), Some(&version("13.0.0-alpha.3")));
+    assert_eq!(selected(None, false).1.baseline(), None);
+}
+
+#[test]
+fn the_release_before_a_version_is_the_latest_earlier_rule_release() {
+    let before = |text: &str| release_before(&version(text)).map(|found| found.to_string());
+    assert_eq!(before("13.0.0-alpha.6").as_deref(), Some("13.0.0-alpha.5"));
+    assert_eq!(before("13.0.0-rc.1").as_deref(), Some("13.0.0-alpha.6"));
+    assert_eq!(before("13.0.0-alpha.2").as_deref(), Some("13.0.0-alpha.1"));
+    assert_eq!(before("13.0.0-alpha.1"), None);
+    assert_eq!(before("12.3.0"), None);
 }

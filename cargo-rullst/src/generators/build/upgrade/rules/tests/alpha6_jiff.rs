@@ -8,6 +8,7 @@ use super::super::alpha6_jiff::ChronoBindings;
 use super::super::files::manifest_findings;
 use super::files::plan;
 use super::*;
+use proc_macro2::TokenStream;
 
 const ORM: &str = "V13-ORM-CHRONO-TYPES";
 const LOCALE: &str = "V13-LOCALE-JIFF-DATES";
@@ -208,6 +209,137 @@ fn show(locale: &Locale, at: &chrono::NaiveDate, report: &Report) {
 }
 "#;
     assert_eq!(found_with(source, LOCALE, &own_chrono()), [4, 5, 6]);
+}
+
+/// Code that finished the move to jiff passes jiff values, which the rule
+/// recognises by their types and paths and leaves alone, also with
+/// `--all-rules` (#844).
+#[test]
+fn locale_formatting_of_jiff_values_needs_no_change() {
+    let source = r#"
+use rullst::i18n::{DateStyle, Locale, TimeStyle};
+use jiff::{Timestamp, Zoned, civil::Date};
+struct Event { starts_at: rullst::orm::Timestamp, day: Date }
+fn today() -> Zoned { Zoned::now() }
+fn show(locale: &Locale, day: Date, zoned: &Zoned, event: &Event, at: rullst::orm::Timestamp) {
+    locale.format_date(day, DateStyle::Short);
+    locale.format_datetime(zoned, DateStyle::Long, TimeStyle::Short);
+    locale.format_date(jiff::civil::date(2026, 11, 21), DateStyle::Long);
+    locale.format_time(&Zoned::now(), TimeStyle::Short);
+    let now = Timestamp::now().in_tz("America/Sao_Paulo")?;
+    locale.format_datetime(&now, DateStyle::Short, TimeStyle::Short);
+    locale.format_date(event.day, DateStyle::Short);
+    locale.format_datetime(&at.in_tz("UTC")?, DateStyle::Short, TimeStyle::Short);
+    locale.format_date(&today(), DateStyle::Short);
+    let local: jiff::civil::DateTime = event.starts_at.in_tz("UTC")?.datetime();
+    locale.format_datetime(local, DateStyle::Short, TimeStyle::Short);
+    locale.format_date(rullst::orm::Date::from(day), DateStyle::Short);
+    locale.format_date(unknown, DateStyle::Short);
+    locale.format_date(chrono::Utc::now().date_naive(), DateStyle::Short);
+    locale.format_date(&user.profile.birthday, DateStyle::Short);
+    locale.format_date(user.birthday(), DateStyle::Short);
+}
+struct Old { at: chrono::NaiveDate }
+fn old(locale: &Locale, old: &Old) { locale.format_date(&old.at, DateStyle::Short); }
+"#;
+    // The value the file does not show, the chrono values and a method's
+    // result; a field of a struct declared elsewhere is the model's.
+    assert_eq!(found_with(source, LOCALE, &own_chrono()), [19, 20, 22, 25]);
+}
+
+#[test]
+fn capital_invoices_built_with_a_jiff_date_need_no_change() {
+    let source = r#"
+use rullst::capital::Invoice;
+use rullst::orm::Timestamp;
+struct Payment { paid_at: Timestamp }
+fn settled(payment: &Payment) -> rullst::orm::Timestamp { payment.paid_at }
+fn bill(payment: &Payment, at: jiff::Timestamp, zoned: &jiff::Zoned) {
+    let a = Invoice::new("INV-1", "a@example.com", jiff::Timestamp::now(), "BRL");
+    let b = Invoice::new("INV-2", "a@example.com", Timestamp::now(), "BRL");
+    let c = Invoice::new("INV-3", "a@example.com", payment.paid_at, "BRL");
+    let d = Invoice::new("INV-4", "a@example.com", settled(payment), "BRL");
+    let e = Invoice::new("INV-5", "a@example.com", at, "BRL");
+    let f = Invoice::new("INV-6", "a@example.com", zoned, "BRL");
+    let g = Invoice::new("INV-7", "a@example.com", rullst::orm::Timestamp::now(), "BRL");
+    let h = Invoice::new("INV-8", "a@example.com", chrono::Utc::now(), "BRL");
+    let i = Invoice::new("INV-9", "a@example.com", other.date, "BRL");
+    let j = Invoice::new("INV-10", "a@example.com", date, "BRL");
+}
+"#;
+    assert_eq!(found_with(source, CAPITAL, &own_chrono()), [14, 16]);
+}
+
+#[test]
+fn jiff_bindings_follow_types_paths_fields_and_functions() {
+    let bindings = ChronoBindings::of(
+        "struct S { at: jiff::Timestamp, old: DateTime<Utc> }\nfn make() -> Date { todo() }\nfn f(day: Date, when: chrono::NaiveDate, zone: Zoned) {\n    let a = Zoned::now();\n    let b: Timestamp = parse();\n    let c = a;\n    let d = Utc::now();\n    let e = s.at;\n}\n"
+            .parse()
+            .unwrap(),
+    );
+    let holds = |expression: &str| {
+        let tokens: Vec<_> = expression
+            .parse::<TokenStream>()
+            .unwrap()
+            .into_iter()
+            .collect();
+        bindings.holds_jiff(&tokens)
+    };
+    for jiff in [
+        "day",
+        "zone",
+        "&zone",
+        "a",
+        "b",
+        "c",
+        "e",
+        "make()",
+        "s.at",
+        "(day)",
+        "x.in_tz(\"UTC\")",
+        "x.to_zoned(tz)",
+        "civil::date(1, 1, 1)",
+        "rullst_orm::Date::MIN",
+        "rullst::db::Time::MIDNIGHT",
+    ] {
+        assert!(holds(jiff), "{jiff}");
+    }
+    for other in [
+        "when",
+        "d",
+        "s.old",
+        "Utc::now()",
+        "unknown",
+        "s.at.other",
+        "\"2026\"",
+        "Date::new(1, 1, 1)",
+        "other::DateTime::now()",
+        "make",
+        "day.await.field",
+    ] {
+        assert!(!holds(other), "{other}");
+    }
+    let args: Vec<_> = "id, email, a, currency"
+        .parse::<TokenStream>()
+        .unwrap()
+        .into_iter()
+        .collect();
+    assert!(bindings.jiff_argument(&args, 2));
+    assert!(!bindings.jiff_argument(&args, 0));
+    assert!(!bindings.jiff_argument(&args, 4));
+    // Field reads count unless the file declares the field as chrono.
+    let args: Vec<_> = "p.paid_at, &p.a.b, *p.c, s.old, p.f(), p, p.0, .x, p."
+        .parse::<TokenStream>()
+        .unwrap()
+        .into_iter()
+        .collect();
+    let taken: Vec<bool> = (0..9)
+        .map(|index| bindings.jiff_argument(&args, index))
+        .collect();
+    assert_eq!(
+        taken,
+        [true, true, true, false, false, false, false, false, false]
+    );
 }
 
 #[test]

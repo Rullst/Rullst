@@ -79,7 +79,7 @@ fn plan_manifests(
     // Project preparations gate execution on must-change findings, so they
     // apply every rule whatever version the project already uses.
     let mut scan = super::rules::scan_workspace(&root, &plans, version.major)?;
-    scan.select(None, true);
+    scan.select(None, None, true);
     let mut report: serde_json::Value = serde_json::from_str(&super::report::render_json_report(
         &root, &version, &plans, &scan,
     )?)?;
