@@ -74,7 +74,9 @@ impl ChronoBindings {
     /// with a chrono type (`payment.paid_at`). Such a field belongs to a
     /// struct declared elsewhere; a model's chrono field is reported there
     /// (`V13-ORM-CHRONO-TYPES`), and the read compiles unchanged once the
-    /// field is a Rullst ORM type.
+    /// field is a Rullst ORM type. A chrono field of another file's struct
+    /// that is not a model is reported by no rule; the compiler reports the
+    /// call.
     pub(in super::super::super) fn jiff_argument(&self, args: &[TokenTree], index: usize) -> bool {
         elements(args).nth(index).is_some_and(|argument| {
             self.holds_jiff(argument) || (field_read(argument) && !self.is_chrono_value(argument))

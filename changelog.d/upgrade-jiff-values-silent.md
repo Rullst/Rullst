@@ -10,5 +10,8 @@
   binding, struct field or function of the file with such a type, a chain
   through `.in_tz(..)` or `.to_zoned(..)`, or a read of a field the file does
   not declare as chrono (a model's chrono field is reported where the model
-  is declared, by `V13-ORM-CHRONO-TYPES`). Chrono values and values whose
-  type the file does not show are still reported (#844).
+  is declared, by `V13-ORM-CHRONO-TYPES`). Chrono values, and other values
+  whose type the file does not show, are still reported. A field read is not
+  one of them: a chrono field of a struct declared in another file that is
+  not a model is reported by no rule, and the compiler reports the call
+  instead (#844).

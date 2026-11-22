@@ -124,7 +124,6 @@ fn from_versions_are_exact_and_never_newer_than_the_project() {
         ("13.0.0-alpha.5", Some(&alpha6)),
         ("13.0.0-alpha.6", Some(&alpha6)),
         ("13.0.0-alpha.6+build", Some(&alpha6)),
-        ("13.0.0-rc.1", None),
     ] {
         assert_eq!(
             from_version(Some(requested), current).unwrap(),
@@ -132,6 +131,14 @@ fn from_versions_are_exact_and_never_newer_than_the_project() {
             "{requested}"
         );
     }
+    // Without a known project version every rule applies, so `--from` could
+    // only skip some.
+    assert_eq!(
+        from_version(Some("13.0.0-alpha.1"), None)
+            .unwrap_err()
+            .to_string(),
+        "`--from 13.0.0-alpha.1` would skip rules, but the Rullst version this project uses could not be read from its manifests or Cargo.lock, so every rule already applies; omit `--from`"
+    );
     assert_eq!(
         from_version(Some("13.0"), Some(&alpha6))
             .unwrap_err()

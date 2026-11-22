@@ -53,9 +53,11 @@ how many earlier rules it skipped; `--all-rules` applies every rule, and
 that already pins the target version (whose plan warns that the target's own
 rules did not run; since the 13.0.0-rc.1 CLI)
 ([rules by release](tutorials/36-assisted-framework-upgrades.md#rules-by-release)).
-An application that already runs 13.0.0-alpha.5 follows the shorter
-[alpha.5 to alpha.6 checklist](#upgrading-an-alpha5-application-to-alpha6);
-one on 13.0.0-alpha.4 follows the
+An application that already runs 13.0.0-alpha.6 follows the shorter
+[alpha.6 to rc.1 checklist](#upgrading-an-alpha6-application-to-rc1); one on
+13.0.0-alpha.5 follows the
+[alpha.5 to alpha.6 checklist](#upgrading-an-alpha5-application-to-alpha6)
+first; one on 13.0.0-alpha.4 follows the
 [alpha.4 to alpha.5 checklist](#upgrading-an-alpha4-application-to-alpha5)
 first, one on 13.0.0-alpha.3 the
 [alpha.3 to alpha.4 checklist](#upgrading-an-alpha3-application-to-alpha4)
@@ -1827,6 +1829,93 @@ journal without a finding). Add
 `sqlite_journal_mode = "wal"` under `[database]` in `Rullst.toml`, after
 switching your backups to `sqlite3 ".backup"` and only when the database is
 on a local disk of the one host that runs the application.
+
+## Upgrading an alpha.6 application to rc.1
+
+This checklist moves an application from 13.0.0-alpha.6 to 13.0.0-rc.1.
+After the alpha.6 freeze, rc.1 adds fixes, documentation and changes the
+maintainer approved one by one; two of them rename or remove public API, and
+several change what a working alpha.6 deployment does at start-up or on a
+request. Code that `cargo rullst` generated earlier is never rewritten.
+
+1. **Prepare.** Work on a branch with a clean tree and a committed
+   `Cargo.lock`, record the current `cargo test` result, and back up every
+   database.
+2. **Install the rc.1 CLI** (`cargo install cargo-rullst --version
+   =13.0.0-rc.1 --locked --force`; `rullst --version` must print
+   `13.0.0-rc.1`) and run `cargo rullst upgrade --dry-run` before changing
+   the versions. It applies the rules introduced after 13.0.0-alpha.6:
+   `V13-IOT-SIMULATORS-REMOVED`, `V13-LABS-VARIANTS-RENAMED` and
+   `V13-AUTH-SESSION-EPOCH-CALLS`. If the manifests already pin
+   `=13.0.0-rc.1`, add `--from 13.0.0-alpha.6`.
+3. **The two API changes.** `rullst-iot` no longer has the
+   `experimental-simulators` feature or its `Simulated*` types; remove the
+   feature and give tests their own fixed bytes (`V13-IOT-SIMULATORS-REMOVED`).
+   `rullst-labs` renamed `ExecutionProfile::LinuxExperimental` to
+   `ExecutionProfile::PinnedRunner` and `ResultEvidence::Experimental` to
+   `ResultEvidence::SignedReceipt`; their serialized names are unchanged
+   (`V13-LABS-VARIANTS-RENAMED`).
+4. **Empty settings in staging and production** (Empty settings in staging
+   and production row; no rule locates them). The `Mail` facade returns
+   `MailError::ConfigError` when the selected driver's credential
+   (`RESEND_API_KEY`, `SENDPULSE_API_KEY`, the SES proxy token) is empty or
+   unset, or `MAIL_HOST` is empty; `AiClient::auto()` returns
+   `AiError::ConfigError` when no AI provider is configured, and a client
+   from `AutoAiConfig::into_client()` then fails every request. On alpha.6
+   both answered with an offline mock. Both resolve staging and production
+   as `Server` does: the process `RULLST_ENV`, then `APP_ENV`, then either
+   one from `.env`, then `[app] env` in `Rullst.toml`. Set the real value
+   before deploying, or an explicit `mock_*` value where the mock is wanted,
+   such as a staging server without a provider account.
+5. **A mock behind a live AI provider.** In staging and production
+   `AiClient::auto()` and `AutoAiConfig::from_env()` refuse a chain in which
+   a `mock_*` key sits beside a live one, because the mock would answer
+   whenever the live provider failed. Remove the leftover `mock_*` value.
+6. **Remote Studio.** The standalone `rullst-studio` answers `403` until you
+   open the `http://127.0.0.1:<port>/studio?key=…` address it prints at each
+   start; a bookmark of `http://127.0.0.1:5556/studio` stops working.
+7. **Local Studio and loopback Nexus.** `LocalStudioAccess` and
+   `NexusAuthPolicy::LoopbackOnly` refuse requests that carry a forwarding
+   header or use HTTP/1.0, and requests whose `Server` resolved staging or
+   production. Building them fails with `LocalAccessRequiresDebugBuild` in
+   a debug build whose process `RULLST_ENV` or `APP_ENV` is staging,
+   production or invalid; there,
+   `NexusAuthPolicy::local_development_or_application` and
+   `local_development_or_basic_from_env` select the application's sign-in or
+   Basic Auth. A staging debug build that served Nexus without credentials
+   needs those credentials now.
+8. **SurrealDB graph reads.** `GraphQuery::read_only` accepts only its
+   read grammar (`MATCH`, an optional `WHERE`, `RETURN` and `ORDER BY`);
+   rewrite a query that uses anything else, such as `OPTIONAL MATCH` or
+   `DISTINCT`, or it returns `PolyglotError::InvalidIdentifier`.
+9. **OpenAI-compatible endpoints.** `OpenAiCompatibleProvider` and its
+   DeepSeek and Ollama presets now give up on a connection that takes more
+   than five seconds, as the native adapters do, instead of waiting for the
+   whole-request deadline.
+10. **Logs.** Requests that `Server`'s own layers refuse (CSRF, the WAF in
+    staging and production, the rate limiter, Traffic Shield, machine
+    endpoint authentication, lifecycle admission) now get an access-log line
+    such as `[HTTP] POST /login -> 403 (0.31 ms) refused by csrf`; a script
+    that counts lines sees more of them. A release build serving a
+    non-loopback address as development or test logs a `warn` event, and a
+    `rullst-connect` callback that still uses the legacy `oauth_state`
+    session key logs a deprecation warning.
+11. **Database pools.** PostgreSQL and MySQL pools created by `Orm::init*`
+    ping a connection before handing it out only after 500 ms idle, so a
+    connection that dies sooner fails its next query once.
+12. **Optional.** Code generated by the rc.1 CLI also refuses empty settings
+    in staging and production: the Turso starter (`TURSO_DATABASE_URL`),
+    billing (`BILLING_API_KEY`, `BILLING_WEBHOOK_SECRET`, now in staging too)
+    and `make:oauth`, whose `environment()` reads `.env` and `[app] env`
+    before `Server` starts. Compare with a project the rc.1 CLI generates and
+    copy what you want. The session registry's table can cascade deletions
+    from `users`, as the
+    [alpha.5 to alpha.6 checklist](#upgrading-an-alpha5-application-to-alpha6)
+    describes.
+13. **Verify.** Switch every Rullst requirement to `=13.0.0-rc.1`, run
+    `cargo update -p rullst --precise 13.0.0-rc.1`, `cargo test` and a start
+    with `RULLST_ENV=staging` and the deployment's settings, before the
+    production deployment.
 
 ## Why the candidate uses a new major
 
