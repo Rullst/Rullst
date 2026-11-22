@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795318856829,
+  "lastUpdate": 1795319384788,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -38743,6 +38743,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1942,
             "range": "± 24",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b0024fda28809c907f797d15b12e9cc2f838d909",
+          "message": "Merge pull request #850 from Rullst/feat/v13-site-generated-with-rullst\n\nfeat(site): generate rullst.win with Rullst's html! and add Made with Rullst, page weight and the parts around the framework",
+          "timestamp": "2026-11-22T00:43:57-03:00",
+          "tree_id": "e2d2fd8d264e009ffa8a5707f58952a1c788fbee",
+          "url": "https://github.com/Rullst/Rullst/commit/b0024fda28809c907f797d15b12e9cc2f838d909"
+        },
+        "date": 1795319380115,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 695,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 930,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 426,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2000,
+            "range": "± 31",
             "unit": "ns/iter"
           }
         ]
