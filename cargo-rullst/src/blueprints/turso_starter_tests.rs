@@ -1,5 +1,6 @@
 //! The Turso-primary starter refuses an empty `TURSO_DATABASE_URL` in staging
-//! and production before the offline fallback can create its local file.
+//! and production before the offline fallback can create its local file, in
+//! the environment `Server` resolves (process, `.env`, then `[app] env`).
 
 use super::blank;
 
@@ -26,7 +27,14 @@ fn every_turso_layout_checks_the_url_before_initializing_the_store() {
             .find("TursoOrm::init(turso)")
             .unwrap_or_else(|| panic!("api {api}, hot {hot_reload}: no init"));
         assert!(check < init, "api {api}, hot {hot_reload}");
-        assert!(main.contains("rullst::config::Environment::resolve("));
+        // The environment `Server` would resolve: process, `.env`, `[app] env`.
+        let environment = main
+            .find("Environment::detect(configured_environment.as_deref())?")
+            .unwrap_or_else(|| panic!("api {api}, hot {hot_reload}: no environment"));
+        assert!(environment < check, "api {api}, hot {hot_reload}");
+        assert!(main.contains("None => rullst::config::project_setting(\"APP_ENV\")?,"));
+        assert!(main.contains("RullstConfig::from_toml(&config)?.app.env"));
+        assert!(!main.contains("Environment::resolve("));
         assert!(main.contains("TURSO_DATABASE_URL is empty or unset in the {environment}"));
         assert!(main.contains("TursoConfig::new(\n        turso_url,"));
     }

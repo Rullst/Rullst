@@ -140,7 +140,7 @@ fn hero(proof: Markup) -> Markup {
                 <li class="proof-card proof-security">
                     <span class="proof-index">"ON IN EVERY GENERATED APP"</span>" "
                     <p class="proof-title">"Security layers on by default"</p>
-                    <p class="proof-figure">"Secure headers with a per-request CSP nonce, CSRF protection and a WAF, mounted by "<code>"Server"</code>" in every starter; each project's "<code>"src/security_tests.rs"</code>" checks them."</p>" "
+                    <p class="proof-figure">"Secure headers with a per-request CSP nonce, CSRF protection and a WAF, mounted by "<code>"Server"</code>" in every starter; each project's "<code>"src/security_tests.rs"</code>" checks them. Without "<code>"RULLST_ENV=production"</code>" (or staging) an application runs as development, where the WAF only logs."</p>" "
                     <a href="#security">"Security "<span aria-hidden="true">"↓"</span></a>
                 </li>
                 <li class="proof-card proof-memory">
@@ -169,7 +169,7 @@ fn performance(summary: Markup) -> Markup {
             <div class="section-heading">
                 <p class="eyebrow">"01 / Performance, measured"</p>
                 <h2 id="performance-heading">"Measured against Axum."<br /><span class="accent-orange">"Strong and weak results alike."</span></h2>
-                <p>"The scores below are those of Rullst as "<code>"cargo rullst new"</code>" generates it, with its security middleware on. The "<a href="/Benchmarks/">"Rullst/Benchmarks"</a>" cross-framework comparison measures each new Rullst release against Axum (1.00×) and other frameworks on GitHub-hosted runners, and this summary is rebuilt from its latest published results every day."</p>
+                <p>"The scores below are those of Rullst as "<code>"cargo rullst new"</code>" generates it, with its security middleware on. The "<a href="/Benchmarks/">"Rullst/Benchmarks"</a>" cross-framework comparison measures each new Rullst release against Axum (1.00×) and other frameworks on GitHub-hosted runners, and this summary is rebuilt from its latest results every day; the results page says whether they pass the benchmark's own publication gate."</p>
             </div>
             <p class="landing-disclosure"><strong>"Who measured this."</strong>" Rullst's maintainer also maintains that benchmark, wrote every implementation in it and designed the method. Its README lists what it does not measure: logins, large requests, TLS, a database on another host and scaling beyond 2 vCPUs among them."</p>
             <div class="landing-bench" data-landing-benchmarks>
@@ -198,7 +198,7 @@ fn security() -> Markup {
                         <li><b>"CSRF protection"</b>" (a double-submit token) on write routes, in every environment."</li>
                         <li>"A "<b>"WAF"</b>" that refuses suspicious requests in staging and production and only logs them in development. The generated Dockerfile, Compose and Kubernetes files set "<code>"RULLST_ENV=production"</code>"."</li>
                         <li><b>"Security tests"</b>": each project's "<code>"src/security_tests.rs"</code>" checks the headers, CSRF and the WAF under the production baseline with "<code>"cargo test"</code>"."</li>
-                        <li><b>"Production checks"</b>": the API starter does not start without "<code>"API_TOKEN"</code>", and the generated billing code refuses an empty payment key in production. In 13.0.0-rc.1 (not yet released), mail, AI and the Turso starters also refuse empty settings in staging and production instead of using an offline mock, and CI fails on any such fallback no one reviewed."</li>
+                        <li><b>"Production checks"</b>": the API starter does not start without "<code>"API_TOKEN"</code>", and the generated billing code refuses an empty payment key in production. In 13.0.0-rc.1 (not yet released), mail, AI and the Turso starters also refuse empty settings in staging and production instead of using an offline mock, and CI fails on an unreviewed fallback that matches its known patterns."</li>
                     </ul>" "
                     <a href="/Rullst/book/security-layers.html#what-generated-applications-already-have">"What each starter mounts "<span aria-hidden="true">"↗"</span></a>
                 </article>

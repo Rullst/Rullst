@@ -95,8 +95,11 @@ return `403`.
 
 The loopback check trusts the TCP peer address and the `Host` header, and the
 `Origin` check stops browsers, not other clients. It refuses a request that
-carries a forwarding header (`Forwarded`, `X-Forwarded-*`, `X-Real-IP`, `Via`,
-`CF-Connecting-IP`, `True-Client-IP`) or arrives over HTTP/1.0, which is what
+carries one of the forwarding headers `Forwarded`, `X-Forwarded-For`,
+`X-Forwarded-Host`, `X-Forwarded-Proto`, `X-Forwarded-Server`, `X-Real-IP`,
+`Via`, `CF-Connecting-IP` or `True-Client-IP` (other names, such as
+`X-Forwarded-Port`, `X-Forwarded-Prefix` or `X-Client-IP`, are not checked) or
+arrives over HTTP/1.0, which is what
 nginx's default `proxy_pass` sends, and a request whose application runs as
 staging or production. A forwarder on the same machine that adds no forwarding
 header and speaks HTTP/1.1, such as an SSH or container port forward, a TCP
@@ -121,11 +124,22 @@ and runs in release builds because it serves no local data: the data
 browser, `.env` viewer, AI and API playgrounds and migration pages are not
 mounted. Projects are stored owner-only in the user's configuration
 directory, with each token AES-256-GCM encrypted under a key in the data
-directory and bound to its name and base URL. The server checks the loopback
-peer, not the operating-system user: any account on the same machine can open
-`127.0.0.1:5556`, read the monitoring pages, receive the form token in them
-and submit the forms. Owner-only storage protects the files at rest, not what
-the running process serves. Requests require `https://`
+directory and bound to its name and base URL. Since 13.0.0-rc.1 every request
+also needs this start's launch key, because other accounts of the machine can
+connect to `127.0.0.1` too: the process prints
+`http://127.0.0.1:<port>/studio?key=<64 hex digits>`, a `GET` carrying the
+key receives an `HttpOnly`, `SameSite=Strict` cookie named
+`rullst_studio_<port>` and a redirect to `/studio`, and anything else without
+that cookie answers `403`. Open the printed address after each start. The key
+is the access: anyone who can read the printed address (a shared terminal
+log, for example) can use Studio until it restarts. The cookie carries the
+key itself, and browsers do not keep cookies apart by port: every
+`127.0.0.1` port is the same site, so the browser also sends the cookie to
+any other server on `127.0.0.1` it visits, including one another account of
+the machine runs, which can then use Studio with it. Close Studio when you
+do not need it, and do not open other local servers you do not trust in the
+same browser while it runs. Owner-only storage protects the files at rest,
+not what the running process serves. Requests require `https://`
 (or `http://` to loopback), follow no redirects, use a proxy only when the
 Settings page selects one (the `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY` and
 `NO_PROXY` variables, or an explicit URL; SOCKS is not supported) and

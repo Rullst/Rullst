@@ -309,8 +309,9 @@ pub(crate) fn is_local(request: &Request) -> bool {
     }
 }
 
-/// Whether `request` shows that a reverse proxy or tunnel relayed it: a
-/// forwarding header (`Forwarded`, `X-Forwarded-*`, `X-Real-IP`, `Via`, …), or
+/// Whether `request` shows that a reverse proxy or tunnel relayed it: one of
+/// the `FORWARDING_HEADERS` (`Forwarded`, four `X-Forwarded-` names,
+/// `X-Real-IP`, `Via`, …; not `X-Forwarded-Port` or `X-Client-IP`), or
 /// HTTP/1.0, nginx's default upstream protocol. A proxy that adds neither
 /// cannot be told apart from a direct client. Development tools that trust a
 /// loopback peer refuse such requests. Hidden support API for Rullst Studio

@@ -399,7 +399,11 @@ token. Other accounts on the machine can connect to `127.0.0.1` too, so each
 start prints its address with a random key: open that address (it sets a
 session cookie and drops the key from the address bar); without it every page
 answers `403`. The key changes at every start, and anyone who can read the
-printed address can use Studio until then, so keep that output private. Its pages are the remote ones only: the data browser, `.env` viewer,
+printed address can use Studio until then, so keep that output private. The
+session cookie carries the key, and browsers send it to every other server on
+`127.0.0.1` they visit, because cookies are not kept apart by port; a server
+another account runs there could then use Studio. Do not open local servers
+you do not trust in that browser while Studio runs. Its pages are the remote ones only: the data browser, `.env` viewer,
 AI and API playgrounds and migration pages do not exist in this mode.
 
 ### Add a project

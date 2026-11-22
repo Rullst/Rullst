@@ -43,11 +43,31 @@ pub(crate) async fn challenges() -> Result<&'static ChallengeStore, ChallengeErr
         .await
 }
 
-/// The running environment; unreadable configuration counts as production.
+/// The running environment, resolved once as `Server` resolves it;
+/// unreadable configuration counts as production. `initialize()` runs where
+/// the router is built, before `Server` has read `.env` and `Rullst.toml`.
 pub(crate) fn environment() -> Environment {
-    rullst::config::RullstConfig::global()
-        .environment()
-        .unwrap_or(Environment::Production)
+    static ENVIRONMENT: std::sync::OnceLock<Environment> = std::sync::OnceLock::new();
+    *ENVIRONMENT.get_or_init(|| project_environment().unwrap_or(Environment::Production))
+}
+
+/// The process `RULLST_ENV`, then `APP_ENV` (`Environment::detect` reads
+/// both), then either one from `.env` (which `project_setting` returns when
+/// the process lacks it), then `env` under `[app]` in `Rullst.toml`.
+fn project_environment() -> Result<Environment, Box<dyn std::error::Error>> {
+    let configured = match rullst::config::project_setting("RULLST_ENV")? {
+        Some(environment) => Some(environment),
+        None => rullst::config::project_setting("APP_ENV")?,
+    };
+    let configured = match configured {
+        Some(environment) => Some(environment),
+        None => match std::fs::read_to_string("Rullst.toml") {
+            Ok(config) => rullst::config::RullstConfig::from_toml(&config)?.app.env,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+            Err(error) => return Err(error.into()),
+        },
+    };
+    Ok(Environment::detect(configured.as_deref())?)
 }
 
 /// A setting from the process environment, then `.env`; blank is unset.

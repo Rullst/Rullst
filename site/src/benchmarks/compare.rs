@@ -9,6 +9,29 @@ use super::text::{self, words};
 use super::{Cell, FLAGS, MINIMAL, ROWS, Results, Row};
 use crate::pages::Lang;
 
+/// Measurement runs of Rullst/Benchmarks whose results an automatic run would not
+/// publish, as their results page says: the run id, the number of problems and their
+/// cause in English and Portuguese. A run that is not listed shows no gate note.
+const GATE_FAILURES: [(&str, u32, &str, &str); 1] = [(
+    "44765309608",
+    18,
+    "its `/world-update` runs recorded no count of the rows they updated",
+    "as execuções de `/world-update` não registraram quantas linhas atualizaram",
+)];
+
+/// The note that the shown run failed the benchmark's own publication gate, when it is
+/// one of [`GATE_FAILURES`].
+pub fn gate_note(results: &Results, lang: Lang) -> Option<Markup> {
+    let (_, problems, cause_en, cause_pt) = GATE_FAILURES
+        .iter()
+        .find(|(run, ..)| *run == results.run_id)?;
+    Some(if lang.is_pt() {
+        html! { <p class="benchmark-note benchmark-gate"><strong>"Porta de publicação: "</strong>"uma execução automática do Rullst/Benchmarks não publicaria estes resultados ("{problems.to_string()}" problemas): "{render_note(cause_pt)}". A "<a href="/Benchmarks/">"página de resultados"</a>" (em inglês) lista os problemas e diz quais números eles afetam."</p> }
+    } else {
+        html! { <p class="benchmark-note benchmark-gate"><strong>"Publication gate: "</strong>"an automatic run of Rullst/Benchmarks would not publish these results ("{problems.to_string()}" problems): "{render_note(cause_en)}". The "<a href="/Benchmarks/">"results page"</a>" lists the problems and says which numbers they affect."</p> }
+    })
+}
+
 /// The measurement day as a `<time>` element in the page's language.
 pub fn measured_date(results: &Results, lang: Lang) -> Markup {
     let day = results.measured_on;
@@ -268,6 +291,7 @@ pub fn render(results: &Results, lang: Lang) -> Markup {
     };
     html! {
         <p class="benchmark-meta">{measured_line(results, lang)}" "{full_results(results.ranked, lang)}</p>
+        {gate_note(results, lang)}
         {note}
         {scores_table(results, &order, lang)}
         <ul class="benchmark-legend"><li>{words.legend}</li>{unpublished}{flags}</ul>

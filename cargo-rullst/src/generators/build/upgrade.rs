@@ -63,6 +63,10 @@ enum UpgradeError {
     )]
     FromAfterProject { from: Version, current: Version },
     #[error(
+        "`--from {0}` would skip rules, but the Rullst version this project uses could not be read from its manifests or Cargo.lock, so every rule already applies; omit `--from`"
+    )]
+    FromWithoutProjectVersion(Version),
+    #[error(
         "target {target} is incompatible with cargo-rullst {cli}; install the CLI from the same major release train"
     )]
     IncompatibleCli { target: Version, cli: Version },
@@ -372,7 +376,8 @@ pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Er
 
 /// The version passed with `--from`, an exact SemVer version no newer than
 /// `current`, the project's version: `--from` only runs more rules again,
-/// never fewer than the project's version selects.
+/// never fewer than the project's version selects. Without a known version
+/// every rule applies already, so `--from` is refused.
 fn from_version(
     requested: Option<&str>,
     current: Option<&Version>,
@@ -382,9 +387,10 @@ fn from_version(
     };
     let from =
         Version::parse(text).map_err(|_| UpgradeError::InvalidFromVersion(text.to_string()))?;
-    if let Some(current) = current
-        && from.cmp_precedence(current).is_gt()
-    {
+    let Some(current) = current else {
+        return Err(UpgradeError::FromWithoutProjectVersion(from));
+    };
+    if from.cmp_precedence(current).is_gt() {
         return Err(UpgradeError::FromAfterProject {
             from,
             current: current.clone(),

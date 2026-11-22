@@ -110,6 +110,12 @@ fn the_saas_starter_gets_routes_link_store_identities_and_features() {
 
     let controller = read(&root, "src/controllers/oauth/mod.rs");
     assert!(controller.contains("pub mod google;"));
+    // `initialize()` runs before `Server` reads `.env` and `Rullst.toml`, so
+    // the environment is resolved from them directly, as `Server` will.
+    assert!(controller.contains("Ok(Environment::detect(configured.as_deref())?)"));
+    assert!(controller.contains("None => rullst::config::project_setting(\"APP_ENV\")?,"));
+    assert!(controller.contains("RullstConfig::from_toml(&config)?.app.env"));
+    assert!(!controller.contains("RullstConfig::global()"));
     assert!(controller.contains("SqlChallengeStore<rullst::db::sqlx::Sqlite>"));
     assert!(controller.contains(
         "pub const EXISTING_ACCOUNT_POLICY: ExistingAccountPolicy = ExistingAccountPolicy::Refuse;"

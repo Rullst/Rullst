@@ -577,9 +577,10 @@ capturing, so a test with `mock_*` credentials refuses what the provider path
 refuses.
 
 In staging and production, the `Mail` facade refuses an empty or unset
-`RESEND_API_KEY`, `SENDPULSE_API_KEY`, SES proxy token
-(`AWS_SES_TOKEN`/`AWS_SES_BEARER_TOKEN`, when no AWS keys select native SES) or
-`MAIL_HOST` with `MailError::ConfigError`, instead of capturing every message
+`RESEND_API_KEY`, `SENDPULSE_API_KEY` or SES proxy token
+(`AWS_SES_TOKEN`/`AWS_SES_BEARER_TOKEN`, when no AWS keys select native SES),
+and an empty `MAIL_HOST` (an unset one means `127.0.0.1`, see below), with
+`MailError::ConfigError`, instead of capturing every message
 in the offline mock and reporting success. An explicit `mock_*` value stays
 allowed there, and development and test keep the empty-credential fallback.
 Drivers built directly with `try_new` do not read the environment and keep

@@ -29,7 +29,7 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                     <p class="eyebrow">"Three Rust web frameworks. Checked facts."</p>
                     <h1>"Rullst, Loco and Topcoat."</h1>
                     <p>"All three build web applications in Rust on Tokio, and each one is the better fit for some projects. This page compares them topic by topic, using what each project's own documentation says. Where a project does not document something, the page says so instead of guessing."</p>
-                    <p class="compare-checked" id="checked">"Checked on "<time datetime="2026-11-14">"14 November 2026"</time>" against Rullst "<code>"13.0.0-alpha.5"</code>", Loco "<code>"loco-rs 1.3.1"</code>" and Topcoat "<code>"topcoat 0.12.1"</code>". Rullst's maintainer wrote this page. If a fact is wrong or out of date, please "<a href="https://github.com/Rullst/Rullst/issues">"open an issue"</a>"."</p>
+                    <p class="compare-checked" id="checked">"Checked on "<time datetime="2026-11-14">"14 November 2026"</time>" against Rullst "<code>"13.0.0-alpha.5"</code>", Loco "<code>"loco-rs 1.3.1"</code>" and Topcoat "<code>"topcoat 0.12.1"</code>"; the security defaults again on "<time datetime="2026-11-21">"21 November 2026"</time>", and Rullst's stability and security rows on "<time datetime="2026-11-22">"22 November 2026"</time>" against the 13.0.0-rc.1 source. Rullst's maintainer wrote this page. If a fact is wrong or out of date, please "<a href="https://github.com/Rullst/Rullst/issues">"open an issue"</a>"."</p>
                     <section id="fit" aria-labelledby="fit-heading">
                         <h2 id="fit-heading">"Where each one fits"</h2>
                         <ul class="compare-fit">
@@ -69,7 +69,7 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                         {blocks::topic(
                             "topic-security",
                             "Authentication and security defaults",
-                            html! { "Argon2 password hashing, encrypted sessions, passkeys, RBAC and OAuth2/OIDC sign-in. The SaaS starter wires CSRF middleware; "<code>"rullst-security"</code>" also provides secure headers, a WAF layer and a login jail." },
+                            html! { "Argon2 password hashing, encrypted sessions, passkeys, RBAC and OAuth2/OIDC sign-in. In every generated starter, "<code>"Server"</code>" mounts secure headers and double-submit CSRF protection in every environment, and a WAF that refuses suspicious requests in staging and production and only logs them in development; "<code>"rullst-security"</code>" adds a login jail and more layers." },
                             html! { "JWT by default, with argon2 hashing and API keys. Opt-in signed or encrypted cookie sessions and OAuth2/OIDC with GitHub and Google presets. Secure-headers middleware exists but is disabled by default; CSRF middleware is not documented." },
                             html! { "Session tokens with storage you provide, in "<code>"__Host-"</code>", Secure, HttpOnly, SameSite=Lax cookies. A default origin policy rejects cross-origin state-changing requests. Authentication is on the roadmap; password hashing, secure headers and CSRF tokens are not documented." },
                         )}
@@ -118,14 +118,14 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                         {blocks::topic(
                             "topic-stability",
                             "Stability, versioning and support window",
-                            html! { "13.0 is in prerelease; 13.0.0-alpha.6 froze its features and public API, and 13.0.0-rc.1 adds fixes, documentation and the changes the maintainer approved one by one after the freeze, two of them breaking. After 13.0.0, the maintainer intends to keep 13.x the active line for 12 months, then give it security fixes for 1 to 3 more months after 14.0.0 (an intention, not a guarantee). Semantic Versioning; MSRV Rust 1.96." },
+                            html! { "13.0 is in prerelease; 13.0.0-alpha.6 froze its features and public API, and 13.0.0-rc.1 adds fixes, documentation and the changes the maintainer approved one by one after the freeze: two of them break the API, and others change what a working alpha.6 deployment does, such as refusing empty settings in staging and production. After 13.0.0, the maintainer intends to keep 13.x the active line for 12 months, then give it security fixes for 1 to 3 more months after 14.0.0 (an intention, not a guarantee). Semantic Versioning; MSRV Rust 1.96." },
                             html! { "1.0.0 (July 2026) was its first stable release. Upgrade notes list breaking changes; a semver statement and a support window are not documented. MSRV Rust 1.94." },
                             html! { "Its README says: early-stage and experimental, expect breaking changes. Its changelog says it follows Semantic Versioning. No support window documented. MSRV Rust 1.99." },
                         )}
                         {blocks::topic(
                             "topic-maturity",
                             "Maturity and community",
-                            html! { "First published in May 2026. MIT license. 21 GitHub stars and 7 contributors on 14 November 2026." },
+                            html! { "First published in May 2026. MIT license. 21 GitHub stars and 7 contributors on 14 November 2026; two of the contributors are bots and one is an AI coding agent's account; Rullst has one maintainer." },
                             html! { "First release in November 2023. Apache-2.0 license. 9,629 GitHub stars and 157 contributors on 14 November 2026." },
                             html! { "Repository created in April 2026, first functional release in July 2026, in the tokio-rs GitHub organization. MIT license. 7,221 GitHub stars and 41 contributors on 14 November 2026." },
                         )}
@@ -139,7 +139,7 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                     </section>
                     <section id="benchmarks" aria-labelledby="benchmarks-heading">
                         <h2 id="benchmarks-heading">"Performance"</h2>
-                        <p>"These numbers are not written by hand: each daily build of this site inserts the latest published results of the "<a href="/Benchmarks/">"Rullst/Benchmarks"</a>" suite for the three frameworks, Actix Web and Gin, plus a minimal Rullst configuration. Rullst's maintainer also maintains that benchmark and wrote every implementation in it."</p>
+                        <p>"These numbers are not written by hand: each daily build of this site inserts the latest results of the "<a href="/Benchmarks/">"Rullst/Benchmarks"</a>" suite for the three frameworks, Actix Web and Gin, plus a minimal Rullst configuration. Rullst's maintainer also maintains that benchmark and wrote every implementation in it. Its results page says whether these results pass the benchmark's own publication gate."</p>
                         <div class="benchmark-howto">
                             <h3>"How to read these numbers"</h3>
                             <ul>

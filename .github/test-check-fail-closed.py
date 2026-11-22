@@ -266,6 +266,44 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertIn("refusal missing:", output)
 
+    def test_a_refusal_needs_the_environment_server_resolves(self) -> None:
+        template = "cargo-rullst/src/fragments/start.rs.template"
+        sites = [
+            entry(
+                template,
+                'project_setting("ACME_API_KEY")',
+                "refuses-in-secure-environments",
+                refusal="requires_secure_defaults",
+            )
+        ]
+        body = REFUSING_SETTINGS.split("\n", 1)[1]
+        for resolution in [
+            "let environment = Environment::detect(None)?;\n",
+            'let environment = Environment::resolve(\n    setting("RULLST_ENV")?.as_deref(),\n    None,\n    None,\n)?;\n',
+        ]:
+            with self.subTest(resolution=resolution):
+                workspace(self.root, {template: resolution + body}, sites)
+                status, output = run(self.root)
+                self.assertEqual(status, 1)
+                self.assertIn(f"partial environment: {template} ", output)
+                self.assertIn("line 1 resolves the environment from fewer sources than `Server`", output)
+        for resolution in [
+            "let environment = Environment::detect(configured.as_deref())?;\n",
+            "let environment = Environment::resolve(a, b, configured.as_deref())?;\n",
+            "let environment = config.environment()?;\n",
+        ]:
+            with self.subTest(resolution=resolution):
+                workspace(self.root, {template: resolution + body}, sites)
+                self.assertEqual(run(self.root)[0], 0)
+        # A partial resolution beside a site that refuses nothing is not reported.
+        (self.root / template).unlink()
+        workspace(
+            self.root,
+            {"acme/src/lib.rs": "pub fn secure() -> bool { Environment::detect(None).is_err() }\n" + UNLISTED_FALLBACK},
+            [entry("acme/src/lib.rs", "Client::from_env")],
+        )
+        self.assertEqual(run(self.root)[0], 0)
+
     def test_invalid_entries_fail(self) -> None:
         workspace(self.root, {"acme/src/lib.rs": UNLISTED_FALLBACK}, [])
         site = MODULE.find_sites(self.root)

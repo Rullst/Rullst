@@ -3,7 +3,8 @@
 //! A request reaches a page only from a loopback peer (`ConnectInfo`) that
 //! names a loopback `Host`; an unsafe method also needs a same-origin
 //! `Origin`. Requests with a proxy forwarding header (`Forwarded`,
-//! `X-Forwarded-*`, `X-Real-IP`, `Via`, …) or over HTTP/1.0 are refused,
+//! `X-Forwarded-For`, `-Host`, `-Proto` or `-Server`, `X-Real-IP`, `Via`, …;
+//! not `X-Forwarded-Port` or `X-Client-IP`) or over HTTP/1.0 are refused,
 //! because a same-host reverse proxy or tunnel connects from loopback, and so
 //! are requests whose `Server` resolved staging or production. A proxy or
 //! tunnel that adds no forwarding header and speaks HTTP/1.1 or newer still

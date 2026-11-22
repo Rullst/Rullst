@@ -111,8 +111,9 @@ impl fmt::Debug for NexusBasicAuth {
 /// Unsafe methods also require an exact same-origin Origin header. This
 /// browser boundary prevents DNS rebinding and blind cross-origin mutations.
 ///
-/// A request with a proxy forwarding header (`Forwarded`, `X-Forwarded-*`,
-/// `X-Real-IP`, `Via`, …) or over HTTP/1.0 is refused, because a same-host
+/// A request with a proxy forwarding header (`Forwarded`, `X-Forwarded-For`,
+/// `-Host`, `-Proto` or `-Server`, `X-Real-IP`, `Via`, …; not
+/// `X-Forwarded-Port` or `X-Client-IP`) or over HTTP/1.0 is refused, because a same-host
 /// reverse proxy or tunnel connects from loopback; so is a request whose
 /// `Server` resolved staging or production (from `.env` or `[app].env` too).
 /// A proxy that adds no forwarding header and speaks HTTP/1.1 or newer cannot

@@ -53,9 +53,11 @@ how many earlier rules it skipped; `--all-rules` applies every rule, and
 that already pins the target version (whose plan warns that the target's own
 rules did not run; since the 13.0.0-rc.1 CLI)
 ([rules by release](tutorials/36-assisted-framework-upgrades.md#rules-by-release)).
-An application that already runs 13.0.0-alpha.5 follows the shorter
-[alpha.5 to alpha.6 checklist](#upgrading-an-alpha5-application-to-alpha6);
-one on 13.0.0-alpha.4 follows the
+An application that already runs 13.0.0-alpha.6 follows the shorter
+[alpha.6 to rc.1 checklist](#upgrading-an-alpha6-application-to-rc1); one on
+13.0.0-alpha.5 follows the
+[alpha.5 to alpha.6 checklist](#upgrading-an-alpha5-application-to-alpha6)
+first; one on 13.0.0-alpha.4 follows the
 [alpha.4 to alpha.5 checklist](#upgrading-an-alpha4-application-to-alpha5)
 first, one on 13.0.0-alpha.3 the
 [alpha.3 to alpha.4 checklist](#upgrading-an-alpha3-application-to-alpha4)
@@ -364,7 +366,7 @@ Two things outside the Rust code change with every upgrade:
 | Messaging schedules use the scheduler's cron syntax | **Breaking**, from 13.0.0-alpha.6: `RecurringDefinition::new` (`rullst-messaging`, feature `schedules-postgres`) reads its five-field UTC cron expression with Core's POSIX syntax, as `Scheduler::task` does, instead of the `cron` crate's. Weekdays run from 0 to 7 (0 and 7 are Sunday) instead of 1 (Sunday) to 7 (Saturday), so `2-6` now means Tuesday to Saturday and Monday to Friday is `1-5`; names such as `MON-FRI` keep their meaning. When both the day of the month and the weekday are restricted, a day that matches either one runs the schedule, instead of a day that matches both. Each field must be valid on its own, so a field that starts or ends with `,`, `-` or `/` (`1, 2 * * *`, `/5 * * * *`), which the `cron` crate joined with its neighbour, or that runs a number into a name (`1jan`), which it split, is refused with `RecurringError::InvalidInput`. Definitions stored before the upgrade keep the meaning they were created with (deprecated until 14.0), and `PostgresRecurringStore::create` refuses to change one in place (`RecurringError::LegacyDefinition`): keep a stored schedule's expression as it is (its `RecurringMetadata::syntax()` is `CronSyntax::Legacy`), or cancel it and create the POSIX expression under a new name. `cargo rullst upgrade` reports each `RecurringDefinition::new` call whose expression is not a string literal that means the same under both syntaxes (`V13-MESSAGING-CRON-POSIX`), for review, with a literal's POSIX form for a schedule not yet stored where the rewrite is mechanical. Details: [Messaging schedules and POSIX cron](#messaging-schedules-and-posix-cron). |
 | Labs pinned-runner names | **Breaking**, from 13.0.0-rc.1 (maintainer-approved after the alpha.6 API freeze, so that no public name says Experimental): in `rullst-labs`, `ExecutionProfile::LinuxExperimental { tools, receipt_key }` is `ExecutionProfile::PinnedRunner { tools, receipt_key }`, and `ResultEvidence::Experimental { receipt, observations }` is `ResultEvidence::SignedReceipt { receipt, observations }`; fields and behaviour are unchanged. Rename the paths in construction, `let … else` and `match` arms. Only the Rust names changed: both variants are still serialized as `LinuxExperimental` and `Experimental`, so profile digests, store bindings, stored jobs and signed receipts are byte-identical, a store created by an earlier release opens with the renamed profile, and a JSON or TOML configuration that names the profile keeps `"LinuxExperimental"` (the new names are not accepted there). `cargo rullst upgrade` reports `LinuxExperimental` and `ResultEvidence::Experimental` in Rust code, not in strings (`V13-LABS-VARIANTS-RENAMED`). |
 | IoT simulator fixtures removed | **Breaking**, from 13.0.0-rc.1 (maintainer-approved after the alpha.6 API freeze): `rullst-iot` no longer has the `experimental-simulators` feature, the `hsm` and `pqc` modules, or `SimulatedHsmDevice`, `SimulatedHsmProfile`, `SimulatedPqcFixture` and `SimulatedMqttPayloadFormatter`. They only hashed bytes with SHA-256 or formatted a number; they were no HSM, post-quantum cryptography or MQTT client. Cargo refuses a dependency or `[features]` entry that enables the feature: remove it, and give a test that used a fixture its own fixed bytes (for example `sha2::Sha256::digest(seed)`, or `telemetry.value.to_string()` for the formatter). `cargo rullst upgrade` reports the feature on a `rullst-iot` dependency or in `[features]`, and the four type names in Rust code (`V13-IOT-SIMULATORS-REMOVED`). |
-| Empty settings in staging and production | From 13.0.0-rc.1, an empty or unset setting that selects an offline fallback is a configuration error in staging and production instead of a silent mock: `AiClient::auto()` with no AI provider configured returns `AiError::ConfigError` naming `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `GROQ_API_KEY` and `OLLAMA_HOST` (until then it answered every prompt with offline fixture text), and a client from `AutoAiConfig::into_client()` without a provider fails each request; newly generated Turso Blank and API starters stop at start-up when `TURSO_DATABASE_URL` is empty instead of writing the application's data to the local `TURSO_OFFLINE_PATH` file; newly generated billing code (`make:billing`, the SaaS starter) refuses an empty `BILLING_API_KEY` or `BILLING_WEBHOOK_SECRET` in staging as it already did in production, and the SaaS starter's development `.env` sets `mock_` values for them. Set the real value, or an explicit `mock_*` value to keep the offline fixture on purpose (production billing still refuses `mock_*`). Development and test keep the fallbacks. `TursoOrm::init_from_env`, `TursoStore::connect` and `S3Credentials::from_env` cannot see the runtime environment and are unchanged; an application that calls them refuses an empty value in production itself. Code generated by earlier releases is unchanged. |
+| Empty settings in staging and production | From 13.0.0-rc.1, an empty or unset setting that selects an offline fallback is a configuration error in staging and production instead of a silent mock: `AiClient::auto()` with no AI provider configured returns `AiError::ConfigError` naming `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `GROQ_API_KEY` and `OLLAMA_HOST` (until then it answered every prompt with offline fixture text), and a client from `AutoAiConfig::into_client()` without a provider fails each request; newly generated Turso Blank and API starters stop at start-up when `TURSO_DATABASE_URL` is empty instead of writing the application's data to the local `TURSO_OFFLINE_PATH` file; newly generated billing code (`make:billing`, the SaaS starter) refuses an empty `BILLING_API_KEY` or `BILLING_WEBHOOK_SECRET` in staging as it already did in production, and the SaaS starter's development `.env` sets `mock_` values for them. Set the real value, or an explicit `mock_*` value to keep the offline fixture on purpose (production billing still refuses `mock_*`). Development and test keep the fallbacks. These checks resolve staging and production as `Server` does: the process `RULLST_ENV`, then `APP_ENV`, then either one from `.env`, then `[app] env` in `Rullst.toml`. `TursoOrm::init_from_env`, `TursoStore::connect` and `S3Credentials::from_env` cannot see the runtime environment and are unchanged; an application that calls them refuses an empty value in production itself. Code generated by earlier releases is unchanged. |
 
 The [12.0→12.1 guide](migration-v12-1.md) still applies to applications that have
 not adopted the 12.1 account, payment and deployment changes. Skipping directly
@@ -1827,6 +1829,93 @@ journal without a finding). Add
 `sqlite_journal_mode = "wal"` under `[database]` in `Rullst.toml`, after
 switching your backups to `sqlite3 ".backup"` and only when the database is
 on a local disk of the one host that runs the application.
+
+## Upgrading an alpha.6 application to rc.1
+
+This checklist moves an application from 13.0.0-alpha.6 to 13.0.0-rc.1.
+After the alpha.6 freeze, rc.1 adds fixes, documentation and changes the
+maintainer approved one by one; two of them rename or remove public API, and
+several change what a working alpha.6 deployment does at start-up or on a
+request. Code that `cargo rullst` generated earlier is never rewritten.
+
+1. **Prepare.** Work on a branch with a clean tree and a committed
+   `Cargo.lock`, record the current `cargo test` result, and back up every
+   database.
+2. **Install the rc.1 CLI** (`cargo install cargo-rullst --version
+   =13.0.0-rc.1 --locked --force`; `rullst --version` must print
+   `13.0.0-rc.1`) and run `cargo rullst upgrade --dry-run` before changing
+   the versions. It applies the rules introduced after 13.0.0-alpha.6:
+   `V13-IOT-SIMULATORS-REMOVED`, `V13-LABS-VARIANTS-RENAMED` and
+   `V13-AUTH-SESSION-EPOCH-CALLS`. If the manifests already pin
+   `=13.0.0-rc.1`, add `--from 13.0.0-alpha.6`.
+3. **The two API changes.** `rullst-iot` no longer has the
+   `experimental-simulators` feature or its `Simulated*` types; remove the
+   feature and give tests their own fixed bytes (`V13-IOT-SIMULATORS-REMOVED`).
+   `rullst-labs` renamed `ExecutionProfile::LinuxExperimental` to
+   `ExecutionProfile::PinnedRunner` and `ResultEvidence::Experimental` to
+   `ResultEvidence::SignedReceipt`; their serialized names are unchanged
+   (`V13-LABS-VARIANTS-RENAMED`).
+4. **Empty settings in staging and production** (Empty settings in staging
+   and production row; no rule locates them). The `Mail` facade returns
+   `MailError::ConfigError` when the selected driver's credential
+   (`RESEND_API_KEY`, `SENDPULSE_API_KEY`, the SES proxy token) is empty or
+   unset, or `MAIL_HOST` is empty; `AiClient::auto()` returns
+   `AiError::ConfigError` when no AI provider is configured, and a client
+   from `AutoAiConfig::into_client()` then fails every request. On alpha.6
+   both answered with an offline mock. Both resolve staging and production
+   as `Server` does: the process `RULLST_ENV`, then `APP_ENV`, then either
+   one from `.env`, then `[app] env` in `Rullst.toml`. Set the real value
+   before deploying, or an explicit `mock_*` value where the mock is wanted,
+   such as a staging server without a provider account.
+5. **A mock behind a live AI provider.** In staging and production
+   `AiClient::auto()` and `AutoAiConfig::from_env()` refuse a chain in which
+   a `mock_*` key sits beside a live one, because the mock would answer
+   whenever the live provider failed. Remove the leftover `mock_*` value.
+6. **Remote Studio.** The standalone `rullst-studio` answers `403` until you
+   open the `http://127.0.0.1:<port>/studio?key=…` address it prints at each
+   start; a bookmark of `http://127.0.0.1:5556/studio` stops working.
+7. **Local Studio and loopback Nexus.** `LocalStudioAccess` and
+   `NexusAuthPolicy::LoopbackOnly` refuse requests that carry a forwarding
+   header or use HTTP/1.0, and requests whose `Server` resolved staging or
+   production. Building them fails with `LocalAccessRequiresDebugBuild` in
+   a debug build whose process `RULLST_ENV` or `APP_ENV` is staging,
+   production or invalid; there,
+   `NexusAuthPolicy::local_development_or_application` and
+   `local_development_or_basic_from_env` select the application's sign-in or
+   Basic Auth. A staging debug build that served Nexus without credentials
+   needs those credentials now.
+8. **SurrealDB graph reads.** `GraphQuery::read_only` accepts only its
+   read grammar (`MATCH`, an optional `WHERE`, `RETURN` and `ORDER BY`);
+   rewrite a query that uses anything else, such as `OPTIONAL MATCH` or
+   `DISTINCT`, or it returns `PolyglotError::InvalidIdentifier`.
+9. **OpenAI-compatible endpoints.** `OpenAiCompatibleProvider` and its
+   DeepSeek and Ollama presets now give up on a connection that takes more
+   than five seconds, as the native adapters do, instead of waiting for the
+   whole-request deadline.
+10. **Logs.** Requests that `Server`'s own layers refuse (CSRF, the WAF in
+    staging and production, the rate limiter, Traffic Shield, machine
+    endpoint authentication, lifecycle admission) now get an access-log line
+    such as `[HTTP] POST /login -> 403 (0.31 ms) refused by csrf`; a script
+    that counts lines sees more of them. A release build serving a
+    non-loopback address as development or test logs a `warn` event, and a
+    `rullst-connect` callback that still uses the legacy `oauth_state`
+    session key logs a deprecation warning.
+11. **Database pools.** PostgreSQL and MySQL pools created by `Orm::init*`
+    ping a connection before handing it out only after 500 ms idle, so a
+    connection that dies sooner fails its next query once.
+12. **Optional.** Code generated by the rc.1 CLI also refuses empty settings
+    in staging and production: the Turso starter (`TURSO_DATABASE_URL`),
+    billing (`BILLING_API_KEY`, `BILLING_WEBHOOK_SECRET`, now in staging too)
+    and `make:oauth`, whose `environment()` reads `.env` and `[app] env`
+    before `Server` starts. Compare with a project the rc.1 CLI generates and
+    copy what you want. The session registry's table can cascade deletions
+    from `users`, as the
+    [alpha.5 to alpha.6 checklist](#upgrading-an-alpha5-application-to-alpha6)
+    describes.
+13. **Verify.** Switch every Rullst requirement to `=13.0.0-rc.1`, run
+    `cargo update -p rullst --precise 13.0.0-rc.1`, `cargo test` and a start
+    with `RULLST_ENV=staging` and the deployment's settings, before the
+    production deployment.
 
 ## Why the candidate uses a new major
 

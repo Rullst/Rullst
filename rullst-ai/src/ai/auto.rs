@@ -4,14 +4,16 @@ use super::providers::{
     openai_compatible::OpenAiCompatibleProvider,
 };
 use super::{AiClient, AiError, AiProvider, FallbackProvider, mock::ProviderMode};
-use rullst_core::config::Environment;
+use rullst_core::config::{ConfigError, Environment, RullstConfig, project_setting};
 use std::sync::Arc;
 
 /// The end of every label of a provider in offline mode.
 const OFFLINE_LABEL: &str = "(offline mock)";
 
-/// The error for a `RULLST_ENV` or `APP_ENV` that names no Rullst environment.
-const INVALID_ENVIRONMENT: &str = "RULLST_ENV or APP_ENV is not a valid Rullst environment";
+/// The error for a `RULLST_ENV`, `APP_ENV` or `[app] env` that names no
+/// Rullst environment.
+const INVALID_ENVIRONMENT: &str =
+    "RULLST_ENV, APP_ENV or [app] env is not a valid Rullst environment";
 
 /// Labels a value offline exactly when the provider constructor selects mock mode.
 fn offline_credential(credential: &str) -> bool {
@@ -41,8 +43,15 @@ impl std::fmt::Debug for AutoAiConfig {
 
 impl AutoAiConfig {
     /// Captures the environment once using the same order as [`AiClient::auto`].
+    ///
+    /// Provider settings come from the process environment. Whether the
+    /// application runs in staging or production is resolved as `Server`
+    /// resolves it, from the working directory: the process `RULLST_ENV`,
+    /// then `APP_ENV`, then either one from `.env`, then `env` under `[app]`
+    /// in `Rullst.toml` (since 13.0.0-rc.1). They are read only when a
+    /// refusal depends on them.
     pub fn from_env() -> Result<Self, AiError> {
-        Self::from_lookup(|name| std::env::var(name).ok())
+        Self::from_lookup(|name| std::env::var(name).ok(), project_environment)
     }
 
     /// Configured fallback order, with explicit mocks labeled as offline.
@@ -53,9 +62,8 @@ impl AutoAiConfig {
     /// Builds a guarded client from this exact snapshot. No network is used.
     ///
     /// With no configured provider, development and test get the
-    /// deterministic offline fixture. In staging and production (`RULLST_ENV`,
-    /// then `APP_ENV`, from the process environment) the client has no
-    /// provider instead, so every request fails with [`AiError::ConfigError`]
+    /// deterministic offline fixture. In staging and production (resolved as
+    /// [`Self::from_env`] says) the client has no provider instead, so every request fails with [`AiError::ConfigError`]
     /// rather than answering with fixture text (since 13.0.0-rc.1).
     pub fn into_client(mut self) -> AiClient {
         if self.providers.is_empty() && self.unconfigured.is_none() {
@@ -79,7 +87,10 @@ impl AutoAiConfig {
         self.names.push(name);
     }
 
-    fn from_lookup(lookup: impl Fn(&str) -> Option<String>) -> Result<Self, AiError> {
+    fn from_lookup(
+        lookup: impl Fn(&str) -> Option<String>,
+        environment: impl Fn() -> Result<Environment, AiError>,
+    ) -> Result<Self, AiError> {
         let get = |name| lookup(name).filter(|value| !value.trim().is_empty());
         let mut config = Self {
             providers: Vec::new(),
@@ -169,16 +180,8 @@ impl AutoAiConfig {
             let model = get("OLLAMA_MODEL").unwrap_or_else(|| "llama3".into());
             config.push(OpenAiCompatibleProvider::ollama(host, model)?, name);
         }
-        let environment = || {
-            Environment::resolve(
-                get("RULLST_ENV").as_deref(),
-                get("APP_ENV").as_deref(),
-                None,
-            )
-            .map_err(|_| AiError::ConfigError(INVALID_ENVIRONMENT.into()))
-        };
-        config.refuse_offline_fallback(environment)?;
-        config.unconfigured = config.missing_provider(environment);
+        config.refuse_offline_fallback(&environment)?;
+        config.unconfigured = config.missing_provider(&environment);
         Ok(config)
     }
 
@@ -198,10 +201,10 @@ impl AutoAiConfig {
             Ok(environment) => Some(format!(
                 "no AI provider is configured in the {environment} environment, so the client \
                  would answer with offline fixture text; set OPENAI_API_KEY, ANTHROPIC_API_KEY, \
-                 GEMINI_API_KEY, DEEPSEEK_API_KEY, GROQ_API_KEY or OLLAMA_HOST, or a `mock_` \
-                 value to keep the offline fixture on purpose"
+                 GEMINI_API_KEY, DEEPSEEK_API_KEY, GROQ_API_KEY or OLLAMA_HOST in the process \
+                 environment, or a `mock_` value to keep the offline fixture on purpose"
             )),
-            Err(_) => Some(INVALID_ENVIRONMENT.into()),
+            Err(error) => Some(reason(error)),
         }
     }
 
@@ -235,16 +238,74 @@ impl AutoAiConfig {
     }
 }
 
+/// The environment `Server` enforces, read from the working directory: the
+/// process `RULLST_ENV`, then the process `APP_ENV` (`Environment::detect`
+/// reads both), then either one from `.env` (which `project_setting` returns
+/// when the process lacks it), then `env` under `[app]` in `Rullst.toml`.
+fn project_environment() -> Result<Environment, AiError> {
+    let configured = match project_setting("RULLST_ENV").map_err(settings_error)? {
+        Some(environment) => Some(environment),
+        None => project_setting("APP_ENV").map_err(settings_error)?,
+    };
+    let configured = match configured {
+        Some(environment) => Some(environment),
+        None => configured_environment()?,
+    };
+    Environment::detect(configured.as_deref()).map_err(settings_error)
+}
+
+/// `env` under `[app]` in `./Rullst.toml`; a missing file sets none.
+fn configured_environment() -> Result<Option<String>, AiError> {
+    match std::fs::read_to_string("Rullst.toml") {
+        Ok(config) => Ok(RullstConfig::from_toml(&config)
+            .map_err(settings_error)?
+            .app
+            .env),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(AiError::ConfigError(format!(
+            "Rullst.toml could not be read: {}",
+            error.kind()
+        ))),
+    }
+}
+
+/// Core reports these without `.env` or `Rullst.toml` content.
+fn settings_error(error: ConfigError) -> AiError {
+    match error {
+        ConfigError::InvalidEnvironment(_) => AiError::ConfigError(INVALID_ENVIRONMENT.into()),
+        other => AiError::ConfigError(format!("the AI environment could not be read: {other}")),
+    }
+}
+
+/// The text of a configuration error, for the snapshot's refusal.
+fn reason(error: AiError) -> String {
+    match error {
+        AiError::ConfigError(reason) => reason,
+        other => other.to_string(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    /// A snapshot of `values`, whose `RULLST_ENV` and `APP_ENV` (a blank one
+    /// counts as unset) stand in for the project's environment.
     fn resolve(values: &[(&str, &str)]) -> Result<AutoAiConfig, AiError> {
-        AutoAiConfig::from_lookup(|name| {
+        let lookup = |name: &str| {
             values
                 .iter()
                 .find(|(key, _)| *key == name)
                 .map(|(_, value)| value.to_string())
+                .filter(|value| !value.trim().is_empty())
+        };
+        AutoAiConfig::from_lookup(lookup, || {
+            Environment::resolve(
+                lookup("RULLST_ENV").as_deref(),
+                lookup("APP_ENV").as_deref(),
+                None,
+            )
+            .map_err(settings_error)
         })
     }
 
