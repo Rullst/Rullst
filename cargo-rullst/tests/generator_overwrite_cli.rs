@@ -335,6 +335,15 @@ fn auth_scaffold_never_replaces_account_files_or_duplicates_the_users_table() {
 fn auth_scaffold_enables_auth_registers_modules_and_rejects_turso() {
     let project = Project::with_migration_runner();
     project.succeeds(&["auth"]);
+    // The sessions migration references `users`, which this run creates, so
+    // its name sorts after the users migration's (#827).
+    let users = project.migrations_ending_with("_create_users_table.rs");
+    let sessions = project.migrations_ending_with("_create_rullst_auth_sessions_table.rs");
+    assert_eq!((users.len(), sessions.len()), (1, 1));
+    assert!(
+        users[0].file_name() < sessions[0].file_name(),
+        "{users:?} {sessions:?}"
+    );
     let manifest: toml::Value = toml::from_str(&project.read("Cargo.toml")).expect("manifest");
     let features = manifest["dependencies"]["rullst"]["features"]
         .as_array()

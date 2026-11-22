@@ -44,6 +44,10 @@ pub struct UpgradeOptions {
     /// Applies every source rule. By default a project already on v13 (a 13.0
     /// prerelease) sees only the rules introduced after its version.
     pub all_rules: bool,
+    /// Applies the rules introduced after this exact version instead of after
+    /// the project's (`--from`), to run again the rules of the releases a
+    /// project already moved past.
+    pub from: Option<String>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -52,6 +56,12 @@ enum UpgradeError {
     NotRullstProject,
     #[error("invalid target version `{0}`; use an exact SemVer version")]
     InvalidTargetVersion(String),
+    #[error("invalid `--from` version `{0}`; use an exact SemVer version, such as 13.0.0-alpha.5")]
+    InvalidFromVersion(String),
+    #[error(
+        "`--from {from}` is newer than {current}, the Rullst version this project uses, so it would skip rules the project has not been checked against; pass an earlier version, or omit `--from`"
+    )]
+    FromAfterProject { from: Version, current: Version },
     #[error(
         "target {target} is incompatible with cargo-rullst {cli}; install the CLI from the same major release train"
     )]
@@ -93,6 +103,7 @@ fn plan_project(
     root: &Path,
     requested: Option<&str>,
     all_rules: bool,
+    from: Option<&str>,
 ) -> Result<Planned, Box<dyn std::error::Error>> {
     if !root.join("Cargo.toml").is_file() {
         return Err(UpgradeError::NotRullstProject.into());
@@ -128,7 +139,9 @@ fn plan_project(
     reject_downgrade(root, &target, &plans)?;
     scan::reject_symlinked_sources(&package_roots)?;
     let mut scan = rules::scan_workspace(root, &plans, target.major)?;
-    scan.select(current::application_version(root, &plans)?, all_rules);
+    let current = current::application_version(root, &plans)?;
+    let from = from_version(from, current.as_ref())?;
+    scan.select(current, from, all_rules);
     Ok(Planned {
         target,
         plans,
@@ -247,7 +260,12 @@ pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Er
         plans,
         scan,
         changed,
-    } = plan_project(&root, options.target.as_deref(), options.all_rules)?;
+    } = plan_project(
+        &root,
+        options.target.as_deref(),
+        options.all_rules,
+        options.from.as_deref(),
+    )?;
     let json_report = report::render_json_report(&root, &target, &plans, &scan)?;
     if options.json {
         println!("{json_report}");
@@ -350,6 +368,29 @@ pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Er
         .bold()
     );
     Ok(())
+}
+
+/// The version passed with `--from`, an exact SemVer version no newer than
+/// `current`, the project's version: `--from` only runs more rules again,
+/// never fewer than the project's version selects.
+fn from_version(
+    requested: Option<&str>,
+    current: Option<&Version>,
+) -> Result<Option<Version>, UpgradeError> {
+    let Some(text) = requested else {
+        return Ok(None);
+    };
+    let from =
+        Version::parse(text).map_err(|_| UpgradeError::InvalidFromVersion(text.to_string()))?;
+    if let Some(current) = current
+        && from.cmp_precedence(current).is_gt()
+    {
+        return Err(UpgradeError::FromAfterProject {
+            from,
+            current: current.clone(),
+        });
+    }
+    Ok(Some(from))
 }
 
 fn target_version(requested: Option<&str>) -> Result<Version, UpgradeError> {

@@ -20,12 +20,14 @@
 //!   `RullstValue`'s chrono variants; and a chrono value passed to
 //!   `RullstValue::from` or to a query method that takes one.
 //! - `V13-LOCALE-JIFF-DATES`: `format_date`, `format_time` and
-//!   `format_datetime` called with a `DateStyle` or `TimeStyle`.
+//!   `format_datetime` called with a `DateStyle` or `TimeStyle`, unless the
+//!   value is a jiff one ([`ChronoBindings::holds_jiff`]).
 //! - `V13-MAIL-JIFF-TIMESTAMPS`: `send_at` (called or read) and
 //!   `with_scheduled_at` in a file that names Rullst's Mail, and the
 //!   `expires_at` of `PasswordResetAt` and `EmailLoginAt`.
 //! - `V13-CAPITAL-INVOICE-JIFF-DATE`: `Invoice::new` with its four
-//!   arguments in a file that names Rullst's Capital.
+//!   arguments in a file that names Rullst's Capital, unless the date is a
+//!   jiff value.
 
 use super::catalog::{
     CAPITAL_INVOICE_JIFF_DATE, LOCALE_JIFF_DATES, MAIL_JIFF_TIMESTAMPS, ORM_CHRONO_TYPES,
@@ -184,7 +186,8 @@ pub(super) fn method_rule(
 ) -> Option<&'static Rule> {
     match name {
         "format_date" | "format_time" | "format_datetime"
-            if mentions(args, &["DateStyle", "TimeStyle"]) =>
+            if mentions(args, &["DateStyle", "TimeStyle"])
+                && !bindings.jiff_argument(&args.clone().into_iter().collect::<Vec<_>>(), 0) =>
         {
             Some(&LOCALE_JIFF_DATES)
         }
@@ -215,7 +218,11 @@ pub(super) fn call_rule(
         [.., "RullstValue", "from"] if bindings.carries_chrono(&args.iter().cloned().collect()) => {
             Some(&ORM_CHRONO_TYPES)
         }
-        [.., "Invoice", "new"] if names_capital(text) && argument_count(args) == 4 => {
+        [.., "Invoice", "new"]
+            if names_capital(text)
+                && argument_count(args) == 4
+                && !bindings.jiff_argument(args, 2) =>
+        {
             Some(&CAPITAL_INVOICE_JIFF_DATE)
         }
         _ => None,

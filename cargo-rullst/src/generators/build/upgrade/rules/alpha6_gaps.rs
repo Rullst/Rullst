@@ -1,19 +1,20 @@
 //! Rules for the 13.0.0-alpha.6 changes that the first alpha.6 rules left to
 //! the checklist: cron expressions that Core's evaluator now refuses, code
 //! that compares the masked CSRF token with its cookie, `jsonwebtoken` key
-//! constructors that return a `Result` in 12, and the session-epoch files
+//! constructors that return a `Result` in 12, and the session-epoch calls
 //! that `cargo rullst auth`, the SaaS starter, `make:mfa` and `make:oauth`
 //! generated before alpha.6. [`super::tokens`] calls them with what it reads;
 //! the dependency and `Rullst.toml` rules are in `files/alpha6.rs`, and the
 //! `new` of a `define_provider!` type is resolved per package by
 //! [`super::Collector`].
 
-use super::Rule;
-use super::catalog::{AUTH_SESSION_REGISTRY, JSONWEBTOKEN_12, SCHEDULER_CRON_FIELDS};
+use super::catalog::{
+    AUTH_SESSION_EPOCH_CALLS, AUTH_SESSION_REGISTRY, JSONWEBTOKEN_12, SCHEDULER_CRON_FIELDS,
+};
 use super::rust::FileContext;
 use super::tokens::string_value;
+use super::{Rule, WorkspaceFacts};
 use proc_macro2::{Delimiter, Spacing, TokenStream, TokenTree};
-use std::path::Path;
 
 /// The `Scheduler` methods whose first argument is a cron expression.
 const CRON_METHODS: [&str; 4] = [
@@ -49,22 +50,9 @@ pub(super) fn cron_rule(name: &str, args: &TokenStream, text: &str) -> Option<&'
     refused_cron(&expression).then_some(&SCHEDULER_CRON_FIELDS)
 }
 
-/// The files that issued or accepted session-epoch cookies when
-/// `cargo rullst auth`, the SaaS starter, `make:mfa` or `make:oauth`
-/// generated them before 13.0.0-alpha.6, relative to the package root.
-const SESSION_EPOCH_FILES: [&str; 5] = [
-    "src/middlewares/auth_middleware.rs",
-    "src/controllers/auth_controller.rs",
-    "src/controllers/password_controller.rs",
-    "src/controllers/mfa/account.rs",
-    "src/controllers/oauth/mod.rs",
-];
-
-/// The rule for a path such as `EncodingKey::from_secret` or
-/// `rullst_auth::make_login_cookie_with_epoch`, if any: a `jsonwebtoken` key
-/// constructor in a workspace that declares `jsonwebtoken` 11 or earlier,
-/// or a session-epoch cookie call in a generated authentication file of a
-/// workspace that enables no session registry.
+/// The rule for a path such as `EncodingKey::from_secret`, if any: a
+/// `jsonwebtoken` key constructor in a workspace that declares
+/// `jsonwebtoken` 11 or earlier.
 pub(super) fn path_rule(segments: &[String], context: &FileContext<'_>) -> Option<&'static Rule> {
     match segments {
         [.., key, function]
@@ -74,17 +62,30 @@ pub(super) fn path_rule(segments: &[String], context: &FileContext<'_>) -> Optio
         {
             Some(&JSONWEBTOKEN_12)
         }
-        [.., function]
-            if (function == "make_login_cookie_with_epoch"
-                || function == "decrypt_session_claims")
-                && !context.facts.session_registry
-                && SESSION_EPOCH_FILES
-                    .iter()
-                    .any(|file| context.path == Path::new(file)) =>
-        {
-            Some(&AUTH_SESSION_REGISTRY)
-        }
         _ => None,
+    }
+}
+
+/// The rule for a call of `segments`, if any: `make_login_cookie_with_epoch`
+/// or `decrypt_session_claims`, which issue and read session-epoch cookies,
+/// in any file of the package. Without a session registry feature the call
+/// is where the registry would take over (`V13-AUTH-SESSION-REGISTRY`); with
+/// one, the registry's middleware accepts only registered sessions, which
+/// `decrypt_session_claims` refuses, so the call fails at run time
+/// (`V13-AUTH-SESSION-EPOCH-CALLS`). Both are rules about production
+/// behaviour, so test code is skipped ([`super::test_code`]).
+pub(super) fn session_call_rule(
+    segments: &[&str],
+    facts: &WorkspaceFacts,
+) -> Option<&'static Rule> {
+    let epoch_call = matches!(
+        segments.last(),
+        Some(&("make_login_cookie_with_epoch" | "decrypt_session_claims"))
+    );
+    match (epoch_call, facts.session_registry) {
+        (true, true) => Some(&AUTH_SESSION_EPOCH_CALLS),
+        (true, false) => Some(&AUTH_SESSION_REGISTRY),
+        (false, _) => None,
     }
 }
 

@@ -1,12 +1,20 @@
 use rullst::db::async_trait;
-use rullst::db::Orm;
-use rullst::db::schema::{Migration, Schema};
+use rullst::db::schema::{ForeignKeyAction, Migration, Schema};
+use rullst::db::{Orm, sqlx};
 
 /// The login sessions of `rullst::auth::session_registry` (see
 /// src/middlewares/auth_middleware.rs): one row per sign-in, keyed by a
 /// digest of its cookie's secret. The application only connects to the
-/// table; this migration owns it.
+/// table; this migration owns it. Its `user_id` references `users` with
+/// `ON DELETE CASCADE`, so deleting an account, also with SQL (a retention
+/// job, a deletion request), deletes its sessions, which would otherwise keep
+/// the account's browser family and times until they expire.
 pub struct MigrationImpl;
+
+/// The registry's SQLite table with `user_id` referencing `users`. SQLite
+/// cannot add a foreign key to an existing table, so `up` creates the table
+/// first; the registry then keeps it and adds its indexes.
+const SQLITE_TABLE: &str = "CREATE TABLE IF NOT EXISTS rullst_auth_sessions (token_hash TEXT PRIMARY KEY NOT NULL CHECK (length(token_hash) = 64), public_id TEXT NOT NULL CHECK (length(public_id) = 22), user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE, created_at INTEGER NOT NULL, last_seen_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, browser TEXT NOT NULL, platform TEXT NOT NULL)";
 
 #[async_trait]
 impl Migration for MigrationImpl {
@@ -15,16 +23,31 @@ impl Migration for MigrationImpl {
     }
 
     async fn up(&self) -> Result<(), rullst::orm::Error> {
+        let sqlite = Orm::driver()? == "sqlite";
+        if sqlite {
+            sqlx::query(SQLITE_TABLE).execute(Orm::pool()?).await?;
+        }
         // The registry's own schema for this database, and its indexes.
         rullst::auth::session_registry::SessionRegistryFor::<rullst::orm::RullstPool>::create_table(
             Orm::pool()?,
         )
         .await
-        .map_err(|error| rullst::orm::Error::DatabaseError(error.to_string()))
+        .map_err(|error| rullst::orm::Error::DatabaseError(error.to_string()))?;
+        if !sqlite {
+            // PostgreSQL and MySQL/MariaDB add the key to the table.
+            Schema::table("rullst_auth_sessions", |table| {
+                table
+                    .foreign("user_id")
+                    .references("users", "id")
+                    .on_delete(ForeignKeyAction::Cascade);
+            })
+            .await?;
+        }
+        Ok(())
     }
 
     async fn down(&self) -> Result<(), rullst::orm::Error> {
-        // Signs out every session; its indexes go with the table.
+        // Signs out every session; its indexes and key go with the table.
         Schema::drop_if_exists("rullst_auth_sessions").await
     }
 }

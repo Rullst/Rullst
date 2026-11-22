@@ -39,6 +39,28 @@ pub(crate) fn local_migration_stamp() -> Result<String, jiff::Error> {
     Ok(migration_stamp(now()?, &local_zone()))
 }
 
+/// The stamp of `at` in `zone` and a stamp that sorts after it, for two
+/// migrations of one command that must run in that order: one second later,
+/// or, when the local clock went back meanwhile (the end of daylight saving
+/// time), one second after the repeated hour.
+pub(crate) fn ordered_migration_stamps(
+    at: Timestamp,
+    zone: &TimeZone,
+) -> Result<(String, String), jiff::Error> {
+    let first = migration_stamp(at, zone);
+    let mut later = String::new();
+    for seconds in [1, 3_601, 7_201] {
+        later = migration_stamp(
+            at.checked_add(jiff::SignedDuration::from_secs(seconds))?,
+            zone,
+        );
+        if later > first {
+            break;
+        }
+    }
+    Ok((first, later))
+}
+
 /// `YYYY-MM-DD` of `at` in `zone`.
 pub(crate) fn date(at: Timestamp, zone: &TimeZone) -> String {
     let time = zone.to_datetime(at);

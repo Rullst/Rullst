@@ -965,7 +965,13 @@ migration whose rollback drops it, `connect` uses an existing table and
 creates nothing, and `open` creates it on first use and connects, the
 fallback for applications without such a migration. The generated
 applications own it by a `*_create_rullst_auth_sessions_table` migration.
-Applications that do not enable the registry are unchanged.
+Applications that do not enable the registry are unchanged. The registry does
+not know the accounts table, so its `user_id` has no foreign key and the rows
+of an account deleted with SQL stay until they expire (30 days by default);
+since 13.0.0-rc.1 the migration `cargo rullst auth` and the SaaS starter
+generate links it to `users (id)` with `ON DELETE CASCADE` (SQLite: created
+with the key before `create_table`; PostgreSQL and MySQL/MariaDB: `ALTER
+TABLE ... ADD CONSTRAINT` after it).
 
 - `create_session`/`sign_in` issue `v3.` tokens: AES-256-GCM under `APP_KEY`
   with their own associated data around `user_id|epoch|expires_at|secret`,
@@ -5150,7 +5156,10 @@ assistant, not a claim that compilation proves production compatibility.
   a Rullst requirement admits or `Cargo.lock` holds and, for a project already
   on v13, applies only the rules introduced after it, reporting how many
   rules it skipped and how many findings they would have added; `--all-rules`
-  applies every rule, and project preparations always do.
+  applies every rule, and project preparations always do. `--from <VERSION>`
+  applies the rules introduced after that exact version, no newer than the
+  project's, and a project already on the target version gets a warning that
+  the target's rules did not run (since the 13.0.0-rc.1 CLI).
   `rullst.upgrade-plan.v1` is extended additively (`kind`, `introduced_in`,
   `migration_row`, `migration_url`, `finding_counts`, `unscanned_sources`,
   `migration_guide`, `rule_selection`).

@@ -1,5 +1,6 @@
 //! A plan for an application already on a 13.0 prerelease applies only the
-//! rules introduced after that prerelease, unless `--all-rules` is given.
+//! rules introduced after that prerelease, unless `--all-rules` or `--from`
+//! is given, and warns when the application already uses the target.
 
 use super::{Fixture, output_text};
 
@@ -50,9 +51,11 @@ fn an_alpha_2_application_sees_only_the_alpha_3_rules() {
         report["rule_selection"],
         serde_json::json!({
             "current_version": "13.0.0-alpha.2",
+            "from_version": null,
             "all_rules": false,
             "skipped_rules": 99,
-            "hidden_findings": 2
+            "hidden_findings": 2,
+            "target_rules_skipped": false
         })
     );
     let human = output_text(&fixture.run(&["upgrade", "--dry-run"]));
@@ -91,12 +94,70 @@ fn a_v12_application_and_the_all_rules_flag_see_every_rule() {
         report["rule_selection"],
         serde_json::json!({
             "current_version": "13.0.0-alpha.2",
+            "from_version": null,
             "all_rules": true,
             "skipped_rules": 0,
-            "hidden_findings": 0
+            "hidden_findings": 0,
+            "target_rules_skipped": false
         })
     );
     let human = output_text(&alpha2.run(&["upgrade", "--dry-run", "--all-rules"]));
     assert!(human.contains(ALPHA_1_RULE), "{human}");
     assert!(!human.contains("earlier rules skipped"), "{human}");
+}
+
+#[test]
+fn from_reruns_the_rules_introduced_after_an_earlier_version() {
+    let fixture = Fixture::new("alpha3-from", "=13.0.0-alpha.3", "13.0.0-alpha.3", SOURCE);
+    // Without `--from`, an alpha.3 application gets none of the three.
+    assert_eq!(codes(&plan(&fixture, &[])), Vec::<String>::new());
+    let report = plan(&fixture, &["--from", "13.0.0-alpha.1"]);
+    assert_eq!(codes(&report), sorted(&[ALPHA_2_RULE, ALPHA_3_RULE]));
+    assert_eq!(
+        report["rule_selection"]["current_version"],
+        "13.0.0-alpha.3"
+    );
+    assert_eq!(report["rule_selection"]["from_version"], "13.0.0-alpha.1");
+    assert_eq!(report["rule_selection"]["skipped_rules"], 94);
+    // A `--from` newer than the project would skip rules it was never
+    // checked against.
+    let refused = fixture.run(&["upgrade", "--dry-run", "--from", "13.0.0-alpha.4"]);
+    assert!(!refused.status.success(), "{}", output_text(&refused));
+    assert!(
+        output_text(&refused).contains("`--from 13.0.0-alpha.4` is newer than 13.0.0-alpha.3"),
+        "{}",
+        output_text(&refused)
+    );
+}
+
+#[test]
+fn a_project_already_on_the_target_is_warned_that_its_rules_did_not_run() {
+    let fixture = Fixture::new(
+        "alpha3-at-target",
+        "=13.0.0-alpha.3",
+        "13.0.0-alpha.3",
+        SOURCE,
+    );
+    let report = plan(&fixture, &["--to", "13.0.0-alpha.3"]);
+    assert_eq!(codes(&report), Vec::<String>::new());
+    assert_eq!(report["rule_selection"]["target_rules_skipped"], true);
+    let human = output_text(&fixture.run(&["upgrade", "--dry-run", "--to", "13.0.0-alpha.3"]));
+    assert!(
+        human.contains("WARNING: this project already uses 13.0.0-alpha.3, the target version, so the rules introduced in 13.0.0-alpha.3 and earlier did not run"),
+        "{human}"
+    );
+    assert!(
+        human.contains("(for example `--from 13.0.0-alpha.2`)"),
+        "{human}"
+    );
+    let rerun = output_text(&fixture.run(&[
+        "upgrade",
+        "--dry-run",
+        "--to",
+        "13.0.0-alpha.3",
+        "--from",
+        "13.0.0-alpha.2",
+    ]));
+    assert!(rerun.contains(ALPHA_3_RULE), "{rerun}");
+    assert!(!rerun.contains("WARNING"), "{rerun}");
 }

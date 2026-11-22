@@ -198,9 +198,11 @@ fn json_dry_run_is_versioned_and_machine_readable() {
         report["rule_selection"],
         serde_json::json!({
             "current_version": "12.0.0",
+            "from_version": null,
             "all_rules": false,
             "skipped_rules": 0,
-            "hidden_findings": 0
+            "hidden_findings": 0,
+            "target_rules_skipped": false
         })
     );
 }

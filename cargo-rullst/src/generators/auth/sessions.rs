@@ -9,7 +9,10 @@ const MIGRATION_TEMPLATE: &str = include_str!("sessions_migration.rs.template");
 pub(crate) const MIGRATION_SUFFIX: &str = "_create_rullst_auth_sessions_table.rs";
 
 /// The reversible `rullst_auth_sessions` migration named `migration_name`:
-/// `up` creates the registry's table and indexes, `down` drops them.
+/// `up` creates the registry's table and indexes with `user_id` referencing
+/// `users (id)` `ON DELETE CASCADE`, so deleting an account deletes its
+/// sessions, and `down` drops them. Its name must sort after the migration
+/// that creates `users`.
 pub(crate) fn render_sessions_migration(migration_name: &str) -> String {
     MIGRATION_TEMPLATE.replace("__MIGRATION_NAME__", migration_name)
 }
@@ -88,6 +91,62 @@ mod tests {
         ));
         assert!(migration.contains("Schema::drop_if_exists(\"rullst_auth_sessions\").await"));
         assert_eq!(MIGRATION_SUFFIX, "_create_rullst_auth_sessions_table.rs");
+    }
+
+    /// The SQLite statement of the migration's table.
+    fn sqlite_table(migration: &str) -> &str {
+        let start = migration
+            .find("\"CREATE TABLE IF NOT EXISTS rullst_auth_sessions (")
+            .expect("the migration creates the SQLite table");
+        let rest = &migration[start + 1..];
+        &rest[..rest.find('"').expect("closing quote")]
+    }
+
+    /// Deleting an account deletes its sessions (#827): SQLite gets the key
+    /// in the table it creates before the registry adds its indexes, and
+    /// PostgreSQL and MySQL/MariaDB get it added to the registry's table.
+    #[test]
+    fn the_sessions_reference_users_on_delete_cascade() {
+        let migration =
+            render_sessions_migration("m20260601000003_create_rullst_auth_sessions_table");
+        assert!(
+            sqlite_table(&migration)
+                .contains("user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,")
+        );
+        let sqlite_first = migration
+            .find("sqlx::query(SQLITE_TABLE)")
+            .expect("SQLite creates its table");
+        let registry = migration.find("::create_table(").expect("registry table");
+        let key = migration
+            .find(".foreign(\"user_id\")\n                    .references(\"users\", \"id\")\n                    .on_delete(ForeignKeyAction::Cascade);")
+            .expect("the other databases add the key");
+        assert!(sqlite_first < registry && registry < key, "{migration}");
+        assert!(migration.contains("if sqlite {\n            sqlx::query(SQLITE_TABLE)"));
+        assert!(migration.contains(
+            "if !sqlite {\n            // PostgreSQL and MySQL/MariaDB add the key to the table."
+        ));
+        assert!(migration.contains("Schema::table(\"rullst_auth_sessions\", |table| {"));
+    }
+
+    /// The migration's SQLite table is the registry's, with the key added,
+    /// so the registry's `CREATE TABLE IF NOT EXISTS` keeps it.
+    #[test]
+    fn the_sqlite_table_is_the_registry_table_with_the_key() {
+        let registry = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../rullst-auth/src/auth/session_registry/sqlite.rs");
+        // A packaged crate has no sibling rullst-auth source.
+        let Ok(source) = std::fs::read_to_string(registry) else {
+            return;
+        };
+        let migration =
+            render_sessions_migration("m20260601000003_create_rullst_auth_sessions_table");
+        let with_key = sqlite_table(&migration);
+        let without_key = with_key.replace(" REFERENCES users (id) ON DELETE CASCADE", "");
+        assert_ne!(with_key, without_key);
+        assert!(
+            source.contains(&format!("\"{without_key}\"")),
+            "the SQLite table of rullst-auth changed; update sessions_migration.rs.template:\n{without_key}"
+        );
     }
 
     fn manifest(rullst: &str, orm: &str) -> String {
