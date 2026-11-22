@@ -1591,8 +1591,13 @@ Work through the steps in order.
     2. `Cargo.toml`: add `auth-session-registry-sqlite`, `-postgres` or
        `-mysql` (your strict profile) to the `rullst` features.
     3. Copy the reference's `*_create_rullst_auth_sessions_table` migration
-       into your migrations and register it, then run `cargo rullst
-       db:migrate` (`db:rollback` drops the table).
+       into your migrations, with a name that sorts after the migration that
+       creates `users`, and register it, then run `cargo rullst db:migrate`
+       (`db:rollback` drops the table). Since the 13.0.0-rc.1 CLI it links
+       `user_id` to `users (id)` with `ON DELETE CASCADE`, so an account
+       deleted with SQL takes its sessions with it; see
+       [accounts deleted with SQL](session-management.md#accounts-deleted-with-sql)
+       for a table created by an earlier one.
     4. `src/middlewares/auth_middleware.rs`: take the reference file, which
        adds `sessions()`, `start_session`, `revalidation` and `signed_in`
        (`authenticate_request`, still checking the account's session epoch

@@ -1,7 +1,8 @@
 //! Real generated SaaS router, middleware, handlers and users table on
 //! SQLite: every sign-in is a registered session. Signing out ends every
-//! copy of its cookie, "Your devices" lists and signs out devices, and the
-//! session epoch still ends every session at once.
+//! copy of its cookie, "Your devices" lists and signs out devices, the
+//! session epoch still ends every session at once, and deleting the account
+//! with SQL deletes its sessions.
 use super::*;
 use rullst::server::Body;
 use std::sync::atomic::{AtomicU8, Ordering};
@@ -199,4 +200,17 @@ async fn generated_session_registry_contract() {
     // A cookie revoked meanwhile is turned away before it can act again.
     assert_eq!(call(app, "POST", "/logout/everywhere", Some(&fresh), &format!("_token={CSRF}"), FIREFOX).await.status, StatusCode::SEE_OTHER);
     assert_eq!(User::find(1).await.unwrap().unwrap().session_epoch, 2);
+
+    // An account deleted with SQL (a retention job) takes its sessions with
+    // it: `user_id` references `users` with `ON DELETE CASCADE`.
+    let last = sign_in(app, SAFARI).await;
+    assert_eq!(stored().await.len(), 1);
+    let orphan = rullst::db::sqlx::query("INSERT INTO rullst_auth_sessions (token_hash, public_id, user_id, created_at, last_seen_at, expires_at, browser, platform) VALUES (?, ?, 2, 0, 0, 0, 'firefox', 'linux')")
+        .bind("0".repeat(64)).bind("A".repeat(22))
+        .execute(rullst::orm::Orm::pool().unwrap()).await;
+    assert!(orphan.is_err(), "a session of an account that does not exist is refused");
+    rullst::db::sqlx::query("DELETE FROM users WHERE id = ?").bind(1)
+        .execute(rullst::orm::Orm::pool().unwrap()).await.unwrap();
+    assert!(stored().await.is_empty());
+    assert_eq!(dashboard(app, &last).await, StatusCode::SEE_OTHER);
 }

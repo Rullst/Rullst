@@ -152,6 +152,26 @@ fn auth_extends_the_users_table_of_fresh_blank_and_api_starters() {
             let resets_name = resets[0].trim_end_matches(".rs");
             assert!(position("m20260601000000_create_users_table") < position(added_name));
             assert!(position(added_name) < position(resets_name), "{case}");
+            // The sessions table references `users`, so it comes last, and
+            // deleting an account deletes its sessions (#827).
+            let sessions = migrations_ending_with(&root, "_create_rullst_auth_sessions_table.rs");
+            assert_eq!(sessions.len(), 1, "{case}");
+            assert!(
+                position(resets_name) < position(sessions[0].trim_end_matches(".rs")),
+                "{case}"
+            );
+            let sessions_migration =
+                fs::read_to_string(root.join("src/migrations").join(&sessions[0]))
+                    .expect("sessions migration");
+            assert!(
+                sessions_migration
+                    .contains("user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE"),
+                "{case}"
+            );
+            assert!(
+                sessions_migration.contains(".on_delete(ForeignKeyAction::Cascade);"),
+                "{case}"
+            );
 
             // One `User` for `users`: the account model, re-exported where the
             // starter declared its two-field model.

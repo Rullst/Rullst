@@ -164,7 +164,11 @@ or make sign-out stop a copied cookie. `session_registry` (features
 `session-registry-sqlite`, `session-registry-postgres` and
 `session-registry-mysql`; the facade's `auth-session-registry-*`) adds one row
 per sign-in in the table `rullst_auth_sessions` of the application's own
-database, over its SQLx pool:
+database, over its SQLx pool. The table's `user_id` has no foreign key, since
+the registry does not know the accounts table: call `revoke_all_sessions`
+when an account is deleted, or link the column in the migration that owns the
+table, as the one `cargo rullst auth` generates does
+([accounts deleted with SQL](../session-management.md#accounts-deleted-with-sql)):
 
 ```rust,no_run
 # #[cfg(feature = "session-registry-sqlite")]

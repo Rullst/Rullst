@@ -98,7 +98,12 @@ sessions.revoke_other_sessions(session.current()).await?;
 strict database profile (`auth-session-registry-sqlite`, `-postgres` or
 `-mysql`; `cargo rullst auth` now refuses a project without exactly one strict
 profile) and write a `*_create_rullst_auth_sessions_table` migration, which
-creates the table on `db:migrate` and drops it on `db:rollback`.
+creates the table on `db:migrate` and drops it on `db:rollback`. Since
+13.0.0-rc.1 that migration links `user_id` to `users (id)` with `ON DELETE
+CASCADE` (on SQLite it creates the registry's table with the key before
+`create_table` adds the indexes; on PostgreSQL and MySQL/MariaDB it adds the
+constraint after), and `cargo rullst auth` gives it a later stamp than the
+users migration, so that it runs after it.
 `src/middlewares/auth_middleware.rs` connects to it over `Orm::pool()` on
 first use, registers every sign-in (`start_session`) and inserts the
 signed-in account's `AuthenticatedSession` next to its id and, since
@@ -116,10 +121,40 @@ same way in such a starter, and `make:oauth`'s `LinkAndResetPassword` policy
 deletes the account's sessions in the transaction that removes its password
 (`SessionRegistry::revoke_all_sessions_on`), so they also leave "Your
 devices"; in a starter generated before 13.0.0-alpha.6 they keep issuing epoch
-cookies (`cargo rullst upgrade` reports those files, `V13-AUTH-SESSION-REGISTRY`,
+cookies (`cargo rullst upgrade` reports those calls, `V13-AUTH-SESSION-REGISTRY`,
 and the [alpha.5 to alpha.6 checklist](migration-v13.md#upgrading-an-alpha5-application-to-alpha6)
 lists the changes). The middleware's `revalidation(&session)` returns the check for
 long-lived responses below.
+
+### Accounts deleted with SQL
+
+The registry does not know the application's accounts table, so
+`rullst_auth_sessions.user_id` has no foreign key of its own
+(`SessionRegistry::create_table` and `open` create it without one). Deleting an
+account through the application calls `revoke_all_sessions`, or
+`revoke_all_sessions_on` inside the deleting transaction. An account deleted
+with SQL, such as by a retention job or for a deletion request, would leave its
+rows, with the account id, the browser and platform family and the sign-in and
+last-seen times, until they expire (30 days by default) and `purge_expired`
+removes them. The migration that `cargo rullst auth` and the SaaS starter
+generate since 13.0.0-rc.1 deletes them with the account (`ON DELETE CASCADE`
+on `user_id`); a stream or WebSocket of such a session ends at its next
+revalidation, because the cascade does not go through a registry. SQLite
+enforces the key only with `PRAGMA foreign_keys = ON`, which SQLx sets on every
+connection it opens; a `sqlite3` shell does not, so run deletions through the
+application or enable it there. On SQLite, a later migration that rebuilds
+`users` (`CREATE TABLE users_new`, copy, `DROP TABLE users`) deletes every
+session through the key, which signs everyone out.
+
+An application generated before 13.0.0-rc.1 adds the key in a new migration
+(after a `DELETE FROM rullst_auth_sessions WHERE user_id NOT IN (SELECT id
+FROM users)`): on PostgreSQL and MySQL/MariaDB
+`Schema::table("rullst_auth_sessions", |table| { table.foreign("user_id").references("users", "id").on_delete(ForeignKeyAction::Cascade); })`;
+on SQLite, which cannot add a key to an existing table, drop and recreate the
+table as the new migration does, which signs everyone out once, or delete the
+account's sessions in the same statement batch as the account
+(`DELETE FROM rullst_auth_sessions WHERE user_id = ?`). An application whose
+own accounts table has another name passes that name to `references`.
 
 ### Long-lived connections
 
