@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795332340462,
+  "lastUpdate": 1795369018388,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -23348,6 +23348,54 @@ window.BENCHMARK_DATA = {
           {
             "name": "ai_pii_masking/mask_pii",
             "value": 191,
+            "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7ecad3bcffe576e1ece45d3d6b91ff9bcf97c171",
+          "message": "Merge pull request #862 from Rullst/fix/v13-rc1-threat-model-studio-source\n\nfix: point TM-STUDIO-01 at the moved Studio access tests; update url for RUSTSEC-2026-0592",
+          "timestamp": "2026-11-22T14:17:00-03:00",
+          "tree_id": "9bf01a8d7acbfc9d1cd723de3bc3432f4bcab4b7",
+          "url": "https://github.com/Rullst/Rullst/commit/7ecad3bcffe576e1ece45d3d6b91ff9bcf97c171"
+        },
+        "date": 1795369017748,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1676,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 376,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 387,
             "range": "± 9",
             "unit": "ns/iter"
           }
