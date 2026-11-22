@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795319384788,
+  "lastUpdate": 1795321927239,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -38797,6 +38797,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2000,
             "range": "± 31",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0b29a4ff9fdcbbe8ae913366866b1e58985e6f42",
+          "message": "Merge pull request #852 from Rullst/fix/v13-site-logo-privacy\n\nfix(site): shrink the logo, list capoeira and vene.win in the privacy notice, drop Spanish from Academy",
+          "timestamp": "2026-11-22T01:28:50-03:00",
+          "tree_id": "b02f5a4861621c64ceaaa74b91b8f362fcaca883",
+          "url": "https://github.com/Rullst/Rullst/commit/0b29a4ff9fdcbbe8ae913366866b1e58985e6f42"
+        },
+        "date": 1795321923801,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 374,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 545,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 276,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 971,
+            "range": "± 11",
             "unit": "ns/iter"
           }
         ]
