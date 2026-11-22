@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795329330886,
+  "lastUpdate": 1795330456417,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -16113,6 +16113,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 383,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1ea8703da23e8d708880a0898f5c4ebef7d8cf3c",
+          "message": "Merge pull request #857 from Rullst/fix/v13-rc1-review-site\n\nfix(site): name Cloudflare and narrow the claims the rc.1 review found",
+          "timestamp": "2026-11-22T03:37:30-03:00",
+          "tree_id": "782e3121550b062caebbed7d7f080f4682977d6c",
+          "url": "https://github.com/Rullst/Rullst/commit/1ea8703da23e8d708880a0898f5c4ebef7d8cf3c"
+        },
+        "date": 1795330456112,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 343,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
