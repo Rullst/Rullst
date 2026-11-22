@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795298858527,
+  "lastUpdate": 1795306739061,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -38526,6 +38526,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "waf_middleware_overhead",
             "value": 1091,
+            "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a0ee8c3fbf1ff13d67732ebd81fd80e99e2af691",
+          "message": "Merge pull request #829 from Rullst/feat/v13-site-landing-redesign\n\nfeat(site): redesign the landing around performance, security and what Rullst includes",
+          "timestamp": "2026-11-21T21:15:15-03:00",
+          "tree_id": "d445f0666c245b64dfcc75fd981eed72fab60e6c",
+          "url": "https://github.com/Rullst/Rullst/commit/a0ee8c3fbf1ff13d67732ebd81fd80e99e2af691"
+        },
+        "date": 1795306734188,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 554,
+            "range": "± 33",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 731,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 333,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1498,
             "range": "± 9",
             "unit": "ns/iter"
           }
