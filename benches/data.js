@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795315347800,
+  "lastUpdate": 1795316846049,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -38635,6 +38635,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1997,
             "range": "± 35",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "587c53eb09059071757b76272ce7b9691a25ed6c",
+          "message": "Merge pull request #848 from Rullst/fix/v13-rc1-session-cascade\n\nfix(auth): delete registered sessions with the account in generated migrations",
+          "timestamp": "2026-11-22T00:03:34-03:00",
+          "tree_id": "55193555fd5051d85f3eedfa834fff6d6728540b",
+          "url": "https://github.com/Rullst/Rullst/commit/587c53eb09059071757b76272ce7b9691a25ed6c"
+        },
+        "date": 1795316841486,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 679,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 921,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 420,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2000,
+            "range": "± 32",
             "unit": "ns/iter"
           }
         ]
