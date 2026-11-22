@@ -4,6 +4,7 @@ use super::*;
 
 mod locations;
 mod must_change;
+mod rule_baseline;
 
 #[test]
 fn target_must_match_the_installed_cli_major() {
@@ -118,6 +119,7 @@ fn selected_scan(current: Option<&str>, all_rules: bool) -> SourceScan {
     };
     scan.select(
         current.map(|version| Version::parse(version).unwrap()),
+        None,
         all_rules,
     );
     scan
@@ -149,9 +151,11 @@ fn the_plan_says_which_earlier_rules_it_skipped() {
         json["rule_selection"],
         serde_json::json!({
             "current_version": "13.0.0-alpha.2",
+            "from_version": null,
             "all_rules": false,
             "skipped_rules": 99,
             "hidden_findings": 1,
+            "target_rules_skipped": false,
         })
     );
     assert_eq!(
@@ -218,9 +222,9 @@ fn the_plan_counts_the_locations_marked_reviewed() {
     assert_eq!(json["finding_counts"]["reviewed"], 2);
 
     // An alpha.4 application skips the alpha.1 rule's marked location.
-    scan.select(Some(Version::parse("13.0.0-alpha.4").unwrap()), false);
+    scan.select(Some(Version::parse("13.0.0-alpha.4").unwrap()), None, false);
     assert_eq!(scan.reviewed, [rule("V13-CLI-GREEN-RENAMED")]);
-    scan.select(Some(Version::parse("13.0.0-alpha.5").unwrap()), false);
+    scan.select(Some(Version::parse("13.0.0-alpha.5").unwrap()), None, false);
     assert!(scan.reviewed.is_empty());
 }
 
@@ -273,6 +277,7 @@ fn upgrade_child_fixture() {
         keep_on_failure: mode == "keep",
         restore: None,
         all_rules: false,
+        from: None,
     }) {
         Ok(()) => "ok".to_string(),
         Err(error) => error.to_string(),
@@ -493,7 +498,7 @@ fn the_plan_accepts_v13_sources_and_refuses_downgrades() {
     let plan = |requirement: &str| {
         let project = demo_project(requirement);
         let root = project.path().canonicalize().unwrap();
-        plan_project(&root, Some("13.0.0"), false).map(|planned| planned.changed)
+        plan_project(&root, Some("13.0.0"), false, None).map(|planned| planned.changed)
     };
     assert_eq!(plan("13.0").unwrap(), 1);
     assert_eq!(

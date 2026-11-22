@@ -196,6 +196,8 @@ fn exactly_the_rules_about_production_behaviour_skip_test_code() {
             "V13-CSRF-STATIC-PREFIXES",
             "V13-CSRF-COOKIE-IN-PAGE",
             "V13-ROUTER-BASELINE-LAYERS",
+            "V13-AUTH-SESSION-REGISTRY",
+            "V13-AUTH-SESSION-EPOCH-CALLS",
         ]
     );
     // Each is a review rule: code that no longer compiles is never skipped.

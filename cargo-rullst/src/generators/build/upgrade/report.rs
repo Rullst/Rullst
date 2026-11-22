@@ -53,13 +53,12 @@ fn reviewed_note(scan: &SourceScan) -> Option<String> {
 }
 
 /// The part of the guide the plan links: the checklist for the project's
-/// version, or, for a v12 project, alpha.1, an unknown version or
-/// `--all-rules`, the table of changes from 12.1.0 that holds every
-/// finding's row.
+/// version (or the `--from` version), or, for a v12 project, alpha.1, an
+/// unknown version or `--all-rules`, the table of changes from 12.1.0 that
+/// holds every finding's row.
 pub(super) fn guide_url(selection: &RuleSelection) -> String {
     let checklist = selection
-        .current
-        .as_ref()
+        .baseline()
         .filter(|_| !selection.all_rules)
         .and_then(checklist);
     match checklist {
@@ -70,13 +69,38 @@ pub(super) fn guide_url(selection: &RuleSelection) -> String {
 
 /// What the plan says about the rules it skipped, when it skipped any.
 fn selection_note(selection: &RuleSelection) -> Option<String> {
-    let current = selection.current.as_ref()?;
+    let baseline = selection.baseline()?;
+    let source = match (&selection.from, &selection.current) {
+        (None, _) => "the Rullst version this project uses".to_string(),
+        (Some(_), Some(current)) => format!("passed with --from (this project uses {current})"),
+        (Some(_), None) => "passed with --from".to_string(),
+    };
     (selection.skipped_rules > 0).then(|| {
         format!(
-            "introduced after {current}, the Rullst version this project uses; earlier rules skipped: {} (findings hidden: {}); --all-rules applies every rule",
+            "introduced after {baseline}, {source}; earlier rules skipped: {} (findings hidden: {}); --all-rules applies every rule",
             selection.skipped_rules, selection.hidden_findings
         )
     })
+}
+
+/// The warning of a plan for a project that already uses the target
+/// version without `--from`: the rules introduced in that version were
+/// skipped with the earlier ones, so a plan without findings says nothing
+/// about them.
+pub(super) fn at_target_warning(target: &Version, selection: &RuleSelection) -> Option<String> {
+    let current = selection.current.as_ref()?;
+    if selection.from.is_some()
+        || selection.skipped_rules == 0
+        || current.cmp_precedence(target).is_ne()
+    {
+        return None;
+    }
+    let example = rules::release_before(current)
+        .map(|release| format!(" (for example `--from {release}`)"))
+        .unwrap_or_default();
+    Some(format!(
+        "this project already uses {current}, the target version, so the rules introduced in {current} and earlier did not run, and a plan without findings says nothing about them; to apply the rules introduced since the version you upgraded from, run `cargo rullst upgrade --dry-run --from <VERSION>` with that version{example}, or `--all-rules` for every rule"
+    ))
 }
 
 /// A rule's findings in one file and every line they are at, ascending.
@@ -162,6 +186,9 @@ pub(super) fn plan_text(
     if let Some(note) = selection_note(&scan.selection) {
         lines.push(format!("  Rules: {note}"));
     }
+    if let Some(warning) = at_target_warning(target, &scan.selection) {
+        lines.push(format!("  WARNING: {warning}"));
+    }
     if let Some(note) = reviewed_note(scan) {
         lines.push(format!("  Reviewed: {note}"));
     }
@@ -245,6 +272,9 @@ pub(super) fn render_report(
     if let Some(note) = selection_note(&scan.selection) {
         report.push_str(&format!("Rules: {note}.\n\n"));
     }
+    if let Some(warning) = at_target_warning(target, &scan.selection) {
+        report.push_str(&format!("**Warning:** {warning}.\n\n"));
+    }
     if let Some(note) = reviewed_note(scan) {
         report.push_str(&format!("Reviewed: {note}.\n\n"));
     }
@@ -291,7 +321,8 @@ pub(super) fn render_report(
 /// finding keeps `path`, `line`, `code`, `severity` and `message` and adds
 /// `kind`, `introduced_in`, `migration_row`, `migration_url` and `note`
 /// (`null` unless the rule computed something for the location); the root adds
-/// `rule_selection`, and `finding_counts.reviewed` counts the review locations
+/// `rule_selection` (with `from_version` and `target_rules_skipped` since
+/// 13.0.0-rc.1), and `finding_counts.reviewed` counts the review locations
 /// a `rullst-upgrade: reviewed` marker left out.
 pub(super) fn render_json_report(
     root: &Path,
@@ -348,9 +379,11 @@ pub(super) fn render_json_report(
         },
         "rule_selection": {
             "current_version": scan.selection.current.as_ref().map(Version::to_string),
+            "from_version": scan.selection.from.as_ref().map(Version::to_string),
             "all_rules": scan.selection.all_rules,
             "skipped_rules": scan.selection.skipped_rules,
             "hidden_findings": scan.selection.hidden_findings,
+            "target_rules_skipped": at_target_warning(target, &scan.selection).is_some(),
         },
         "unscanned_sources": unscanned,
         "migration_guide": guide_url(&scan.selection),

@@ -203,6 +203,7 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             keep_on_failure,
             restore,
             all_rules,
+            from,
         } => {
             run_upgrade(UpgradeOptions {
                 target: to.clone(),
@@ -211,6 +212,7 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
                 keep_on_failure: *keep_on_failure,
                 restore: restore.clone(),
                 all_rules: *all_rules,
+                from: from.clone(),
             })?;
         }
         Commands::Dev { ts_sync } => {

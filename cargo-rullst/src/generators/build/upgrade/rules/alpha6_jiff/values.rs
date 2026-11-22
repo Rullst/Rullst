@@ -9,9 +9,21 @@
 //! that returns one) and no later method turns it into something else
 //! (`.to_string()`, `.format(..)`, `.timestamp()`) or reads a field. A struct
 //! or a call that merely takes a chrono value does not hold one.
+//!
+//! The same bindings record the jiff values of the file, so that
+//! `V13-LOCALE-JIFF-DATES` and `V13-CAPITAL-INVOICE-JIFF-DATE` stay silent
+//! for code that already passes one ([`ChronoBindings::holds_jiff`]): a
+//! `jiff::`, `civil::`, `Zoned` or `Timestamp` path, Rullst's ORM types
+//! (`rullst::orm::Timestamp`), a name, field or function of such a type, and
+//! a chain through a method only jiff has (`.in_tz(..)`); and a read of a
+//! field the file does not declare as chrono ([`ChronoBindings::jiff_argument`]).
 
 use proc_macro2::{Delimiter, Spacing, TokenStream, TokenTree};
 use std::collections::BTreeSet;
+
+#[path = "jiff_values.rs"]
+mod jiff_values;
+use jiff_values::{JiffBindings, is_jiff_type};
 
 /// Identifiers that only chrono defines among the date libraries an
 /// application uses with Rullst (jiff's UTC is `TimeZone::UTC`). `Local`
@@ -124,22 +136,27 @@ fn assignment(tokens: &[TokenTree]) -> Option<usize> {
 /// (parameters or struct fields, attributes and `pub` allowed) whose type
 /// names chrono.
 fn chrono_typed(tokens: &[TokenTree]) -> Vec<String> {
+    typed(tokens, is_chrono_type)
+}
+
+/// The names of the `name: Type` entries of `tokens` whose type `kind`
+/// accepts.
+fn typed(tokens: &[TokenTree], kind: fn(&[TokenTree]) -> bool) -> Vec<String> {
     elements(tokens)
         .filter_map(|entry| {
             let colon = entry.iter().position(|tree| {
                 matches!(tree, TokenTree::Punct(colon) if colon.as_char() == ':' && colon.spacing() == Spacing::Alone)
             })?;
             match colon.checked_sub(1).and_then(|at| entry.get(at)) {
-                Some(TokenTree::Ident(name)) if is_chrono_type(&entry[colon + 1..]) => {
-                    Some(name.to_string())
-                }
+                Some(TokenTree::Ident(name)) if kind(&entry[colon + 1..]) => Some(name.to_string()),
                 _ => None,
             }
         })
         .collect()
 }
 
-/// What a file binds to chrono values, and its SQLx reads that decode one.
+/// What a file binds to chrono values, and its SQLx reads that decode one;
+/// and what it binds to jiff values.
 #[derive(Debug, Default)]
 pub(in super::super) struct ChronoBindings {
     names: BTreeSet<String>,
@@ -147,6 +164,8 @@ pub(in super::super) struct ChronoBindings {
     /// Named fields of the file's structs that have a chrono type.
     fields: BTreeSet<String>,
     decodes: Vec<usize>,
+    /// The names, functions and struct fields of jiff values.
+    jiff: JiffBindings,
 }
 
 impl ChronoBindings {
@@ -185,10 +204,13 @@ impl ChronoBindings {
                         .unwrap_or(rest.len());
                     let arrow = (0..body)
                         .find(|at| is_punct(rest.get(*at), '-') && is_punct(rest.get(at + 1), '>'));
-                    if let Some(arrow) = arrow
-                        && is_chrono_type(&rest[arrow + 2..body])
-                    {
-                        self.functions.insert(name.to_string());
+                    if let Some(arrow) = arrow {
+                        let returned = &rest[arrow + 2..body];
+                        if is_chrono_type(returned) {
+                            self.functions.insert(name.to_string());
+                        } else if is_jiff_type(returned) {
+                            self.jiff.functions.insert(name.to_string());
+                        }
                     }
                 }
                 TokenTree::Ident(ident) if ident == "struct" => {
@@ -206,7 +228,9 @@ impl ChronoBindings {
                             _ => None,
                         });
                     if let Some(body) = body {
-                        self.fields.extend(chrono_typed(&collect(body)));
+                        let body = collect(body);
+                        self.fields.extend(chrono_typed(&body));
+                        self.jiff.fields.extend(typed(&body, is_jiff_type));
                     }
                 }
                 TokenTree::Group(group) => self.declarations(group.stream()),
@@ -261,20 +285,23 @@ impl ChronoBindings {
             return;
         };
         let value = &statement[equals + 1..];
-        let chrono = if after.as_char() == ':' {
-            let annotated = is_chrono_type(&statement[1..equals]);
+        let (chrono, jiff) = if after.as_char() == ':' {
+            let annotation = &statement[1..equals];
+            let annotated = is_chrono_type(annotation);
             let decoded = value.iter().any(|tree| {
                 matches!(tree, TokenTree::Ident(i) if ANNOTATED_DECODERS.iter().any(|name| i == name))
             });
             if annotated && decoded {
                 self.decodes.push(name.span().start().line);
             }
-            annotated
+            (annotated, is_jiff_type(annotation))
         } else {
-            self.is_chrono_value(value)
+            (self.is_chrono_value(value), self.holds_jiff(value))
         };
         if chrono {
             self.names.insert(name.to_string());
+        } else if jiff {
+            self.jiff.names.insert(name.to_string());
         }
     }
 
@@ -285,7 +312,9 @@ impl ChronoBindings {
         }) else {
             return;
         };
-        self.names.extend(chrono_typed(&collect(params.stream())));
+        let params = collect(params.stream());
+        self.names.extend(chrono_typed(&params));
+        self.jiff.names.extend(typed(&params, is_jiff_type));
     }
 
     /// Whether one of the comma-separated expressions of `stream` (a call's
