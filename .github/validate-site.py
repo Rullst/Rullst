@@ -360,6 +360,9 @@ LANGUAGES = {
            "performance": "measures each new Rullst release",
            "lede": "A full-stack web framework for Rust, built on <strong>Axum</strong> and <strong>SQLx</strong>",
            "illustration": "Not live telemetry.",
+           "around": "…and the pieces around it, each an optional package:",
+           "made_with": "Made with ",
+           "page_weight": "This page: 484 kB in 7 requests on a first visit",
            "disclosure": "Rullst's maintainer also maintains that benchmark",
            "no_audit": "no external audit has been completed",
            "maintainer": "Rullst has one maintainer",
@@ -372,6 +375,9 @@ LANGUAGES = {
               "performance": "mede cada nova versão do Rullst",
               "lede": "Um framework web full-stack para Rust, construído sobre <strong>Axum</strong> e <strong>SQLx</strong>",
               "illustration": "Não é telemetria ao vivo.",
+              "around": "…e as peças ao redor dele, cada uma um pacote opcional:",
+              "made_with": "Feito com ",
+              "page_weight": "Esta página: 484 kB em 7 requisições na primeira visita",
               "disclosure": "O mantenedor do Rullst também mantém esse benchmark",
               "no_audit": "nenhuma auditoria externa foi concluída",
               "maintainer": "O Rullst tem um único mantenedor",
@@ -432,6 +438,7 @@ def validate_landing(lang: str) -> tuple[Document, str]:
         f"{path.name}: must keep the Academy section"
     )
     validate_landing_sections(path, source, home, facts)
+    validate_made_with(path, source, facts)
     assert source.count('class="demo-host-note"') == 4, f"{path.name}: every Azure-hosted demo needs its startup note"
     assert not home.inline_behavior, f"{path.name}: inline behavior/style: {home.inline_behavior}"
     for references, filename in ((home.stylesheets, "site.css"), (home.scripts, "site.js")):
@@ -879,6 +886,108 @@ def validate_landing_variants(temp: Path) -> None:
     )
 
 
+# The first screen's line on the parts around the framework, each linked to its documentation.
+AROUND_LINKS = [
+    "/Rullst/book/crates/ai.html", "/Rullst/book/crates/capital.html", "/Rullst/book/crates/mail.html",
+    "/Rullst/book/crates/messaging.html", "/Rullst/book/crates/iot.html", "/Rullst/book/labs-runner-contract.html",
+    "https://github.com/Rullst/Rullst/tree/main/rullst-privacy",
+]
+# The "Made with Rullst" card: the maintainer's live applications built with Rullst.
+MADE_WITH_LINKS = {
+    "en": ["https://academy.rullst.win/", "https://capoeira.vene.win/", "https://vene.win/", "/Benchmarks/",
+           "https://github.com/Rullst/Rullst/tree/main/site"],
+    "pt-BR": ["https://academy.rullst.win/pt-BR", "https://capoeira.vene.win/", "https://vene.win/", "/Benchmarks/",
+              "https://github.com/Rullst/Rullst/tree/main/site"],
+}
+SITE_LOCK_RULLST = re.compile(r'^name = "rullst"\nversion = "([^"]+)"$', re.MULTILINE)
+CLI_PIN = re.compile(r"([0-9a-f]{64})  cargo-rullst-(\S+)-x86_64-unknown-linux-gnu\n")
+
+
+def site_rullst_version() -> str:
+    """The `rullst` version the generator is built with (site/Cargo.lock)."""
+    match = SITE_LOCK_RULLST.search((ROOT / "site/Cargo.lock").read_text(encoding="utf-8"))
+    assert match, "site/Cargo.lock has no rullst package"
+    return match[1]
+
+
+def made_with_line(source: str) -> str:
+    match = re.search(r'<(p|span) class="made-with-line">(.*?)</\1>', source, re.DOTALL)
+    return match[2] if match else ""
+
+
+def validate_made_with(path: Path, source: str, facts: dict) -> None:
+    """The first screen's line on the parts around the framework, the card and the footer line."""
+    hero = source[source.index('<header class="hero'):source.index("</header>")]
+    around = re.search(r'<p class="hero-around">(.*?)</p>', hero, re.DOTALL)
+    assert around and around[1].startswith(facts["around"]), f"{path}: the first screen names the parts around the framework"
+    assert re.findall(r'href="([^"]+)"', around[1]) == AROUND_LINKS, f"{path}: each part around the framework links its documentation"
+    card = re.search(r'<article class="made-with" id="made-with" [^>]*>(.*?)</article>', section_text(source, "examples"), re.DOTALL)
+    lang = "en" if facts["locale"] == "en_US" else "pt-BR"
+    assert card and re.findall(r'<li><a href="([^"]+)">', card[1]) == MADE_WITH_LINKS[lang], f"{path}: the Made with Rullst card lists the live applications"
+    line = made_with_line(source[source.index("<footer"):])
+    assert line.startswith(f'{facts["made_with"]}<a href="https://github.com/Rullst/Rullst/tree/main/site">Rullst {site_rullst_version()}</a>'), (
+        f"{path}: the footer says which Rullst version made the page: {line[:200]!r}"
+    )
+    assert "This page:" not in line and "Esta página:" not in line, f"{path}: no page weight without a measurement"
+
+
+def validate_footer_lines(site: Path) -> None:
+    for page in site.rglob("*.html"):
+        text = page.read_text(encoding="utf-8")
+        assert f">Rullst {site_rullst_version()}</a>" in made_with_line(text), f"{page.relative_to(site)}: needs the Made with Rullst footer line"
+
+
+def validate_cli_pin() -> None:
+    """The CLI the deployment installs to weigh the landing is the release of the Rullst the site is made with."""
+    match = CLI_PIN.fullmatch((ROOT / "site/cargo-rullst.sha256").read_text(encoding="utf-8"))
+    assert match and match[2] == site_rullst_version(), (
+        "site/cargo-rullst.sha256 must pin the cargo-rullst release binary of the rullst version in site/Cargo.lock"
+    )
+
+
+def footprint_variant(change=None, path: str = "/") -> str:
+    data = copy.deepcopy(json.loads(FOOTPRINT_FIXTURE.read_text(encoding="utf-8")))
+    if path != "/":
+        data["target"]["url"] = SITE_URL + path[1:]
+        data["page_weight"]["path"] = path
+        data["page_weight"]["resources"][0]["url"] = path
+    if change:
+        change(data)
+    return json.dumps(data)
+
+
+def validate_footprint_rendering() -> None:
+    """The landing's page weight from a report of the published site, and the reports it must not show."""
+    reports = {"footprint.json": footprint_variant(), "footprint-pt-br.json": footprint_variant(path="/pt-br/")}
+    with tempfile.TemporaryDirectory(prefix="rullst-root-site-") as temp:
+        site, warnings = generate(Path(temp) / "measured", today=FOOTPRINT_DAY, footprint=reports)
+        assert not warnings, f"the footprint fixture must be shown: {warnings!r}"
+        for lang, page in (("en", "index.html"), ("pt-BR", "pt-br/index.html")):
+            line = made_with_line((site / page).read_text(encoding="utf-8").split("<footer", 1)[1])
+            assert LANGUAGES[lang]["page_weight"] in line and '<time datetime="2026-11-22">' in line, f"{page}: page weight {line!r}"
+            assert "footprint 13.0.0-alpha.6</a>" in line, f"{page}: the page weight names the CLI version"
+        for page in ("compare/index.html", "privacy.html"):
+            assert "This page:" not in (site / page).read_text(encoding="utf-8"), f"{page}: only the landing is weighed"
+        # A day later the report is still shown; two days later it is not.
+        later = date.fromordinal(date.fromisoformat(FOOTPRINT_DAY).toordinal() + 2).isoformat()
+        rejected = (
+            ("an older report", None, later, "not today or yesterday"),
+            ("another CLI version", lambda d: d.update(cli_version="13.0.0-alpha.5"), FOOTPRINT_DAY, "measured with cargo-rullst"),
+            ("a failed run", lambda d: d.update(failure={"stage": "reach"}), FOOTPRINT_DAY, "failure"),
+            ("a resource refused", lambda d: d["page_weight"]["resources"][1].update(status=403), FOOTPRINT_DAY, "did not load with 200"),
+            ("a third party", lambda d: d["page_weight"].update(third_party_origins=["https://cdn.example"]), FOOTPRINT_DAY, "third-party"),
+            ("another site", lambda d: d["target"].update(url="https://example.com/"), FOOTPRINT_DAY, "not of the published page"),
+            ("an unmeasured page", lambda d: d["page_weight"].update(status="not_measured"), FOOTPRINT_DAY, "was not measured"),
+            ("unfetched resources", lambda d: d["page_weight"].update(unfetched=1), FOOTPRINT_DAY, "not fetched"),
+        )
+        for index, (label, change, today, warning) in enumerate(rejected):
+            site, warnings = generate(Path(temp) / f"rejected-{index}", today=today,
+                                      footprint={"footprint.json": footprint_variant(change)})
+            assert warning in warnings, f"{label}: expected a warning with {warning!r}, got {warnings!r}"
+            landing = (site / "index.html").read_text(encoding="utf-8")
+            assert "This page:" not in landing and "kB" not in landing, f"{label}: the landing must leave the page weight out"
+
+
 DEMO_LINKS = {
     "https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/",
     "https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/",
@@ -925,6 +1034,9 @@ def main() -> None:
             assert (site / name).read_bytes() == origin.read_bytes(), f"generated {name} differs from {origin.relative_to(ROOT)}"
         use_generated_site(site)
         validate(site)
+        validate_footer_lines(site)
+    validate_cli_pin()
+    validate_footprint_rendering()
 
 
 def validate(site: Path) -> None:
@@ -1007,7 +1119,7 @@ def validate(site: Path) -> None:
     print(
         f"validated English and Brazilian Portuguese landing, privacy and comparison pages ({integration_count} "
         f"integration entries matching README; same ids, external links, integration names and checked versions "
-        f"in both languages; benchmark rows rendered from a fixture), "
+        f"in both languages; benchmark rows and page weight rendered from fixtures; Made with Rullst card and footer line), "
         f"/Rullst/ redirect, generated root site, {len(BENCH_TEMPLATES)} benchmark templates "
         f"and llms.txt/llms-full.txt for {llms_pages} book pages"
     )

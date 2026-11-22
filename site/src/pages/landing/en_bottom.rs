@@ -4,6 +4,9 @@ use rullst::html;
 use rullst::html::Markup;
 
 use super::art;
+use crate::footprint;
+use crate::pages::made_with;
+use crate::pages::{Context, Lang};
 
 /// 03 / Included in Rullst.
 pub fn included() -> Markup {
@@ -226,6 +229,7 @@ pub fn examples() -> Markup {
                 <p>"Public demos, not production certifications. Each demo is upgraded on its own schedule and can run an earlier Rullst release than 13.0.0-alpha.6. The SaaS checkout is live and charges real money; the Showcase payment fixtures are not live checkout. Apart from a purchase you intend to make, use test data, not sensitive information. Availability is managed separately."</p>
                 <a href="https://github.com/Rullst/examples">"Source &amp; deployment recipes ↗"</a>
             </div>
+            {made_with::card(Lang::En)}
         </section>
     }
 }
@@ -301,7 +305,11 @@ pub fn release() -> Markup {
 }
 
 /// The footer, with the privacy summary and the dedication.
-pub fn footer() -> Markup {
+pub fn footer(cx: &Context) -> Markup {
+    let weight = cx
+        .weights
+        .of(Lang::En)
+        .map(|weight| footprint::render(weight, Lang::En));
     html! {
         <footer class="footer">
             <div class="shell">
@@ -342,6 +350,7 @@ pub fn footer() -> Markup {
                         </div>
                     </details>
                 </section>
+                {made_with::line(Lang::En, weight)}
                 <div class="footer-bottom"><span>"Built with care. Shared in the open."</span><a href="#main">"Back to top ↑"</a></div>
             </div>
             <p class="glory">"All glory and honor to God יהוה in the name of Yeshua the Messiah (Jesus Christ)."</p>

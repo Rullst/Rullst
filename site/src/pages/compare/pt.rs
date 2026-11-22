@@ -3,7 +3,7 @@
 use rullst::html;
 use rullst::html::Markup;
 
-use crate::pages::Context;
+use crate::pages::{Context, Lang, made_with};
 
 /// The Brazilian Portuguese comparison page (`/pt-br/comparar/`).
 pub fn page(cx: &Context, results: Markup) -> Markup {
@@ -288,7 +288,7 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                         </ul>
                     </section>
                 </main>
-                <footer class="shell footer-bottom"><a href="/pt-br/">"Página inicial do Rullst"</a><a href="mailto:officialrullst@gmail.com">"Fale com a equipe"</a></footer>
+                <footer class="shell footer-bottom"><a href="/pt-br/">"Página inicial do Rullst"</a>{made_with::short(Lang::PtBr)}<a href="mailto:officialrullst@gmail.com">"Fale com a equipe"</a></footer>
             </body>
         </html>
     }

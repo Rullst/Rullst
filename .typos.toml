@@ -97,7 +97,10 @@ JOD = "JOD"
 # Portuguese imperative used by the localized account templates.
 Confirme = "Confirme"
 
-# Portuguese words of the website generator's benchmark texts
-# (site/src/benchmarks/), which keep each sentence in both languages.
+# Portuguese words of the website generator (site/src/), which keeps each
+# sentence of its benchmark blocks and "Made with Rullst" card in both
+# languages, and "Tio Vené", the name of an application the card lists.
 altas = "altas"
 limite = "limite"
+programa = "programa"
+tio = "tio"

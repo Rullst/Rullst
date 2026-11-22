@@ -3,7 +3,7 @@
 use rullst::html;
 use rullst::html::Markup;
 
-use crate::pages::Context;
+use crate::pages::{Context, Lang, made_with};
 
 /// The English privacy notice (`/privacy.html`).
 pub fn page(cx: &Context) -> Markup {
@@ -95,7 +95,7 @@ pub fn page(cx: &Context) -> Markup {
                         <p>"The date above identifies the latest revision. We will update this notice when the website's data practices change, provide additional notice where required, and obtain consent before introducing processing that requires it. This notice describes these pages and their contact channel; it is not a certification of worldwide compliance or a privacy policy for every Rullst application."</p>
                     </section>
                 </main>
-                <footer class="shell footer-bottom"><a href="/">"Rullst home"</a><a href="mailto:officialrullst@gmail.com">"Contact the team"</a></footer>
+                <footer class="shell footer-bottom"><a href="/">"Rullst home"</a>{made_with::short(Lang::En)}<a href="mailto:officialrullst@gmail.com">"Contact the team"</a></footer>
             </body>
         </html>
     }

@@ -2,6 +2,7 @@
 
 mod compare;
 mod landing;
+pub mod made_with;
 mod privacy;
 
 use rullst::html;
@@ -9,10 +10,15 @@ use rullst::html::Markup;
 
 use crate::assets::Assets;
 use crate::benchmarks::{self, Results};
+use crate::footprint::Weights;
 
 /// The `cargo-rullst` version the install commands pin: the current release in
 /// `cargo-rullst/Cargo.toml` (`validate-site.py` checks it).
 pub const INSTALL_VERSION: &str = "13.0.0-alpha.6";
+
+/// The `rullst` crate these pages are made with (build.rs reads it from `site/Cargo.lock`), and
+/// the `cargo-rullst` version the deployment installs to weigh the published landing pages.
+pub const RULLST_VERSION: &str = env!("RULLST_VERSION");
 
 /// A page's language.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -27,9 +33,10 @@ impl Lang {
     }
 }
 
-/// What every page reads: the asset references.
+/// What every page reads: the asset references, and the page weights that passed their checks.
 pub struct Context<'a> {
     pub assets: &'a Assets,
+    pub weights: &'a Weights,
 }
 
 /// The comparison page's text while no current results can be shown.
@@ -42,8 +49,12 @@ fn results_pending(lang: Lang) -> Markup {
 }
 
 /// Every page, by published path, in a fixed order.
-pub fn render(assets: &Assets, results: Option<&Results>) -> Vec<(&'static str, Markup)> {
-    let cx = Context { assets };
+pub fn render(
+    assets: &Assets,
+    results: Option<&Results>,
+    weights: &Weights,
+) -> Vec<(&'static str, Markup)> {
+    let cx = Context { assets, weights };
     let compared = |lang| {
         results.map_or_else(
             || results_pending(lang),

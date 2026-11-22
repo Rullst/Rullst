@@ -55,7 +55,7 @@ pub fn page(cx: &Context, proof: Markup, summary: Markup) -> Markup {
                     {bottom::community()}
                     {bottom::release()}
                 </main>
-                {bottom::footer()}
+                {bottom::footer(cx)}
                 <p class="sr-only" role="status" aria-live="polite" data-copy-status></p>
             </body>
         </html>
@@ -84,6 +84,7 @@ fn hero(proof: Markup) -> Markup {
                 <p class="eyebrow"><span class="short-line" aria-hidden="true"></span>" Open-source web framework for Rust"</p>
                 <h1 class="hero-wordmark">"Rullst"<span class="wordmark-period">"."</span></h1>
                 <p class="hero-lede">"A full-stack web framework for Rust, built on "<strong>"Axum"</strong>" and "<strong>"SQLx"</strong>", with "<strong>"Blank"</strong>", "<strong>"API"</strong>" and "<strong>"SaaS"</strong>" starters."</p>
+                <p class="hero-around">"…and the pieces around it, each an optional package: "<a href="/Rullst/book/crates/ai.html">"AI"</a>", "<a href="/Rullst/book/crates/capital.html">"payments"</a>", "<a href="/Rullst/book/crates/mail.html">"mail"</a>", "<a href="/Rullst/book/crates/messaging.html">"messaging"</a>", "<a href="/Rullst/book/crates/iot.html">"IoT devices"</a>", "<a href="/Rullst/book/labs-runner-contract.html">"learning platforms"</a>" and "<a href="https://github.com/Rullst/Rullst/tree/main/rullst-privacy">"privacy"</a>"."</p>
                 <p class="hero-slogan">"Intelligent. Security-Conscious."<br />"Designed for "<span>"Effortless Productivity."</span></p>
                 <div class="hero-actions"><a class="button button-primary" href="/Rullst/book/start-here.html">"Start building "<span aria-hidden="true">"↗"</span></a>" "<a class="button button-secondary" href="/compare/">"Compare with Loco and Topcoat "<span aria-hidden="true">"↗"</span></a></div>
                 <div class="hero-tags" aria-label="Project facts"><span>"20 packages, one version"</span><span>"Server-rendered HTML + htmx"</span><span>"MIT licensed"</span></div>" "

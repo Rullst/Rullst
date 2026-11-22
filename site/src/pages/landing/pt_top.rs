@@ -55,7 +55,7 @@ pub fn page(cx: &Context, proof: Markup, summary: Markup) -> Markup {
                     {bottom::community()}
                     {bottom::release()}
                 </main>
-                {bottom::footer()}
+                {bottom::footer(cx)}
                 <p class="sr-only" role="status" aria-live="polite" data-copy-status></p>
             </body>
         </html>
@@ -84,6 +84,7 @@ fn hero(proof: Markup) -> Markup {
                 <p class="eyebrow"><span class="short-line" aria-hidden="true"></span>" Framework web open source para Rust"</p>
                 <h1 class="hero-wordmark">"Rullst"<span class="wordmark-period">"."</span></h1>
                 <p class="hero-lede">"Um framework web full-stack para Rust, construído sobre "<strong>"Axum"</strong>" e "<strong>"SQLx"</strong>", com os starters "<strong>"Blank"</strong>", "<strong>"API"</strong>" e "<strong>"SaaS"</strong>"."</p>
+                <p class="hero-around">"…e as peças ao redor dele, cada uma um pacote opcional: "<a href="/Rullst/book/crates/ai.html">"IA"</a>", "<a href="/Rullst/book/crates/capital.html">"pagamentos"</a>", "<a href="/Rullst/book/crates/mail.html">"e-mail"</a>", "<a href="/Rullst/book/crates/messaging.html">"mensageria"</a>", "<a href="/Rullst/book/crates/iot.html">"dispositivos IoT"</a>", "<a href="/Rullst/book/labs-runner-contract.html">"plataformas de aprendizagem"</a>" e "<a href="https://github.com/Rullst/Rullst/tree/main/rullst-privacy">"privacidade"</a>"."</p>
                 <p class="hero-slogan">"Inteligente. Consciente da segurança."<br />"Feito para uma "<span>"produtividade sem esforço."</span></p>
                 <div class="hero-actions"><a class="button button-primary" href="/Rullst/book/start-here.html">"Comece a construir "<span aria-hidden="true">"↗"</span></a>" "<a class="button button-secondary" href="/pt-br/comparar/">"Compare com Loco e Topcoat "<span aria-hidden="true">"↗"</span></a></div>
                 <div class="hero-tags" aria-label="Fatos do projeto"><span>"20 pacotes, uma versão"</span><span>"HTML no servidor + htmx"</span><span>"Licença MIT"</span></div>

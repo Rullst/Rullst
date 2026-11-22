@@ -26,8 +26,16 @@ const rendered = await mkdtemp(join(tmpdir(), "rullst-site-rendered-"));
 const fixture = JSON.parse(await readFile(join(root, ".github/fixtures/site-benchmarks.json"), "utf8"));
 fixture.measured_on = new Date().toISOString().slice(0, 10);
 await writeFile(join(rendered, "benchmarks.json"), JSON.stringify(fixture));
+// The landings' page weight from the footprint fixture (a report of the
+// published site), dated now so that it counts as today's measurement.
+const footprint = JSON.parse(await readFile(join(root, ".github/fixtures/site-footprint.json"), "utf8"));
+footprint.measured_at = new Date().toISOString().slice(0, 19) + "Z";
+await writeFile(join(rendered, "footprint.json"), JSON.stringify(footprint));
+footprint.target.url = "https://rullst.win/pt-br/";
+footprint.page_weight.path = footprint.page_weight.resources[0].url = "/pt-br/";
+await writeFile(join(rendered, "footprint-pt-br.json"), JSON.stringify(footprint));
 execFileSync(generator, ["--out", join(rendered, "plain")], { cwd: rendered, stdio: ["ignore", "ignore", "inherit"] });
-execFileSync(generator, ["--out", join(rendered, "site"), "--benchmarks"], { cwd: rendered, stdio: ["ignore", "ignore", "inherit"] });
+execFileSync(generator, ["--out", join(rendered, "site"), "--benchmarks", "--footprint"], { cwd: rendered, stdio: ["ignore", "ignore", "inherit"] });
 const outputIndex = process.argv.indexOf("--screenshots");
 const output = outputIndex < 0 ? null : process.argv[outputIndex + 1];
 const organizationIndex = process.argv.indexOf("--organization-site");
@@ -192,6 +200,9 @@ try {
       "https://saas.rullst.win/",
     ], "Demo buttons must retain the independently hosted application URLs");
     assert.equal(await evaluate("document.querySelectorAll('#integrations [data-integration-level] li').length"), 16, "Integrations must list every README entry");
+    assert.equal(await evaluate("document.querySelectorAll('.hero .hero-around a').length"), 7, "The first screen links the parts around the framework");
+    assert.equal(await evaluate("document.querySelectorAll('#examples #made-with li a').length"), 5, "The Made with Rullst card lists the live applications");
+    assert(await evaluate("/^(Made with|Feito com) Rullst \\S+: /.test(document.querySelector('footer .made-with-line').textContent)"), "The footer names the Rullst version that made the page");
     assert(await evaluate("[...document.querySelectorAll('#academy a')].some(link => link.href.startsWith('https://academy.rullst.win/'))"), "Academy section must link the Academy");
     const language = await evaluate(`(() => {
       const switcher = document.querySelector('.lang-switch');
@@ -341,8 +352,10 @@ try {
         columns: [...document.querySelectorAll('.landing-bench-column')].map(column => column.getBoundingClientRect().right <= innerWidth + 0.5),
         legend: document.querySelectorAll('.landing-bench-legend li').length,
         score: document.querySelector('.landing-bench-score').textContent,
+        madeWith: [...document.querySelectorAll('#made-with li a')].filter(link => link.getBoundingClientRect().right <= innerWidth + 0.5).length,
+        weight: document.querySelector('footer .made-with-line').textContent.includes(${JSON.stringify(route.includes("pt-br") ? "Esta página: 484 kB" : "This page: 484 kB")}),
       }))()`);
-      assert.deepEqual(page, { overflow: false, pending: 0, proof: 1, columns: [true, true], legend: 4, score: route.includes("pt-br") ? "0,61× ‡" : "0.61× ‡" },
+      assert.deepEqual(page, { overflow: false, pending: 0, proof: 1, columns: [true, true], legend: 4, score: route.includes("pt-br") ? "0,61× ‡" : "0.61× ‡", madeWith: 5, weight: true },
         `Rendered landing ${route} at ${width}px`);
     }
   }
@@ -375,7 +388,7 @@ try {
   assert.deepEqual([...oldAssetReads.values()], [1, 1], "Current pages must not request the old unversioned assets again");
   assert([...requests].every(url => url.startsWith(origin + "/")), `External resource requests: ${[...requests].filter(url => !url.startsWith(origin + "/"))}`);
   assert.deepEqual(failures, [], "Browser errors, CSP failures or broken resources");
-  console.log(`PASS (${organization ? "given root site" : "generated root site"}): stale-cache upgrade, proof card styling, landing section order, landing benchmark summary from the fixture, desktop/390px/320px, keyboard/mobile menu, animated intro/replay/stop, Academy greeting/stop, integrations, canonical URLs, English and Brazilian Portuguese pages with flag language switcher, comparison pages with fixture benchmark rows, clipboard success/denial, privacy summary and full notice, reduced motion, no-JS navigation, no storage or external landing requests.`);
+  console.log(`PASS (${organization ? "given root site" : "generated root site"}): stale-cache upgrade, proof card styling, landing section order, landing benchmark summary and page weight from the fixtures, Made with Rullst card and footer line, desktop/390px/320px, keyboard/mobile menu, animated intro/replay/stop, Academy greeting/stop, integrations, canonical URLs, English and Brazilian Portuguese pages with flag language switcher, comparison pages with fixture benchmark rows, clipboard success/denial, privacy summary and full notice, reduced motion, no-JS navigation, no storage or external landing requests.`);
   await call("Browser.close");
 } finally {
   socket?.close();

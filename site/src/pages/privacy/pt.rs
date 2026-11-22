@@ -3,7 +3,7 @@
 use rullst::html;
 use rullst::html::Markup;
 
-use crate::pages::Context;
+use crate::pages::{Context, Lang, made_with};
 
 /// The Brazilian Portuguese privacy notice (`/pt-br/privacy.html`).
 pub fn page(cx: &Context) -> Markup {
@@ -95,7 +95,7 @@ pub fn page(cx: &Context) -> Markup {
                         <p>"A data acima identifica a revisão mais recente. Atualizaremos este aviso quando as práticas de dados do site mudarem, daremos aviso adicional quando exigido e obteremos consentimento antes de introduzir tratamentos que o exijam. Este aviso descreve estas páginas e o canal de contato delas; não é uma certificação de conformidade mundial nem uma política de privacidade para toda aplicação feita com Rullst."</p>
                     </section>
                 </main>
-                <footer class="shell footer-bottom"><a href="/pt-br/">"Página inicial do Rullst"</a><a href="mailto:officialrullst@gmail.com">"Fale com a equipe"</a></footer>
+                <footer class="shell footer-bottom"><a href="/pt-br/">"Página inicial do Rullst"</a>{made_with::short(Lang::PtBr)}<a href="mailto:officialrullst@gmail.com">"Fale com a equipe"</a></footer>
             </body>
         </html>
     }

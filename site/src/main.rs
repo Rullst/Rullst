@@ -1,7 +1,7 @@
 //! Writes the https://rullst.win/ root site with Rullst's `html!` macro.
 //!
 //! ```text
-//! rullst-site --out DIRECTORY [--benchmarks [--benchmarks-max-age-days DAYS]] [--today YYYY-MM-DD]
+//! rullst-site --out DIRECTORY [--benchmarks [--benchmarks-max-age-days DAYS]] [--footprint] [--today YYYY-MM-DD]
 //! ```
 //!
 //! Writes the English landing, privacy and comparison pages (`/`, `/privacy.html`,
@@ -19,12 +19,18 @@
 //! `--benchmarks-max-age-days` days before `--today` (default 90), the pages keep their
 //! "no current results" text and the program prints a warning instead of failing.
 //!
+//! `--footprint` reads `footprint.json` and `footprint-pt-br.json` from the working
+//! directory: the `cargo rullst footprint --url https://rullst.win --page-weight --json`
+//! reports of the published `/` and `/pt-br/`. Each landing's footer shows its page weight
+//! only when its report passes every check; otherwise the line is left out, with a warning.
+//!
 //! The Rullst/Rullst.github.io deployment runs this program from a read-only checkout of
 //! this repository's main branch; `validate-site.py` runs it too.
 
 mod assets;
 mod benchmarks;
 mod date;
+mod footprint;
 mod input;
 mod pages;
 mod verify;
@@ -35,10 +41,14 @@ use std::process::ExitCode;
 
 use date::Date;
 
+const USAGE: &str = "usage: rullst-site --out DIRECTORY [--benchmarks [--benchmarks-max-age-days DAYS]] \
+                     [--footprint] [--today YYYY-MM-DD]";
+
 struct Args {
     out: PathBuf,
     benchmarks: bool,
     max_age_days: i64,
+    footprint: bool,
     today: Date,
 }
 
@@ -46,6 +56,7 @@ fn parse_args() -> Result<Args, String> {
     let mut out = None;
     let mut benchmarks = false;
     let mut max_age_days = benchmarks::MAX_AGE_DAYS;
+    let mut footprint = false;
     let mut today = None;
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
@@ -62,16 +73,10 @@ fn parse_args() -> Result<Args, String> {
                         "--benchmarks-max-age-days must be a whole number of days, not negative",
                     )?;
             }
+            "--footprint" => footprint = true,
             "--today" => {
                 let text = value("--today")?;
                 today = Some(Date::parse(&text).ok_or("--today must be YYYY-MM-DD")?);
-            }
-            "--help" | "-h" => {
-                return Err(
-                    "usage: rullst-site --out DIRECTORY [--benchmarks [--benchmarks-max-age-days DAYS]] \
-                     [--today YYYY-MM-DD]"
-                        .to_string(),
-                );
             }
             other => return Err(format!("unknown argument {other}")),
         }
@@ -80,6 +85,7 @@ fn parse_args() -> Result<Args, String> {
         out: out.ok_or("--out is required")?,
         benchmarks,
         max_age_days,
+        footprint,
         today: today.unwrap_or_else(Date::today),
     })
 }
@@ -97,8 +103,13 @@ fn run(args: &Args) -> Result<Vec<&'static str>, String> {
     } else {
         None
     };
+    let weights = if args.footprint {
+        footprint::load_all(args.today)
+    } else {
+        footprint::Weights::default()
+    };
     let assets = assets::Assets::new();
-    let files = pages::render(&assets, results.as_ref());
+    let files = pages::render(&assets, results.as_ref(), &weights);
     for (published, html) in &files {
         verify::page(published, html.as_str(), &assets)?;
     }
@@ -128,6 +139,10 @@ fn run(args: &Args) -> Result<Vec<&'static str>, String> {
 }
 
 fn main() -> ExitCode {
+    if std::env::args().any(|arg| arg == "--help" || arg == "-h") {
+        println!("{USAGE}");
+        return ExitCode::SUCCESS;
+    }
     let args = match parse_args() {
         Ok(args) => args,
         Err(error) => {

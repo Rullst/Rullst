@@ -10,7 +10,7 @@
 
 mod check;
 pub mod compare;
-mod format;
+pub mod format;
 pub mod landing;
 mod text;
 

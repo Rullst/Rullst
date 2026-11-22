@@ -65,14 +65,40 @@ it names the guideline.
 ## The landing page
 
 The landing's sections come in this order, with the same ids in both
-languages: the first screen (what Rullst is in one sentence, the install
-command, the animated concept illustration labelled as not live telemetry, and
-three proof points), `#performance`, `#security` (with the `#verification`
-list), `#included`, `#integrations`, `#examples`, `#academy` and `#community`,
-then the release notice. The validator checks the order, the sentence, the
-install command, the illustration and the three proof points; the browser test
-checks that the install command and the illustration fit in a 1440 × 1100
-first screen, and that every animation stops under reduced motion.
+languages: the first screen (what Rullst is in one sentence, a line naming the
+optional packages around it, the install command, the animated concept
+illustration labelled as not live telemetry, and three proof points),
+`#performance`, `#security` (with the `#verification` list), `#included`,
+`#integrations`, `#examples` (with the `#made-with` card), `#academy` and
+`#community`, then the release notice. The validator checks the order, the
+sentence, the install command, the illustration and the three proof points;
+the browser test checks that the install command and the illustration fit in a
+1440 × 1100 first screen, and that every animation stops under reduced motion.
+
+- **The first screen** keeps its first sentence for web developers (a
+  full-stack framework for Rust on Axum and SQLx with Blank, API and SaaS
+  starters) and adds one line on the parts around it, each an optional
+  Extension package linked to its documentation: AI (`crates/ai`), payments
+  (`crates/capital`), mail (`crates/mail`), messaging (`crates/messaging`),
+  IoT devices (`crates/iot`), learning platforms (the Labs runner contract)
+  and privacy (the `rullst-privacy` README). The validator requires the line
+  and its seven links in both languages. Name only parts whose documentation
+  and [maturity tier](maturity.md) support them.
+- **Made with Rullst** (`#made-with`, inside `#examples`) lists the
+  maintainer's applications that are live and built with Rullst: Rullst
+  Academy, Capoeira Vene, vene.win, the Rullst/Benchmarks results website and
+  these pages, each with a link and one line taken from its own front page
+  (checked on 22 November 2026; no figures). The card says that Academy,
+  capoeira and vene.win run on one Oracle Ampere A1 Arm machine and that the
+  two static websites are on GitHub Pages. Recheck the lines when an
+  application changes what it offers; add an application only when it is live
+  and built with Rullst, and leave out any application the maintainer has not
+  made public. The validator requires the five links in both languages.
+- **The footer of every page** says "Made with Rullst <version>" (Portuguese
+  "Feito com Rullst"), linked to `site/`, where the version is the `rullst`
+  crate in `site/Cargo.lock` (the validator checks it). On the two landings it
+  continues with the page's weight when the deployment measured it (see
+  [How the root site is deployed](#how-the-root-site-is-deployed)).
 
 - **Performance** shows Rullst as `cargo rullst new` generates it, from the
   same Rullst/Benchmarks `results/site.json` as the comparison page and with
@@ -322,13 +348,47 @@ workflow runs daily, on a push to that repository and on demand: it checks out
 `site/` and `docs/`'s assets from this repository's `main` branch read-only (no
 token beyond its own read-only `GITHUB_TOKEN`, no secret), installs the Rust
 toolchain that `rust-toolchain.toml` names, builds the generator with
-`--locked` and runs
+`--locked`, downloads the benchmark summary, weighs the published landing
+pages and runs
 
 ```bash
-site/target/debug/rullst-site --out public_site [--benchmarks] [--benchmarks-max-age-days DAYS]
+site/target/debug/rullst-site --out public_site [--benchmarks] [--benchmarks-max-age-days DAYS] --footprint
 ```
 
-then deploys the result with `actions/deploy-pages`. The generator refuses an
+then deploys the result with `actions/deploy-pages`. A manual run can name
+another branch or commit of this repository (`rullst-ref`); it then builds and
+uploads the site without deploying it.
+
+The page weight is measured by `cargo rullst footprint`, the CLI release of the
+same version as the `rullst` crate the site is made with:
+`site/cargo-rullst.sha256` names the release file
+(`cargo-rullst-<version>-x86_64-unknown-linux-gnu`) and its SHA-256, which the
+workflow checks before running it, and the validator checks that its version
+is the one in `site/Cargo.lock`. Before generating, the workflow runs
+
+```bash
+cargo-rullst rullst footprint --url https://rullst.win --path / --page-weight --json > footprint.json
+cargo-rullst rullst footprint --url https://rullst.win --path /pt-br/ --page-weight --json > footprint-pt-br.json
+```
+
+so the figure is the page as published before that deployment (the previous
+day's build, as visitors download it through Cloudflare, with its compression
+and anything Cloudflare adds). `--footprint` reads both reports from the
+working directory and shows "This page: N kB in M requests on a first visit …"
+on each landing only when its report passes every check: schema
+`rullst.footprint.v1`, the CLI version the site is made with, the published
+origin and that page's path, a measurement from the build day or the day
+before (UTC), no failure, every resource answered with 200, nothing left
+unfetched and no third-party origin. Otherwise the line is left out and the
+deployment logs why; it never shows an older number. Cloudflare answers most
+requests from GitHub's runners with 403, but on 22 November 2026 it let the
+`cargo-rullst-footprint/<version>` client through; if that changes, the
+reports fail their checks and the line disappears.
+`.github/fixtures/site-footprint.json` is a report of `/` measured on 22
+November 2026 (with the machine section replaced): the validator renders it,
+in both languages, and rejects an older report, another CLI version, a failed
+run, a refused resource, a third-party origin, another site, an unmeasured
+page and unfetched resources. The generator refuses an
 output directory that is not empty, and a page without its canonical URL or
 CSP or with an asset reference that is stale or not published. To preview the
 root site locally:

@@ -3,7 +3,7 @@
 use rullst::html;
 use rullst::html::Markup;
 
-use crate::pages::Context;
+use crate::pages::{Context, Lang, made_with};
 
 /// The English comparison page (`/compare/`): Rullst, Loco and Topcoat topic by topic.
 pub fn page(cx: &Context, results: Markup) -> Markup {
@@ -288,7 +288,7 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                         </ul>
                     </section>
                 </main>
-                <footer class="shell footer-bottom"><a href="/">"Rullst home"</a><a href="mailto:officialrullst@gmail.com">"Contact the team"</a></footer>
+                <footer class="shell footer-bottom"><a href="/">"Rullst home"</a>{made_with::short(Lang::En)}<a href="mailto:officialrullst@gmail.com">"Contact the team"</a></footer>
             </body>
         </html>
     }
