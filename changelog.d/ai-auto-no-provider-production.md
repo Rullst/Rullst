@@ -10,7 +10,10 @@
   A client built with `AutoAiConfig::into_client()` from such a snapshot has no
   provider, so each request fails with `AiError::ConfigError`;
   `AutoAiConfig::from_env()` still succeeds with no provider names, which Nexus
-  reports as no provider. The environment is `RULLST_ENV`, then `APP_ENV`, from
-  the process environment; an invalid value fails closed. Set a provider, or an
+  reports as no provider. Provider variables are read from the process
+  environment; the environment is resolved as `Server` resolves it, from the
+  working directory: the process `RULLST_ENV`, then `APP_ENV`, then either one
+  from `.env`, then `[app] env` in `Rullst.toml`. An invalid value, or a `.env`
+  or `Rullst.toml` that cannot be read, fails closed. Set a provider, or an
   explicit `mock_*` value to keep the offline fixture on purpose. Development
   and test keep the fallback.

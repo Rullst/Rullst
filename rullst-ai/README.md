@@ -137,20 +137,23 @@ order is OpenAI (or its explicitly configured compatible endpoint), Anthropic,
 Gemini, DeepSeek, Groq, then Ollama. Empty environment values are absent;
 `mock_*` credentials are labeled as offline using the same whitespace trimming
 the providers apply. Configuration is not a health probe.
+Provider variables are read from the process environment only.
 With no provider, development and test get the deterministic offline fixture.
-In staging and production (`RULLST_ENV`, then `APP_ENV`, from the process
-environment) `AiClient::auto()` returns `AiError::ConfigError` naming the
-variables instead, and a client from `AutoAiConfig::into_client()` has no
+In staging and production `AiClient::auto()` returns `AiError::ConfigError`
+naming the variables instead, and a client from `AutoAiConfig::into_client()` has no
 provider, so each request fails; an explicit `mock_*` value still selects the
 fixture there (since 13.0.0-rc.1). Embeddings never
 fall back to another model after a failure, because vectors from different
 models are not comparable; only providers without embeddings are skipped.
 The chain tries the next provider after any error, so in staging and
-production (`RULLST_ENV`, then `APP_ENV`, from the process environment) a
-`mock_*` provider configured beside a live one is refused with
+production a `mock_*` provider configured beside a live one is refused with
 `AiError::ConfigError`: it would answer with fixture text whenever the live
 provider failed. A chain of mocks only, or of live providers only, is
-unaffected (since 13.0.0-rc.1).
+unaffected (since 13.0.0-rc.1). Both checks resolve staging and production as
+`Server` does, from the working directory: the process `RULLST_ENV`, then
+`APP_ENV`, then either one from `.env`, then `env` under `[app]` in
+`Rullst.toml`. An invalid value, or a `.env` or `Rullst.toml` that cannot be
+read, fails closed.
 
 Groq uses `GROQ_API_KEY` and an explicit account-supported `GROQ_MODEL` through
 the [documented compatible endpoint](https://console.groq.com/docs/openai).

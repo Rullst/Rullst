@@ -4,12 +4,24 @@
     let turso_url = rullst::config::project_setting("TURSO_DATABASE_URL")?.unwrap_or_default();
     // An empty URL selects the offline fallback, a local SQLite file. Staging
     // and production refuse it instead of writing there; an explicit `mock_`
-    // value keeps the file on purpose.
-    let environment = rullst::config::Environment::resolve(
-        rullst::config::project_setting("RULLST_ENV")?.as_deref(),
-        rullst::config::project_setting("APP_ENV")?.as_deref(),
-        None,
-    )?;
+    // value keeps the file on purpose. The environment is the one `Server`
+    // resolves, which has not started yet: the process `RULLST_ENV`, then
+    // `APP_ENV` (`Environment::detect` reads both), then either one from
+    // `.env` (which `project_setting` returns when the process lacks it),
+    // then `env` under `[app]` in `Rullst.toml`.
+    let configured_environment = match rullst::config::project_setting("RULLST_ENV")? {
+        Some(environment) => Some(environment),
+        None => rullst::config::project_setting("APP_ENV")?,
+    };
+    let configured_environment = match configured_environment {
+        Some(environment) => Some(environment),
+        None => match std::fs::read_to_string("Rullst.toml") {
+            Ok(config) => rullst::config::RullstConfig::from_toml(&config)?.app.env,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+            Err(error) => return Err(error.into()),
+        },
+    };
+    let environment = rullst::config::Environment::detect(configured_environment.as_deref())?;
     if turso_url.trim().is_empty() && environment.requires_secure_defaults() {
         return Err(format!(
             "TURSO_DATABASE_URL is empty or unset in the {environment} environment, so Turso \

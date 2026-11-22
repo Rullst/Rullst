@@ -236,7 +236,10 @@ and fails on any surviving mutant.
   `.github/fail-closed-sites.json` or an entry matches nothing
   ([AGENTS.md section 3.5](AGENTS.md)). Each entry is classified
   `refuses-in-secure-environments` (with the identifier of its refusal, so
-  removing the staging/production check fails too), `explicit-mock-only`,
+  removing the staging/production check fails too; its file may not resolve
+  the environment with `Environment::detect(None)` or an
+  `Environment::resolve` without `[app] env`, which miss settings `Server`
+  reads), `explicit-mock-only`,
   `caller-provided-values` or `documented-exception` (with the documents that
   state it). `python3 .github/check-fail-closed.py --sites` prints what the
   scan finds; a new credential-mode helper goes in its `HELPERS` list so its
