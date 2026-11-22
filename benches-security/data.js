@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795329450006,
+  "lastUpdate": 1795330575213,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -26432,6 +26432,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 11,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1ea8703da23e8d708880a0898f5c4ebef7d8cf3c",
+          "message": "Merge pull request #857 from Rullst/fix/v13-rc1-review-site\n\nfix(site): name Cloudflare and narrow the claims the rc.1 review found",
+          "timestamp": "2026-11-22T03:37:30-03:00",
+          "tree_id": "782e3121550b062caebbed7d7f080f4682977d6c",
+          "url": "https://github.com/Rullst/Rullst/commit/1ea8703da23e8d708880a0898f5c4ebef7d8cf3c"
+        },
+        "date": 1795330574909,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 3600,
+            "range": "± 46",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 389,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 6,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 3,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 10,
             "range": "± 0",
             "unit": "ns/iter"
           }
