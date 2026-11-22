@@ -5,8 +5,10 @@
   peer with a local `Host`, so a reverse proxy or tunnel on the same machine
   (for example nginx's default `proxy_pass http://127.0.0.1:3000`) made every
   remote client local. Both now refuse requests with a forwarding header
-  (`Forwarded`, `X-Forwarded-*`, `X-Real-IP`, `Via`, `CF-Connecting-IP`,
-  `True-Client-IP`) or over HTTP/1.0, and requests whose `Server` resolved
+  (`Forwarded`, `X-Forwarded-For`, `X-Forwarded-Host`, `X-Forwarded-Proto`,
+  `X-Forwarded-Server`, `X-Real-IP`, `Via`, `CF-Connecting-IP`,
+  `True-Client-IP`; other names such as `X-Forwarded-Port` or `X-Client-IP`
+  are not checked) or over HTTP/1.0, and requests whose `Server` resolved
   staging or production. Building the policy now also fails with
   `LocalAccessRequiresDebugBuild` in a debug build whose process `RULLST_ENV`
   or `APP_ENV` is staging, production or invalid, and

@@ -90,9 +90,18 @@ Planned on 21 November 2026 to close rc.1; anything else goes to 13.1:
 
 - **No silent mock or local fallback in staging or production:** one audit
   of every provider and store, after three instances were found one by one
-  (mail, the AI provider chain and Turso). In staging and production an empty
-  or missing credential or URL is a configuration error, and only an explicit
-  `mock_*` value selects the offline mock.
+  (mail, the AI provider chain and Turso). The rule covers the code that reads
+  settings (the `Mail` facade, `AiClient::auto()`, the generated Turso,
+  billing and sign-in code): there, in staging and production, an empty or
+  missing credential or URL is a configuration error, and only an explicit
+  `mock_*` value selects the offline mock. Constructors that receive their
+  values from the caller (`StripeProvider::new`, the Connect providers, Bunny,
+  SurrealDB, Scout, Redis data) keep selecting the mock for an empty value in
+  every environment, and the helpers that cannot see the environment
+  (`TursoOrm::init_from_env`, `TursoStore::connect`, `S3Credentials::from_env`,
+  Studio's database URL) stay documented exceptions; making those refuse waits
+  for 13.1. `.github/check-fail-closed.py` keeps the inventory, and catches an
+  unreviewed fallback only when it matches its known patterns.
 - **SurrealDB graph queries:** the read-only check accepts known read forms
   instead of refusing known writing ones.
 - **The legacy `oauth_state` session key** of `rullst-connect` keeps working

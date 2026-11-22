@@ -52,7 +52,13 @@ walk through a complete integration.
   Stripe discount binding, and 1–730-day Stripe trial updates with
   explicit-clock retries and fail-closed provider capability boundaries.
 - **Offline fixtures:** Empty or `mock_*` credentials select deterministic,
-  visibly non-live behavior for tests and local development.
+  visibly non-live behavior for tests and local development. The constructors
+  (`StripeProvider::new`, `InfinitePayProvider::new`) do not read the
+  environment, so an empty key selects the fixtures in production too: a
+  Stripe checkout then points at `mock.stripe.invalid`, and no real charge
+  happens. Code that reads the keys from settings must refuse empty values in
+  staging and production; the billing code `cargo rullst make:billing` and the
+  SaaS starter generate does.
 
 ---
 
