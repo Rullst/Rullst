@@ -141,7 +141,7 @@ fn hero(proof: Markup) -> Markup {
                 <li class="proof-card proof-security">
                     <span class="proof-index">"LIGADAS EM TODA APLICAÇÃO GERADA"</span>" "
                     <p class="proof-title">"Camadas de segurança ligadas por padrão"</p>
-                    <p class="proof-figure">"Cabeçalhos seguros com um nonce de CSP por requisição, proteção contra CSRF e um WAF, montados pelo "<code>"Server"</code>" em todos os starters; o "<code>"src/security_tests.rs"</code>" de cada projeto verifica essas camadas."</p>" "
+                    <p class="proof-figure">"Cabeçalhos seguros com um nonce de CSP por requisição, proteção contra CSRF e um WAF, montados pelo "<code>"Server"</code>" em todos os starters; o "<code>"src/security_tests.rs"</code>" de cada projeto verifica essas camadas. Sem "<code>"RULLST_ENV=production"</code>" (ou staging), a aplicação roda como desenvolvimento, em que o WAF só registra."</p>" "
                     <a href="#security">"Segurança "<span aria-hidden="true">"↓"</span></a>
                 </li>
                 <li class="proof-card proof-memory">
@@ -170,7 +170,7 @@ fn performance(summary: Markup) -> Markup {
             <div class="section-heading">
                 <p class="eyebrow">"01 / Desempenho, medido"</p>
                 <h2 id="performance-heading">"Medido contra o Axum."<br /><span class="accent-orange">"Resultados fortes e fracos, lado a lado."</span></h2>
-                <p>"As pontuações abaixo são as do Rullst como o "<code>"cargo rullst new"</code>" o gera, com o middleware de segurança ligado. A comparação entre frameworks do "<a href="/Benchmarks/">"Rullst/Benchmarks"</a>" (em inglês) mede cada nova versão do Rullst contra o Axum (1,00×) e outros frameworks em máquinas hospedadas pelo GitHub, e este resumo é refeito todos os dias a partir dos últimos resultados publicados."</p>
+                <p>"As pontuações abaixo são as do Rullst como o "<code>"cargo rullst new"</code>" o gera, com o middleware de segurança ligado. A comparação entre frameworks do "<a href="/Benchmarks/">"Rullst/Benchmarks"</a>" (em inglês) mede cada nova versão do Rullst contra o Axum (1,00×) e outros frameworks em máquinas hospedadas pelo GitHub, e este resumo é refeito todos os dias a partir dos últimos resultados; a página de resultados diz se eles passam pela porta de publicação do próprio benchmark."</p>
             </div>
             <p class="landing-disclosure"><strong>"Quem mediu."</strong>" O mantenedor do Rullst também mantém esse benchmark, escreveu todas as implementações dele e projetou o método. O README dele lista o que ele não mede: logins, requisições grandes, TLS, um banco de dados em outra máquina e escala além de 2 vCPUs, entre outros."</p>
             <div class="landing-bench" data-landing-benchmarks>
@@ -199,7 +199,7 @@ fn security() -> Markup {
                         <li><b>"Proteção contra CSRF"</b>" (um token double-submit) nas rotas de escrita, em todos os ambientes."</li>
                         <li>"Um "<b>"WAF"</b>" que recusa requisições suspeitas em staging e produção e só as registra em desenvolvimento. O Dockerfile, o Compose e os arquivos de Kubernetes gerados definem "<code>"RULLST_ENV=production"</code>"."</li>
                         <li><b>"Testes de segurança"</b>": o "<code>"src/security_tests.rs"</code>" de cada projeto verifica os cabeçalhos, o CSRF e o WAF com a base de produção, via "<code>"cargo test"</code>"."</li>
-                        <li><b>"Verificações de produção"</b>": o starter API não inicia sem "<code>"API_TOKEN"</code>", e o código de cobrança gerado recusa uma chave de pagamento vazia em produção. Na 13.0.0-rc.1 (ainda não lançada), e-mail, IA e os starters Turso também recusam configurações vazias em staging e produção em vez de usar um mock offline, e a CI falha diante de qualquer fallback desse tipo que ninguém revisou."</li>
+                        <li><b>"Verificações de produção"</b>": o starter API não inicia sem "<code>"API_TOKEN"</code>", e o código de cobrança gerado recusa uma chave de pagamento vazia em produção. Na 13.0.0-rc.1 (ainda não lançada), e-mail, IA e os starters Turso também recusam configurações vazias em staging e produção em vez de usar um mock offline, e a CI falha diante de um fallback não revisado que siga os padrões que ela conhece."</li>
                     </ul>" "
                     <a href="/Rullst/book/security-layers.html#what-generated-applications-already-have">"O que cada starter monta (em inglês) "<span aria-hidden="true">"↗"</span></a>
                 </article>
