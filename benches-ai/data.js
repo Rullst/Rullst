@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795322613037,
+  "lastUpdate": 1795330666685,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -23253,6 +23253,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 202,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1ea8703da23e8d708880a0898f5c4ebef7d8cf3c",
+          "message": "Merge pull request #857 from Rullst/fix/v13-rc1-review-site\n\nfix(site): name Cloudflare and narrow the claims the rc.1 review found",
+          "timestamp": "2026-11-22T03:37:30-03:00",
+          "tree_id": "782e3121550b062caebbed7d7f080f4682977d6c",
+          "url": "https://github.com/Rullst/Rullst/commit/1ea8703da23e8d708880a0898f5c4ebef7d8cf3c"
+        },
+        "date": 1795330666393,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1211,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 237,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 291,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
