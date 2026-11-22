@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795328604769,
+  "lastUpdate": 1795329730056,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -38905,6 +38905,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1517,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1ea8703da23e8d708880a0898f5c4ebef7d8cf3c",
+          "message": "Merge pull request #857 from Rullst/fix/v13-rc1-review-site\n\nfix(site): name Cloudflare and narrow the claims the rc.1 review found",
+          "timestamp": "2026-11-22T03:37:30-03:00",
+          "tree_id": "782e3121550b062caebbed7d7f080f4682977d6c",
+          "url": "https://github.com/Rullst/Rullst/commit/1ea8703da23e8d708880a0898f5c4ebef7d8cf3c"
+        },
+        "date": 1795329726828,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 429,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 606,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 303,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1139,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
