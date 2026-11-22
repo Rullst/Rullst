@@ -132,7 +132,7 @@ pub fn academy() -> Markup {
                         <li>"Robotics &amp; math"</li>
                     </ul>
                     <div class="academy-actions"><a class="button button-primary" href="https://academy.rullst.win/">"Explore Rullst Academy "<span aria-hidden="true">"↗"</span></a>" "<a class="academy-path-link" href="https://academy.rullst.win/en/paths">"Find your learning path "<span aria-hidden="true">"↗"</span></a></div>
-                    <p class="academy-note">"Português · English · Español "<span aria-hidden="true">"/"</span>" Try the first lesson of each path without an account."</p>
+                    <p class="academy-note">"Português · English "<span aria-hidden="true">"/"</span>" Try the first lesson of each path without an account."</p>
                 </div>
                 <div class="academy-companion">
                     <div class="academy-art" aria-hidden="true">
@@ -226,7 +226,7 @@ pub fn footer(cx: &Context) -> Markup {
                         <summary>"Hosting, linked pages &amp; your privacy rights"</summary>
                         <div>
                             <p>"The site is hosted on GitHub Pages. Requests necessarily reach the host, which may process IP addresses and technical request information under the "<a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">"GitHub Privacy Statement"</a>". We do not control GitHub's hosting logs or their retention."</p>
-                            <p>"Social links are ordinary links, not embeds. Following them opens a service with its own privacy practices. Rullst Academy, documentation, benchmarks and the Showcase, LMS, Portfolio and SaaS demos have separate data flows. The documentation can store display preferences locally and include external resources; benchmark pages currently load Chart.js from jsDelivr. The no-tracking description above applies to this landing page, not to every linked service."</p>
+                            <p>"Social links are ordinary links, not embeds. Following them opens a service with its own privacy practices. Rullst Academy, documentation, benchmarks and the Showcase, LMS, Portfolio and SaaS demos have separate data flows. The documentation can store display preferences locally and include external resources; the microbenchmark pages under /Rullst/benches/ currently load Chart.js from jsDelivr. The no-tracking description above applies to this landing page, not to every linked service."</p>
                             <p><strong>"Responsible for this website:"</strong>" Venelouis, Brazil. For questions or requests to access, correct or delete personal data, contact "<a href="mailto:officialrullst@gmail.com">"officialrullst@gmail.com"</a>". If you email that address, the team and its email provider receive your address and message to handle your inquiry. Email is handled through Gmail; please don't include credentials or unnecessary personal data. Public issues and social posts are not private support channels. Your rights depend on the law that applies to your situation."</p>
                             <p><a href="./privacy.html">"Read the full privacy notice"</a>" for purposes, legal bases, retention, international processing and regional rights, including LGPD and GDPR where applicable. This notice describes the website—not data processing in applications built with Rullst—and does not claim universal legal compliance. Last updated: November 14, 2026."</p>
                         </div>
