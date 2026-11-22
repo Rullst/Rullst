@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795307461872,
+  "lastUpdate": 1795316447727,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -23061,6 +23061,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 278,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "04b9e1f9c43d6929f28e43150759f9af960911a2",
+          "message": "Merge pull request #847 from Rullst/fix/v13-rc1-app-findings\n\nfix(cli): rerun upgrade rules with --from and widen four alpha.6 rules",
+          "timestamp": "2026-11-21T23:36:12-03:00",
+          "tree_id": "d1f8ea1c5c01d4957f892a7d7e36fe0dc4ea38c6",
+          "url": "https://github.com/Rullst/Rullst/commit/04b9e1f9c43d6929f28e43150759f9af960911a2"
+        },
+        "date": 1795316446791,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1639,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 376,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 422,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
