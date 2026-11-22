@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795322509229,
+  "lastUpdate": 1795329330886,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -16082,6 +16082,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "github_provider_creation",
             "value": 266,
+            "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5996db1d7c226a5cd388cad78a183bd69b0bd026",
+          "message": "Merge pull request #856 from Rullst/fix/v13-rc1-upgrade-from-unknown\n\nfix(cli): refuse --from without a project version and link the rc.1 checklist",
+          "timestamp": "2026-11-22T03:17:14-03:00",
+          "tree_id": "d7f2fca1349aa52dfea7fd2869d262e2749e4640",
+          "url": "https://github.com/Rullst/Rullst/commit/5996db1d7c226a5cd388cad78a183bd69b0bd026"
+        },
+        "date": 1795329330086,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 383,
             "range": "± 4",
             "unit": "ns/iter"
           }
