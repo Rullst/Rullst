@@ -118,6 +118,10 @@ impl<DB: SessionDatabase> SessionRegistry<DB> {
     /// create-on-first-use path for an application whose migrations do not
     /// own the table (the generated applications use a migration that calls
     /// [`create_table`](Self::create_table), and `connect`).
+    ///
+    /// The table it creates has no foreign key on `user_id`, so the rows of
+    /// an account deleted with SQL stay until they expire; see
+    /// [`create_table`](Self::create_table).
     pub async fn open(pool: Pool<DB>) -> Result<Self, SessionRegistryError> {
         Self::create_table(&pool).await?;
         Self::connect(pool).await
@@ -128,6 +132,27 @@ impl<DB: SessionDatabase> SessionRegistry<DB> {
     /// rollback drops the table (`DROP TABLE rullst_auth_sessions` drops its
     /// indexes too). On PostgreSQL, concurrent calls serialize on an
     /// advisory lock.
+    ///
+    /// The registry does not know the application's accounts table, so
+    /// `user_id` (`INTEGER NOT NULL`) has no foreign key. Code that deletes
+    /// an account through the application calls
+    /// [`revoke_all_sessions`](Self::revoke_all_sessions) (or
+    /// [`revoke_all_sessions_on`](Self::revoke_all_sessions_on) in the
+    /// deleting transaction), but an account deleted with SQL, such as by a
+    /// retention job or for a deletion request, leaves its rows, with the
+    /// account id, browser and platform family and times, until they expire
+    /// (the session lifetime, 30 days by default) and
+    /// [`purge_expired`](Self::purge_expired) removes them. Link the column
+    /// to the accounts table in the migration that owns this table, as the
+    /// one `cargo rullst auth` generates does: after this call, PostgreSQL
+    /// and MySQL/MariaDB take `ALTER TABLE rullst_auth_sessions ADD CONSTRAINT
+    /// rullst_auth_sessions_user_id_foreign FOREIGN KEY (user_id) REFERENCES
+    /// users (id) ON DELETE CASCADE`; SQLite cannot add a key to an existing
+    /// table, so create the same table with `user_id INTEGER NOT NULL
+    /// REFERENCES users (id) ON DELETE CASCADE` before this call, which then
+    /// keeps it and adds the indexes (SQLx enables SQLite's `foreign_keys`
+    /// on every connection it opens). The type of the referenced column must
+    /// match (`INTEGER`, or `INT` on MySQL).
     pub async fn create_table(pool: &Pool<DB>) -> Result<(), SessionRegistryError> {
         bounded(DB::prepare(pool)).await
     }
@@ -387,7 +412,9 @@ impl<DB: SessionDatabase> SessionRegistry<DB> {
 
     /// Signs out every session of `user_id`: call it on a password reset,
     /// on "sign out everywhere" and when the account is deactivated or
-    /// deleted. Returns how many were revoked.
+    /// deleted (an account deleted with SQL needs the foreign key described
+    /// on [`create_table`](Self::create_table)). Returns how many were
+    /// revoked.
     pub async fn revoke_all_sessions(&self, user_id: i32) -> Result<u64, SessionRegistryError> {
         let deleted = bounded(DB::delete_user(&self.pool, user_id)).await?;
         announce(Revoked::All { user_id });

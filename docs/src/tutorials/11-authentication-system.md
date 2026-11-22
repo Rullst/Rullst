@@ -40,8 +40,9 @@ The current command creates:
   `session_epoch` columns and the unique index on `email`; rolling it back
   drops only those), `src/migrations/m<timestamp>_create_password_reset_tokens_table.rs`,
   `src/migrations/m<timestamp>_create_rullst_auth_sessions_table.rs` (the
-  login sessions; rolling it back drops the table, which signs everyone out)
-  and the migrations module;
+  login sessions, whose `user_id` references `users` with `ON DELETE
+  CASCADE`, so deleting an account also deletes its sessions; rolling it back
+  drops the table, which signs everyone out) and the migrations module;
 - `src/controllers/auth_controller.rs`,
   `src/controllers/password_controller.rs` and
   `src/controllers/sessions_controller.rs` (the "Your devices" page);

@@ -38,7 +38,10 @@
 //! the expiry and a [`DeviceSummary`] (browser and platform family). No IP
 //! address, raw `User-Agent` or request history is stored. Each account keeps
 //! at most [`MAX_SESSIONS_PER_USER`] sessions; a sign-in beyond that signs
-//! out its least recently used one.
+//! out its least recently used one. The table has no foreign key to the
+//! application's accounts, so an account deleted with SQL keeps its records
+//! until they expire unless the migration that owns the table adds one
+//! ([`SessionRegistry::create_table`]).
 //!
 //! The registry uses the application's SQLx pool and the table
 //! `rullst_auth_sessions`, which [`SessionRegistry::open`] creates when it is

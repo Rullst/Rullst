@@ -70,11 +70,13 @@ pub(crate) fn scaffold_auth() -> Result<bool, Box<dyn std::error::Error>> {
             .bold()
     );
 
-    // One timestamp: the users migration sorts before the reset tokens one.
-    let timestamp = crate::clock::local_migration_stamp()?;
+    // One stamp for the users and reset-token migrations, and a later one for
+    // the sessions migration, whose `user_id` references `users`.
+    let (timestamp, sessions_stamp) =
+        crate::clock::ordered_migration_stamps(crate::clock::now()?, &crate::clock::local_zone())?;
     models::write_user_model_and_migration(&users, &timestamp)?;
     passwords::generate_password_flows(&timestamp)?;
-    sessions::generate_sessions_migration(&timestamp)?;
+    sessions::generate_sessions_migration(&sessions_stamp)?;
     controllers::generate_auth_controllers()?;
     views::generate_auth_views()?;
     fs::write(manifest_path, updated_manifest)?;

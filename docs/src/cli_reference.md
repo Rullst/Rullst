@@ -1480,7 +1480,10 @@ Creates an authentication starting point in your codebase, including:
 - Server-side sessions (since 13.0.0-alpha.6): every sign-in is a row of
   `rullst_auth_sessions` in the application's database, created by a
   `m<timestamp>_create_rullst_auth_sessions_table.rs` migration (its rollback
-  drops it), through `rullst::auth::session_registry` over `Orm::pool()`. A
+  drops it; since 13.0.0-rc.1 it has a later stamp than the users migration
+  and links `user_id` to `users (id)` with `ON DELETE CASCADE`, so an account
+  deleted with SQL takes its sessions with it), through
+  `rullst::auth::session_registry` over `Orm::pool()`. A
   row stores only a digest of the random secret in the encrypted cookie. The
   middleware
   (`src/middlewares/auth_middleware.rs`) checks that row on every request,

@@ -27,6 +27,9 @@ loopback, with the CLI built from this checkout (`--cli`), for each starter:
    and migration records exactly (its sessions migration drops
    `rullst_auth_sessions`) and keeps every row; `db:migrate` then applies the
    batch again and gives every row, the signed-up one too, a placeholder.
+6. The re-created `rullst_auth_sessions.user_id` references `users`: a
+   session of an account that does not exist is refused, and deleting the
+   signed-up account with SQL deletes its session (`ON DELETE CASCADE`).
 
 The generated builds share `--target-dir` (the workspace target, which the
 relational CLI profiles have just filled) and run offline from the
@@ -326,6 +329,20 @@ def check_server(server: Server, starter: str, work: Path, env: dict[str, str], 
             accounts = database.query(ACCOUNTS)
             expect(accounts == placeholder_accounts(rolled_back["rows"]),
                    "every row, the signed-up one too, gets a placeholder again", accounts)
+
+        with step(f"{label}: deleting an account with SQL deletes its sessions"):
+            account = signed_up[0][0]
+            columns = "token_hash, public_id, user_id, created_at, last_seen_at, expires_at, browser, platform"
+            database.query(f"INSERT INTO rullst_auth_sessions ({columns}) VALUES "
+                           f"('{'a' * 64}', '{'B' * 22}', {account}, 0, 0, 4102444800, 'firefox', 'linux')")
+            orphan = database.execute(f"INSERT INTO rullst_auth_sessions ({columns}) VALUES "
+                                      f"('{'c' * 64}', '{'D' * 22}', 999999, 0, 0, 4102444800, 'firefox', 'linux')")
+            expect(orphan.returncode != 0, "rullst_auth_sessions refuses a session of an account that does not exist",
+                   orphan.stdout + orphan.stderr)
+            database.query(f"DELETE FROM users WHERE id = {account}")
+            remaining = database.query(f"SELECT COUNT(*) FROM rullst_auth_sessions WHERE user_id = {account}")
+            expect(remaining == [("0",)], "deleting the account with SQL deleted its session (ON DELETE CASCADE)",
+                   remaining)
     except Failure:
         if app is not None:
             log(f"--- application log ---\n{app.text()[-3000:]}")

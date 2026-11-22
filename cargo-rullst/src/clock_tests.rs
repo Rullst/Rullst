@@ -52,6 +52,27 @@ fn migration_stamps_sort_in_creation_order() {
 }
 
 #[test]
+fn ordered_stamps_sort_after_each_other_across_a_clock_change() {
+    assert_eq!(
+        ordered_migration_stamps(at("2026-11-17T09:30:59Z"), &TimeZone::UTC).unwrap(),
+        ("20261117093059".to_string(), "20261117093100".to_string())
+    );
+    // New York's clocks went back at 06:00 UTC on 2026-11-01: 01:59:59 EDT
+    // is followed by 01:00:00 EST, and the repeated hour ends at 02:00:00.
+    let new_york = TimeZone::posix("EST5EDT,M3.2.0,M11.1.0").unwrap();
+    assert_eq!(
+        ordered_migration_stamps(at("2026-11-01T05:59:59Z"), &new_york).unwrap(),
+        ("20261101015959".to_string(), "20261101020000".to_string())
+    );
+    // The spring change skips an hour; one second later still sorts after.
+    assert_eq!(
+        ordered_migration_stamps(at("2026-03-08T06:59:59Z"), &new_york).unwrap(),
+        ("20260308015959".to_string(), "20260308030000".to_string())
+    );
+    assert!(ordered_migration_stamps(Timestamp::MAX, &TimeZone::UTC).is_err());
+}
+
+#[test]
 fn local_stamps_read_the_system_clock() {
     let stamp = local_migration_stamp().unwrap();
     assert_eq!(stamp.len(), 14);
