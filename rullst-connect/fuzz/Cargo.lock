@@ -1283,7 +1283,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-connect"
-version = "13.0.0-alpha.6"
+version = "13.0.0-rc.1"
 dependencies = [
  "aes-gcm",
  "async-trait",

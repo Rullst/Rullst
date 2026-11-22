@@ -3,7 +3,7 @@
 Status: **planned (recorded 2026-10-01)** for the v13 feature line. Nothing on
 this page is a shipped capability unless it links to existing documentation.
 Item 1 and parts of items 3, 4, 5, 6 and 7 exist in the v13 development source
-(`13.0.0-alpha.6`); see [measured release defaults](#measured-release-defaults).
+(`13.0.0-rc.1`); see [measured release defaults](#measured-release-defaults).
 The compiled crate count in the report (item 1), SQLite-only starters
 without a TLS stack (item 3) and compressed pages after per-response CSRF
 masking (item 4) were added in 13.0.0-alpha.6, the 13.0 feature freeze; the

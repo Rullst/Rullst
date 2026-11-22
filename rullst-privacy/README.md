@@ -11,7 +11,7 @@ Live age providers and verified guardianship are not part of it.
 
 Enable `age-assurance` for age checks or `consent` for independent purpose-bound
 choices. No feature is enabled by default. Pin the prerelease exactly, for
-example `rullst-privacy = { version = "=13.0.0-alpha.6", features = ["consent-sqlite"] }`,
+example `rullst-privacy = { version = "=13.0.0-rc.1", features = ["consent-sqlite"] }`,
 or use the umbrella features below. Broader rights-request, retention and regional-policy support
 is tracked in the [privacy roadmap](https://github.com/Rullst/Rullst/blob/main/docs/src/privacy-age-assurance-roadmap.md).
 

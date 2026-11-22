@@ -34,10 +34,10 @@ a versão exata: o Cargo nunca escolhe um pré-lançamento sozinho, então nem u
 `cargo install cargo-rullst` simples nem `^13` o instalam:
 
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.6 --locked
+cargo install cargo-rullst --version =13.0.0-rc.1 --locked
 ```
 
-Fixe o framework da mesma forma no `Cargo.toml` (`"=13.0.0-alpha.6"`); o
+Fixe o framework da mesma forma no `Cargo.toml` (`"=13.0.0-rc.1"`); o
 [guia de migração para a v13](../migration-v13.md) explica por quê e o que mudou.
 
 Quem revisa o código-fonte e precisa de alterações locais do checkout pode,

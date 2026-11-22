@@ -1373,7 +1373,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-capital"
-version = "13.0.0-alpha.6"
+version = "13.0.0-rc.1"
 dependencies = [
  "async-trait",
  "axum",
@@ -1402,7 +1402,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-core"
-version = "13.0.0-alpha.6"
+version = "13.0.0-rc.1"
 dependencies = [
  "async-trait",
  "axum",
@@ -1441,7 +1441,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-macros"
-version = "13.0.0-alpha.6"
+version = "13.0.0-rc.1"
 dependencies = [
  "proc-macro2",
  "quote",

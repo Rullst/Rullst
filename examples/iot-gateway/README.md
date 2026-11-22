@@ -123,4 +123,4 @@ violations, and a revoked token was refused while the other board continued.
 
 To use it outside this repository, replace the `workspace = true`
 dependencies with published versions, for example
-`rullst = { version = "=13.0.0-alpha.6", features = ["orm", "strict-sqlite", "nexus", "iot-ingest"] }`.
+`rullst = { version = "=13.0.0-rc.1", features = ["orm", "strict-sqlite", "nexus", "iot-ingest"] }`.

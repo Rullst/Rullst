@@ -1597,7 +1597,7 @@ checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
 name = "rullst-core"
-version = "13.0.0-alpha.6"
+version = "13.0.0-rc.1"
 dependencies = [
  "async-trait",
  "axum",
@@ -1635,7 +1635,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-macros"
-version = "13.0.0-alpha.6"
+version = "13.0.0-rc.1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1645,7 +1645,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-security"
-version = "13.0.0-alpha.6"
+version = "13.0.0-rc.1"
 dependencies = [
  "aes-gcm",
  "ammonia",

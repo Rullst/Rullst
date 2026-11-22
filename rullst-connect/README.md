@@ -228,31 +228,31 @@ extractor.
 This README describes the v13 prerelease; Cargo never selects a
 prerelease on its own, so pin it exactly (the v12 line, `rullst-connect@12`, reached end of life on 16 October 2026):
 ```bash
-cargo add rullst-connect@=13.0.0-alpha.6
+cargo add rullst-connect@=13.0.0-rc.1
 ```
 
 With no feature, the crate has the providers and `begin_login`; `AuthCallback`
 and `finish_login` need one of the `axum`, `actix`, `leptos` or `rullst`
-features (for example `cargo add rullst-connect@=13.0.0-alpha.6 --features axum`).
+features (for example `cargo add rullst-connect@=13.0.0-rc.1 --features axum`).
 
 For the login challenge store in the application's database (`sqlite`,
 `postgres` or `mysql`; `axum` adds `finish_login` and the callback extractor):
 
 ```toml
-rullst-connect = { version = "=13.0.0-alpha.6", features = ["axum", "postgres"] }
+rullst-connect = { version = "=13.0.0-rc.1", features = ["axum", "postgres"] }
 ```
 
 For the Axum flow with a `tower-sessions` store:
 
 ```toml
-rullst-connect = { version = "=13.0.0-alpha.6", features = ["axum-session"] }
+rullst-connect = { version = "=13.0.0-rc.1", features = ["axum-session"] }
 tower-sessions = "0.15"
 ```
 
 Or manually add it to your `Cargo.toml`:
 ```toml
 [dependencies]
-rullst-connect = "=13.0.0-alpha.6"
+rullst-connect = "=13.0.0-rc.1"
 tokio = { version = "1.52", features = ["full"] }
 ```
 
@@ -293,7 +293,7 @@ authentication bypass. Enable the feature only in development and test builds.
 
 ```toml
 [dev-dependencies]
-rullst-connect = { version = "=13.0.0-alpha.6", features = ["mock"] }
+rullst-connect = { version = "=13.0.0-rc.1", features = ["mock"] }
 ```
 
 In mock mode the authorization URL is the configured `redirect_url` with the fixed
@@ -565,7 +565,7 @@ does not provide a database transaction or distributed refresh lock. Enable
 `sqlite` for the bounded shared-local store:
 
 ```toml
-rullst-connect = { version = "=13.0.0-alpha.6", features = ["sqlite"] }
+rullst-connect = { version = "=13.0.0-rc.1", features = ["sqlite"] }
 ```
 
 ```rust,no_run

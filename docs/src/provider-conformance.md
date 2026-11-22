@@ -21,7 +21,7 @@ version as the rest of your Rullst crates:
 
 ```toml
 [dev-dependencies]
-rullst-capital = { version = "=13.0.0-alpha.6", features = ["conformance"] }
+rullst-capital = { version = "=13.0.0-rc.1", features = ["conformance"] }
 ```
 
 ## Reading a report

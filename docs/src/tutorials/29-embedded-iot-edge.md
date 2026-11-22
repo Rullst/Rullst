@@ -34,7 +34,7 @@ A firmware crate depends on `rullst-iot` directly and turns off its default
 
 ```toml
 [dependencies]
-rullst-iot = { version = "=13.0.0-alpha.6", default-features = false }
+rullst-iot = { version = "=13.0.0-rc.1", default-features = false }
 ```
 
 ## Build a telemetry model and Modbus request

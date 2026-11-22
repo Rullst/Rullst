@@ -11,7 +11,7 @@ página no seu navegador.
 [Próximo: geradores da CLI](02-cli-generators.md)
 
 Este tutorial leva quem está começando da instalação do Rust até uma aplicação
-web Rullst rodando. Ele usa o pré-lançamento `13.0.0-alpha.6` da v13. A linha
+web Rullst rodando. Ele usa o pré-lançamento `13.0.0-rc.1` da v13. A linha
 v12 chegou ao fim da vida útil em 16 de outubro de 2026 (veja o
 [registro da versão](../../v12.md)); aplicações v12 existentes seguem o
 [guia de migração para a v13](../../migration-v13.md).
@@ -60,7 +60,7 @@ vida útil em 16 de outubro de 2026, então um `cargo add rullst` simples
 escolheria uma 12.x sem manutenção:
 
 ```bash
-cargo add rullst@=13.0.0-alpha.6
+cargo add rullst@=13.0.0-rc.1
 cargo add tokio --features full
 ```
 
@@ -131,11 +131,11 @@ pré-lançamento da v13 a partir do crates.io (informe a versão exata; o Cargo
 nunca escolhe um pré-lançamento sozinho):
 
 ```bash
-cargo install cargo-rullst --version =13.0.0-alpha.6 --locked
+cargo install cargo-rullst --version =13.0.0-rc.1 --locked
 cargo rullst --version
 ```
 
-O segundo comando mostra `rullst 13.0.0-alpha.6`. O [Tutorial 02](02-cli-generators.md)
+O segundo comando mostra `rullst 13.0.0-rc.1`. O [Tutorial 02](02-cli-generators.md)
 cria um projeto com ela; o `my_first_app` escrito à mão não é necessário lá.
 
 O gerador `new` da CLI usa a própria versão do framework da CLI. Uma CLI
@@ -161,4 +161,4 @@ revise o código-fonte antes de compartilhar um projeto gerado. Veja a
   `ServerError` com `?`.
 - A branch `main`, que muda o tempo todo, é uma fonte de integração, não um
   artefato de release imutável. Para uma aplicação reproduzível, fixe a versão
-  exata do crates.io (`=13.0.0-alpha.6`) e faça commit do `Cargo.lock`.
+  exata do crates.io (`=13.0.0-rc.1`) e faça commit do `Cargo.lock`.
