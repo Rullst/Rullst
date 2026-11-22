@@ -250,6 +250,62 @@ fn turso_primary_scaffold_compiles_and_runs_its_real_migration() {
     );
     assert!(project.join("production-offline.db").exists());
 
+    // Staging or production selected only by `.env`, or only by `[app] env`
+    // in `Rullst.toml`, refuses an empty URL too, as `Server` would run it.
+    let dotenv = fs::read_to_string(project.join(".env")).expect("generated .env");
+    assert!(dotenv.contains("RULLST_ENV=development\n"), "{dotenv}");
+    let config_path = project.join("Rullst.toml");
+    let config = fs::read_to_string(&config_path).ok();
+    let from_project_files = |environment: &str| {
+        let output = nested_cargo::output(
+            Command::new("cargo")
+                .current_dir(&project)
+                .args(["run", "--quiet", "--", "db:status"])
+                .env("CARGO_TARGET_DIR", workspace.join("target"))
+                .env_remove("RULLST_ENV")
+                .env_remove("APP_ENV")
+                .env("TURSO_DATABASE_URL", "")
+                .env("TURSO_OFFLINE_PATH", "project-files-offline.db"),
+            &workspace.join("target"),
+        )
+        .expect("run generated Turso project configured by its files");
+        let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+        assert!(!output.status.success(), "{environment}: {stderr}");
+        assert!(
+            stderr.contains(&format!(
+                "TURSO_DATABASE_URL is empty or unset in the {environment} environment"
+            )),
+            "{environment}: {stderr}"
+        );
+        assert!(!project.join("project-files-offline.db").exists());
+    };
+    fs::write(
+        project.join(".env"),
+        dotenv.replace("RULLST_ENV=development\n", "RULLST_ENV=staging\n"),
+    )
+    .expect("select staging in .env");
+    from_project_files("staging");
+    fs::write(
+        project.join(".env"),
+        dotenv.replace("RULLST_ENV=development\n", ""),
+    )
+    .expect("remove the environment from .env");
+    // The Turso starter writes no `Rullst.toml`, so it has no `[app]` yet.
+    fs::write(
+        &config_path,
+        format!(
+            "[app]\nenv = \"production\"\n\n{}",
+            config.as_deref().unwrap_or_default()
+        ),
+    )
+    .expect("select production in Rullst.toml");
+    from_project_files("production");
+    fs::write(project.join(".env"), &dotenv).expect("restore .env");
+    match &config {
+        Some(config) => fs::write(&config_path, config).expect("restore Rullst.toml"),
+        None => fs::remove_file(&config_path).expect("remove Rullst.toml"),
+    }
+
     clean_generated_package(&project, workspace);
     fs::remove_dir_all(&project).expect("remove generated Turso-primary test project");
 }

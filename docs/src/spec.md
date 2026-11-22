@@ -4540,7 +4540,10 @@ provider](capital-custom-provider.md)); the
   Empty environment values are absent; explicit mocks remain offline. With no
   provider, development and test get the offline fixture, while staging and
   production return `AiError::ConfigError` from `AiClient::auto()` (a client
-  from `AutoAiConfig::into_client()` has no provider, so requests fail). Groq
+  from `AutoAiConfig::into_client()` has no provider, so requests fail).
+  Provider variables come from the process environment; staging and
+  production are resolved as `Server` resolves them, from the process
+  `RULLST_ENV` and `APP_ENV`, then `.env`, then `[app] env`. Groq
   requires `GROQ_API_KEY` plus `GROQ_MODEL`; a custom `OPENAI_BASE_URL` requires
   `OPENAI_API_KEY` plus `OPENAI_MODEL` and uses the HTTPS chat-only compatible
   adapter. Configuration indicators do not attest network/account health.

@@ -76,9 +76,9 @@ impl AiClient {
     /// Selects the configured providers ([`super::AutoAiConfig`]).
     ///
     /// With none configured, development and test get a deterministic offline
-    /// provider. In staging and production (`RULLST_ENV`, then `APP_ENV`, from
-    /// the process environment) that is [`AiError::ConfigError`] naming the
-    /// settings, because the offline provider would answer with fixture text;
+    /// provider. In staging and production (resolved as `Server` resolves
+    /// them, see [`super::AutoAiConfig::from_env`]) that is
+    /// [`AiError::ConfigError`] naming the settings, because the offline provider would answer with fixture text;
     /// an explicit `mock_*` value still selects it (since 13.0.0-rc.1).
     pub fn auto() -> Result<Self, AiError> {
         super::AutoAiConfig::from_env()?.into_auto_client()

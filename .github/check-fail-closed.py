@@ -19,7 +19,9 @@ its anchor is a snippet of that line. Each entry has a `path`, an `anchor`, a
 
 - `refuses-in-secure-environments`: the site refuses an empty value in staging
   and production (or the mock everywhere); `refusal` is an identifier of that
-  refusal, which must appear in the site.
+  refusal, which must appear in the site. Its file must not resolve the
+  environment from the process variables alone (`PARTIAL_ENVIRONMENT`), since
+  `Server` also reads `.env` and `[app] env`.
 - `explicit-mock-only`: only an explicit `mock_*` value, or a mock type or
   feature the caller chose, reaches the mock.
 - `caller-provided-values`: a constructor or helper that receives its values
@@ -33,7 +35,10 @@ its anchor is a snippet of that line. Each entry has a `path`, an `anchor`, a
 
 The patterns are calibrated on this repository and search text, not types:
 they find the known shapes of the defect and do not prove that no other
-fallback exists.
+fallback exists. Likewise `PARTIAL_ENVIRONMENT` finds the two calls that
+leave out `.env` and `[app] env`; it cannot tell whether an environment read
+in another file, or through `RullstConfig::global()` before `Server` has
+started, sees every source.
 """
 
 from __future__ import annotations
@@ -115,6 +120,14 @@ SIGNALS = {
         rf"(?:\bunwrap_or(?:_else)?\(|\breturn\s+)[^;{{}}]{{0,80}}?{LOCAL_STORE}"
     ),
 }
+# An environment resolved without `.env` and `[app] env`, which `Server` also
+# reads: `Environment::detect(None)`, or `Environment::resolve` whose last
+# argument (`[app] env`) is `None`.
+PARTIAL_ENVIRONMENT = re.compile(
+    r"\bEnvironment::detect\(\s*None\s*\)"
+    r"|\bEnvironment::resolve\((?:[^()]|\([^()]*\))*?,\s*None\s*,?\s*\)"
+)
+
 # Elsewhere a mock variant is dispatch on a mode that was chosen earlier.
 CONSTRUCTOR_ONLY = {"mock-variant"}
 CONSTRUCTOR = re.compile(
@@ -132,11 +145,12 @@ OPTIONAL_FIELDS = {"documented-exception": {"documented_as"}}
 
 
 class Site:
-    def __init__(self, path: str, anchor: str, top_level: bool, body: str) -> None:
+    def __init__(self, path: str, anchor: str, top_level: bool, body: str, code: str) -> None:
         self.path = path
         self.anchor = anchor
         self.top_level = top_level
         self.body = body
+        self.code = code  # the whole file, test code blanked
         self.signals: dict[str, set[int]] = {}
 
     def describe(self) -> str:
@@ -158,7 +172,7 @@ def find_sites(root: Path) -> dict[tuple[str, str], Site]:
                     anchor, body = " ".join(lines[line - 1].split()), code
                 else:
                     body = code[span[0] : span[1] + 1]
-                site = sites.setdefault((path, anchor), Site(path, anchor, span is None, body))
+                site = sites.setdefault((path, anchor), Site(path, anchor, span is None, body, code))
                 site.signals.setdefault(signal, set()).add(line)
     return sites
 
@@ -219,6 +233,15 @@ def compare(root: Path, sites: dict[tuple[str, str], Site], entries: list[dict])
             refusal = re.compile(rf"(?<![A-Za-z0-9_]){re.escape(entry['refusal'])}(?![A-Za-z0-9_])")
             if any(not refusal.search(sites[key].body) for key in matched):
                 findings.append(f"refusal missing: {label} no longer contains `{entry['refusal']}`")
+            for key in matched:
+                code = sites[key].code
+                if partial := PARTIAL_ENVIRONMENT.search(code):
+                    line = code.count("\n", 0, partial.start()) + 1
+                    findings.append(
+                        f"partial environment: {label}: line {line} resolves the environment from fewer "
+                        "sources than `Server` (the process, `.env`, then `[app] env`)"
+                    )
+                    break
     findings.extend(f"unlisted site: {sites[key].describe()}" for key in sorted(set(sites) - covered))
     return findings
 

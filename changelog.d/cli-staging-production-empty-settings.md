@@ -2,7 +2,9 @@
 
 - The Turso Blank and API starters (`cargo rullst new --database turso`) stop
   at start-up with an error naming `TURSO_DATABASE_URL` when it is empty or
-  unset in staging or production. Until now `TursoOrm` then used its offline
+  unset in staging or production, resolved as `Server` resolves them (the
+  process `RULLST_ENV`, then `APP_ENV`, then either one from `.env`, then
+  `[app] env` in `Rullst.toml`). Until now `TursoOrm` then used its offline
   fallback and wrote the application's data to the local SQLite file
   `TURSO_OFFLINE_PATH` (`turso-development.db`) instead of the database. An
   explicit `mock_` URL keeps the local file on purpose, and development and
