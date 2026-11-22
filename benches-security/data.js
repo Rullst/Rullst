@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795322563567,
+  "lastUpdate": 1795329450006,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -26378,6 +26378,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5996db1d7c226a5cd388cad78a183bd69b0bd026",
+          "message": "Merge pull request #856 from Rullst/fix/v13-rc1-upgrade-from-unknown\n\nfix(cli): refuse --from without a project version and link the rc.1 checklist",
+          "timestamp": "2026-11-22T03:17:14-03:00",
+          "tree_id": "d7f2fca1349aa52dfea7fd2869d262e2749e4640",
+          "url": "https://github.com/Rullst/Rullst/commit/5996db1d7c226a5cd388cad78a183bd69b0bd026"
+        },
+        "date": 1795329449200,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 4235,
+            "range": "± 40",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 432,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 11,
             "range": "± 0",
             "unit": "ns/iter"
           }
