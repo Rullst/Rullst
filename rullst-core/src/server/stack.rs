@@ -32,9 +32,10 @@ impl Server {
 
     /// Builds the static application. Outer-to-inner request order:
     /// (development telemetry recorder) → (monitor recorder) → trusted proxy
-    /// → security baseline → lifecycle → Traffic Shield → rate limit (both
-    /// skipped for exact health probes) → development/static/access log
-    /// layers → `Vary: HX-Request` on HTML responses → application routes. The development reload and telemetry
+    /// → access log of refused requests → security baseline → lifecycle →
+    /// Traffic Shield → rate limit (both skipped for exact health probes) →
+    /// development/static/access log layers → `Vary: HX-Request` on HTML
+    /// responses → application routes. The development reload and telemetry
     /// routes and the telemetry recorder exist only in a supervised debug
     /// Development process; the monitor route and its recorder only with
     /// [`Server::with_monitor`] and a configured credential.
@@ -64,17 +65,19 @@ impl Server {
         // A page and the htmx fragment of the same URL are cached apart
         // (`Vary: HX-Request`); one layer also writes the access log, which
         // `RULLST_ACCESS_LOG=off` leaves out.
-        app = if self.access_log_recording == super::console::Recording::Off {
-            app.layer(axum::middleware::from_fn(crate::htmx::vary_on_htmx_request))
-        } else {
-            app.layer(axum::middleware::from_fn_with_state(
-                super::console::AccessLog {
-                    log_health_probes: self.log_health_probes,
-                    route_paths: self.access_log_route_paths,
-                    recording: self.access_log_recording,
-                },
+        let access_log = (self.access_log_recording != super::console::Recording::Off).then_some(
+            super::console::AccessLog {
+                log_health_probes: self.log_health_probes,
+                route_paths: self.access_log_route_paths,
+                recording: self.access_log_recording,
+            },
+        );
+        app = match access_log {
+            None => app.layer(axum::middleware::from_fn(crate::htmx::vary_on_htmx_request)),
+            Some(access_log) => app.layer(axum::middleware::from_fn_with_state(
+                access_log,
                 super::console::access_log_and_vary_middleware,
-            ))
+            )),
         };
 
         let static_mounted = Path::new("static").exists();
@@ -128,6 +131,16 @@ impl Server {
         }
         .map_err(|error| ServerError::Configuration(error.to_string()))?;
 
+        // The requests that the layers above refuse themselves (CSRF, the
+        // WAF, Traffic Shield, the rate limiter, lifecycle admission) never
+        // reach the access log inside them; this writes their lines.
+        if let Some(access_log) = access_log {
+            app = app.layer(axum::middleware::from_fn_with_state(
+                access_log,
+                super::console::refusal_log_middleware,
+            ));
+        }
+
         // Outermost: every inner layer observes the resolved client address.
         if let Some(layer) = trusted_proxy {
             app = app.layer(layer);
@@ -172,3 +185,7 @@ mod tests;
 #[cfg(test)]
 #[path = "monitor_stack_tests.rs"]
 mod monitor_tests;
+
+#[cfg(test)]
+#[path = "refusal_log_tests.rs"]
+mod refusal_log_tests;

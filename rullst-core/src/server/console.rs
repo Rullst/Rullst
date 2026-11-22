@@ -7,9 +7,10 @@
 //! helpers drop the diagnostic line instead.
 
 use super::ServerError;
+use super::access_log::Refusal;
 pub(crate) use super::access_log::{AccessLog, Recording};
 use crate::config::Environment;
-use axum::extract::{Request, State};
+use axum::extract::{MatchedPath, Request, State};
 use axum::middleware::Next;
 use axum::response::Response;
 use std::collections::HashMap;
@@ -112,23 +113,42 @@ pub(super) fn should_log(path: &str, status: u16, log_health_probes: bool) -> bo
 }
 
 /// Queues one completed request to `path` that [`should_log`] and
-/// `recording` admit, showing `shown_path` ([`AccessLog::shown_path`]), for
-/// the access log's writer thread ([`super::access_log_writer`]). The
+/// `recording` admit, showing `shown_path` ([`AccessLog::shown_path`]) and
+/// the framework layer that answered it, if one did ([`Refusal`]), for the
+/// access log's writer thread ([`super::access_log_writer`]). The
 /// development telemetry recorder is fed by its own outermost layer
 /// (`dev_telemetry::record_responses`), not from here.
 pub(crate) fn log_request(
     method: &str,
     (path, shown_path): (&str, &str),
-    status: u16,
+    (status, refusal): (u16, Option<Refusal>),
     elapsed: std::time::Duration,
     (log_health_probes, recording): (bool, Recording),
 ) {
     if should_log(path, status, log_health_probes) && recording.records(status) {
-        let elapsed = Milliseconds::of(elapsed);
-        super::access_log_writer::write_line(format!(
-            "[HTTP] {method} {shown_path} -> {status} ({elapsed} ms)"
+        super::access_log_writer::write_line(access_line(
+            method,
+            shown_path,
+            (status, refusal),
+            Milliseconds::of(elapsed),
         ));
     }
+}
+
+/// One access-log line: `[HTTP] POST /login -> 403 (0.31 ms)`, followed by
+/// ` refused by <layer>` when a framework layer answered the request.
+pub(super) fn access_line(
+    method: &str,
+    shown_path: &str,
+    (status, refusal): (u16, Option<Refusal>),
+    elapsed: Milliseconds,
+) -> String {
+    let mut line = format!("[HTTP] {method} {shown_path} -> {status} ({elapsed} ms)");
+    if let Some(refusal) = refusal {
+        line.push_str(" refused by ");
+        line.push_str(refusal.layer());
+    }
+    line
 }
 
 /// A duration in milliseconds with two decimals, rounded half up, as an
@@ -194,14 +214,49 @@ where
     let uri = request.uri().clone();
     let shown_path = log.shown_path(uri.path(), request.extensions());
     let start = std::time::Instant::now();
-    let response = next(request).await;
+    let mut response = next(request).await;
+    // A layer of the application's own router may have refused it; this line
+    // names it, and the refusal log outside writes no second one.
+    let refusal = response.extensions_mut().remove::<Refusal>();
     log_request(
         method.as_str(),
         (uri.path(), shown_path.as_str()),
-        response.status().as_u16(),
+        (response.status().as_u16(), refusal),
         start.elapsed(),
         (log.log_health_probes, log.recording),
     );
+    response
+}
+
+/// The access log of the requests that a framework layer refused before
+/// they reached [`access_log_middleware`]: the static and hot-reload servers
+/// install it outside the security baseline (CSRF, the WAF), Traffic
+/// Shield, the rate limiter and lifecycle admission, whose responses never
+/// pass the access log inside them. It writes a line, with the same rules
+/// and the refusing layer ([`Refusal`]), only for a response such a layer
+/// marked; every other response was logged inside, or is a static file or a
+/// CORS preflight, which the access log does not write.
+pub(crate) async fn refusal_log_middleware(
+    State(log): State<AccessLog>,
+    request: Request,
+    next: Next,
+) -> Response {
+    let method = request.method().clone();
+    // Clones share the request's bytes and the route's name.
+    let uri = request.uri().clone();
+    let route = request.extensions().get::<MatchedPath>().cloned();
+    let start = std::time::Instant::now();
+    let mut response = next.run(request).await;
+    if let Some(refusal) = response.extensions_mut().remove::<Refusal>() {
+        let shown_path = log.shown_path_for(uri.path(), route.as_ref());
+        log_request(
+            method.as_str(),
+            (uri.path(), shown_path.as_str()),
+            (response.status().as_u16(), Some(refusal)),
+            start.elapsed(),
+            (log.log_health_probes, log.recording),
+        );
+    }
     response
 }
 

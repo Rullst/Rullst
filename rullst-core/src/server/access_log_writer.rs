@@ -194,12 +194,21 @@ thread_local! {
     pub(crate) static QUEUED_HERE: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
 }
 
+#[cfg(test)]
+thread_local! {
+    /// The lines themselves, for tests that read what a stack wrote.
+    pub(crate) static LINES_HERE: std::cell::RefCell<Vec<String>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+}
+
 /// Writes `line` to stdout through the process's writer thread, started on
 /// first use. Without a writer thread (the operating system refused one),
 /// the line is written directly.
 pub(crate) fn write_line(line: String) {
     #[cfg(test)]
     QUEUED_HERE.with(|count| count.set(count.get() + 1));
+    #[cfg(test)]
+    LINES_HERE.with(|lines| lines.borrow_mut().push(line.clone()));
     let writer =
         WRITER.get_or_init(|| AccessLogWriter::spawn(QUEUED_LINES, QUEUED_BYTES, Stdout).ok());
     match writer {

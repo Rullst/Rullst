@@ -2036,7 +2036,16 @@ the same server-authoritative controls.
   subscriber that `Server::run` and `telemetry::init_telemetry` install reads
   `RUST_LOG`; when it is unset or does not parse, the filter is
   `info,sqlx=warn`, so SQLx's own connection and statement events below WARN
-  are dropped while `rullst_orm` spans stay at INFO.
+  are dropped while `rullst_orm` spans stay at INFO. Lines are queued as
+  responses finish, so the log is in completion order, not arrival order.
+  Since 13.0.0-rc.1 a request that one of `Server`'s layers answers itself
+  (the CSRF check, machine-endpoint authentication, the enforcing WAF, the
+  rate limiter, Traffic Shield, lifecycle admission) is written too, by a
+  layer outside them, with ` refused by <layer>` (`csrf`,
+  `machine-endpoint`, `waf`, `rate-limit`, `traffic-shield`, `lifecycle`)
+  after the elapsed time; the layer marks its response, and a refusal inside
+  the application's router is written once, by the inner access log. The
+  hot-reload server of `cargo rullst dev` does the same.
 * **Trusted-Proxy Client Resolution (v13):** The socket peer
   (`ConnectInfo<SocketAddr>`) is the default client identity.
   `security::TrustedProxyLayer` implements `ProductionMiddlewareStage::TrustedProxy`

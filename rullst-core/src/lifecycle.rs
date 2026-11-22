@@ -439,16 +439,19 @@ async fn lifecycle_middleware(
 
     match lifecycle.try_admit() {
         Ok(guard) => body::track(next.run(request).await, guard),
-        Err(_) => (
-            StatusCode::SERVICE_UNAVAILABLE,
-            [
-                (header::CACHE_CONTROL, "no-store"),
-                (header::RETRY_AFTER, "1"),
-                (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
-            ],
-            "Service is not ready to accept application requests.",
-        )
-            .into_response(),
+        Err(_) => crate::server::refused(
+            (
+                StatusCode::SERVICE_UNAVAILABLE,
+                [
+                    (header::CACHE_CONTROL, "no-store"),
+                    (header::RETRY_AFTER, "1"),
+                    (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
+                ],
+                "Service is not ready to accept application requests.",
+            )
+                .into_response(),
+            crate::server::Refusal::LIFECYCLE,
+        ),
     }
 }
 

@@ -244,13 +244,16 @@ impl Service<axum::extract::Request> for HotSwapService {
 
         // Innermost, after routing, as in the static server stack. Hot reload
         // runs only in development, which logs every probe.
-        if self.access_log_recording != super::console::Recording::Off {
+        let access_log = (self.access_log_recording != super::console::Recording::Off).then_some(
+            super::console::AccessLog {
+                log_health_probes: true,
+                route_paths: self.access_log_route_paths,
+                recording: self.access_log_recording,
+            },
+        );
+        if let Some(access_log) = access_log {
             router = router.layer(axum::middleware::from_fn_with_state(
-                super::console::AccessLog {
-                    log_health_probes: true,
-                    route_paths: self.access_log_route_paths,
-                    recording: self.access_log_recording,
-                },
+                access_log,
                 super::console::access_log_middleware,
             ));
         }
@@ -287,6 +290,14 @@ impl Service<axum::extract::Request> for HotSwapService {
                 return Box::pin(async move { Ok(response) });
             }
         };
+        // Refused requests, outside the layers that refuse them, as in the
+        // static server stack.
+        if let Some(access_log) = access_log {
+            router = router.layer(axum::middleware::from_fn_with_state(
+                access_log,
+                super::console::refusal_log_middleware,
+            ));
+        }
         // Outermost, as in the static server stack.
         if let Some(ref layer) = self.trusted_proxy {
             router = router.layer(layer.clone());

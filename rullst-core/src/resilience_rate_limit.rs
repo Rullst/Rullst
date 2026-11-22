@@ -105,8 +105,10 @@ pub fn default_key_extractor(req: &Request) -> String {
 pub async fn rate_limit_middleware(limiter: RateLimiter, req: Request, next: Next) -> Response {
     let key = (limiter.key_extractor)(&req);
     if limiter.check_and_consume(&key) {
-        next.run(req).await
-    } else {
+        return next.run(req).await;
+    }
+    // The access log names the limiter ([`crate::server::Refusal`]).
+    crate::server::refused(
         match Response::builder()
             .status(StatusCode::TOO_MANY_REQUESTS)
             .header(
@@ -122,6 +124,7 @@ pub async fn rate_limit_middleware(limiter: RateLimiter, req: Request, next: Nex
                 *res.status_mut() = StatusCode::TOO_MANY_REQUESTS;
                 res
             }
-        }
-    }
+        },
+        crate::server::Refusal::RATE_LIMIT,
+    )
 }

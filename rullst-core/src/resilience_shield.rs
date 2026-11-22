@@ -230,7 +230,7 @@ pub async fn backpressure_middleware(shield: TrafficShield, req: Request, next: 
             "Traffic Shield monitoring is unavailable.",
         ));
         *response.status_mut() = StatusCode::SERVICE_UNAVAILABLE;
-        return response;
+        return crate::server::refused(response, crate::server::Refusal::TRAFFIC_SHIELD);
     }
 
     let active = shield.active_requests.fetch_add(1, Ordering::SeqCst);
@@ -253,7 +253,7 @@ pub async fn backpressure_middleware(shield: TrafficShield, req: Request, next: 
             ));
         }
 
-        match Response::builder()
+        let shed = match Response::builder()
             .status(StatusCode::SERVICE_UNAVAILABLE)
             .header(axum::http::header::RETRY_AFTER, "5")
             .header(
@@ -263,13 +263,14 @@ pub async fn backpressure_middleware(shield: TrafficShield, req: Request, next: 
             .body(axum::body::Body::from(
                 "Service Temporarily Saturated. Please try again soon.",
             )) {
-            Ok(res) => return res,
+            Ok(res) => res,
             Err(_) => {
                 let mut res = Response::new(axum::body::Body::empty());
                 *res.status_mut() = StatusCode::SERVICE_UNAVAILABLE;
-                return res;
+                res
             }
-        }
+        };
+        return crate::server::refused(shed, crate::server::Refusal::TRAFFIC_SHIELD);
     }
 
     if pressure == TrafficPressure::Moderate {
