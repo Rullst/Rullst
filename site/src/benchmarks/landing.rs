@@ -4,7 +4,7 @@
 use rullst::html;
 use rullst::html::Markup;
 
-use super::compare::{measured_date, measured_line};
+use super::compare::{gate_note, measured_date, measured_line};
 use super::format::{mib, score};
 use super::text::{self, words};
 use super::{CATEGORIES, Cell, FLAGS, MINIMAL, Results, Row, SPEED, row_name};
@@ -66,10 +66,10 @@ fn proof(results: &Results, row: &Row, lang: Lang) -> Markup {
     let pt = lang.is_pt();
     let ram = match (after, pt) {
         (Some((after, axum_after, logins)), false) => {
-            html! { <strong>{peak}" MiB"</strong>" of RAM at its high-water mark under load and "{after}" MiB after "{logins}" logins; Axum: "{axum_peak}" and "{axum_after}" MiB on the same runners." }
+            html! { <strong>{peak}" MiB"</strong>" of RAM at its high-water mark under load and "{after}" MiB after "{logins}" logins; Axum: "{axum_peak}" and "{axum_after}" MiB on the same runners (the RAM after the logins is in no score)." }
         }
         (Some((after, axum_after, logins)), true) => {
-            html! { <strong>{peak}" MiB"</strong>" de RAM no pico sob carga e "{after}" MiB depois de "{logins}" logins; Axum: "{axum_peak}" e "{axum_after}" MiB nas mesmas máquinas." }
+            html! { <strong>{peak}" MiB"</strong>" de RAM no pico sob carga e "{after}" MiB depois de "{logins}" logins; Axum: "{axum_peak}" e "{axum_after}" MiB nas mesmas máquinas (a RAM depois dos logins não entra em nenhuma pontuação)." }
         }
         (None, false) => {
             html! { <strong>{peak}" MiB"</strong>" of RAM at its high-water mark under load; Axum: "{axum_peak}" MiB on the same runners." }
@@ -78,6 +78,21 @@ fn proof(results: &Results, row: &Row, lang: Lang) -> Markup {
             html! { <strong>{peak}" MiB"</strong>" de RAM no pico sob carga; Axum: "{axum_peak}" MiB nas mesmas máquinas." }
         }
     };
+    // The Memory score, which can call a smaller figure a tie with Axum.
+    let memory_score = row
+        .category("memory")
+        .filter(|cell| cell.score.is_some())
+        .map(|cell| {
+            let value = score(cell, lang, false);
+            match (pt, cell.has("within_reference_margin")) {
+                (false, true) => html! { " Its Memory score is "{value}": a tie with Axum." },
+                (false, false) => html! { " Its Memory score is "{value}" Axum's." },
+                (true, true) => {
+                    html! { " A pontuação de Memória é "{value}": um empate com o Axum." }
+                }
+                (true, false) => html! { " A pontuação de Memória é "{value}" a do Axum." },
+            }
+        });
     // The lowest throughput score (the first one on a tie).
     let mut lowest: Option<(&str, &Cell)> = None;
     for key in SPEED {
@@ -104,7 +119,7 @@ fn proof(results: &Results, row: &Row, lang: Lang) -> Markup {
     } else {
         html! { "Measured by Rullst/Benchmarks on "{date}"." }
     };
-    html! { <p class="proof-figure">{ram}{speed}</p><p class="proof-meta">{meta}</p> }
+    html! { <p class="proof-figure">{ram}{memory_score}{speed}</p><p class="proof-meta">{meta}</p> }
 }
 
 fn positions(cell: &Cell, ranked: u32, lang: Lang) -> String {
@@ -331,6 +346,7 @@ fn summary(results: &Results, row: &Row, lang: Lang) -> Markup {
         .collect();
     html! {
         <p class="landing-bench-meta">{measured_line(results, lang)}</p>
+        {gate_note(results, lang)}
         {overall}
         <div class="landing-bench-split">{level}{below}{unscored}</div>
         {facts}

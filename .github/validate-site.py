@@ -70,6 +70,7 @@ PT_BR_COUNTERPARTS = {
     "https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement#international-data-transfers":
         "https://docs.github.com/pt/site-policy/privacy-policies/github-general-privacy-statement#international-data-transfers",
     "https://policies.google.com/privacy": "https://policies.google.com/privacy?hl=pt-BR",
+    "https://www.cloudflare.com/privacypolicy/": "https://www.cloudflare.com/pt-br/privacypolicy/",
     "mailto:officialrullst@gmail.com?subject=Privacy%20request": "mailto:officialrullst@gmail.com?subject=Pedido%20de%20privacidade",
 }
 BENCH_TEMPLATES = sorted(DOCS.glob("benches*_template.html"))
@@ -661,6 +662,7 @@ LANDING_RENDERING = {
         "Stability under heavier load: pass.",
         "scores Hello world 1.00×* ≈, Database 0.87×*, Application 0.98×* ‡ ≈; the gap between the two rows is what those layers cost.",
         "<strong>12 MiB</strong> of RAM at its high-water mark under load and 470 MiB after 125 logins; Axum: 17 and 927 MiB",
+        "MiB on the same runners (the RAM after the logins is in no score). Its Memory score is 1.00×: a tie with Axum. Its lowest speed score",
         "Its lowest speed score is Hello world: 0.48× Axum's.",
         'Measured by Rullst/Benchmarks on <time datetime="2026-11-20">20 November 2026</time>.',
     )),
@@ -674,6 +676,7 @@ LANDING_RENDERING = {
         "Estabilidade sob carga mais pesada: passou.",
         "pontua Hello world 1,00×* ≈, Banco de dados 0,87×*, Aplicação 0,98×* ‡ ≈;",
         "<strong>12 MiB</strong> de RAM no pico sob carga e 470 MiB depois de 125 logins; Axum: 17 e 927 MiB",
+        "MiB nas mesmas máquinas (a RAM depois dos logins não entra em nenhuma pontuação). A pontuação de Memória é 1,00×: um empate com o Axum. A menor",
         "A menor pontuação de velocidade é a de Hello world: 0,48× a do Axum.",
         'Medido pelo Rullst/Benchmarks em <time datetime="2026-11-20">20 de novembro de 2026</time>.',
     )),
@@ -891,6 +894,14 @@ def validate_landing_variants(temp: Path) -> None:
     landing, _compare, _warnings = generate_variant(temp, "landing-no-overall", lambda d: d.update(overall_published=False, weights={}))
     summary = landing_block(landing, "summary")
     assert UNPUBLISHED in summary and "Overall score" not in summary, "an unpublished overall score is not shown"
+    # A run that fails the benchmark's publication gate says so on both pages; others do not.
+    gate = "an automatic run of Rullst/Benchmarks would not publish these results (18 problems)"
+    assert gate not in landing and gate not in _compare, "only a listed run gets the publication-gate note"
+    failed_run = "https://github.com/Rullst/Benchmarks/actions/runs/44765309608"
+    landing, compare, _warnings = generate_variant(
+        temp, "gate-failed", lambda d: d.update(run={"id": "44765309608", "url": failed_run}))
+    for page, text in (("landing", landing_block(landing, "summary")), ("comparison", compare)):
+        assert gate in text and "<code>/world-update</code>" in text, f"{page}: the failed publication gate is not shown"
     landing, _compare, _warnings = generate_variant(
         temp, "landing-errors", lambda d: fixture_row(d, "rullst")["categories"]["database"].update(score=None, position=None, status="errors"))
     summary = landing_block(landing, "summary")

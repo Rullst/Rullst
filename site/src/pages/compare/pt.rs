@@ -29,7 +29,7 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                     <p class="eyebrow">"Três frameworks web em Rust. Fatos verificados."</p>
                     <h1>"Rullst, Loco e Topcoat."</h1>
                     <p>"Os três constroem aplicações web em Rust sobre o Tokio, e cada um é a melhor escolha para alguns projetos. Esta página compara os três tema a tema, com base no que a documentação de cada projeto diz. Quando um projeto não documenta algo, a página diz isso em vez de adivinhar."</p>
-                    <p class="compare-checked" id="checked">"Verificado em "<time datetime="2026-11-14">"14 de novembro de 2026"</time>" com Rullst "<code>"13.0.0-alpha.5"</code>", Loco "<code>"loco-rs 1.3.1"</code>" e Topcoat "<code>"topcoat 0.12.1"</code>". Quem escreveu esta página é o mantenedor do Rullst. Se algum fato estiver errado ou desatualizado, "<a href="https://github.com/Rullst/Rullst/issues">"abra uma issue"</a>"."</p>
+                    <p class="compare-checked" id="checked">"Verificado em "<time datetime="2026-11-14">"14 de novembro de 2026"</time>" com Rullst "<code>"13.0.0-alpha.5"</code>", Loco "<code>"loco-rs 1.3.1"</code>" e Topcoat "<code>"topcoat 0.12.1"</code>"; os padrões de segurança de novo em "<time datetime="2026-11-21">"21 de novembro de 2026"</time>", e as linhas de estabilidade e segurança do Rullst em "<time datetime="2026-11-22">"22 de novembro de 2026"</time>" com o código-fonte da 13.0.0-rc.1. Quem escreveu esta página é o mantenedor do Rullst. Se algum fato estiver errado ou desatualizado, "<a href="https://github.com/Rullst/Rullst/issues">"abra uma issue"</a>"."</p>
                     <section id="fit" aria-labelledby="fit-heading">
                         <h2 id="fit-heading">"Quando cada um faz sentido"</h2>
                         <ul class="compare-fit">
@@ -69,7 +69,7 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                         {blocks::topic(
                             "topic-security",
                             "Autenticação e segurança padrão",
-                            html! { "Hash de senha com Argon2, sessões criptografadas, passkeys, RBAC e login OAuth2/OIDC. O starter SaaS já liga o middleware de CSRF; o "<code>"rullst-security"</code>" também oferece cabeçalhos seguros, uma camada de WAF e bloqueio de login." },
+                            html! { "Hash de senha com Argon2, sessões criptografadas, passkeys, RBAC e login OAuth2/OIDC. Em todo starter gerado, o "<code>"Server"</code>" monta cabeçalhos seguros e proteção contra CSRF double-submit em todos os ambientes, e um WAF que recusa requisições suspeitas em staging e produção e só as registra em desenvolvimento; o "<code>"rullst-security"</code>" acrescenta bloqueio de login e outras camadas." },
                             html! { "JWT por padrão, com hash argon2 e chaves de API. Sessões em cookie assinado ou criptografado e OAuth2/OIDC com presets de GitHub e Google são opcionais. O middleware de cabeçalhos seguros existe, mas vem desligado; middleware de CSRF não está documentado." },
                             html! { "Tokens de sessão com armazenamento fornecido por você, em cookies "<code>"__Host-"</code>", Secure, HttpOnly e SameSite=Lax. Uma política de origem padrão rejeita requisições de outras origens que alteram estado. Autenticação está no roadmap; hash de senha, cabeçalhos seguros e tokens de CSRF não estão documentados." },
                         )}
@@ -118,14 +118,14 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                         {blocks::topic(
                             "topic-stability",
                             "Estabilidade, versionamento e janela de suporte",
-                            html! { "A 13.0 está em pré-lançamento; a 13.0.0-alpha.6 congelou as funcionalidades e a API pública, e a 13.0.0-rc.1 traz correções, documentação e as mudanças que o mantenedor aprovou uma a uma depois do congelamento, duas delas incompatíveis. Depois da 13.0.0, o mantenedor pretende manter a 13.x como linha ativa por 12 meses e, depois da 14.0.0, dar a ela correções de segurança por mais 1 a 3 meses (uma intenção, não uma garantia). Versionamento semântico; MSRV Rust 1.96." },
+                            html! { "A 13.0 está em pré-lançamento; a 13.0.0-alpha.6 congelou as funcionalidades e a API pública, e a 13.0.0-rc.1 traz correções, documentação e as mudanças que o mantenedor aprovou uma a uma depois do congelamento: duas delas quebram a API, e outras mudam o que um deploy da alpha.6 que funciona faz, como recusar configurações vazias em staging e produção. Depois da 13.0.0, o mantenedor pretende manter a 13.x como linha ativa por 12 meses e, depois da 14.0.0, dar a ela correções de segurança por mais 1 a 3 meses (uma intenção, não uma garantia). Versionamento semântico; MSRV Rust 1.96." },
                             html! { "A 1.0.0 (julho de 2026) foi a primeira versão estável. As notas de atualização listam mudanças incompatíveis; uma declaração de semver e uma janela de suporte não estão documentadas. MSRV Rust 1.94." },
                             html! { "O README diz: inicial e experimental, espere mudanças incompatíveis. O changelog diz que segue o versionamento semântico. Nenhuma janela de suporte documentada. MSRV Rust 1.99." },
                         )}
                         {blocks::topic(
                             "topic-maturity",
                             "Maturidade e comunidade",
-                            html! { "Publicado pela primeira vez em maio de 2026. Licença MIT. 21 estrelas e 7 contribuidores no GitHub em 14 de novembro de 2026." },
+                            html! { "Publicado pela primeira vez em maio de 2026. Licença MIT. 21 estrelas e 7 contribuidores no GitHub em 14 de novembro de 2026; dois dos contribuidores são bots e um é a conta de um agente de programação com IA; o Rullst tem um único mantenedor." },
                             html! { "Primeira versão em novembro de 2023. Licença Apache-2.0. 9.629 estrelas e 157 contribuidores no GitHub em 14 de novembro de 2026." },
                             html! { "Repositório criado em abril de 2026, primeira versão funcional em julho de 2026, na organização tokio-rs do GitHub. Licença MIT. 7.221 estrelas e 41 contribuidores no GitHub em 14 de novembro de 2026." },
                         )}
@@ -139,7 +139,7 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                     </section>
                     <section id="benchmarks" aria-labelledby="benchmarks-heading">
                         <h2 id="benchmarks-heading">"Desempenho"</h2>
-                        <p>"Estes números não são escritos à mão: cada build diário deste site insere os resultados publicados mais recentes da suíte "<a href="/Benchmarks/">"Rullst/Benchmarks"</a>" para os três frameworks, o Actix Web e o Gin, além de uma configuração mínima do Rullst. O mantenedor do Rullst também mantém esse benchmark e escreveu todas as implementações dele."</p>
+                        <p>"Estes números não são escritos à mão: cada build diário deste site insere os resultados mais recentes da suíte "<a href="/Benchmarks/">"Rullst/Benchmarks"</a>" para os três frameworks, o Actix Web e o Gin, além de uma configuração mínima do Rullst. O mantenedor do Rullst também mantém esse benchmark e escreveu todas as implementações dele. A página de resultados dele diz se estes resultados passam pela porta de publicação do próprio benchmark."</p>
                         <div class="benchmark-howto">
                             <h3>"Como ler estes números"</h3>
                             <ul>
