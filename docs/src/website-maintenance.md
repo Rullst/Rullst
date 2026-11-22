@@ -42,7 +42,51 @@ Preserve the footer dedication and the release notice and keep it current: the
 evidence for claims; do not hardcode aspirational coverage, scorecard, speed or
 certification values. The Integrations section lists exactly the entries of
 README.md's Integrations table (the validator compares them item by item), and
-MongoDB, DuckDB and Qdrant appear only as recipes.
+MongoDB, DuckDB and Qdrant appear only as recipes. Integrations are named in
+plain text: a third-party logo may appear only where that brand's published
+guidelines allow it to indicate an integration, and the pull request that adds
+it names the guideline.
+
+## The landing page
+
+The landing's sections come in this order, with the same ids in both
+languages: the first screen (what Rullst is in one sentence, the install
+command, the animated concept illustration labelled as not live telemetry, and
+three proof points), `#performance`, `#security` (with the `#verification`
+list), `#included`, `#integrations`, `#examples`, `#academy` and `#community`,
+then the release notice. The validator checks the order, the sentence, the
+install command, the illustration and the three proof points; the browser test
+checks that the install command and the illustration fit in a 1440 × 1100
+first screen, and that every animation stops under reduced motion.
+
+- **Performance** shows Rullst as `cargo rullst new` generates it, from the
+  same Rullst/Benchmarks `results/site.json` as the comparison page and with
+  the same checks (see [the comparison page](#the-comparison-page)). The
+  assembler fills two blocks of each landing: `landing-proof` (the first
+  screen's memory proof point: RAM under load and after the logins against
+  Axum's, and Rullst's lowest speed score) and `landing-benchmarks` (the
+  overall score and position range, who shares that range among the rows the
+  comparison page shows, the categories level with or above Axum and those
+  below it, memory, stability, the minimal row and a legend of every sign
+  shown, ‡ included). Without current data each block keeps its pending text;
+  the proof point also stays pending when Rullst's RAM was not measured. The
+  disclosure that Rullst's maintainer maintains the benchmark stays above the
+  results.
+- **Security** says what every generated application has on by default, what
+  is opt-in and which automated checks run against the framework's code, each
+  linked to its workflow. It keeps "no external audit has been completed" (as
+  [the assurance case](assurance-case.md) says) and the sole-maintainer
+  statement; the validator requires both. A change that is only on `main`
+  says which release brings it.
+- **Included** lists what ships with the framework. A statement about what
+  another framework documents names that framework, its version and the day
+  it was checked, in the section's checked line (`checked-security`,
+  `checked-included`); the validator requires the line, the same versions as
+  the comparison page and the same line in both languages. Recheck those
+  statements when Loco or Topcoat releases.
+- The validator rejects marketing and absolute wording on the landing
+  ("blazing", "the only framework", "unique", "more secure", "experimental"
+  and their Portuguese counterparts).
 
 ## Validate before deployment
 
@@ -77,8 +121,8 @@ with `python3 .github/generate-llms-txt.py --out <directory>`.
 The browser test checks both languages at desktop and 390/320-pixel layouts,
 the flag language switcher, keyboard and mobile navigation, the Academy
 greeting, clipboard success/denial, both privacy pages, both comparison pages
-at three widths (as written and with benchmark rows assembled from the
-fixture, served under `/_rendered/`), reduced motion,
+and both landings at three widths (as written and with benchmark results
+assembled from the fixture, served under `/_rendered/`), reduced motion,
 no-JavaScript navigation, resource failures, CSP errors, external requests and
 browser storage. It is not a complete accessibility audit or cross-browser
 certification. Optional `--screenshots /absolute/output/directory` records
@@ -94,7 +138,7 @@ invalidation, not an artifact-signing or browser integrity guarantee.
 
 The browser regression check first stores an old unversioned stylesheet and
 script in a real four-hour browser cache, confirms they are reused, then loads
-the new landing and checks the three illustrated module cards' actual styles.
+the new landing and checks the three first-screen proof cards' actual styles.
 The privacy pages share the versioned stylesheet. Keep query
 parameters in any CDN cache key; an intermediary configured to ignore them
 requires a cache-policy change or content-hashed asset filenames instead.
@@ -240,9 +284,13 @@ fixture here.
 `.github/fixtures/site-benchmarks.json` is the test fixture (its numbers are
 not measurements); `validate-site.py` renders it as of 21 November 2026 and
 checks the rendered rows, cells, legend, memory table and reading in both
-languages, and that each kind of rejected data keeps the pending text;
-`site-browser-smoke.mjs` renders it dated the current day and checks the
-tables at three widths without horizontal page scrolling.
+languages, the landing's proof point and summary (including how it words a
+shared position range, a missing Rullst row, missing memory, an unpublished
+overall score and a category without a score), and that each kind of rejected
+data keeps the pending text on every page; `site-browser-smoke.mjs` renders it
+dated the current day and checks the tables and the landing summary at three
+widths without horizontal page scrolling. Passing `--organization-site` a
+directory assembled with `--benchmarks` previews the pages with real results.
 
 ## How the root site is deployed
 

@@ -17,6 +17,10 @@ copy (at most 1 MiB) of the site summary Rullst/Benchmarks publishes
 docs/src/website-maintenance.md). Its overall and category scores, positions,
 flags and memory for Rullst, Loco, Topcoat, Actix Web, Gin and Rullst
 (minimal), and its Rullst reading, are rendered into the comparison pages.
+The same checked results also fill two blocks of each landing page: a
+memory proof point in the first screen and the Performance summary (overall
+position, its group, the categories level with or below Axum, memory, the
+minimal row and every flag shown), both only when the data has the Rullst row.
 Without the file, when it is invalid or uses anything the pages do not
 explain, or when it was measured more than --benchmarks-max-age-days days
 ago (default 90), the pages keep their "no current results" text and the
@@ -65,7 +69,7 @@ CANONICAL = {
     "compare/index.html": SITE_URL + "compare/",
     "pt-br/comparar/index.html": SITE_URL + "pt-br/comparar/",
 }
-LANDINGS = ("index.html", "pt-br/index.html")
+LANDINGS = {"index.html": "en", "pt-br/index.html": "pt-BR"}
 ASSET_REFERENCE = re.compile(r'(?:href|src)="/assets/(site\.(?:css|js))\?v=([0-9a-f]{16})"')
 LOCAL_ASSET = re.compile(r'(?:href|src)="/(assets/[^"?#]+)')
 
@@ -73,6 +77,9 @@ LOCAL_ASSET = re.compile(r'(?:href|src)="/(assets/[^"?#]+)')
 COMPARE_PAGES = {"compare/index.html": "en", "pt-br/comparar/index.html": "pt-BR"}
 BENCHMARK_START = "<!-- benchmark-results:start -->"
 BENCHMARK_END = "<!-- benchmark-results:end -->"
+# The landing's first-screen memory proof point and its Performance summary.
+LANDING_PROOF = ("<!-- landing-proof:start -->", "<!-- landing-proof:end -->")
+LANDING_SUMMARY = ("<!-- landing-benchmarks:start -->", "<!-- landing-benchmarks:end -->")
 BENCHMARK_SCHEMA = "rullst.benchmarks.site.v2"
 # Results measured longer ago than this are not shown (--benchmarks-max-age-days).
 BENCHMARK_MAX_AGE_DAYS = 90
@@ -151,6 +158,69 @@ TEXT = {
         "reading": "O que isto significa para o Rullst",
     },
 }
+# The landing's proof point and Performance summary, by page language.
+LANDING_TEXT = {
+    "en": {
+        "proof_both": "<strong>{peak} MiB</strong> of RAM at its high-water mark under load and {after} MiB after {logins} logins; "
+                      "Axum: {axum_peak} and {axum_after} MiB on the same runners.",
+        "proof_peak": "<strong>{peak} MiB</strong> of RAM at its high-water mark under load; Axum: {axum_peak} MiB on the same runners.",
+        "proof_lowest": "Its lowest speed score is {category}: {score} Axum's.",
+        "proof_flagged": " (‡: see Performance)",
+        "proof_meta": "Measured by Rullst/Benchmarks on {date}.",
+        "overall": "Overall score",
+        "range": "positions {first}–{last} of {ranked}",
+        "single": "position {first} of {ranked}",
+        "group_named": "It shares positions {first}–{last} with {names}.",
+        "group_partial": "It shares positions {first}–{last} with {count} other implementations, among them {names}.",
+        "group_unnamed": "It shares positions {first}–{last} with {count} other implementations of the full results.",
+        "group_unnamed_one": "It shares positions {first}–{last} with one other implementation of the full results.",
+        "group_alone": "No other implementation shares its position.",
+        "and": " and ",
+        "level": "Level with or above Axum",
+        "below": "Below Axum",
+        "unscored": "Without a score",
+        "none": "None in this run.",
+        "memory_both": "RAM: {peak} MiB at the high-water mark under load (Axum: {axum_peak} MiB); {after} MiB after the {logins} logins "
+                       "of the application endpoints (Axum: {axum_after} MiB), which no score includes.",
+        "memory_peak": "RAM: {peak} MiB at the high-water mark under load (Axum: {axum_peak} MiB).",
+        "stability": "Stability under heavier load: {result}.",
+        "minimal": "The diagnostic “Rullst (minimal)” row, the same router, ORM and <code>html!</code> templates served without that "
+                   "middleware and without a position, scores {cells}; the gap between the two rows is what those layers cost.",
+        "legend": "1.00× is Axum and higher is better in every score. A range such as 4–5 is a tie: those implementations share "
+                  "the positions in no particular order.",
+    },
+    "pt-BR": {
+        "proof_both": "<strong>{peak} MiB</strong> de RAM no pico sob carga e {after} MiB depois de {logins} logins; "
+                      "Axum: {axum_peak} e {axum_after} MiB nas mesmas máquinas.",
+        "proof_peak": "<strong>{peak} MiB</strong> de RAM no pico sob carga; Axum: {axum_peak} MiB nas mesmas máquinas.",
+        "proof_lowest": "A menor pontuação de velocidade é a de {category}: {score} a do Axum.",
+        "proof_flagged": " (‡: veja Desempenho)",
+        "proof_meta": "Medido pelo Rullst/Benchmarks em {date}.",
+        "overall": "Pontuação geral",
+        "range": "posições {first}–{last} de {ranked}",
+        "single": "posição {first} de {ranked}",
+        "group_named": "Divide as posições {first}–{last} com {names}.",
+        "group_partial": "Divide as posições {first}–{last} com outras {count} implementações, entre elas {names}.",
+        "group_unnamed": "Divide as posições {first}–{last} com outras {count} implementações dos resultados completos.",
+        "group_unnamed_one": "Divide as posições {first}–{last} com outra implementação dos resultados completos.",
+        "group_alone": "Nenhuma outra implementação divide a posição dele.",
+        "and": " e ",
+        "level": "No nível do Axum ou acima",
+        "below": "Abaixo do Axum",
+        "unscored": "Sem pontuação",
+        "none": "Nenhuma nesta rodada.",
+        "memory_both": "RAM: {peak} MiB no pico sob carga (Axum: {axum_peak} MiB); {after} MiB depois dos {logins} logins "
+                       "dos endpoints de aplicação (Axum: {axum_after} MiB), que nenhuma pontuação inclui.",
+        "memory_peak": "RAM: {peak} MiB no pico sob carga (Axum: {axum_peak} MiB).",
+        "stability": "Estabilidade sob carga mais pesada: {result}.",
+        "minimal": "A linha de diagnóstico “Rullst (mínimo)”, o mesmo roteador, ORM e templates <code>html!</code> servidos sem esse "
+                   "middleware e sem posição, pontua {cells}; a diferença entre as duas linhas é o custo dessas camadas.",
+        "legend": "1,00× é o Axum, e mais é melhor em todas as pontuações. Um intervalo como 4–5 é um empate: essas implementações "
+                  "dividem as posições, sem ordem entre elas.",
+    },
+}
+# The categories whose scores are throughput (the "speed" of the proof point).
+SPEED = ("hello", "database", "application")
 # The data's note and reading, by page language.
 NOTE_KEYS = {"en": "note", "pt-BR": "note_pt_br"}
 READING_KEYS = {"en": "en", "pt-BR": "pt_br"}
@@ -361,15 +431,22 @@ def format_number(value: float, decimals: int, lang: str) -> str:
     return text.translate(str.maketrans(",.", ".,")) if lang == "pt-BR" else text
 
 
+def score_text(cell: dict, lang: str, signs: bool = True) -> str:
+    """A score as the pages write it (0.50×), with its flag signs unless SIGNS is false."""
+    score = format_number(cell["score"], 2 if cell["score"] >= 0.1 else 3, lang) + "×"
+    if not signs:
+        return score
+    score += "*" if "cpu_cost" in cell["flags"] else ""
+    return score + "".join(f" {sign}" for flag, sign in FLAGS.items() if flag != "cpu_cost" and flag in cell["flags"])
+
+
 def render_cell(cell: dict, lang: str) -> str:
     """Position, score with its flags, and tie margin; the status when there is no score."""
     if cell["score"] is None:
         return f'<td class="benchmark-status">{escape(TEXT[lang]["statuses"].get(cell["status"], cell["status"]))}</td>'
     first, last = cell["position"] or (None, None)
     position = "–" if first is None else (f"{first}" if first == last else f"{first}–{last}")
-    score = format_number(cell["score"], 2 if cell["score"] >= 0.1 else 3, lang) + "×"
-    score += "*" if "cpu_cost" in cell["flags"] else ""
-    score += "".join(f" {sign}" for flag, sign in FLAGS.items() if flag != "cpu_cost" and flag in cell["flags"])
+    score = score_text(cell, lang)
     margin = f'<span class="benchmark-margin">±{format_number(cell["margin"], 1, lang)}%</span>' if cell["margin"] is not None else ""
     return f'<td><span class="benchmark-position">{position}</span><span class="benchmark-score">{escape(score)}</span>{margin}</td>'
 
@@ -439,17 +516,26 @@ def render_memory(results: dict, order: list[str], lang: str) -> str:
             f'<tbody>{"".join(lines)}</tbody></table></div>')
 
 
-def render_benchmarks(results: dict, lang: str) -> str:
-    """HTML for the comparison page's results block, escaped throughout."""
-    text = TEXT[lang]
+def measured_date(results: dict, lang: str) -> str:
+    """The measurement day as a <time> element in the page's language."""
     measured = results["measured_on"]
     month = MONTHS[lang][measured.month - 1]
     day = f"{measured.day} de {month} de {measured.year}" if lang == "pt-BR" else f"{measured.day} {month} {measured.year}"
+    return f'<time datetime="{measured.isoformat()}">{escape(day)}</time>'
+
+
+def measured_line(results: dict, lang: str) -> str:
+    """Date, Rullst version and source, Axum's version and the measurement run."""
+    text = TEXT[lang]
     run = f'<a href="{escape(results["run_url"])}">{text["run"].format(id=escape(results["run_id"]))}</a>'
-    meta = text["measured"].format(date=f'<time datetime="{measured.isoformat()}">{escape(day)}</time>',
-                                   version=escape(results["rullst_version"]), source=text["source"].get(results["source"], ""),
-                                   axum=escape(results["axum_version"]), run=run)
-    lines = [f'<p class="benchmark-meta">{meta} {text["full"].format(ranked=results["ranked"])}</p>']
+    return text["measured"].format(date=measured_date(results, lang), version=escape(results["rullst_version"]),
+                                   source=text["source"].get(results["source"], ""), axum=escape(results["axum_version"]), run=run)
+
+
+def render_benchmarks(results: dict, lang: str) -> str:
+    """HTML for the comparison page's results block, escaped throughout."""
+    text = TEXT[lang]
+    lines = [f'<p class="benchmark-meta">{measured_line(results, lang)} {text["full"].format(ranked=results["ranked"])}</p>']
     note, note_lang = results["notes"].get(lang), lang
     if note is None and results["notes"].get("en"):
         note, note_lang = results["notes"]["en"], "en"
@@ -466,6 +552,158 @@ def render_benchmarks(results: dict, lang: str) -> str:
     lines.append(f'<h3>{text["reading"]}</h3>')
     lines.append(f'<p class="benchmark-reading">{render_note(results["readings"][lang])}</p>')
     return "\n".join(lines)
+
+
+def category_names(lang: str) -> dict[str, str]:
+    """Category key -> its column title on the comparison page."""
+    return dict(zip(CATEGORIES, TEXT[lang]["headers"][2:7]))
+
+
+def mib(value: float, lang: str) -> str:
+    return format_number(value, 0, lang)
+
+
+def render_landing_proof(results: dict, lang: str) -> str:
+    """The first screen's memory proof point: Rullst's RAM against Axum's and its lowest speed score."""
+    text = LANDING_TEXT[lang]
+    row = results["rows"]["rullst"]
+    memory = row["memory"]
+    values = {"peak": mib(memory["peak_ram_mib"], lang), "axum_peak": mib(memory["axum_peak_ram_mib"], lang)}
+    if results["logins"] and "after_logins_peak_ram_mib" in memory and "axum_after_logins_peak_ram_mib" in memory:
+        values.update(after=mib(memory["after_logins_peak_ram_mib"], lang), logins=results["logins"],
+                      axum_after=mib(memory["axum_after_logins_peak_ram_mib"], lang))
+        sentence = text["proof_both"].format(**values)
+    else:
+        sentence = text["proof_peak"].format(**values)
+    speed = [(key, row["categories"][key]) for key in SPEED if row["categories"][key]["score"] is not None]
+    if speed:
+        key, cell = min(speed, key=lambda item: item[1]["score"])
+        flagged = "put_not_written" in cell["flags"]
+        score = score_text(cell, lang, signs=False) + (" ‡" if flagged else "")
+        sentence += " " + text["proof_lowest"].format(category=category_names(lang)[key], score=score)
+        sentence += text["proof_flagged"] if flagged else ""
+    return (f'<p class="proof-figure">{sentence}</p>'
+            f'<p class="proof-meta">{text["proof_meta"].format(date=measured_date(results, lang))}</p>')
+
+
+def positions_text(cell: dict, ranked: int, lang: str) -> str:
+    first, last = cell["position"]
+    return LANDING_TEXT[lang]["range" if first != last else "single"].format(first=first, last=last, ranked=ranked)
+
+
+def group_text(results: dict, lang: str) -> str:
+    """Who shares Rullst's overall position range, as far as the shown rows tell."""
+    text = LANDING_TEXT[lang]
+    overall = results["rows"]["rullst"]["overall"]
+    first, last = overall["position"]
+    if first == last:
+        return text["group_alone"]
+    members = sorted(((slug, row["overall"]) for slug, row in results["rows"].items()
+                      if slug != "rullst" and slug not in OPTIONAL_ROWS and row["overall"] and row["overall"]["position"] == (first, last)
+                      and row["overall"]["score"] is not None), key=lambda item: -item[1]["score"])
+    names = [f"{ROWS[slug]} ({score_text(cell, lang, signs=False)})" for slug, cell in members]
+    joined = ", ".join(names[:-1]) + text["and"] + names[-1] if len(names) > 1 else "".join(names)
+    others = last - first
+    if not names:
+        return text["group_unnamed_one" if others == 1 else "group_unnamed"].format(first=first, last=last, count=others)
+    if len(names) < others:
+        return text["group_partial"].format(first=first, last=last, count=others, names=joined)
+    return text["group_named"].format(first=first, last=last, names=joined)
+
+
+def landing_item(name: str, cell: dict, ranked: int, lang: str) -> str:
+    if cell["score"] is None:
+        value = escape(TEXT[lang]["statuses"].get(cell["status"], cell["status"]))
+        return f'<li><span class="landing-bench-category">{name}</span><span class="landing-bench-value">{value}</span></li>'
+    position = f'<span class="landing-bench-position">{positions_text(cell, ranked, lang)}</span>' if cell["position"] else ""
+    return (f'<li><span class="landing-bench-category">{name}</span>'
+            f'<span class="landing-bench-value">{escape(score_text(cell, lang))}</span>{position}</li>')
+
+
+def render_landing_summary(results: dict, lang: str) -> str:
+    """The landing's Performance summary of the generated Rullst application, escaped throughout."""
+    text, landing = TEXT[lang], LANDING_TEXT[lang]
+    row = results["rows"]["rullst"]
+    ranked = results["ranked"]
+    lines = [f'<p class="landing-bench-meta">{measured_line(results, lang)}</p>']
+    shown = []
+    if results["overall_published"]:
+        overall = row["overall"]
+        shown.append(overall)
+        if overall["score"] is None:
+            figure = f'<strong class="landing-bench-score">{escape(text["statuses"].get(overall["status"], overall["status"]))}</strong>'
+            group = ""
+        else:
+            figure = f'<strong class="landing-bench-score">{escape(score_text(overall, lang))}</strong>'
+            group = ""
+            if overall["position"]:
+                figure += f'<span class="landing-bench-position">{positions_text(overall, ranked, lang)}</span>'
+                group = f' <span class="landing-bench-group">{group_text(results, lang)}</span>'
+        lines.append(f'<p class="landing-bench-overall"><span class="landing-bench-label">{landing["overall"]}</span>{figure}{group}</p>')
+    else:
+        lines.append(f'<p class="landing-bench-overall">{text["unpublished"]}</p>')
+    names = category_names(lang)
+    groups: dict[str, list[str]] = {"level": [], "below": [], "unscored": []}
+    for key in CATEGORIES:
+        cell = row["categories"][key]
+        shown.append(cell)
+        if cell["score"] is None:
+            kind = "unscored"
+        elif "within_reference_margin" in cell["flags"] or cell["score"] >= 1:
+            kind = "level"
+        else:
+            kind = "below"
+        groups[kind].append(landing_item(names[key], cell, ranked, lang))
+    columns = []
+    for kind in ("level", "below", "unscored"):
+        if kind == "unscored" and not groups[kind]:
+            continue
+        items = "".join(groups[kind]) or f'<li class="landing-bench-none">{landing["none"]}</li>'
+        columns.append(f'<div class="landing-bench-column landing-bench-{kind}"><h3>{landing[kind]}</h3><ul>{items}</ul></div>')
+    lines.append(f'<div class="landing-bench-split">{"".join(columns)}</div>')
+    facts = []
+    memory = row["memory"]
+    if "peak_ram_mib" in memory and "axum_peak_ram_mib" in memory:
+        values = {"peak": mib(memory["peak_ram_mib"], lang), "axum_peak": mib(memory["axum_peak_ram_mib"], lang)}
+        if results["logins"] and "after_logins_peak_ram_mib" in memory and "axum_after_logins_peak_ram_mib" in memory:
+            values.update(after=mib(memory["after_logins_peak_ram_mib"], lang), logins=results["logins"],
+                          axum_after=mib(memory["axum_after_logins_peak_ram_mib"], lang))
+            facts.append(landing["memory_both"].format(**values))
+        else:
+            facts.append(landing["memory_peak"].format(**values))
+    if row["stability"]:
+        facts.append(landing["stability"].format(result=escape(text["stability"][row["stability"]])))
+    if facts:
+        lines.append(f'<p class="landing-bench-facts">{" ".join(facts)}</p>')
+    minimal = results["rows"].get(MINIMAL)
+    if minimal:
+        cells = [(key, minimal["categories"][key]) for key in SPEED if minimal["categories"][key]["score"] is not None]
+        if cells:
+            shown.extend(cell for _key, cell in cells)
+            listed = ", ".join(f"{names[key]} {escape(score_text(cell, lang))}" for key, cell in cells)
+            lines.append(f'<p class="landing-bench-minimal">{landing["minimal"].format(cells=listed)}</p>')
+    flags = {flag for cell in shown for flag in cell["flags"]}
+    legend = [landing["legend"]] + [escape(text["flags"][flag]) for flag in FLAGS if flag in flags]
+    lines.append('<ul class="benchmark-legend landing-bench-legend">' + "".join(f"<li>{item}</li>" for item in legend) + "</ul>")
+    return "\n".join(lines)
+
+
+def render_landing(results: dict, lang: str) -> dict[tuple[str, str], str]:
+    """The landing blocks the data can fill: the summary, and the proof point when Rullst's RAM was measured.
+
+    ValueError when the data has no Rullst row to summarize."""
+    if "rullst" not in results["rows"]:
+        raise ValueError("the results have no Rullst row")
+    blocks = {LANDING_SUMMARY: render_landing_summary(results, lang)}
+    if {"peak_ram_mib", "axum_peak_ram_mib"} <= set(results["rows"]["rullst"]["memory"]):
+        blocks[LANDING_PROOF] = render_landing_proof(results, lang)
+    return blocks
+
+
+def replace_block(text: str, markers: tuple[str, str], block: str) -> str:
+    start = text.index(markers[0]) + len(markers[0])
+    end = text.index(markers[1])
+    return text[:start] + "\n" + block + "\n" + text[end:]
 
 
 def check_page(page: str, text: str, digests: dict[str, str]) -> None:
@@ -489,10 +727,10 @@ def check_page(page: str, text: str, digests: dict[str, str]) -> None:
     missing = [name for name in required if f"/assets/{name}?v={digests[name]}" not in text]
     if missing:
         raise AssemblyError(f"{source} must load /assets/{missing[0]}?v={digests[missing[0]]}")
-    if page in COMPARE_PAGES and not (
-        text.count(BENCHMARK_START) == 1 == text.count(BENCHMARK_END) and text.index(BENCHMARK_START) < text.index(BENCHMARK_END)
-    ):
-        raise AssemblyError(f"{source} needs one benchmark-results block")
+    blocks = [(BENCHMARK_START, BENCHMARK_END)] if page in COMPARE_PAGES else [LANDING_PROOF, LANDING_SUMMARY] if page in LANDINGS else []
+    for start, end in blocks:
+        if not (text.count(start) == 1 == text.count(end) and text.index(start) < text.index(end)):
+            raise AssemblyError(f"{source} needs one {start[5:start.index(':')]} block")
 
 
 def check_sources(root: Path = ROOT) -> dict[str, bytes]:
@@ -514,18 +752,25 @@ def assemble(out: Path, root: Path = ROOT, benchmarks: Path | None = None, today
     """Write the root site into OUT and return the published paths."""
     contents = check_sources(root)
     results = load_benchmarks(benchmarks, today, max_age_days) if benchmarks is not None else None
-    try:
-        # Both languages or neither: a failure keeps the pending text and still
-        # deploys, rather than failing the deployment and leaving older pages up.
-        blocks = {page: render_benchmarks(results, lang) for page, lang in COMPARE_PAGES.items()} if results else {}
-    except (KeyError, TypeError, ValueError) as error:
-        print(f"warning: benchmark results not rendered ({error!r})", file=sys.stderr)
-        blocks = {}
-    for page, block in blocks.items():
+    # Both languages or neither, for each kind of page: a failure keeps the
+    # pending text and still deploys, rather than failing the deployment and
+    # leaving older pages up.
+    blocks: dict[str, dict[tuple[str, str], str]] = {}
+    if results:
+        try:
+            blocks.update({page: {(BENCHMARK_START, BENCHMARK_END): render_benchmarks(results, lang)}
+                           for page, lang in COMPARE_PAGES.items()})
+        except (KeyError, TypeError, ValueError) as error:
+            print(f"warning: benchmark results not rendered ({error!r})", file=sys.stderr)
+        try:
+            blocks.update({page: render_landing(results, lang) for page, lang in LANDINGS.items()})
+        except (KeyError, TypeError, ValueError) as error:
+            print(f"warning: landing benchmark summary not rendered ({error!r})", file=sys.stderr)
+    for page, rendered in blocks.items():
         text = contents[page].decode("utf-8")
-        start = text.index(BENCHMARK_START) + len(BENCHMARK_START)
-        end = text.index(BENCHMARK_END)
-        contents[page] = (text[:start] + "\n" + block + "\n" + text[end:]).encode("utf-8")
+        for markers, block in rendered.items():
+            text = replace_block(text, markers, block)
+        contents[page] = text.encode("utf-8")
     if out.is_symlink() or (out.exists() and not out.is_dir()):
         raise AssemblyError(f"output must be a directory: {out}")
     if out.exists() and any(out.iterdir()):
