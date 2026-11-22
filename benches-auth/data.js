@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795299510870,
+  "lastUpdate": 1795307331628,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -25701,6 +25701,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1947,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a0ee8c3fbf1ff13d67732ebd81fd80e99e2af691",
+          "message": "Merge pull request #829 from Rullst/feat/v13-site-landing-redesign\n\nfeat(site): redesign the landing around performance, security and what Rullst includes",
+          "timestamp": "2026-11-21T21:15:15-03:00",
+          "tree_id": "d445f0666c245b64dfcc75fd981eed72fab60e6c",
+          "url": "https://github.com/Rullst/Rullst/commit/a0ee8c3fbf1ff13d67732ebd81fd80e99e2af691"
+        },
+        "date": 1795307330599,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 885,
+            "range": "± 33",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 668,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1564,
+            "range": "± 35",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3677,
+            "range": "± 21",
             "unit": "ns/iter"
           }
         ]
