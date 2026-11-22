@@ -1097,7 +1097,7 @@ def validate(site: Path) -> None:
     # notices they replaced.
     for statement in (
         "We do not control GitHub's hosting logs or their retention.",
-        "benchmark pages currently load Chart.js from jsDelivr.",
+        "the microbenchmark pages under /Rullst/benches/ currently load Chart.js from jsDelivr.",
         "Public issues and social posts are not private support channels.",
     ):
         assert statement in source and statement in privacy_source, f"privacy statement missing: {statement}"
