@@ -1,8 +1,11 @@
-// Real Chromium checks for the rullst.win landing and privacy pages, served at
+// Real Chromium checks for the rullst.win landing, privacy and comparison
+// pages, written by the site generator (site/, Rullst's html!) and served at
 // the site root as Rullst/Rullst.github.io publishes them. No npm packages or
-// external requests. Run after `mdbook build docs`; optional:
+// external requests. Run after `mdbook build docs` and
+// `cargo build --locked --manifest-path site/Cargo.toml` (or set
+// RULLST_SITE_BIN to the built generator); optional:
 // --screenshots /absolute/output/directory, and --organization-site DIRECTORY
-// to serve the pages from assemble-organization-site.py output instead.
+// to serve the root pages from another generated directory instead.
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
 import { once } from "node:events";
@@ -14,16 +17,17 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const profile = await mkdtemp(join(tmpdir(), "rullst-site-chromium-"));
-// The comparison pages with benchmark rows, assembled from the test fixture
-// (its numbers are not measurements), dated today so that the assembler's
-// default age limit applies, and served under /_rendered/.
+// The pages as the generator writes them without data (served at the root),
+// and with benchmark rows from the test fixture (its numbers are not
+// measurements), dated today so that the default age limit applies, served
+// under /_rendered/.
+const generator = process.env.RULLST_SITE_BIN || join(root, "site/target/debug/rullst-site");
 const rendered = await mkdtemp(join(tmpdir(), "rullst-site-rendered-"));
 const fixture = JSON.parse(await readFile(join(root, ".github/fixtures/site-benchmarks.json"), "utf8"));
 fixture.measured_on = new Date().toISOString().slice(0, 10);
 await writeFile(join(rendered, "benchmarks.json"), JSON.stringify(fixture));
-// An absolute interpreter path, not a PATH lookup (Ubuntu and macOS both have it).
-execFileSync("/usr/bin/python3", [join(root, ".github/assemble-organization-site.py"), "--out", join(rendered, "site"), "--benchmarks"],
-  { cwd: rendered, stdio: ["ignore", "ignore", "inherit"] });
+execFileSync(generator, ["--out", join(rendered, "plain")], { cwd: rendered, stdio: ["ignore", "ignore", "inherit"] });
+execFileSync(generator, ["--out", join(rendered, "site"), "--benchmarks"], { cwd: rendered, stdio: ["ignore", "ignore", "inherit"] });
 const outputIndex = process.argv.indexOf("--screenshots");
 const output = outputIndex < 0 ? null : process.argv[outputIndex + 1];
 const organizationIndex = process.argv.indexOf("--organization-site");
@@ -54,14 +58,13 @@ const server = createServer(async (request, response) => {
     }
     let base = root;
     let relative;
-    const rootSite = { "/": ["index.html", "docs/home_template.html"], "/privacy.html": ["privacy.html", "docs/privacy_template.html"],
-      "/pt-br/": ["pt-br/index.html", "docs/home_template.pt-BR.html"], "/pt-br/privacy.html": ["pt-br/privacy.html", "docs/privacy_template.pt-BR.html"],
-      "/compare/": ["compare/index.html", "docs/compare_template.html"], "/pt-br/comparar/": ["pt-br/comparar/index.html", "docs/compare_template.pt-BR.html"],
-      "/assets/site.css": ["assets/site.css", "docs/site.css"], "/assets/site.js": ["assets/site.js", "docs/site.js"],
-      "/assets/flags/us.svg": ["assets/flags/us.svg", "docs/flags/us.svg"], "/assets/flags/br.svg": ["assets/flags/br.svg", "docs/flags/br.svg"] };
+    const rootSite = { "/": "index.html", "/privacy.html": "privacy.html", "/pt-br/": "pt-br/index.html",
+      "/pt-br/privacy.html": "pt-br/privacy.html", "/compare/": "compare/index.html", "/pt-br/comparar/": "pt-br/comparar/index.html",
+      "/assets/site.css": "assets/site.css", "/assets/site.js": "assets/site.js",
+      "/assets/flags/us.svg": "assets/flags/us.svg", "/assets/flags/br.svg": "assets/flags/br.svg" };
     if (rootSite[path]) {
-      if (organization) base = organization;
-      relative = rootSite[path][organization ? 0 : 1];
+      base = organization ?? join(rendered, "plain");
+      relative = rootSite[path];
     }
     else if (["/_rendered/", "/_rendered/pt-br/", "/_rendered/compare/", "/_rendered/pt-br/comparar/"].includes(path)) { base = join(rendered, "site"); relative = path.slice(11) + "index.html"; }
     else if (path === "/Rullst/Rullst.png") relative = "docs/Rullst.png";
@@ -372,7 +375,7 @@ try {
   assert.deepEqual([...oldAssetReads.values()], [1, 1], "Current pages must not request the old unversioned assets again");
   assert([...requests].every(url => url.startsWith(origin + "/")), `External resource requests: ${[...requests].filter(url => !url.startsWith(origin + "/"))}`);
   assert.deepEqual(failures, [], "Browser errors, CSP failures or broken resources");
-  console.log(`PASS (${organization ? "assembled root site" : "sources"}): stale-cache upgrade, proof card styling, landing section order, landing benchmark summary from the fixture, desktop/390px/320px, keyboard/mobile menu, animated intro/replay/stop, Academy greeting/stop, integrations, canonical URLs, English and Brazilian Portuguese pages with flag language switcher, comparison pages with fixture benchmark rows, clipboard success/denial, privacy summary and full notice, reduced motion, no-JS navigation, no storage or external landing requests.`);
+  console.log(`PASS (${organization ? "given root site" : "generated root site"}): stale-cache upgrade, proof card styling, landing section order, landing benchmark summary from the fixture, desktop/390px/320px, keyboard/mobile menu, animated intro/replay/stop, Academy greeting/stop, integrations, canonical URLs, English and Brazilian Portuguese pages with flag language switcher, comparison pages with fixture benchmark rows, clipboard success/denial, privacy summary and full notice, reduced motion, no-JS navigation, no storage or external landing requests.`);
   await call("Browser.close");
 } finally {
   socket?.close();

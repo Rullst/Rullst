@@ -71,7 +71,7 @@ jobs:
         uses: taiki-e/install-action@4a76afe23f9e08d2d9550fb56e556444e8611d21 # v2.90.4
         with:
           tool: cargo-audit
-      - name: Audit production, fuzz and fixture dependency locks
+      - name: Audit production, fuzz, fixture and website-generator dependency locks
         shell: bash
         run: |
           cargo audit --ignore RUSTSEC-2026-0459 --ignore RUSTSEC-2026-0440
@@ -81,6 +81,7 @@ jobs:
           done < <({
             find . -mindepth 3 -maxdepth 3 -path '*/fuzz/Cargo.lock' -print
             find ./.github/fixtures -name Cargo.lock -print
+            echo ./site/Cargo.lock
           } | sort)
 
   release-evidence-audit:

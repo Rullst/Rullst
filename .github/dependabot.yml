@@ -22,6 +22,8 @@ updates:
       # The IoT firmware fixture builds with --locked on its own locks too.
       - "/.github/fixtures/iot-microbit-v2/firmware"
       - "/.github/fixtures/iot-microbit-v2/vectors"
+      # The rullst.win site generator (site/) builds with --locked too.
+      - "/site"
     target-branch: "main"
     schedule:
       interval: "weekly"

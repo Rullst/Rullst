@@ -26,7 +26,10 @@ extend-exclude = [
     # the test checks the file's SHA-256, so it cannot be corrected here.
     "rullst-auth/tests/fixtures/wycheproof/",
     # Brazilian Portuguese website pages; the dictionary is English.
-    "docs/*.pt-BR.html",
+    "site/src/pages/landing/pt_top.rs",
+    "site/src/pages/landing/pt_bottom.rs",
+    "site/src/pages/compare/pt.rs",
+    "site/src/pages/privacy/pt.rs",
     # Brazilian Portuguese book pages; their code blocks match the English
     # pages, which are checked (.github/check-translations.py).
     "docs/src/pt-BR/",
@@ -35,6 +38,11 @@ extend-exclude = [
     "rullst-core/src/scheduler_cron_golden/",
     "rullst-messaging/src/schedules/cron_expression_vectors.txt"
 ]
+
+[default]
+# A Portuguese phrase of the website generator (site/src/benchmarks/) that
+# the English dictionary would correct.
+extend-ignore-re = ["Eles se atualizam"]
 
 [default.extend-words]
 # Eclipse Mosquitto, the MQTT broker.
@@ -88,3 +96,8 @@ svgz = "svgz"
 JOD = "JOD"
 # Portuguese imperative used by the localized account templates.
 Confirme = "Confirme"
+
+# Portuguese words of the website generator's benchmark texts
+# (site/src/benchmarks/), which keep each sentence in both languages.
+altas = "altas"
+limite = "limite"

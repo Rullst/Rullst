@@ -1,0 +1,350 @@
+//! The Brazilian Portuguese landing page (`/pt-br/`): Included, Integrations, Examples, Academy, Community, the release notice and the footer.
+
+use rullst::html;
+use rullst::html::Markup;
+
+use super::art;
+
+/// 03 / Included in Rullst.
+pub fn included() -> Markup {
+    html! {
+        <section id="included" class="shell section included-section" aria-labelledby="included-heading" data-reveal>
+            <div class="section-heading">
+                <p class="eyebrow">"03 / Incluído no Rullst"</p>
+                <h2 id="included-heading">"Menos para montar."<br /><span class="accent-orange">"Mais para inspecionar."</span></h2>
+                <p>"Partes que vêm com o framework, cada uma documentada com aquilo contra o que foi testada e o que ela não faz. Vinte pacotes compartilham uma versão; os especializados são pacotes Extension opcionais."</p>
+            </div>
+            <p class="landing-checked" id="checked-included">"O que um cartão diz sobre o Loco e o Topcoat foi verificado em "<time datetime="2026-11-21">"21 de novembro de 2026"</time>" no Loco "<code>"loco-rs 1.3.1"</code>" e no Topcoat "<code>"topcoat 0.12.1"</code>", as versões mais recentes deles nessa data."</p>
+            <div class="included-grid">
+                <article class="included-card">
+                    <span class="included-index">"CLI · RECURSOS"</span>" "
+                    <h3><code>"cargo rullst footprint"</code></h3>
+                    <p>"Mede o tamanho do binário, a memória ociosa, o tempo de inicialização, o tempo de CPU por requisição e o peso das páginas da sua aplicação, diz como mediu cada um e pode reprovar a CI quando um orçamento cresce. O número de carbono é uma estimativa SCI a partir de dados que você informa, não uma medição."</p>
+                    <p class="included-elsewhere">"O Loco e o Topcoat não documentam um comando assim."</p>" "
+                    <a href="/Rullst/book/footprint.html">"Guia do footprint (em inglês) "<span aria-hidden="true">"↗"</span></a>
+                </article>
+                <article class="included-card">
+                    <span class="included-index">"CLI · ATUALIZAÇÕES"</span>" "
+                    <h3><code>"cargo rullst upgrade"</code></h3>
+                    <p>"O "<code>"--dry-run"</code>" lista cada mudança no código que uma versão mais nova do Rullst exige, em "<code>"arquivo:linha"</code>", com o código da regra e a linha do guia de migração; ao aplicar, ele faz backup dos arquivos, atualiza as versões e roda "<code>"cargo fix"</code>" e "<code>"cargo check"</code>". Ele não migra dados."</p>
+                    <p class="included-elsewhere">"O Loco documenta um guia de atualização e nenhum comando de atualização; o Topcoat não documenta nenhum dos dois."</p>" "
+                    <a href="/Rullst/book/tutorials/36-assisted-framework-upgrades.html">"Atualizações assistidas (em inglês) "<span aria-hidden="true">"↗"</span></a>
+                </article>
+                <article class="included-card">
+                    <span class="included-index">"CLI · TESTES"</span>" "
+                    <h3>"Testes desde o primeiro commit"</h3>
+                    <p>"Todo projeto que o "<code>"cargo rullst new"</code>" cria tem um teste de fumaça de cada página (status, cabeçalhos de segurança, higiene do HTML) e, a menos que você passe "<code>"--no-ci"</code>", um workflow de CI com Clippy, testes, "<code>"cargo audit"</code>" e uma varredura de segredos. O "<code>"cargo rullst add browser-tests"</code>" abre cada página no Chromium, no Firefox e no WebKit com o axe-core."</p>" "
+                    <a href="/Rullst/book/testing-your-app.html">"Testando a sua aplicação (em inglês) "<span aria-hidden="true">"↗"</span></a>
+                </article>
+                <article class="included-card">
+                    <span class="included-index">"DESENVOLVIMENTO · STUDIO"</span>" "
+                    <h3>"Uma sala de controle de desenvolvimento"</h3>
+                    <p>"O Studio roda como um servidor local de depuração em "<code>"127.0.0.1:5555"</code>": um inspetor de banco de dados com diagrama ER, filas, feature flags, traces de requisições e os eventos de segurança do processo em execução."</p>
+                    <p class="included-elsewhere">"O Loco e o Topcoat não documentam um painel de desenvolvimento."</p>" "
+                    <a href="/Rullst/book/3-rullst-studio.html">"Guia do Studio (em inglês) "<span aria-hidden="true">"↗"</span></a>
+                </article>
+                <article class="included-card">
+                    <span class="included-index">"ADMIN · NEXUS"</span>" "
+                    <h3>"Um admin gerado"</h3>
+                    <p>"O Nexus cria telas renderizadas no servidor de listagem, busca, criação, edição e ações em lote para os modelos do ORM que você registra, com políticas de campos e RBAC; builds de release exigem o login da sua aplicação ou Basic Auth sobre TLS."</p>
+                    <p class="included-elsewhere">"O Loco e o Topcoat não documentam um admin gerado (o Topcoat tem uma demo de admin escrita à mão)."</p>" "
+                    <a href="/Rullst/book/4-rullst-nexus.html">"Guia do Nexus (em inglês) "<span aria-hidden="true">"↗"</span></a>
+                </article>
+                <article class="included-card">
+                    <span class="included-index">"COBRANÇA · CAPITAL"</span>" "
+                    <h3>"Pagamentos com verificações que falham fechadas"</h3>
+                    <p>"Adaptadores para Stripe e InfinitePay, webhooks assinados com proteção contra repetição, cotas, direitos de acesso e faturas em unidades menores da moeda. O código de cobrança gerado recusa chaves de pagamento vazias em produção."</p>
+                    <p class="included-elsewhere">"O Loco e o Topcoat não documentam pagamentos."</p>" "
+                    <a href="/Rullst/book/crates/capital.html">"Guia de cobrança (em inglês) "<span aria-hidden="true">"↗"</span></a>
+                </article>
+                <article class="included-card">
+                    <span class="included-index">"E-MAIL"</span>" "
+                    <h3>"E-mail transacional"</h3>
+                    <p>"Resend, AWS SES, SendPulse ou SMTP, enviados em segundo plano, com supressão de destinatários e inspeção opcional de anexos. Na 13.0.0-rc.1, uma chave de provedor ausente em staging ou produção é um erro, e não um envio que só pareceu ter dado certo."</p>" "
+                    <a href="/Rullst/book/crates/mail.html">"Guia de e-mail (em inglês) "<span aria-hidden="true">"↗"</span></a>
+                </article>
+                <article class="included-card">
+                    <span class="included-index">"IA"</span>" "
+                    <h3>"Um cliente de IA protegido"</h3>
+                    <p>"Gemini, OpenAI, Claude e endpoints compatíveis com OpenAI (presets DeepSeek e Ollama), com filtro de injeção de prompt, mascaramento de dados pessoais e fixtures offline para os testes."</p>" "
+                    <a href="/Rullst/book/ai-provider-capabilities.html">"Limites dos provedores (em inglês) "<span aria-hidden="true">"↗"</span></a>
+                </article>
+                <article class="included-card">
+                    <span class="included-index">"IOT · OTA ASSINADO"</span>" "
+                    <h3>"Atualizações de firmware verificáveis"</h3>
+                    <p>"Helpers de telemetria "<code>"no_std"</code>", codificadores MQTT 5 e CoAP e verificação de manifestos OTA assinados com Ed25519, com um contrato de contador anti-rollback, executados em um BBC micro:bit V2. Transportes, gravação e bootloaders continuam sendo da aplicação."</p>
+                    <p class="included-elsewhere">"O Loco e o Topcoat não documentam suporte a IoT ou OTA."</p>" "
+                    <a href="/Rullst/book/crates/iot.html">"Guia de IoT (em inglês) "<span aria-hidden="true">"↗"</span></a>
+                </article>
+                <article class="included-card">
+                    <span class="included-index">"LABS"</span>" "
+                    <h3>"Exercícios avaliados, com o seu runner"</h3>
+                    <p>"Contratos para tarefas de exercícios que um runner implantado à parte assume: leases, cancelamento, retenção e recibos assinados. O Labs nunca executa o código dos alunos."</p>" "
+                    <a href="/Rullst/book/labs-runner-contract.html">"Contrato do runner (em inglês) "<span aria-hidden="true">"↗"</span></a>
+                </article>
+                <article class="included-card">
+                    <span class="included-index">"PRIVACIDADE"</span>" "
+                    <h3>"Políticas de idade e consentimento"</h3>
+                    <p>"Políticas de idade proporcionais, atestações de limite assinadas e consentimento e revogação versionados, em SQLite ou PostgreSQL; o "<code>"make:age-gate"</code>" e o "<code>"make:privacy"</code>" integram isso a uma aplicação. Nenhum provedor real de verificação de idade está incluído."</p>" "
+                    <a href="https://github.com/Rullst/Rullst/tree/main/rullst-privacy">"rullst-privacy "<span aria-hidden="true">"↗"</span></a>
+                </article>
+                <article class="included-card">
+                    <span class="included-index">"SUPERVISÃO"</span>" "
+                    <h3>"Supervisão transparente de provas"</h3>
+                    <p>"Contratos de provas e de controle parental com confirmação explícita do que é coletado, observações tipadas do navegador e adaptadores de presença na câmera e de atividade de áudio. Nenhum modelo de mídia, correção automática ou controle do dispositivo inteiro está incluído."</p>" "
+                    <a href="/Rullst/book/supervision.html">"Guia de supervisão (em inglês) "<span aria-hidden="true">"↗"</span></a>
+                </article>
+            </div>
+            <p class="section-note">"Os pacotes Core estão em toda aplicação; os pacotes Extension são opcionais e têm a mesma promessa de estabilidade da 13.x para o escopo documentado ("<a href="/Rullst/book/maturity.html">"níveis de maturidade"</a>", em inglês). A página "<a href="/Rullst/book/pt-BR/scope-and-limits.html">"Escopo e limites"</a>" lista o que o Rullst não faz e o que os testes dele não conseguem comprovar."</p>
+        </section>
+    }
+}
+
+/// 04 / Integrations, by evidence (the entries of README's Integrations table).
+pub fn integrations() -> Markup {
+    html! {
+        <section id="integrations" class="shell section integrations-section" aria-labelledby="integrations-heading" data-reveal>
+            <div class="section-heading">
+                <p class="eyebrow">"04 / Integrações, por evidência"</p>
+                <h2 id="integrations-heading">"Até onde cada integração"<br /><span class="accent-green">"foi testada."</span></h2>
+                <p>"Todas as integrações embutidas, agrupadas pela evidência mais forte por trás de cada uma. Os nomes são texto simples: listar um serviço não implica parceria nem endosso."</p>
+            </div>
+            <div class="integration-levels">
+                <article class="integration-level" data-integration-level="real-accounts">
+                    <span class="integration-index">"01 / CONTAS REAIS"</span>" "
+                    <h3>"Usadas com contas reais"</h3>
+                    <ul>
+                        <li><b>"Stripe"</b>" (pagamentos reais)"</li>
+                        <li><b>"InfinitePay"</b>" (um pagamento Pix real)"</li>
+                        <li><b>"Bunny Stream"</b>", "<b>"Resend"</b>", e-mail via "<b>"SMTP"</b>", "<b>"Google Gemini"</b>", login com "<b>"Google"</b>" e login com "<b>"GitHub"</b>" (usados pelas aplicações em produção do mantenedor, sem teste automatizado com uma conta real)"</li>
+                        <li><b>"PostgreSQL"</b>" e "<b>"SQLite"</b>" (em produção nas aplicações do mantenedor, além da CI)"</li>
+                        <li>"O adaptador de IA compatível com OpenAI (validado com o "<b>"Groq"</b>", um provedor compatível com OpenAI, e não com a própria OpenAI)"</li>
+                    </ul>" "
+                    <a href="/Rullst/book/maturity.html#what-supported-promises">"O que &quot;suportado&quot; promete ↗"</a>
+                </article>
+                <article class="integration-level" data-integration-level="ci-containers">
+                    <span class="integration-index">"02 / CONTÊINERES LOCAIS NA CI"</span>" "
+                    <h3>"Testadas na CI contra servidores em contêineres locais"</h3>
+                    <ul>
+                        <li><b>"MySQL"</b>" e "<b>"MariaDB"</b></li>
+                        <li><b>"Redis"</b>" (cache, filas, limites de taxa, estruturas de dados do ORM e mensageria com Redis Streams)"</li>
+                        <li><b>"SurrealDB"</b></li>
+                        <li><b>"Turso/libSQL"</b>" (a imagem "<code>"libsql-server"</code>", que é o "<code>"sqld"</code>")"</li>
+                        <li>"Busca com "<b>"Meilisearch"</b></li>
+                        <li><b>"pgvector"</b></li>
+                        <li>"Armazenamento compatível com "<b>"S3"</b>" (um servidor "<b>"Garage"</b>")"</li>
+                    </ul>" "
+                    <a href="/Rullst/book/database-support.html#where-the-live-tests-run">"Onde rodam os testes com servidores reais ↗"</a>
+                </article>
+                <article class="integration-level" data-integration-level="offline">
+                    <span class="integration-index">"03 / SOMENTE OFFLINE"</span>" "
+                    <h3>"Somente offline: modo mock, fixtures locais ou um kit de conformidade"</h3>
+                    <ul>
+                        <li>"E-mail via "<b>"AWS SES"</b>" e "<b>"SendPulse"</b></li>
+                        <li><b>"OpenAI"</b>" e "<b>"Anthropic Claude"</b>", além dos presets "<b>"DeepSeek"</b>" e "<b>"Ollama"</b>" do adaptador compatível com OpenAI"</li>
+                        <li>"Login com "<b>"Microsoft"</b>", "<b>"Apple"</b>", "<b>"Auth0"</b>", "<b>"AWS Cognito"</b>", "<b>"Facebook"</b>", "<b>"X (Twitter)"</b>", "<b>"Discord"</b>", "<b>"LinkedIn"</b>" e "<b>"OpenID Connect"</b>" genérico"</li>
+                        <li>"O adaptador "<b>"S3/R2"</b>" do "<code>"rullst-media"</code></li>
+                    </ul>" "
+                    <a href="/Rullst/book/provider-conformance.html">"Kits de conformidade de provedores ↗"</a>
+                </article>
+            </div>
+            <p class="integration-recipes" data-integration-recipes><strong>"Receitas, não integrações."</strong>" MongoDB, DuckDB e Qdrant são receitas de aplicação: seu código usa diretamente os crates oficiais de cada um. Os adaptadores embutidos deles foram removidos na 13.0.0-alpha.5. Outros serviços também são código da aplicação: escreva um adaptador sobre a trait do provedor (pagamentos, e-mail, vídeo) ou siga uma receita. "<a href="/Rullst/book/recipes/index.html">"Ler as receitas ↗"</a></p>
+            <p class="integration-production">"As aplicações em produção do mantenedor, Academy, capoeira e vene.win, rodam em domínios reais em uma única máquina Arm Oracle Ampere A1, atrás de um Caddy compartilhado com certificados Let's Encrypt. A CI testa o deploy gerado somente em x86_64; máquinas Arm não são testadas na CI. "<a href="/Rullst/book/pt-BR/scope-and-limits.html">"Limites de deploy "<span aria-hidden="true">"↗"</span></a></p>
+        </section>
+    }
+}
+
+/// 05 / The deployed examples.
+pub fn examples() -> Markup {
+    html! {
+        <section id="examples" class="shell section examples-section" data-reveal>
+            <div class="section-heading">
+                <p class="eyebrow">"05 / Menos imaginar. Mais explorar."</p>
+                <h2>"Não é só um framework."<br /><span class="gradient-text">"É uma suíte para dar vida às suas ideias."</span></h2>
+                <p>"Explore quatro aplicações publicadas de forma independente no Azure Container Apps. Siga o código-fonte, descubra um ponto de partida e depois faça dele o seu."</p>
+            </div>
+            <p class="demo-startup-note"><strong>"Aviso sobre a inicialização das demos."</strong>" Estas aplicações podem escalar a zero quando ficam ociosas. A requisição seguinte provoca uma inicialização a frio (cold start), enquanto o Azure Container Apps inicia uma instância de contêiner e a aplicação. Isso pode aumentar temporariamente o tempo da primeira resposta. Aguarde um momento até o site carregar."</p>
+            <div class="demo-grid">
+                <article class="demo-card demo-showcase">
+                    <div class="demo-art" aria-hidden="true">
+                        <span class="demo-orbit"></span>" "
+                        {art::demo_showcase()}" "
+                        <span class="demo-art-caption">"ROTAS / DADOS / IDEIAS"</span>
+                    </div>
+                    <div class="demo-content">
+                        <span class="demo-kicker">"01 / EXPLORE AS PEÇAS"</span>
+                        <h3>"Rullst Showcase"</h3>
+                        <p>"Um blog e uma vitrine de aplicações. Explore páginas renderizadas no servidor e demonstrações selecionadas de integrações."</p>
+                        <p class="demo-host-note">"Roda em um contêiner do Azure que hiberna quando ocioso, então o primeiro carregamento pode levar de 20 a 30 segundos."</p>
+                        <a class="button button-secondary" href="https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/" data-demo-link>"Explorar o Showcase "<span aria-hidden="true">"↗"</span></a>
+                    </div>
+                </article>
+                <article class="demo-card demo-lms">
+                    <div class="demo-art" aria-hidden="true">
+                        <span class="demo-orbit"></span>" "
+                        {art::demo_lms()}" "
+                        <span class="demo-art-caption">"AULAS / QUIZZES / PROGRESSO"</span>
+                    </div>
+                    <div class="demo-content">
+                        <span class="demo-kicker">"02 / ABRA ESPAÇO PARA APRENDER"</span>
+                        <h3>"LMS Academy"</h3>
+                        <p>"Conheça um exemplo de plataforma de aprendizado, com catálogo público de cursos e pontos de entrada para contas."</p>
+                        <p class="demo-host-note">"Roda em um contêiner do Azure que hiberna quando ocioso, então o primeiro carregamento pode levar de 20 a 30 segundos."</p>
+                        <a class="button button-secondary" href="https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/" data-demo-link>"Explorar o LMS "<span aria-hidden="true">"↗"</span></a>
+                    </div>
+                </article>
+                <article class="demo-card demo-portfolio">
+                    <div class="demo-art" aria-hidden="true">
+                        <span class="demo-orbit"></span>" "
+                        {art::demo_portfolio()}" "
+                        <span class="demo-art-caption">"PROJETOS / HABILIDADES / SUA HISTÓRIA"</span>
+                    </div>
+                    <div class="demo-content">
+                        <span class="demo-kicker">"03 / MOSTRE SEU TRABALHO"</span>
+                        <h3>"Portfólio de desenvolvedor"</h3>
+                        <p>"Um ponto de partida de portfólio para apresentar projetos, habilidades e experiência em uma aplicação web enxuta."</p>
+                        <p class="demo-host-note">"Roda em um contêiner do Azure que hiberna quando ocioso, então o primeiro carregamento pode levar de 20 a 30 segundos."</p>
+                        <a class="button button-secondary" href="https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/" data-demo-link>"Explorar o portfólio "<span aria-hidden="true">"↗"</span></a>
+                    </div>
+                </article>
+                <article class="demo-card demo-saas">
+                    <div class="demo-art" aria-hidden="true">
+                        <span class="demo-orbit"></span>" "
+                        {art::demo_saas()}" "
+                        <span class="demo-art-caption">"BLUEPRINT / PRODUTO / POSSIBILIDADES"</span>
+                    </div>
+                    <div class="demo-content">
+                        <span class="demo-kicker">"04 / COMECE SEU PRÓXIMO PRODUTO"</span>
+                        <h3>"SaaS Blueprint"</h3>
+                        <p>"Um blueprint de aplicação SaaS. Explore um ponto de partida para construir seu próprio produto de software como serviço."</p>
+                        <p class="demo-host-note">"Roda em um contêiner do Azure que hiberna quando ocioso, então o primeiro carregamento pode levar de 20 a 30 segundos."</p>
+                        <a class="button button-secondary" href="https://saas.rullst.win/" data-demo-link>"Explorar o SaaS "<span aria-hidden="true">"↗"</span></a>
+                    </div>
+                </article>
+            </div>
+            <div class="demo-footnote">
+                <p>"Demos públicas, não certificações de produção. Cada demo é atualizada no próprio ritmo e pode rodar uma versão do Rullst anterior à 13.0.0-alpha.6. O checkout do SaaS é real e cobra dinheiro de verdade; os fixtures de pagamento do Showcase não são um checkout real. A não ser em uma compra que você pretenda fazer, use dados de teste, não informações sensíveis. A disponibilidade é gerenciada à parte."</p>
+                <a href="https://github.com/Rullst/examples">"Código-fonte e receitas de deploy ↗"</a>
+            </div>
+        </section>
+    }
+}
+
+/// Rullst Academy.
+pub fn academy() -> Markup {
+    html! {
+        <section id="academy" class="shell academy-section" aria-labelledby="academy-heading" data-reveal>
+            <div class="academy-spotlight">
+                <div class="academy-content">
+                    <p class="academy-label"><span class="academy-badge">"Rullst Academy"</span>" SUA ESCOLA DE TECNOLOGIA GRATUITA"</p>
+                    <h2 id="academy-heading">"Um mundo para descobrir."<br /><span>"Um passo de cada vez."</span></h2>
+                    <p class="academy-copy">"Transforme a curiosidade em algo que você pode construir. Aprenda Rust, crie com Rullst e explore o GitHub com aulas curtas, desafios práticos e seus próprios projetos."</p>
+                    <ul class="academy-subjects" aria-label="Explore os temas da Academy">
+                        <li>"Rust &amp; Rullst"</li>
+                        <li>"GitHub"</li>
+                        <li>"IA &amp; cibersegurança"</li>
+                        <li>"Robótica &amp; matemática"</li>
+                    </ul>
+                    <div class="academy-actions"><a class="button button-primary" href="https://academy.rullst.win/pt-BR">"Explore a Rullst Academy "<span aria-hidden="true">"↗"</span></a>" "<a class="academy-path-link" href="https://academy.rullst.win/pt-BR/paths">"Encontre sua trilha de aprendizado "<span aria-hidden="true">"↗"</span></a></div>
+                    <p class="academy-note">"Português · English · Español "<span aria-hidden="true">"/"</span>" Experimente a primeira aula de cada trilha sem criar uma conta."</p>
+                </div>
+                <div class="academy-companion">
+                    <div class="academy-art" aria-hidden="true">
+                        <div class="academy-orbit academy-orbit-outer"></div>
+                        <div class="academy-orbit academy-orbit-inner"></div>" "
+                        <span class="academy-spark academy-spark-one">"✦"</span>
+                        <span class="academy-spark academy-spark-two">"+"</span>
+                        <span class="academy-spark academy-spark-three">"✳"</span>" "
+                        <span class="academy-art-label">"CURIOSIDADE, CONHEÇA SEU COMPANHEIRO."</span>" "
+                        <div class="academy-crab">
+                            // Rullst Academy's own mascot, adapted from its public homepage.
+                            {art::academy_crab()}
+                        </div>" "
+                        <span class="academy-code-token">"&lt;olá, explorador /&gt;"</span>" "
+                        <span class="academy-discovery"><span>"✓"</span>" Pequenos passos. Novas possibilidades."</span>
+                    </div>
+                    <div class="academy-companion-caption"><span>"Seu caranguejo robô. Pronto para explorar."</span><button class="academy-wave-button" type="button" data-academy-wave aria-pressed="false" hidden>"Dizer olá "<span aria-hidden="true">"↗"</span></button></div>
+                </div>
+            </div>
+        </section>
+    }
+}
+
+/// Community.
+pub fn community() -> Markup {
+    html! {
+        <section id="community" class="shell section" data-reveal>
+            <div class="community">
+                <div>
+                    <p class="eyebrow">"Open source. Convite aberto."</p>
+                    <h2>"Seu próximo projeto."<br />"Nossa próxima "<span class="accent-green">"conquista."</span></h2>
+                    <p>"Construa algo. Questione uma suposição. Traga uma reprodução. Melhore um tutorial. Você não precisa de um pull request enorme para fazer uma diferença de verdade."</p>
+                    <div class="hero-actions"><a class="button button-primary" href="https://github.com/Rullst/Rullst/blob/main/CONTRIBUTING.md">"Faça sua primeira contribuição ↗"</a><a class="button button-secondary" href="https://discord.com/invite/2ntKFtsSjw">"Conheça a comunidade ↗"</a></div>
+                </div>
+                <div class="community-mark" aria-hidden="true"><span>"{"</span><span>"você"<br />"+ rust"<br />"+ nós"</span><span>"}"</span></div>
+            </div>
+        </section>
+    }
+}
+
+/// The release notice.
+pub fn release() -> Markup {
+    html! {
+        <section class="shell release-card" aria-label="Antes do deploy" data-reveal>
+            <h2>"Explore com ousadia."<br />"Faça deploy com responsabilidade."</h2>
+            <div>
+                <p>"A "<strong>"v13"</strong>" está em pré-lançamento: 13.0.0-alpha.6 é o congelamento de funcionalidades da 13.0, seguido de 13.0.0-rc.1 (correções e documentação, e as mudanças que o mantenedor aprovou uma a uma depois do congelamento, duas delas incompatíveis) e de 13.0.0. O Cargo nunca escolhe um pré-lançamento por conta própria, então informe a versão exata do "<a href="https://crates.io/crates/rullst">"crates.io"</a>" ("<code>"=13.0.0-alpha.6"</code>") e use a tag imutável correspondente em vez do branch "<a href="https://github.com/Rullst/Rullst/tree/main">"main"</a>", que muda o tempo todo. A linha v12 chegou ao fim da vida útil em 16 de outubro de 2026 com a 12.3.0, e o "<a href="https://github.com/Rullst/Rullst/tree/v12">"branch v12"</a>" está congelado; migre as aplicações com o "<a href="/Rullst/book/migration-v13.html">"guia de adoção v12 → v13"</a>". O antigo "<a href="https://github.com/Rullst/Rullst/tree/v5">"branch v5"</a>" também não é mais mantido. A página "<a href="/Rullst/book/pt-BR/scope-and-limits.html">"Escopo e limites"</a>", traduzida para o português, lista o que o Rullst não faz por decisão de projeto e o que os testes dele não conseguem comprovar. Pré-lançamento e estável descrevem o ciclo de vida da API do framework, não uma aprovação automática da autorização, da configuração de provedores, da operação ou do deploy de uma aplicação."</p>
+                <a href="https://github.com/Rullst/Rullst/blob/main/RELEASE_GUIDE.md">"Consulte o guia de lançamento ↗"</a>
+            </div>
+        </section>
+    }
+}
+
+/// The footer, with the privacy summary and the dedication.
+pub fn footer() -> Markup {
+    html! {
+        <footer class="footer">
+            <div class="shell">
+                <div class="footer-main">
+                    <div>
+                        <a class="brand" href="https://rullst.win/pt-br/">"rullst"<span class="brand-period">"."</span></a>
+                        <p lang="en">"Because With Rullst, We Rule!"</p>
+                        <span class="footer-subtitle">"Uma suíte de frameworks open source."<br />"Construída de forma aberta, com espaço para você."</span>
+                    </div>
+                    <div class="footer-group">
+                        <h2>"Construir"</h2>
+                        <a href="https://academy.rullst.win/pt-BR">"Rullst Academy"</a>
+                        <a href="/Rullst/book/">"Documentação"</a>
+                        <a href="/Rullst/book/philosophy.html">"Nossa história"</a>
+                        <a href="/Rullst/benches/">"Benchmarks"</a>
+                        <a href="https://github.com/Rullst/Rullst">"Código-fonte"</a>
+                        <a href="https://github.com/Rullst/Rullst/blob/main/CONTRIBUTING.md">"Contribuir"</a>
+                    </div>
+                    <div class="footer-group">
+                        <h2>"Contato"</h2>
+                        <a href="mailto:officialrullst@gmail.com">"Fale com a equipe"</a>
+                        <a href="https://github.com/Rullst/Rullst/security/policy">"Reportar uma vulnerabilidade"</a>
+                        <a href="/pt-br/privacy.html">"Aviso de privacidade"</a>
+                        <a href="/Rullst/book/compatibility-policy.html#source-branches">"Status de lançamento"</a>
+                    </div>
+                </div>
+                <nav class="social-links" aria-label="Links sociais e da comunidade do Rullst"><a href="https://rullst.github.io">"Site ↗"</a>" "<a href="https://github.com/Rullst">"GitHub ↗"</a>" "<a href="https://rullst.blogspot.com">"Blogspot ↗"</a>" "<a href="https://www.bilibili.tv/en/space/1436672033">"BiliBili ↗"</a>" "<a href="https://bsky.app/profile/rullst.bsky.social">"Bluesky ↗"</a>" "<a href="https://daily.dev/squads/rullst">"Daily.dev ↗"</a>" "<a href="https://dev.to/venelouis">"Dev.to ↗"</a>" "<a href="https://discord.com/invite/2ntKFtsSjw">"Discord ↗"</a>" "<a href="https://rullst.hashnode.dev/">"Hashnode ↗"</a>" "<a href="https://www.instagram.com/officialrullst/">"Instagram ↗"</a>" "<a href="https://www.linkedin.com/company/rullst">"LinkedIn ↗"</a>" "<a href="https://www.reddit.com/r/rullst">"Reddit ↗"</a>" "<a href="https://substack.com/@rullst">"Substack ↗"</a>" "<a href="https://t.me/rullst">"Telegram ↗"</a>" "<a href="https://www.tiktok.com/@venelouis">"TikTok ↗"</a>" "<a href="https://www.youtube.com/@officialrullst">"YouTube ↗"</a>" "<a href="https://x.com/venelouis">"X ↗"</a></nav>
+                <section id="privacy" class="privacy-notice" aria-labelledby="privacy-heading">
+                    <h2 id="privacy-heading">"Pegada pequena. Aviso de privacidade claro."</h2>
+                    <p>"Esta página não tem analytics, pixels de publicidade nem feeds de redes sociais incorporados. O código dela não define cookies nem usa o armazenamento do navegador. Os botões Copiar gravam na sua área de transferência apenas o comando exibido, e somente quando clicados."</p>
+                    <details>
+                        <summary>"Hospedagem, páginas vinculadas e seus direitos de privacidade"</summary>
+                        <div>
+                            <p>"O site é hospedado no GitHub Pages. As requisições chegam necessariamente ao serviço de hospedagem, que pode tratar endereços IP e informações técnicas da requisição conforme a "<a href="https://docs.github.com/pt/site-policy/privacy-policies/github-general-privacy-statement">"Declaração de Privacidade do GitHub"</a>". Não controlamos os logs de hospedagem do GitHub nem o tempo pelo qual são mantidos."</p>
+                            <p>"Os links sociais são links comuns, não conteúdo incorporado. Ao segui-los, você abre um serviço com práticas de privacidade próprias. A Rullst Academy, a documentação, os benchmarks e as demos Showcase, LMS, Portfolio e SaaS têm fluxos de dados separados. A documentação pode guardar preferências de exibição localmente e incluir recursos externos; as páginas de benchmark atualmente carregam o Chart.js a partir do jsDelivr. A descrição acima, de ausência de rastreamento, vale para esta página, não para todos os serviços vinculados."</p>
+                            <p><strong>"Responsável por este site:"</strong>" Venelouis, Brasil. Para dúvidas ou pedidos de acesso, correção ou exclusão de dados pessoais, escreva para "<a href="mailto:officialrullst@gmail.com">"officialrullst@gmail.com"</a>". Se você enviar um e-mail para esse endereço, a equipe e o provedor de e-mail recebem seu endereço e sua mensagem para tratar do seu contato. O e-mail é gerenciado pelo Gmail; não inclua credenciais nem dados pessoais desnecessários. Issues públicas e posts em redes sociais não são canais privados de suporte. Seus direitos dependem da lei aplicável à sua situação."</p>
+                            <p><a href="/pt-br/privacy.html">"Leia o aviso de privacidade completo"</a>" para conhecer finalidades, bases legais, retenção, tratamento internacional e direitos regionais, incluindo a LGPD e o GDPR quando aplicáveis. Este aviso descreve o site, e não o tratamento de dados em aplicações construídas com Rullst, e não afirma conformidade legal universal. Última atualização: 14 de novembro de 2026."</p>
+                        </div>
+                    </details>
+                </section>
+                <div class="footer-bottom"><span>"Feito com cuidado. Compartilhado abertamente."</span><a href="#main">"Voltar ao topo ↑"</a></div>
+            </div>
+            <p class="glory">"Toda glória e honra a Deus יהוה, em nome de Yeshua, o Messias (Jesus Cristo)."</p>
+        </footer>
+    }
+}
