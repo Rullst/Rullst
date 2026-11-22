@@ -131,7 +131,7 @@ mod tests {
     /// The migration's SQLite table is the registry's, with the key added,
     /// so the registry's `CREATE TABLE IF NOT EXISTS` keeps it.
     #[test]
-    fn the_sqlite_table_is_the_registrys_with_the_key() {
+    fn the_sqlite_table_is_the_registry_table_with_the_key() {
         let registry = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../rullst-auth/src/auth/session_registry/sqlite.rs");
         // A packaged crate has no sibling rullst-auth source.
