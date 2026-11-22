@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795320173672,
+  "lastUpdate": 1795322509229,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -16053,6 +16053,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 546,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0b29a4ff9fdcbbe8ae913366866b1e58985e6f42",
+          "message": "Merge pull request #852 from Rullst/fix/v13-site-logo-privacy\n\nfix(site): shrink the logo, list capoeira and vene.win in the privacy notice, drop Spanish from Academy",
+          "timestamp": "2026-11-22T01:28:50-03:00",
+          "tree_id": "b02f5a4861621c64ceaaa74b91b8f362fcaca883",
+          "url": "https://github.com/Rullst/Rullst/commit/0b29a4ff9fdcbbe8ae913366866b1e58985e6f42"
+        },
+        "date": 1795322508735,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 266,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
