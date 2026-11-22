@@ -6,7 +6,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/hero-dark.svg">
     <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/hero-light.svg">
-    <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/hero-dark-static.webp" alt="Rullst — build secure apps in Rust without the suffering. Batteries included, secure by default, designed for humans and AI." width="100%">
+    <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/hero-dark-static.webp" alt="Rullst — build secure apps in Rust without the suffering. Batteries included, secure by default, designed for humans and AI. (Without RULLST_ENV=production or staging, an application runs as development, where the WAF only logs.)" width="100%">
   </picture>
 </p>
 

@@ -244,7 +244,7 @@ firmware provides a `#[global_allocator]` (for example `embedded-alloc`) and a
 panic handler. Plan for about 8 KiB of stack in `begin_update` or
 `verify_update` and 2.6 KiB while building an `OtaManager`, plus your own
 frames (measured on a BBC micro:bit V2 with `ed25519-dalek` 3 on
-2026-11-22); the heap needs little
+2026-11-21); the heap needs little
 beyond the packets you encode. `rullst-iot` uses `ed25519-dalek` 3 without its
 precomputed tables; adding `ed25519-dalek = { version = "3",
 default-features = false, features = ["fast"] }` to the application turns them
@@ -256,7 +256,7 @@ copy and the tables stay off.
 ## Hardware validation
 
 A BBC micro:bit V2 (nRF52833, Cortex-M4F at 64 MHz, 128 KiB RAM) ran the
-fixture's checks, twice per boot, on 2026-11-22 with the 13.0.0-rc.1
+fixture's checks, twice per boot, on 2026-11-21 with the 13.0.0-rc.1
 candidate: telemetry JSON, digital-twin, Modbus
 and I2C frames, MQTT 5 and CoAP encodings byte-identical to the host build,
 the anomaly detector, signed OTA verification (valid, tampered, wrong key,

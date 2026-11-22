@@ -8,9 +8,11 @@
 //! the key for an `HttpOnly`, `SameSite=Strict` session cookie and drops it
 //! from the address; every other request without the cookie gets `403`.
 //! Anyone who can read the printed address (for example in a shared log) can
-//! open Studio until it restarts, and browsers do not keep cookies apart by
-//! port, so a server on another `127.0.0.1` port that this browser visits
-//! from a Studio page can receive the cookie.
+//! open Studio until it restarts. The cookie carries the key itself, and
+//! browsers do not keep cookies apart by port, so every server on another
+//! `127.0.0.1` port that this browser visits receives it, including one that
+//! another account runs. A value derived from the key would grant the same
+//! access, so the cookie does not use one.
 
 use super::router::{RemoteState, form_token_valid};
 use axum::extract::{Request, State};

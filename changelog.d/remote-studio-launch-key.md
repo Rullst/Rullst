@@ -8,3 +8,6 @@
   256-bit key; opening it sets an `HttpOnly`, `SameSite=Strict` session cookie,
   and every request without that cookie gets `403`. Open the printed address
   after each start; anyone who can read it can use Studio until it restarts.
+  The cookie carries the key, and browsers send it to every other server on
+  `127.0.0.1` they visit (cookies are not kept apart by port), including one
+  another account runs, which can then use Studio with it.

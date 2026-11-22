@@ -310,7 +310,7 @@ security, identity, timing, correlation, retry and peer interoperability.
 
 ## Hardware validation (BBC micro:bit V2)
 
-On 2026-11-22 a BBC micro:bit V2 (nRF52833, Cortex-M4F at 64 MHz, 128 KiB
+On 2026-11-21 a BBC micro:bit V2 (nRF52833, Cortex-M4F at 64 MHz, 128 KiB
 RAM, 512 KiB flash) ran a firmware built on the 13.0.0-rc.1 candidate's
 `rullst-iot` (`ed25519-dalek` 3) with
 `default-features = false`, `embedded-alloc` and a 32 KiB heap, on Rust 1.100.0
@@ -371,7 +371,7 @@ to its own dependencies; the major must be the one `rullst-iot` uses (3 since
 micro:bit this made verification about 7% faster (34.2 ms and 59.8 ms), its
 stack 1.6 KiB smaller (6,144 B) and the firmware 7.5 KiB larger.
 
-The measurements above were taken on 2026-11-22 with `ed25519-dalek` 3
+The measurements above were taken on 2026-11-21 with `ed25519-dalek` 3
 (`curve25519-dalek` 5), which 13.0.0-alpha.6 adopted: on each of two boots the
 65 checks in the table passed with no failure (128 results per boot: the 63
 regular checks twice and the 2 allocation checks once). With

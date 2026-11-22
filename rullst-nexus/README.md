@@ -330,8 +330,9 @@ page scripts cannot set, so documents of other origins or local ports stay
 rejected.
 
 The loopback check trusts the TCP peer address and the `Host` header. It refuses requests that
-carry a forwarding header (`Forwarded`, `X-Forwarded-*`, `X-Real-IP`, `Via`, `CF-Connecting-IP`,
-`True-Client-IP`) or arrive over HTTP/1.0 (nginx's default `proxy_pass`), and applications that
+carry a forwarding header (`Forwarded`, `X-Forwarded-For`, `X-Forwarded-Host`, `X-Forwarded-Proto`,
+`X-Forwarded-Server`, `X-Real-IP`, `Via`, `CF-Connecting-IP`, `True-Client-IP`; other names such as
+`X-Forwarded-Port` or `X-Client-IP` are not checked) or arrive over HTTP/1.0 (nginx's default `proxy_pass`), and applications that
 run as staging or production. A port forward, tunnel or proxy on the same machine that adds no
 forwarding header and speaks HTTP/1.1 still makes every client it forwards a loopback peer, so a
 debug build behind such a forwarder serves Nexus without credentials. Deploy release builds only.
