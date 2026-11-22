@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795316116632,
+  "lastUpdate": 1795317532524,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -25797,6 +25797,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4230,
             "range": "± 24",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "587c53eb09059071757b76272ce7b9691a25ed6c",
+          "message": "Merge pull request #848 from Rullst/fix/v13-rc1-session-cascade\n\nfix(auth): delete registered sessions with the account in generated migrations",
+          "timestamp": "2026-11-22T00:03:34-03:00",
+          "tree_id": "55193555fd5051d85f3eedfa834fff6d6728540b",
+          "url": "https://github.com/Rullst/Rullst/commit/587c53eb09059071757b76272ce7b9691a25ed6c"
+        },
+        "date": 1795317531834,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 974,
+            "range": "± 27",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 722,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1692,
+            "range": "± 40",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4190,
+            "range": "± 81",
             "unit": "ns/iter"
           }
         ]
