@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795317532524,
+  "lastUpdate": 1795320103423,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -25845,6 +25845,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4190,
             "range": "± 81",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b0024fda28809c907f797d15b12e9cc2f838d909",
+          "message": "Merge pull request #850 from Rullst/feat/v13-site-generated-with-rullst\n\nfeat(site): generate rullst.win with Rullst's html! and add Made with Rullst, page weight and the parts around the framework",
+          "timestamp": "2026-11-22T00:43:57-03:00",
+          "tree_id": "e2d2fd8d264e009ffa8a5707f58952a1c788fbee",
+          "url": "https://github.com/Rullst/Rullst/commit/b0024fda28809c907f797d15b12e9cc2f838d909"
+        },
+        "date": 1795320102781,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 981,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 713,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1706,
+            "range": "± 54",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4207,
+            "range": "± 59",
             "unit": "ns/iter"
           }
         ]
