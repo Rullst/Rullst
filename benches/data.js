@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795306739061,
+  "lastUpdate": 1795315347800,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -38581,6 +38581,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1498,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "04b9e1f9c43d6929f28e43150759f9af960911a2",
+          "message": "Merge pull request #847 from Rullst/fix/v13-rc1-app-findings\n\nfix(cli): rerun upgrade rules with --from and widen four alpha.6 rules",
+          "timestamp": "2026-11-21T23:36:12-03:00",
+          "tree_id": "d1f8ea1c5c01d4957f892a7d7e36fe0dc4ea38c6",
+          "url": "https://github.com/Rullst/Rullst/commit/04b9e1f9c43d6929f28e43150759f9af960911a2"
+        },
+        "date": 1795315342626,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 712,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 928,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 434,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1997,
+            "range": "± 35",
             "unit": "ns/iter"
           }
         ]
