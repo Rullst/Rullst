@@ -689,6 +689,13 @@ page; the items below are specific to this release.
 
 ### Security
 
+- The workspace lockfile (used by `cargo install --locked cargo-rullst`) and
+  the fuzz targets' lockfiles move `url` from 2.5.8 to 2.5.9
+  for [RUSTSEC-2026-0592](https://rustsec.org/advisories/RUSTSEC-2026-0592),
+  a stack overflow in `Url::origin()` on nested `blob:` URLs. Rullst's
+  requirement already accepts 2.5.9, so applications get it with
+  `cargo update -p url`.
+
 - The `rullst-connect` Axum examples (`axum_server`, described as a complete
   server, and `axum_example`) redirected without a verified OAuth `state`
   (login CSRF: a callback with an attacker's code was accepted), sent no PKCE
