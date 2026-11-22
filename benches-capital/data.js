@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795307497109,
+  "lastUpdate": 1795316496310,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -19838,6 +19838,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "04b9e1f9c43d6929f28e43150759f9af960911a2",
+          "message": "Merge pull request #847 from Rullst/fix/v13-rc1-app-findings\n\nfix(cli): rerun upgrade rules with --from and widen four alpha.6 rules",
+          "timestamp": "2026-11-21T23:36:12-03:00",
+          "tree_id": "d1f8ea1c5c01d4957f892a7d7e36fe0dc4ea38c6",
+          "url": "https://github.com/Rullst/Rullst/commit/04b9e1f9c43d6929f28e43150759f9af960911a2"
+        },
+        "date": 1795316495414,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 19,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
             "range": "± 0",
             "unit": "ns/iter"
           }
