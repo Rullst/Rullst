@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795322492583,
+  "lastUpdate": 1795329276010,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -25941,6 +25941,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2961,
             "range": "± 59",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5996db1d7c226a5cd388cad78a183bd69b0bd026",
+          "message": "Merge pull request #856 from Rullst/fix/v13-rc1-upgrade-from-unknown\n\nfix(cli): refuse --from without a project version and link the rc.1 checklist",
+          "timestamp": "2026-11-22T03:17:14-03:00",
+          "tree_id": "d7f2fca1349aa52dfea7fd2869d262e2749e4640",
+          "url": "https://github.com/Rullst/Rullst/commit/5996db1d7c226a5cd388cad78a183bd69b0bd026"
+        },
+        "date": 1795329275197,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 878,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 649,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1544,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3720,
+            "range": "± 15",
             "unit": "ns/iter"
           }
         ]
