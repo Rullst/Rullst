@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795320103423,
+  "lastUpdate": 1795322492583,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -25892,6 +25892,54 @@ window.BENCHMARK_DATA = {
           {
             "name": "make_login_cookie",
             "value": 4207,
+            "range": "± 59",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0b29a4ff9fdcbbe8ae913366866b1e58985e6f42",
+          "message": "Merge pull request #852 from Rullst/fix/v13-site-logo-privacy\n\nfix(site): shrink the logo, list capoeira and vene.win in the privacy notice, drop Spanish from Academy",
+          "timestamp": "2026-11-22T01:28:50-03:00",
+          "tree_id": "b02f5a4861621c64ceaaa74b91b8f362fcaca883",
+          "url": "https://github.com/Rullst/Rullst/commit/0b29a4ff9fdcbbe8ae913366866b1e58985e6f42"
+        },
+        "date": 1795322491699,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 581,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 452,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1056,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2961,
             "range": "± 59",
             "unit": "ns/iter"
           }
