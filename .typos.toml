@@ -40,9 +40,13 @@ extend-exclude = [
 ]
 
 [default]
-# A Portuguese phrase of the website generator (site/src/benchmarks/) that
+# Portuguese phrases of the website generator (site/src/benchmarks/) that
 # the English dictionary would correct.
-extend-ignore-re = ["Eles se atualizam"]
+extend-ignore-re = [
+    "Eles se atualizam",
+    "\\{problems\\.to_string\\(\\)\\}\" problemas\\)",
+    "lista os problemas e diz quais números eles afetam",
+]
 
 [default.extend-words]
 # Eclipse Mosquitto, the MQTT broker.
