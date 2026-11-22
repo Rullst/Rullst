@@ -260,7 +260,7 @@
       "target_kind": "lib",
       "target": "lib",
       "test_filter": "access::tests::protected_router_accepts_only_a_verified_loopback_peer",
-      "source": "rullst-studio/src/access.rs",
+      "source": "rullst-studio/src/access_tests.rs",
       "marker": "TM-STUDIO-01"
     },
     {
