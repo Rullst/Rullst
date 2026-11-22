@@ -133,3 +133,50 @@ fn an_access_log_duration_has_two_decimals_rounded_half_up() {
 #[cfg(unix)]
 #[path = "console_unix_tests.rs"]
 mod unix;
+
+/// A line names the framework layer that answered the request (#845).
+#[test]
+fn an_access_line_names_the_refusing_layer() {
+    use super::super::access_log::Refusal;
+    let elapsed = Milliseconds::of(std::time::Duration::from_micros(310));
+    assert_eq!(
+        access_line(
+            "GET",
+            "/",
+            (200, None),
+            Milliseconds::of(std::time::Duration::from_micros(1_200))
+        ),
+        "[HTTP] GET / -> 200 (1.20 ms)"
+    );
+    for (refusal, layer) in [
+        (Refusal::CSRF, "csrf"),
+        (Refusal::MACHINE_ENDPOINT, "machine-endpoint"),
+        (Refusal::WAF, "waf"),
+        (Refusal::RATE_LIMIT, "rate-limit"),
+        (Refusal::TRAFFIC_SHIELD, "traffic-shield"),
+        (Refusal::LIFECYCLE, "lifecycle"),
+    ] {
+        assert_eq!(refusal.layer(), layer);
+        assert_eq!(
+            access_line(
+                "POST",
+                "/login",
+                (403, Some(refusal)),
+                Milliseconds(elapsed.0)
+            ),
+            format!("[HTTP] POST /login -> 403 (0.31 ms) refused by {layer}")
+        );
+    }
+}
+
+#[test]
+fn a_refused_response_carries_its_layer() {
+    use super::super::access_log::{Refusal, refused};
+    use axum::response::IntoResponse;
+    let response = refused(
+        (axum::http::StatusCode::FORBIDDEN, "no").into_response(),
+        Refusal::WAF,
+    );
+    assert_eq!(response.status(), axum::http::StatusCode::FORBIDDEN);
+    assert_eq!(response.extensions().get::<Refusal>(), Some(&Refusal::WAF));
+}

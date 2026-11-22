@@ -22,6 +22,7 @@ mod startup_migrations;
 mod static_cache;
 mod traffic;
 
+pub(crate) use access_log::{Refusal, refused};
 pub(crate) use static_cache::is_fingerprinted;
 
 #[cfg(test)]

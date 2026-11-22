@@ -4,6 +4,7 @@
 
 use axum::extract::MatchedPath;
 use axum::http::Extensions;
+use axum::response::Response;
 use std::fmt::Write;
 use std::num::NonZeroU32;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -54,6 +55,42 @@ fn in_sample(seen: u64, interval: NonZeroU32) -> bool {
     seen.is_multiple_of(u64::from(interval.get()))
 }
 
+/// The framework layer that answered a request itself, before the
+/// application's handler ran: the CSRF check (and its machine-endpoint
+/// authentication), the WAF, the rate limiter, Traffic Shield or lifecycle
+/// admission. The layer records it on its response, so the access log names
+/// it (`refused by csrf`), also on the line that
+/// [`super::console::refusal_log_middleware`] writes outside those layers,
+/// which the access log inside them never sees.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Refusal(&'static str);
+
+impl Refusal {
+    /// The CSRF check of the security baseline.
+    pub(crate) const CSRF: Self = Self("csrf");
+    /// The authentication of a `Server::with_machine_endpoints` route.
+    pub(crate) const MACHINE_ENDPOINT: Self = Self("machine-endpoint");
+    /// The WAF of the security baseline.
+    pub(crate) const WAF: Self = Self("waf");
+    /// `Server::rate_limit` (`rate_limit_middleware`).
+    pub(crate) const RATE_LIMIT: Self = Self("rate-limit");
+    /// Traffic Shield's load shedding.
+    pub(crate) const TRAFFIC_SHIELD: Self = Self("traffic-shield");
+    /// Lifecycle admission while the application is not ready or drains.
+    pub(crate) const LIFECYCLE: Self = Self("lifecycle");
+
+    /// The layer's name on an access-log line.
+    pub(crate) fn layer(self) -> &'static str {
+        self.0
+    }
+}
+
+/// `response`, recorded as answered by `layer` ([`Refusal`]).
+pub(crate) fn refused(mut response: Response, layer: Refusal) -> Response {
+    response.extensions_mut().insert(layer);
+    response
+}
+
 /// The access-log settings `Server` resolves at start-up.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct AccessLog {
@@ -86,10 +123,15 @@ impl ShownPath {
 impl AccessLog {
     /// The path a line shows for a request to `path` with `extensions`.
     pub(crate) fn shown_path(self, path: &str, extensions: &Extensions) -> ShownPath {
+        self.shown_path_for(path, extensions.get::<MatchedPath>())
+    }
+
+    /// The path a line shows for a request to `path` that matched `route`.
+    pub(crate) fn shown_path_for(self, path: &str, route: Option<&MatchedPath>) -> ShownPath {
         if !self.route_paths {
             return ShownPath::Text(path.to_string());
         }
-        match extensions.get::<MatchedPath>() {
+        match route {
             Some(route) => ShownPath::Route(route.clone()),
             None => ShownPath::Text(bounded_path(path)),
         }

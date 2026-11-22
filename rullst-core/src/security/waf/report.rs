@@ -52,7 +52,10 @@ pub(crate) async fn with_waf_report(mut req: Request, next: impl crate::security
             body
         }
         Read::Failed => {
-            return (StatusCode::BAD_REQUEST, "Failed to read request body").into_response();
+            return crate::server::refused(
+                (StatusCode::BAD_REQUEST, "Failed to read request body").into_response(),
+                crate::server::Refusal::WAF,
+            );
         }
     };
     next.run(Request::from_parts(parts, body)).await

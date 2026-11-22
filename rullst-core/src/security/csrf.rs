@@ -122,7 +122,10 @@ pub(crate) async fn with_csrf(mut req: Request, next: impl super::Run) -> Respon
     {
         return match policy.authenticate(req).await {
             Ok(request) => next.run(request).await,
-            Err(status) => (status, "Machine request rejected").into_response(),
+            Err(status) => crate::server::refused(
+                (status, "Machine request rejected").into_response(),
+                crate::server::Refusal::MACHINE_ENDPOINT,
+            ),
         };
     }
     if req.extensions().get::<CsrfMiddlewareApplied>().is_some() {
@@ -164,7 +167,7 @@ async fn handle_csrf_get(mut req: Request, next: impl super::Run) -> Response {
 
     if let Some(token) = cookie_token {
         let Some(csrf) = CsrfToken::for_response(&token) else {
-            return (StatusCode::INTERNAL_SERVER_ERROR, MASK_UNAVAILABLE).into_response();
+            return refusal(StatusCode::INTERNAL_SERVER_ERROR, MASK_UNAVAILABLE);
         };
         req.extensions_mut().insert(csrf);
         return next.run(req).await;
@@ -179,10 +182,10 @@ async fn handle_csrf_get(mut req: Request, next: impl super::Run) -> Response {
 
     // The cookie's secret comes from the operating system's random source.
     let Some(token) = super::csrf_random::mint_cookie_token() else {
-        return (StatusCode::INTERNAL_SERVER_ERROR, MASK_UNAVAILABLE).into_response();
+        return refusal(StatusCode::INTERNAL_SERVER_ERROR, MASK_UNAVAILABLE);
     };
     let Some(csrf) = CsrfToken::for_response(&token) else {
-        return (StatusCode::INTERNAL_SERVER_ERROR, MASK_UNAVAILABLE).into_response();
+        return refusal(StatusCode::INTERNAL_SERVER_ERROR, MASK_UNAVAILABLE);
     };
     // `Secure` in staging and production, and over HTTPS everywhere.
     let secure_cookie = req
@@ -231,6 +234,15 @@ fn csrf_cookie(token: &str, same_site: &str, secure: bool) -> String {
     cookie
 }
 
+/// A response of the CSRF check itself, which the access log names
+/// ([`crate::server::Refusal::CSRF`]).
+fn refusal(status: StatusCode, message: &'static str) -> Response {
+    crate::server::refused(
+        (status, message).into_response(),
+        crate::server::Refusal::CSRF,
+    )
+}
+
 /// Returns the single valid `rullst_csrf` cookie across every `Cookie` header.
 ///
 /// Pairs are split on the raw header bytes: browsers send non-ASCII
@@ -260,25 +272,25 @@ async fn handle_csrf_state_modifying(mut req: Request, next: impl super::Run) ->
     let csrf_cookie = csrf_token_from_cookies(req.headers());
 
     let Some(cookie_token) = csrf_cookie else {
-        return (StatusCode::FORBIDDEN, "CSRF token cookie missing").into_response();
+        return refusal(StatusCode::FORBIDDEN, "CSRF token cookie missing");
     };
 
     // Check header first (common for AJAX/HTMX)
     let mut header_values = req.headers().get_all("X-CSRF-Token").iter();
     let header_token = header_values.next();
     if header_values.next().is_some() {
-        return (StatusCode::FORBIDDEN, "Ambiguous CSRF token").into_response();
+        return refusal(StatusCode::FORBIDDEN, "Ambiguous CSRF token");
     }
 
     if let Some(token) = header_token {
         if csrf_proof_matches(token.as_bytes(), &cookie_token).into() {
             let Some(csrf) = CsrfToken::for_response(&cookie_token) else {
-                return (StatusCode::INTERNAL_SERVER_ERROR, MASK_UNAVAILABLE).into_response();
+                return refusal(StatusCode::INTERNAL_SERVER_ERROR, MASK_UNAVAILABLE);
             };
             req.extensions_mut().insert(csrf);
             return next.run(req).await;
         }
-        return (StatusCode::FORBIDDEN, "Invalid CSRF token").into_response();
+        return refusal(StatusCode::FORBIDDEN, "Invalid CSRF token");
     }
 
     // If not in header, check if it's a form-urlencoded request before buffering the body
@@ -299,7 +311,7 @@ async fn handle_csrf_state_modifying(mut req: Request, next: impl super::Run) ->
         let bytes = match axum::body::to_bytes(body, 1024 * 1024).await {
             Ok(b) => b,
             Err(_) => {
-                return (StatusCode::BAD_REQUEST, "Failed to read request body").into_response();
+                return refusal(StatusCode::BAD_REQUEST, "Failed to read request body");
             }
         };
 
@@ -308,7 +320,7 @@ async fn handle_csrf_state_modifying(mut req: Request, next: impl super::Run) ->
         if let Some(token) = body_token {
             if csrf_proof_matches(token.as_bytes(), &cookie_token).into() {
                 let Some(csrf) = CsrfToken::for_response(&cookie_token) else {
-                    return (StatusCode::INTERNAL_SERVER_ERROR, MASK_UNAVAILABLE).into_response();
+                    return refusal(StatusCode::INTERNAL_SERVER_ERROR, MASK_UNAVAILABLE);
                 };
                 parts.extensions.insert(csrf);
                 // Reconstruct the request so it can be parsed by subsequent handlers.
@@ -321,26 +333,25 @@ async fn handle_csrf_state_modifying(mut req: Request, next: impl super::Run) ->
         let (mut parts, body) = req.into_parts();
         let Ok((body_token, body)) = super::csrf_multipart::read_token(body, &boundary).await
         else {
-            return (StatusCode::BAD_REQUEST, "Failed to read request body").into_response();
+            return refusal(StatusCode::BAD_REQUEST, "Failed to read request body");
         };
         let Some(token) = body_token else {
             // Name the ordering rule: the token may follow the file inputs.
-            return (
+            return refusal(
                 StatusCode::FORBIDDEN,
                 super::csrf_multipart::MULTIPART_TOKEN_ORDER_MESSAGE,
-            )
-                .into_response();
+            );
         };
         if csrf_proof_matches(&token, &cookie_token).into() {
             let Some(csrf) = CsrfToken::for_response(&cookie_token) else {
-                return (StatusCode::INTERNAL_SERVER_ERROR, MASK_UNAVAILABLE).into_response();
+                return refusal(StatusCode::INTERNAL_SERVER_ERROR, MASK_UNAVAILABLE);
             };
             parts.extensions.insert(csrf);
             return next.run(Request::from_parts(parts, body)).await;
         }
     }
 
-    (StatusCode::FORBIDDEN, "Invalid or missing CSRF token").into_response()
+    refusal(StatusCode::FORBIDDEN, "Invalid or missing CSRF token")
 }
 
 #[cfg(test)]

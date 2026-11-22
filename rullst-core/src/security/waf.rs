@@ -128,7 +128,7 @@ impl Rule {
                 "Declared textual request body is not valid UTF-8.",
             ),
         };
-        plain_response(status, message)
+        crate::server::refused(plain_response(status, message), crate::server::Refusal::WAF)
     }
 }
 

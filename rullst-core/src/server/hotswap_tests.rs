@@ -361,6 +361,37 @@ async fn access_log_off_leaves_the_access_log_out_of_hot_swapped_routes() {
     }
 }
 
+/// `cargo rullst dev` logs the requests its security baseline refuses
+/// (#845), unless the access log is off.
+#[tokio::test]
+async fn refused_hot_swapped_requests_are_access_logged() {
+    use crate::server::console::Recording;
+    let lines =
+        || crate::server::access_log_writer::LINES_HERE.with(|lines| lines.borrow().clone());
+    for (recording, written) in [(Recording::All, 1), (Recording::Off, 0)] {
+        let router =
+            axum::Router::new().route("/submit", axum::routing::post(|| async { "saved" }));
+        let mut service = service(router);
+        service.access_log_recording = recording;
+        let before = lines().len();
+        let response = service
+            .call(Request::post("/submit").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::FORBIDDEN, "{recording:?}");
+        let written_lines = lines()[before..].to_vec();
+        assert_eq!(
+            written_lines.len(),
+            written,
+            "{recording:?} {written_lines:?}"
+        );
+        if let [line] = written_lines.as_slice() {
+            assert!(line.starts_with("[HTTP] POST /submit -> 403 ("), "{line}");
+            assert!(line.ends_with(" ms) refused by csrf"), "{line}");
+        }
+    }
+}
+
 #[tokio::test]
 async fn hot_swapped_routes_run_behind_the_development_security_baseline() {
     let router = axum::Router::new()

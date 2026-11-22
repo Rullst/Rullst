@@ -164,6 +164,42 @@ Until 13.0.0-alpha.6 each request wrote its line to stdout itself, holding the
 stdout lock, which cost a large share of the throughput of a generated
 application under load.
 
+A line is queued when its response is ready, so the log is in the order in
+which responses finished, not the order in which requests arrived: a slow
+request's line comes after the lines of faster requests that started later,
+and two requests that finish together may be written in either order. The
+elapsed time on each line says how long its request took; a line carries no
+arrival time or request id. To follow one request, or to reconstruct arrival
+order, log a request id of your own from a middleware, or use the request spans
+of the [OpenTelemetry export](#opentelemetry-export), rather than the position
+of a line in the log.
+
+### Refused requests in the access log
+
+Some of `Server`'s own layers answer a request before the application's
+handler runs: the CSRF check and the authentication of
+`Server::with_machine_endpoints` routes, the WAF (in staging and production;
+in development it only logs a warning and lets the request through), the rate
+limiter of `Server::rate_limit`, Traffic Shield and lifecycle admission while
+the application is starting or draining. Since 13.0.0-rc.1 their responses get
+an access-log line too, with the status and the layer that refused the
+request, in every environment:
+
+```text
+[HTTP] POST /login -> 403 (0.31 ms) refused by csrf
+[HTTP] GET /search -> 429 (0.12 ms) refused by rate-limit
+```
+
+The layer is one of `csrf`, `machine-endpoint`, `waf`, `rate-limit`,
+`traffic-shield` and `lifecycle`. The line follows the same rules as the
+others (the path or route, `RULLST_ACCESS_LOG`, the health-probe rule) and
+writes neither the request's body, its headers nor the token it lacked.
+Until 13.0.0-rc.1 such requests reached no access-log line, because the
+access log runs inside those layers. A refusal by `rate_limit_middleware` or
+`csrf_middleware` that an application adds to its own router gets one line,
+from the access log it passes. A CORS preflight that the CORS layer answers,
+and a static file under `/static/`, are still not written.
+
 ### Paths in the access log
 
 A request path can carry a secret, such as the token of a booking or sign-in

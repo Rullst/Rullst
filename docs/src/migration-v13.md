@@ -1559,9 +1559,16 @@ Work through the steps in order.
     their responses and drops lines when stdout cannot keep up, with a
     `lines dropped` notice. A test that reads the line right after the
     response, or kills the server at once, waits for the line or stops the
-    server gracefully. `RULLST_ACCESS_LOG` (`on`, `errors`, `1/N` or `off`)
+    server gracefully. Lines are in the order in which responses finished,
+    not in which requests arrived, so a script that reads the log as a
+    sequence of requests matches lines by path and status instead.
+    `RULLST_ACCESS_LOG` (`on`, `errors`, `1/N` or `off`)
     chooses which requests are written; any other value in the environment
-    or `.env` now stops startup with `ServerError::Configuration`.
+    or `.env` now stops startup with `ServerError::Configuration`. Since
+    13.0.0-rc.1 a request that the CSRF check, the WAF, the rate limiter,
+    Traffic Shield or lifecycle admission refuses is written too, ending in
+    ` refused by <layer>`; until then it reached no line, in development
+    neither.
 15. **Compress pages in an existing `Caddyfile` when you are ready**
     (Compressed pages in the generated Caddyfile row,
     `V13-DEPLOY-CADDY-ENCODE`). Nothing breaks: the `Caddyfile` of an

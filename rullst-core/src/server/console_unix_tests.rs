@@ -131,10 +131,16 @@ fn elapsed_access_log_child() {
     }
     let elapsed = std::time::Duration::from_micros(1_500_250);
     let all = (true, Recording::All);
-    log_request("POST", ("/courses", "/courses"), 201, elapsed, all);
+    log_request("POST", ("/courses", "/courses"), (201, None), elapsed, all);
     let errors = (true, Recording::Errors);
-    log_request("GET", ("/hidden", "/hidden"), 200, elapsed, errors);
-    log_request("GET", ("/missing", "/missing"), 404, elapsed, errors);
+    log_request("GET", ("/hidden", "/hidden"), (200, None), elapsed, errors);
+    log_request(
+        "GET",
+        ("/missing", "/missing"),
+        (404, None),
+        elapsed,
+        errors,
+    );
     assert!(flush_access_log());
 }
 
