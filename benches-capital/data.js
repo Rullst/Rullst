@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795369080285,
+  "lastUpdate": 1795444748366,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -20121,6 +20121,46 @@ window.BENCHMARK_DATA = {
             "name": "capital_subscription/parse_status_active",
             "value": 17,
             "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "@venelouis",
+            "username": "venelouis",
+            "email": "37526748+venelouis@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "7ecad3bcffe576e1ece45d3d6b91ff9bcf97c171",
+          "message": "Merge pull request #862 from Rullst/fix/v13-rc1-threat-model-studio-source\n\nfix: point TM-STUDIO-01 at the moved Studio access tests; update url for RUSTSEC-2026-0592",
+          "timestamp": "2026-11-22T17:17:00Z",
+          "url": "https://github.com/Rullst/Rullst/commit/7ecad3bcffe576e1ece45d3d6b91ff9bcf97c171"
+        },
+        "date": 1795444747709,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 17,
+            "range": "± 0",
             "unit": "ns/iter"
           },
           {
