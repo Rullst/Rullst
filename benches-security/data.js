@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795368909631,
+  "lastUpdate": 1795444595023,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -26589,6 +26589,58 @@ window.BENCHMARK_DATA = {
             "name": "rbac_guard/authorize_owner_or_role",
             "value": 12,
             "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "@venelouis",
+            "username": "venelouis",
+            "email": "37526748+venelouis@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "7ecad3bcffe576e1ece45d3d6b91ff9bcf97c171",
+          "message": "Merge pull request #862 from Rullst/fix/v13-rc1-threat-model-studio-source\n\nfix: point TM-STUDIO-01 at the moved Studio access tests; update url for RUSTSEC-2026-0592",
+          "timestamp": "2026-11-22T17:17:00Z",
+          "url": "https://github.com/Rullst/Rullst/commit/7ecad3bcffe576e1ece45d3d6b91ff9bcf97c171"
+        },
+        "date": 1795444594360,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5841,
+            "range": "± 67",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 610,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 1",
             "unit": "ns/iter"
           },
           {
