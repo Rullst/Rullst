@@ -14,7 +14,7 @@ pub fn page(cx: &Context, proof: Markup, summary: Markup) -> Markup {
             <head>
                 <meta charset="utf-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
-                <meta name="description" content="O Rullst é um framework web full-stack para Rust, construído sobre Axum e SQLx, com os starters Blank, API e SaaS. A v13 está em pré-lançamento (13.0.0-alpha.6): veja o desempenho medido, as proteções padrão e o que ele inclui, cada um com a sua fonte." />
+                <meta name="description" content="O Rullst é uma suíte de frameworks Rust full-stack, open source: aplicações web sobre Axum e SQLx com os starters Blank, API e SaaS, mais pacotes opcionais para IA, pagamentos, e-mail, mensageria, dispositivos IoT, plataformas de aprendizagem e privacidade. A v13 está em pré-lançamento (13.0.0-alpha.6): veja o desempenho medido, as proteções padrão e o que ele inclui, cada um com a sua fonte." />
                 <meta name="theme-color" content="#070b15" />
                 <meta name="referrer" content="no-referrer" />
                 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src 'none'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'" />
@@ -40,6 +40,7 @@ pub fn page(cx: &Context, proof: Markup, summary: Markup) -> Markup {
                 {nav()}
                 <main id="main">
                     {hero(proof)}
+                    {bottom::live()}
                     <div class="foundation-strip shell" aria-label="Fundamentos do framework" data-reveal><span>"CONSTRUÍDO EM TERRENO CONHECIDO"</span>" "<strong>"Axum"</strong><strong>"Tokio"</strong><strong>"Tower"</strong><strong>"SQLx"</strong>" "<a href="/Rullst/book/axum-sqlx-migration.html">"Mantenha suas saídas de emergência ↗"</a></div>
                     {performance(summary)}
                     {security()}
@@ -65,7 +66,7 @@ fn nav() -> Markup {
                 <a class="brand" href="https://rullst.win/pt-br/" aria-label="Página inicial do Rullst"><img src="/Rullst/Rullst.png" alt="" width="40" height="40" />" "<span>"rullst"<span class="brand-period">"."</span></span></a>" "
                 {blocks::lang_switch(Lang::PtBr, "/", "/pt-br/", true)}" "
                 <button class="nav-toggle" type="button" aria-label="Abrir ou fechar a navegação" aria-controls="navigation" aria-expanded="false" data-nav-toggle>"☰"</button>" "
-                <div class="nav-links" id="navigation" data-navigation><a href="#performance">"Desempenho"</a>" "<a href="#security">"Segurança"</a>" "<a href="#included">"Incluído"</a>" "<a href="#examples">"Exemplos"</a>" "<a class="nav-academy" href="#academy">"Academy "<span aria-hidden="true">"↗"</span></a>" "<a href="/Rullst/book/">"Documentação"</a>" "<a href="#community">"Comunidade"</a>" "<a class="nav-source" href="https://github.com/Rullst/Rullst">"Código-fonte ↗"</a></div>
+                <div class="nav-links" id="navigation" data-navigation><a href="#performance">"Desempenho"</a>" "<a href="/pt-br/comparar/">"Comparar"</a>" "<a href="#security">"Segurança"</a>" "<a href="#included">"Incluído"</a>" "<a href="#examples">"Exemplos"</a>" "<a class="nav-academy" href="#academy">"Academy "<span aria-hidden="true">"↗"</span></a>" "<a href="/Rullst/book/">"Documentação"</a>" "<a href="#community">"Comunidade"</a>" "<a class="nav-source" href="https://github.com/Rullst/Rullst">"Código-fonte ↗"</a></div>
             </div>
         </nav>
     }
@@ -76,10 +77,9 @@ fn hero(proof: Markup) -> Markup {
     html! {
         <header class="hero shell" data-reveal>
             <div class="hero-content">
-                <p class="eyebrow"><span class="short-line" aria-hidden="true"></span>" Framework web open source para Rust"</p>
+                <p class="eyebrow"><span class="short-line" aria-hidden="true"></span>" A suíte de frameworks Rust open source"</p>
                 <h1 class="hero-wordmark">"Rullst"<span class="wordmark-period">"."</span></h1>
-                <p class="hero-lede">"Um framework web full-stack para Rust, construído sobre "<strong>"Axum"</strong>" e "<strong>"SQLx"</strong>", com os starters "<strong>"Blank"</strong>", "<strong>"API"</strong>" e "<strong>"SaaS"</strong>"."</p>
-                <p class="hero-around">"…e as peças ao redor dele, cada uma um pacote opcional: "<a href="/Rullst/book/crates/ai.html">"IA"</a>", "<a href="/Rullst/book/crates/capital.html">"pagamentos"</a>", "<a href="/Rullst/book/crates/mail.html">"e-mail"</a>", "<a href="/Rullst/book/crates/messaging.html">"mensageria"</a>", "<a href="/Rullst/book/crates/iot.html">"dispositivos IoT"</a>", "<a href="/Rullst/book/labs-runner-contract.html">"plataformas de aprendizagem"</a>" e "<a href="https://github.com/Rullst/Rullst/tree/main/rullst-privacy">"privacidade"</a>"."</p>
+                <p class="hero-lede"><strong lang="en">"Because With Rullst, We Rule!"</strong>" Uma suíte de frameworks Rust full-stack: aplicações web sobre "<strong>"Axum"</strong>" e "<strong>"SQLx"</strong>" com os starters "<strong>"Blank"</strong>", "<strong>"API"</strong>" e "<strong>"SaaS"</strong>", mais pacotes opcionais para "<a href="/Rullst/book/crates/ai.html">"IA"</a>", "<a href="/Rullst/book/crates/capital.html">"pagamentos"</a>", "<a href="/Rullst/book/crates/mail.html">"e-mail"</a>", "<a href="/Rullst/book/crates/messaging.html">"mensageria"</a>", "<a href="/Rullst/book/crates/iot.html">"dispositivos IoT"</a>", "<a href="/Rullst/book/labs-runner-contract.html">"plataformas de aprendizagem"</a>" e "<a href="https://github.com/Rullst/Rullst/tree/main/rullst-privacy">"privacidade"</a>"."</p>
                 <p class="hero-slogan">"Inteligente. Consciente da segurança."<br />"Feito para uma "<span>"produtividade sem esforço."</span></p>
                 <div class="hero-actions"><a class="button button-primary" href="/Rullst/book/start-here.html">"Comece a construir "<span aria-hidden="true">"↗"</span></a>" "<a class="button button-secondary" href="/pt-br/comparar/">"Compare com Loco e Topcoat "<span aria-hidden="true">"↗"</span></a></div>
                 <div class="hero-tags" aria-label="Fatos do projeto"><span>"20 pacotes, uma versão"</span><span>"HTML no servidor + htmx"</span><span>"Licença MIT"</span></div>
@@ -172,10 +172,20 @@ fn performance(summary: Markup) -> Markup {
                 <h2 id="performance-heading">"Medido contra o Axum."<br /><span class="accent-orange">"Resultados fortes e fracos, lado a lado."</span></h2>
                 <p>"As pontuações abaixo são as do Rullst como o "<code>"cargo rullst new"</code>" o gera, com o middleware de segurança ligado. A comparação entre frameworks do "<a href="/Benchmarks/">"Rullst/Benchmarks"</a>" (em inglês) mede cada nova versão do Rullst contra o Axum (1,00×) e outros frameworks em máquinas hospedadas pelo GitHub, e este resumo é refeito todos os dias a partir dos últimos resultados; a página de resultados diz se eles passam pela porta de publicação do próprio benchmark."</p>
             </div>
+            <div class="landing-explain">
+                <h3>"O que os números significam para uma aplicação real"</h3>
+                <p>"O Axum é a referência: um framework web Rust pequeno e rápido, sem camada de banco de dados, sem sessões e sem middleware de segurança. Uma pontuação de 1,00× é o mesmo resultado do Axum e 0,50× é a metade dele; em memória e inicialização a razão é invertida, então mais é sempre melhor. O Rullst é o Axum mais um ORM, templates "<code>"html!"</code>", sessões e as camadas de segurança que uma aplicação gerada liga, então algum custo frente ao Axum puro é esperado. A questão é onde ele aparece."</p>
+                <ul>
+                    <li><strong>"Onde o Rullst se saiu bem na última rodada: "</strong>"memória com usuários autenticados e inicialização. Os dois importam quando você paga por uma máquina pequena ou reinicia com frequência. O número com usuários autenticados não entra em nenhuma pontuação, então leia-o na lista em palavras simples abaixo."</li>
+                    <li><strong>"O preço: "</strong>"a vazão. O WAF, a verificação CSRF, os cabeçalhos seguros e o log de acesso estão ligados em toda aplicação gerada, e cada requisição paga por eles. Por isso o benchmark tem uma segunda linha do Rullst, sem essas camadas: a diferença entre as duas linhas mede o que elas custam."</li>
+                    <li><strong>"Onde ele está atrás: "</strong>"requisições por segundo em páginas triviais, renderização de listas longas com "<code>"html!"</code>" e gravações que abrem uma transação por linha. Esses são os alvos do trabalho de desempenho da 13.1, que precisa mostrar números de antes e depois e não pode enfraquecer nenhuma camada de segurança: "<a href="https://github.com/Rullst/Rullst/issues/832">"issue #832"</a>"."</li>
+                </ul>
+            </div>
             <p class="landing-disclosure"><strong>"Quem mediu."</strong>" O mantenedor do Rullst também mantém esse benchmark, escreveu todas as implementações dele e projetou o método. O README dele lista o que ele não mede: logins, requisições grandes, TLS, um banco de dados em outra máquina e escala além de 2 vCPUs, entre outros."</p>
             <div class="landing-bench" data-landing-benchmarks>
                 {summary}
             </div>
+            <a class="compare-callout" href="/pt-br/comparar/"><span class="compare-callout-index">"LADO A LADO"</span><strong>"Rullst, Loco e Topcoat comparados"</strong><span>"O que cada um escolheu, a vantagem e o custo de cada escolha, com a versão e a data em que cada fato foi verificado "<span aria-hidden="true">"↗"</span></span></a>
             <div class="performance-links"><a href="/pt-br/comparar/">"Rullst, Loco e Topcoat comparados, com a tabela completa "<span aria-hidden="true">"↗"</span></a>" "<a href="/Benchmarks/">"Resultados completos, método e limitações (em inglês) "<span aria-hidden="true">"↗"</span></a>" "<a href="/Rullst/benches/">"Histórico de microbenchmarks no "<code>"main"</code>" (verificação de regressões, não um ranking) "<span aria-hidden="true">"↗"</span></a></div>
         </section>
     }
