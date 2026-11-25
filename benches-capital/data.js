@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795444748366,
+  "lastUpdate": 1795638768720,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -20172,6 +20172,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9ea50d980ca99634e25778cb3686e902dcf99945",
+          "message": "Merge pull request #867 from Rullst/fix/v13-rc1-cookie-0-18-3\n\nfix(deps): update cookie to 0.18.3 for RUSTSEC-2026-0594",
+          "timestamp": "2026-11-25T17:14:20-03:00",
+          "tree_id": "cfc3bf392a151bf30df3bf640e518dd12c88ef46",
+          "url": "https://github.com/Rullst/Rullst/commit/9ea50d980ca99634e25778cb3686e902dcf99945"
+        },
+        "date": 1795638767891,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
             "range": "± 0",
             "unit": "ns/iter"
           }
