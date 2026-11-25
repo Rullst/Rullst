@@ -695,6 +695,11 @@ page; the items below are specific to this release.
   a stack overflow in `Url::origin()` on nested `blob:` URLs. Rullst's
   requirement already accepts 2.5.9, so applications get it with
   `cargo update -p url`.
+- The workspace lockfile moves `cookie` from 0.18.2 to 0.18.3 for
+  [RUSTSEC-2026-0594](https://rustsec.org/advisories/RUSTSEC-2026-0594):
+  private (encrypted) cookie nonces could repeat in processes that `fork()`
+  and add private cookies on the forking thread. Rullst does not fork, and
+  applications get the fix with `cargo update -p cookie`.
 
 - The `rullst-connect` Axum examples (`axum_server`, described as a complete
   server, and `axum_example`) redirected without a verified OAuth `state`
