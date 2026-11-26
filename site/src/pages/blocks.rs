@@ -61,15 +61,42 @@ pub fn static_nav(lang: Lang, en: &str, pt: &str, back: &str) -> Markup {
     }
 }
 
-/// One comparison topic: what Rullst, Loco and Topcoat each document about it.
-pub fn topic(id: &str, title: &str, rullst: Markup, loco: Markup, topcoat: Markup) -> Markup {
+/// What one framework chose for a topic, with the advantage and the cost of that choice.
+pub struct Choice {
+    pub chose: Markup,
+    pub plus: Markup,
+    pub minus: Markup,
+}
+
+/// One comparison topic: a plain-words introduction, then what Rullst, Loco and Topcoat each
+/// chose and the advantage and cost of each choice.
+pub fn topic(
+    lang: Lang,
+    id: &str,
+    title: &str,
+    plain: Markup,
+    [rullst, loco, topcoat]: [Choice; 3],
+) -> Markup {
+    let (chose, plus, minus) = if lang.is_pt() {
+        ("Escolheu", "Vantagem", "Custo")
+    } else {
+        ("Chose", "Advantage", "Cost")
+    };
+    let cell = |choice: Choice| {
+        html! {
+            <p class="compare-chose"><b>{chose}</b>{choice.chose}</p>
+            <p class="compare-plus"><b>{plus}</b>{choice.plus}</p>
+            <p class="compare-minus"><b>{minus}</b>{choice.minus}</p>
+        }
+    };
     html! {
         <div class="compare-topic" id={id}>
             <h3>{title}</h3>
+            <p class="compare-plain">{plain}</p>
             <dl>
-                <div><dt>"Rullst"</dt><dd>{rullst}</dd></div>
-                <div><dt>"Loco"</dt><dd>{loco}</dd></div>
-                <div><dt>"Topcoat"</dt><dd>{topcoat}</dd></div>
+                <div><dt>"Rullst"</dt><dd>{cell(rullst)}</dd></div>
+                <div><dt>"Loco"</dt><dd>{cell(loco)}</dd></div>
+                <div><dt>"Topcoat"</dt><dd>{cell(topcoat)}</dd></div>
             </dl>
         </div>
     }

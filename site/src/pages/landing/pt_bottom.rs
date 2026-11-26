@@ -8,6 +8,15 @@ use crate::footprint;
 use crate::pages::made_with;
 use crate::pages::{Context, Lang};
 
+/// The live applications made with Rullst, right after the first screen.
+pub fn live() -> Markup {
+    html! {
+        <section id="live-applications" class="shell section live-section" aria-labelledby="made-with-heading" data-reveal>
+            {made_with::card(Lang::PtBr)}
+        </section>
+    }
+}
+
 /// 03 / Included in Rullst.
 pub fn included() -> Markup {
     html! {
@@ -85,6 +94,7 @@ pub fn integrations() -> Markup {
                     <a href="/Rullst/book/provider-conformance.html">"Kits de conformidade de provedores ↗"</a>
                 </article>
             </div>
+            <p class="integration-help"><strong>"Ajude a subir uma integração de nível."</strong>" A issue de acompanhamento "<a href="https://github.com/Rullst/Rullst/issues/801">"#801"</a>" lista uma issue por provedor que nunca rodou com uma conta real. Se você tem uma, escolha uma issue, diga que vai assumi-la e relate o que aconteceu; uma execução bem-sucedida é registrada na documentação e nesta página com a data. Dúvidas e companhia são bem-vindas na "<a href="https://discord.com/invite/2ntKFtsSjw">"comunidade do Rullst no Discord"</a>"."</p>
             <p class="integration-recipes" data-integration-recipes><strong>"Receitas, não integrações."</strong>" MongoDB, DuckDB e Qdrant são receitas de aplicação: seu código usa diretamente os crates oficiais de cada um. Os adaptadores embutidos deles foram removidos na 13.0.0-alpha.5. Outros serviços também são código da aplicação: escreva um adaptador sobre a trait do provedor (pagamentos, e-mail, vídeo) ou siga uma receita. "<a href="/Rullst/book/recipes/index.html">"Ler as receitas ↗"</a></p>
             <p class="integration-production">"As aplicações em produção do mantenedor, Academy, capoeira e vene.win, rodam em domínios reais em uma única máquina Arm Oracle Ampere A1, atrás de um Caddy compartilhado com certificados Let's Encrypt. A CI testa o deploy gerado somente em x86_64; máquinas Arm não são testadas na CI. "<a href="/Rullst/book/pt-BR/scope-and-limits.html">"Limites de deploy "<span aria-hidden="true">"↗"</span></a></p>
         </section>
@@ -111,7 +121,6 @@ pub fn examples() -> Markup {
                 <p>"Demos públicas, não certificações de produção. Cada demo é atualizada no próprio ritmo e pode rodar uma versão do Rullst anterior à 13.0.0-alpha.6. O checkout do SaaS é real e cobra dinheiro de verdade; os fixtures de pagamento do Showcase não são um checkout real. A não ser em uma compra que você pretenda fazer, use dados de teste, não informações sensíveis. A disponibilidade é gerenciada à parte."</p>
                 <a href="https://github.com/Rullst/examples">"Código-fonte e receitas de deploy ↗"</a>
             </div>
-            {made_with::card(Lang::PtBr)}
         </section>
     }
 }

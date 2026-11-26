@@ -360,9 +360,10 @@ LANGUAGES = {
            "dedication": "All glory and honor to God", "status": "Rullst v13 prerelease",
            "slogan": "Intelligent, Security-Conscious, and Designed for Effortless Productivity",
            "performance": "measures each new Rullst release",
-           "lede": "A full-stack web framework for Rust, built on <strong>Axum</strong> and <strong>SQLx</strong>",
+           "lede": "<strong>Because With Rullst, We Rule!</strong> A full-stack Rust framework suite: web apps on <strong>Axum</strong> and <strong>SQLx</strong>",
+           "eyebrow": "The open-source Rust framework suite",
            "illustration": "Not live telemetry.",
-           "around": "…and the pieces around it, each an optional package:",
+           "around": "plus optional packages for ",
            "made_with": "Made with ",
            "page_weight": "This page: 484 kB in 7 requests on a first visit",
            "disclosure": "Rullst's maintainer also maintains that benchmark",
@@ -375,9 +376,10 @@ LANGUAGES = {
               "dedication": "Toda glória e honra a Deus", "status": "Pré-lançamento do Rullst v13",
               "slogan": "Inteligente, consciente da segurança e feito para uma produtividade sem esforço",
               "performance": "mede cada nova versão do Rullst",
-              "lede": "Um framework web full-stack para Rust, construído sobre <strong>Axum</strong> e <strong>SQLx</strong>",
+              "lede": "<strong lang=\"en\">Because With Rullst, We Rule!</strong> Uma suíte de frameworks Rust full-stack: aplicações web sobre <strong>Axum</strong> e <strong>SQLx</strong>",
+              "eyebrow": "A suíte de frameworks Rust open source",
               "illustration": "Não é telemetria ao vivo.",
-              "around": "…e as peças ao redor dele, cada uma um pacote opcional:",
+              "around": "mais pacotes opcionais para ",
               "made_with": "Feito com ",
               "page_weight": "Esta página: 484 kB em 7 requisições na primeira visita",
               "disclosure": "O mantenedor do Rullst também mantém esse benchmark",
@@ -387,7 +389,7 @@ LANGUAGES = {
                          "mais seguro", "experimental", "de classe mundial")},
 }
 # The landing sections, in page order.
-LANDING_SECTIONS = ("performance", "security", "included", "integrations", "examples", "academy", "community")
+LANDING_SECTIONS = ("live-applications", "performance", "security", "included", "integrations", "examples", "academy", "community")
 LANDING_CHECKED = re.compile(r'<p class="(?:landing-checked|security-compare)" id="(checked-[a-z]+)">(.*?)</p>', re.DOTALL)
 
 
@@ -488,6 +490,14 @@ def validate_landing_sections(path: Path, source: str, home: Document, facts: di
         assert source.count(start) == 1, f"{path.name}: needs one {start} block"
         assert landing_pending(source, name), f"{path.name}: {start} needs its pending text"
     performance = section_text(source, "performance")
+    assert "/issues/832" in performance and 'class="compare-callout"' in performance and 'class="landing-explain"' in performance, (
+        f"{path.name}: Performance explains the numbers, links the 13.1 issue and the comparison page"
+    )
+    assert 'class="landing-meaning"' in performance or landing_pending(source, "summary"), f"{path.name}: the generated summary carries its plain-words list"
+    integrations = section_text(source, "integrations")
+    assert "https://github.com/Rullst/Rullst/issues/801" in integrations and "https://discord.com/invite/2ntKFtsSjw" in integrations, (
+        f"{path.name}: Integrations links the tracking issue #801 and the Discord community"
+    )
     assert {"/Rullst/benches/", "/Benchmarks/"} <= set(re.findall(r'href="([^"]+)"', performance)), (
         f"{path.name}: Performance must link the microbenchmarks and the full results"
     )
@@ -596,6 +606,12 @@ def validate_comparison(home: Document, home_pt: Document) -> None:
     for text, name in ((source, COMPARE.name), (source_pt, COMPARE_PT_BR.name)):
         for topic in re.findall(r'<div class="compare-topic" id="[a-z-]+">(.*?)</dl>', text, re.DOTALL):
             assert re.findall(r"<dt>(.*?)</dt>", topic) == ["Rullst", "Loco", "Topcoat"], f"{name}: each topic covers the three"
+            assert len(re.findall(r'<p class="compare-chose">', topic)) == len(re.findall(r'<p class="compare-plus">', topic)) == len(
+                re.findall(r'<p class="compare-minus">', topic)) == 3, f"{name}: each framework needs its choice, advantage and cost"
+        assert text.count('<p class="compare-plain">') == len(re.findall(r'<div class="compare-topic" id=', text)), (
+            f"{name}: each topic opens with its plain-words explanation"
+        )
+        assert "https://github.com/Rullst/Rullst/issues" in text and "x86_64" in text and "Ampere" in text, f"{name}: deployment cell states what CI tests and where production runs"
         assert text.count(RESULTS_BLOCK[0]) == 1 and 'class="benchmark-pending"' in text, (
             f"{name}: needs the benchmark-results block with its pending text"
         )
@@ -942,10 +958,10 @@ def made_with_line(source: str) -> str:
 def validate_made_with(path: Path, source: str, facts: dict) -> None:
     """The first screen's line on the parts around the framework, the card and the footer line."""
     hero = source[source.index('<header class="hero'):source.index("</header>")]
-    around = re.search(r'<p class="hero-around">(.*?)</p>', hero, re.DOTALL)
-    assert around and around[1].startswith(facts["around"]), f"{path}: the first screen names the parts around the framework"
+    around = re.search(r'<p class="hero-lede">(.*?)</p>', hero, re.DOTALL)
+    assert around and facts["around"] in around[1] and facts["eyebrow"] in hero, f"{path}: the first screen names the suite and the parts around the framework"
     assert re.findall(r'href="([^"]+)"', around[1]) == AROUND_LINKS, f"{path}: each part around the framework links its documentation"
-    card = re.search(r'<article class="made-with" id="made-with" [^>]*>(.*?)</article>', section_text(source, "examples"), re.DOTALL)
+    card = re.search(r'<article class="made-with" id="made-with" [^>]*>(.*?)</article>', section_text(source, "live-applications"), re.DOTALL)
     lang = "en" if facts["locale"] == "en_US" else "pt-BR"
     assert card and re.findall(r'<li><a href="([^"]+)">', card[1]) == MADE_WITH_LINKS[lang], f"{path}: the Made with Rullst card lists the live applications"
     line = made_with_line(source[source.index("<footer"):])

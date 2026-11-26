@@ -200,8 +200,8 @@ try {
       "https://saas.rullst.win/",
     ], "Demo buttons must retain the independently hosted application URLs");
     assert.equal(await evaluate("document.querySelectorAll('#integrations [data-integration-level] li').length"), 16, "Integrations must list every README entry");
-    assert.equal(await evaluate("document.querySelectorAll('.hero .hero-around a').length"), 7, "The first screen links the parts around the framework");
-    assert.equal(await evaluate("document.querySelectorAll('#examples #made-with li a').length"), 5, "The Made with Rullst card lists the live applications");
+    assert.equal(await evaluate("document.querySelectorAll('.hero .hero-lede a').length"), 7, "The first screen links the parts around the framework");
+    assert.equal(await evaluate("document.querySelectorAll('#live-applications #made-with li a').length"), 5, "The Made with Rullst card lists the live applications");
     assert(await evaluate("/^(Made with|Feito com) Rullst \\S+: /.test(document.querySelector('footer .made-with-line').textContent)"), "The footer names the Rullst version that made the page");
     assert(await evaluate("[...document.querySelectorAll('#academy a')].some(link => link.href.startsWith('https://academy.rullst.win/'))"), "Academy section must link the Academy");
     const language = await evaluate(`(() => {
@@ -234,7 +234,7 @@ try {
         "The install command and the concept illustration must be in the first screen");
     }
     assert.deepEqual(await evaluate("[...document.querySelectorAll('main > section[id], main > header')].map(element => element.id || 'hero')"),
-      ["hero", "performance", "security", "included", "integrations", "examples", "academy", "community"], "Landing sections and their order");
+      ["hero", "live-applications", "performance", "security", "included", "integrations", "examples", "academy", "community"], "Landing sections and their order");
     assert.equal(await evaluate("document.querySelectorAll('.hero #install-command, .hero .proof-card').length"), 4, "The first screen shows the install command and three proof points");
     assert(await evaluate(`document.querySelector('#examples h2').textContent.includes(${JSON.stringify(route === "/pt-br/" ? "Não é só um framework." : "Not just a framework.")})`));
     if (output) {

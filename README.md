@@ -216,6 +216,13 @@ How far each built-in integration has been tested:
 | **Tested in CI against servers in local containers** | MySQL and MariaDB; Redis (cache, queues, rate limits, ORM data structures and Redis Streams messaging); SurrealDB; Turso/libSQL (the `libsql-server` image, which is `sqld`); Meilisearch search; pgvector; S3-compatible storage (a Garage server) |
 | **Offline only: mock mode, local fixtures or a [conformance kit](https://rullst.github.io/Rullst/book/provider-conformance.html)** | AWS SES and SendPulse mail; OpenAI and Anthropic Claude, and the DeepSeek and Ollama presets of the OpenAI-compatible adapter; Microsoft, Apple, Auth0, AWS Cognito, Facebook, X (Twitter), Discord, LinkedIn and generic OpenID Connect sign-in; the S3/R2 adapter of `rullst-media` |
 
+Help move an integration up a level: the tracking issue
+[#801](https://github.com/Rullst/Rullst/issues/801) lists one issue per provider
+that has never run against a real account. If you have one, pick an issue, say you
+will take it and report what happened; a successful run is recorded in the
+documentation and on the website with its date. Questions and company are welcome
+in the [Rullst community on Discord](https://discord.com/invite/2ntKFtsSjw).
+
 Other services are application code: write an adapter on the provider trait
 (payments, mail, video) or follow a
 [recipe](https://rullst.github.io/Rullst/book/recipes/index.html) such as the

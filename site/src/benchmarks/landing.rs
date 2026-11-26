@@ -351,6 +351,106 @@ fn summary(results: &Results, row: &Row, lang: Lang) -> Markup {
         <div class="landing-bench-split">{level}{below}{unscored}</div>
         {facts}
         {minimal}
+        {meaning(results, row, lang)}
         <ul class="benchmark-legend landing-bench-legend"><li>{legend}</li>{flags}</ul>
     }
+}
+
+/// "In plain words": what the numbers mean for a real application, every sentence chosen
+/// from the data (nothing about a result is written by hand).
+fn meaning(results: &Results, row: &Row, lang: Lang) -> Markup {
+    let pt = lang.is_pt();
+    let words = words(lang);
+    let logins = results.logins;
+    let logged_in = match (
+        logins,
+        row.memory("after_logins_peak_ram_mib"),
+        row.memory("axum_after_logins_peak_ram_mib"),
+    ) {
+        (Some(logins), Some(own), Some(axum)) => {
+            let (own_text, axum_text) = (mib(own, lang), mib(axum, lang));
+            let line = match (own < axum, pt) {
+                (true, false) => format!(
+                    "With signed-in users: after {logins} logins the generated application held {own_text} MiB, less than Axum's {axum_text} MiB. That is closer to a running service than an idle process; no score includes it."
+                ),
+                (false, false) => format!(
+                    "With signed-in users: after {logins} logins the generated application held {own_text} MiB, not less than Axum's {axum_text} MiB. That is closer to a running service than an idle process; no score includes it."
+                ),
+                (true, true) => format!(
+                    "Com usuários autenticados: depois de {logins} logins, a aplicação gerada ocupava {own_text} MiB, menos que os {axum_text} MiB do Axum. Isso está mais perto de um serviço em funcionamento do que de um processo parado; nenhuma pontuação o inclui."
+                ),
+                (false, true) => format!(
+                    "Com usuários autenticados: depois de {logins} logins, a aplicação gerada ocupava {own_text} MiB, não menos que os {axum_text} MiB do Axum. Isso está mais perto de um serviço em funcionamento do que de um processo parado; nenhuma pontuação o inclui."
+                ),
+            };
+            Some(line)
+        }
+        _ => None,
+    };
+    let startup = row
+        .category("startup")
+        .filter(|cell| cell.score.is_some())
+        .map(|cell| {
+            let value = score(cell, lang, false);
+            let level = cell.has("within_reference_margin") || cell.score >= Some(1.0);
+            match (level, pt) {
+                (true, false) => format!("Startup: {value} Axum's, level with or ahead of it: the time from launching the program to answering its first request."),
+                (false, false) => format!("Startup: {value} Axum's, behind it: the time from launching the program to answering its first request."),
+                (true, true) => format!("Inicialização: {value} a do Axum, no mesmo nível ou à frente: o tempo entre iniciar o programa e responder a primeira requisição."),
+                (false, true) => format!("Inicialização: {value} a do Axum, atrás dele: o tempo entre iniciar o programa e responder a primeira requisição."),
+            }
+        });
+    let hello = |slug: &str| {
+        results
+            .row(slug)
+            .and_then(|row| row.category("hello"))
+            .filter(|cell| cell.score.is_some())
+            .map(|cell| score(cell, lang, false))
+    };
+    let cost = hello("rullst").map(|own| match (hello(MINIMAL), pt) {
+        (Some(minimal), false) => format!("The price of the security layers: every request passes through the WAF, CSRF check, secure headers and access log that are on by default. On the smallest request (Hello world), where they weigh most, the generated application scores {own} Axum's and the same application without them {minimal}. Fewer requests per second on a busy small machine is what you pay for those protections."),
+        (None, false) => format!("The price of the security layers: every request passes through the WAF, CSRF check, secure headers and access log that are on by default. On the smallest request (Hello world), where they weigh most, the generated application scores {own} Axum's. Fewer requests per second on a busy small machine is what you pay for those protections."),
+        (Some(minimal), true) => format!("O preço das camadas de segurança: toda requisição passa pelo WAF, pela verificação CSRF, pelos cabeçalhos seguros e pelo log de acesso que vêm ligados por padrão. Na menor requisição (Hello world), onde elas pesam mais, a aplicação gerada pontua {own} a do Axum e a mesma aplicação sem elas {minimal}. Menos requisições por segundo numa máquina pequena e ocupada é o que se paga por essas proteções."),
+        (None, true) => format!("O preço das camadas de segurança: toda requisição passa pelo WAF, pela verificação CSRF, pelos cabeçalhos seguros e pelo log de acesso que vêm ligados por padrão. Na menor requisição (Hello world), onde elas pesam mais, a aplicação gerada pontua {own} a do Axum. Menos requisições por segundo numa máquina pequena e ocupada é o que se paga por essas proteções."),
+    });
+    let behind: Vec<String> = SPEED
+        .iter()
+        .filter_map(|key| {
+            row.category(key)
+                .filter(|cell| {
+                    cell.score.is_some_and(|value| value < 1.0)
+                        && !cell.has("within_reference_margin")
+                })
+                .map(|cell| format!("{} {}", words.category(key), score(cell, lang, false)))
+        })
+        .collect();
+    let behind = (!behind.is_empty()).then(|| {
+        let listed = behind.join(", ");
+        if pt {
+            format!("Onde o Rullst está atrás do Axum: {listed} (a do Axum). Se a sua aplicação espera muito tráfego numa máquina pequena, isso importa; com pouco tráfego, o banco de dados costuma ser o limite antes do framework.")
+        } else {
+            format!("Where Rullst is behind Axum: {listed} (Axum's). If your application expects heavy traffic on a small machine this matters; at modest traffic the database usually limits speed before the framework does.")
+        }
+    });
+    let plans = if pt {
+        html! { "O que a 13.1 mira: o custo da pilha de middleware gerada, os laços de "<code>"html!"</code>" e gravações sem uma transação por linha, cada correção com números de antes e depois deste benchmark e sem enfraquecer nenhuma camada de segurança (" <a href="https://github.com/Rullst/Rullst/issues/832">"issue #832"</a>")." }
+    } else {
+        html! { "What 13.1 targets: the cost of the generated middleware stack, "<code>"html!"</code>" loops and writes without a transaction per row, each fix with before-and-after numbers from this benchmark and no weakened security layer ("<a href="https://github.com/Rullst/Rullst/issues/832">"issue #832"</a>")." }
+    };
+    let lines: Vec<String> = logged_in
+        .into_iter()
+        .chain(startup)
+        .chain(cost)
+        .chain(behind)
+        .collect();
+    let items: Markup = lines
+        .iter()
+        .map(|line| html! { <li>{line.as_str()}</li> })
+        .collect();
+    let title = if pt {
+        "Em palavras simples"
+    } else {
+        "In plain words"
+    };
+    html! { <div class="landing-meaning"><h3>{title}</h3><ul>{items}<li>{plans}</li></ul></div> }
 }

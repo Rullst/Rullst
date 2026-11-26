@@ -67,9 +67,10 @@ it names the guideline.
 ## The landing page
 
 The landing's sections come in this order, with the same ids in both
-languages: the first screen (what Rullst is in one sentence, a line naming the
-optional packages around it, the install command, the animated concept
-illustration labelled as not live telemetry, and three proof points),
+languages: the first screen (the "suite" framing with the maintainer's slogan and the
+optional packages around the framework in one sentence, the install command,
+the animated concept illustration labelled as not live telemetry, and three
+proof points), `#live-applications` (the Made with Rullst card),
 `#performance`, `#security` (with the `#verification` list), `#included`,
 `#integrations`, `#examples` (with the `#made-with` card), `#academy` and
 `#community`, then the release notice. The validator checks the order, the
@@ -77,16 +78,19 @@ sentence, the install command, the illustration and the three proof points;
 the browser test checks that the install command and the illustration fit in a
 1440 × 1100 first screen, and that every animation stops under reduced motion.
 
-- **The first screen** keeps its first sentence for web developers (a
-  full-stack framework for Rust on Axum and SQLx with Blank, API and SaaS
-  starters) and adds one line on the parts around it, each an optional
+- **The first screen** has the eyebrow "The open-source Rust framework suite"
+  and one lede that starts with the maintainer's slogan, "Because With Rullst,
+  We Rule!" (kept in English on the Portuguese page), then says what the suite
+  is (a full-stack Rust framework suite: web apps on Axum and SQLx with Blank,
+  API and SaaS starters) and names the parts around it, each an optional
   Extension package linked to its documentation: AI (`crates/ai`), payments
   (`crates/capital`), mail (`crates/mail`), messaging (`crates/messaging`),
   IoT devices (`crates/iot`), learning platforms (the Labs runner contract)
   and privacy (the `rullst-privacy` README). The validator requires the line
   and its seven links in both languages. Name only parts whose documentation
   and [maturity tier](maturity.md) support them.
-- **Made with Rullst** (`#made-with`, inside `#examples`) lists the
+- **Made with Rullst** (`#made-with`, in its own `#live-applications` section
+  right after the first screen) lists the
   maintainer's applications that are live and built with Rullst: Rullst
   Academy, Capoeira Vene, vene.win, the Rullst/Benchmarks results website and
   these pages, each with a link and one line taken from its own front page
@@ -102,7 +106,16 @@ the browser test checks that the install command and the illustration fit in a
   continues with the page's weight when the deployment measured it (see
   [How the root site is deployed](#how-the-root-site-is-deployed)).
 
-- **Performance** shows Rullst as `cargo rullst new` generates it, from the
+- **Performance** opens with a static "What the numbers mean for a real
+  application" block (`landing-explain`: what 1.00× Axum means, where Rullst
+  measures well, the throughput trade-off of the security layers and where it is
+  behind, with a link to issue #832 for the 13.1 work; it holds no figure from
+  the results). The generator then adds an "In plain words" list
+  (`landing-meaning`) inside the summary block, with every sentence and number
+  chosen from the data (memory after the logins, startup, the Hello world score
+  with and without the security layers, the speed categories below Axum), so it
+  can never contradict the results. A `compare-callout` card links the
+  comparison page. Performance shows Rullst as `cargo rullst new` generates it, from the
   same Rullst/Benchmarks `results/site.json` as the comparison page and with
   the same checks (see [the comparison page](#the-comparison-page)). The
   generator fills two blocks of each landing: `landing-proof` (the first
@@ -115,6 +128,9 @@ the browser test checks that the install command and the illustration fit in a
   the proof point also stays pending when Rullst's RAM was not measured. The
   disclosure that Rullst's maintainer maintains the benchmark stays above the
   results.
+- **Integrations** ends with a call to help (`integration-help`): the tracking
+  issue #801 and the Rullst Discord community; README's Integrations section
+  carries the same invitation. The validator requires both links.
 - **Security** says what every generated application has on by default, what
   is opt-in and which automated checks run against the framework's code, each
   linked to its workflow. It keeps "no external audit has been completed" (as
@@ -211,10 +227,16 @@ embeds, forms or storage require a fresh privacy review before deployment.
 topic. Every Loco and Topcoat fact comes from that project's own
 documentation, repository or crates.io page, and the page states the versions
 and the date it was checked against (`loco-rs 1.3.1` and `topcoat 0.12.1` on
-14 November 2026); Rullst facts come from this repository. When either
+25 November 2026; Loco's documentation website lagged its release then, so
+cookie sessions, OAuth and notifications come from the repository's v1.3.1
+sources); Rullst facts come from this repository. When either
 project releases a version that changes a fact, update both languages and the
 checked versions together: the validator requires the same topics, the same
-checked versions and dates and the same external links in both pages. Say
+checked versions and dates and the same external links in both pages. Each topic opens with a plain-words
+explanation (`compare-plain`) and gives, for each of the three, what it chose,
+the advantage and the cost of that choice (`blocks::topic`; the validator
+requires all three paragraphs for every framework); the advantage and the cost
+are the author's reading, not a measurement. Say
 "not documented" rather than guessing, and keep the "where each one fits"
 section fair to all three.
 

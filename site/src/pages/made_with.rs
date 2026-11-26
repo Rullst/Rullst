@@ -77,7 +77,7 @@ pub fn card(lang: Lang) -> Markup {
         html! {
             <article class="made-with" id="made-with" aria-labelledby="made-with-heading">
                 <span class="made-with-index">"NO AR · FEITO COM RULLST"</span>
-                <h3 id="made-with-heading">"Aplicações no ar, feitas com Rullst"</h3>
+                <h2 id="made-with-heading">"Aplicações no ar, feitas com Rullst"</h2>
                 <p>"As aplicações do mantenedor que estão no ar e foram construídas com Rullst. Academy, capoeira e vene.win rodam em produção numa máquina Oracle Ampere A1 Arm; os dois sites de páginas estáticas ficam no GitHub Pages."</p>
                 <ul>{items}</ul>
             </article>
@@ -86,7 +86,7 @@ pub fn card(lang: Lang) -> Markup {
         html! {
             <article class="made-with" id="made-with" aria-labelledby="made-with-heading">
                 <span class="made-with-index">"LIVE · MADE WITH RULLST"</span>
-                <h3 id="made-with-heading">"Live applications made with Rullst"</h3>
+                <h2 id="made-with-heading">"Live applications made with Rullst"</h2>
                 <p>"The maintainer's applications that are live and built with Rullst. Academy, capoeira and vene.win run in production on one Oracle Ampere A1 Arm machine; the two static websites are on GitHub Pages."</p>
                 <ul>{items}</ul>
             </article>

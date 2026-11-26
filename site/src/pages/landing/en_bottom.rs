@@ -8,6 +8,15 @@ use crate::footprint;
 use crate::pages::made_with;
 use crate::pages::{Context, Lang};
 
+/// The live applications made with Rullst, right after the first screen.
+pub fn live() -> Markup {
+    html! {
+        <section id="live-applications" class="shell section live-section" aria-labelledby="made-with-heading" data-reveal>
+            {made_with::card(Lang::En)}
+        </section>
+    }
+}
+
 /// 03 / Included in Rullst.
 pub fn included() -> Markup {
     html! {
@@ -85,6 +94,7 @@ pub fn integrations() -> Markup {
                     <a href="/Rullst/book/provider-conformance.html">"Provider conformance kits ↗"</a>
                 </article>
             </div>
+            <p class="integration-help"><strong>"Help move an integration up a level."</strong>" The tracking issue "<a href="https://github.com/Rullst/Rullst/issues/801">"#801"</a>" lists one issue per provider that has never run against a real account. If you have one, pick an issue, say you will take it and report what happened; a successful run is recorded in the documentation and on this page with its date. Questions and company are welcome in the "<a href="https://discord.com/invite/2ntKFtsSjw">"Rullst community on Discord"</a>"."</p>
             <p class="integration-recipes" data-integration-recipes><strong>"Recipes, not integrations."</strong>" MongoDB, DuckDB and Qdrant are application recipes: your code uses their official crates directly. Their built-in adapters were removed in 13.0.0-alpha.5. Other services are application code too: write an adapter on the provider trait (payments, mail, video) or follow a recipe. "<a href="/Rullst/book/recipes/index.html">"Read the recipes ↗"</a></p>
             <p class="integration-production">"The maintainer's production applications Academy, capoeira and vene.win run on real domains on one Oracle Ampere A1 Arm machine behind a shared Caddy with Let's Encrypt certificates. CI tests the generated deployment on x86_64 only; Arm machines are not tested in CI. "<a href="/Rullst/book/scope-and-limits.html#external-accounts-and-providers">"Deployment limits "<span aria-hidden="true">"↗"</span></a></p>
         </section>
@@ -111,7 +121,6 @@ pub fn examples() -> Markup {
                 <p>"Public demos, not production certifications. Each demo is upgraded on its own schedule and can run an earlier Rullst release than 13.0.0-alpha.6. The SaaS checkout is live and charges real money; the Showcase payment fixtures are not live checkout. Apart from a purchase you intend to make, use test data, not sensitive information. Availability is managed separately."</p>
                 <a href="https://github.com/Rullst/examples">"Source &amp; deployment recipes ↗"</a>
             </div>
-            {made_with::card(Lang::En)}
         </section>
     }
 }

@@ -615,6 +615,75 @@ h1 { margin: 0; font-size: clamp(3rem, 4.5vw, 4rem); line-height: 1.08; font-wei
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .js [data-reveal] { opacity: 1; transform: none; }
 }
+/* Suite framing, live applications, plain-words blocks, comparison entry. */
+.hero-lede a { color: #dce6f2; text-decoration-color: #b0f58866; text-underline-offset: 0.2em; }
+.hero-lede a:hover { color: var(--green); }
+.live-section { padding-block: 3.5rem 1rem; }
+.live-section .made-with { margin-top: 0; padding: 2.2rem; border-color: #5d7a50; background: radial-gradient(ellipse at 90% 0%, #7bd35a22, transparent 30rem), linear-gradient(150deg, #172a1b, #0c130f); box-shadow: 0 0 40px #7bd35a12; }
+.live-section .made-with h2 { margin: 0.8rem 0 0.7rem; font-size: clamp(1.7rem, 3vw, 2.5rem); font-weight: 560; line-height: 1.15; letter-spacing: -0.04em; }
+.live-section .made-with > p { font-size: 0.92rem; }
+.live-section .made-with li { font-size: 0.84rem; }
+.live-section .made-with li a { font-size: 1rem; }
+.landing-explain { max-width: 950px; margin: 0 0 1.2rem; padding: 1.3rem 1.5rem; border: 1px solid var(--line); border-radius: 12px; background: linear-gradient(150deg, #142033, #0e1622); color: var(--muted); font-size: 0.9rem; }
+.landing-explain h3, .landing-meaning h3 { margin: 0 0 0.6rem; color: var(--text); font-size: 1.05rem; font-weight: 560; }
+.landing-explain p { margin: 0 0 0.8rem; }
+.landing-explain ul, .landing-meaning ul { margin: 0; padding-left: 1.1rem; }
+.landing-explain li + li, .landing-meaning li + li { margin-top: 0.55rem; }
+.landing-explain strong { color: var(--text); }
+.landing-explain a, .landing-meaning a { color: var(--green); }
+.landing-meaning { max-width: 900px; margin: 1.4rem 0 0; padding: 1.1rem 1.4rem; border-left: 3px solid var(--green); border-radius: 0 10px 10px 0; background: #0e1a16; color: var(--muted); font-size: 0.88rem; }
+.compare-callout { display: flex; flex-direction: column; gap: 0.3rem; margin: 1.4rem 0 0; padding: 1.2rem 1.5rem; border: 1px solid #3d5c50; border-radius: 12px; background: linear-gradient(120deg, #12281f, #0e1622); color: var(--muted); font-size: 0.86rem; text-decoration: none; transition: border-color 160ms ease, transform 160ms ease; }
+.compare-callout:hover { border-color: var(--green); transform: translateY(-2px); }
+.compare-callout strong { color: var(--text); font-size: 1.15rem; font-weight: 560; }
+.compare-callout-index { color: var(--green); font: 0.6rem var(--mono); letter-spacing: 0.06em; }
+.integration-help { max-width: 950px; margin: 1.3rem 0 0; padding: 1rem 1.2rem; border: 1px solid #3d5c50; border-radius: 8px; background: #0e1a16; color: var(--muted); font-size: 0.86rem; }
+.integration-help a { color: var(--green); }
+.integration-help strong { color: var(--text); }
+
+/* The comparison pages, in the landing's design. */
+.compare-page { max-width: 1240px; padding-block: 3.5rem 2rem; }
+.compare-page .eyebrow { margin-bottom: 1.25rem; }
+.compare-page h1 { margin: 0; max-width: 960px; font-size: clamp(2.6rem, 5vw, 4.4rem); font-weight: 560; line-height: 1.08; letter-spacing: -0.055em; }
+.compare-page h1 .accent-green { color: var(--green); }
+.compare-page h2 { margin: 0 0 0.8rem; font-size: clamp(1.7rem, 3vw, 2.4rem); font-weight: 560; line-height: 1.15; letter-spacing: -0.045em; }
+.compare-page > section { margin-top: 4.5rem; }
+.compare-lede { max-width: 760px; margin: 1.4rem 0 0; color: #dbe5f3; font-size: 1.05rem; }
+.compare-page > .compare-checked, .compare-page section > .compare-checked { max-width: 900px; padding: 0.9rem 1.1rem; border: 1px solid var(--line); border-radius: 10px; background: #0e1622; font-size: 0.8rem; }
+.compare-page .compare-checked { margin-top: 1.4rem; }
+.compare-jump { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1.6rem 0 0; padding: 0; list-style: none; }
+.compare-jump a { display: inline-block; padding: 0.35rem 0.8rem; border: 1px solid #354936; border-radius: 30px; background: #14231888; color: #c9ddbf; font: 0.64rem/1.5 var(--mono); text-decoration: none; }
+.compare-jump a:hover { border-color: var(--green); color: var(--green); }
+.compare-fit { gap: 1.2rem; }
+.compare-fit li { padding: 1.7rem; border-radius: 14px; }
+.compare-fit li:nth-child(1) { border-color: #3d5c50; background: linear-gradient(150deg, #132a20, #0d1814); }
+.compare-fit li:nth-child(3) { border-color: #5c4431; background: linear-gradient(150deg, #261d17, #17120f); }
+.compare-fit h3 { font-size: 1.3rem; font-weight: 560; }
+.compare-fit li:nth-child(1) h3 { color: var(--green); }
+.compare-fit li:nth-child(2) h3 { color: var(--blue); }
+.compare-fit li:nth-child(3) h3 { color: var(--orange); }
+.compare-fit p { margin: 0 0 0.7rem; }
+.compare-topic { margin-top: 1.6rem; padding: 1.7rem; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(150deg, #101a2a, #0c131e); }
+.compare-topic h3 { margin: 0 0 0.5rem; font-size: 1.35rem; font-weight: 560; letter-spacing: -0.03em; }
+.compare-topic h3 a { color: var(--text); text-decoration: none; }
+.compare-plain { max-width: 850px; margin: 0 0 1.2rem; color: #c3d0e2; font-size: 0.9rem; }
+.compare-plain strong { color: var(--text); }
+.compare-topic dl { gap: 1rem; }
+.compare-topic dl > div { padding: 1.1rem 1.2rem; border: 1px solid #1d2b3d; border-top: 3px solid var(--green); border-radius: 10px; background: #0b121c; }
+.compare-topic dl > div:nth-child(2) { border-top-color: var(--blue); }
+.compare-topic dl > div:nth-child(3) { border-top-color: var(--orange); }
+.compare-topic dt { font-size: 0.7rem; }
+.compare-topic dd p { margin: 0.55rem 0 0; }
+.compare-topic dd p:first-child { margin-top: 0.3rem; }
+.compare-topic dd b { display: block; color: var(--text); font: 0.6rem var(--mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.compare-topic dd .compare-plus b { color: var(--green); }
+.compare-topic dd .compare-minus b { color: var(--orange); }
+.compare-page .benchmark-howto, .compare-page .benchmark-table { border-radius: 12px; }
+@media (max-width: 820px) {
+  .compare-fit, .compare-topic dl { grid-template-columns: 1fr; }
+  .compare-topic { padding: 1.2rem; }
+  .live-section .made-with { padding: 1.4rem; }
+}
+
 @media (forced-colors: active) {
   .academy-spotlight, .academy-badge, .academy-wave-button, .academy-code-token, .academy-discovery { border: 1px solid CanvasText; }
   .academy-spotlight::before, .academy-art::before, .academy-orbit, .academy-spark { display: none; }
