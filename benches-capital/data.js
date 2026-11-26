@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795705482768,
+  "lastUpdate": 1795708122416,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -20256,6 +20256,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b883cd6765c269023d359ed289725b98bbe77ecc",
+          "message": "Merge pull request #870 from Rullst/docs/v13-record-13.0.0-rc.1\n\ndocs(release): record the 13.0.0-rc.1 publication",
+          "timestamp": "2026-11-26T12:18:14-03:00",
+          "tree_id": "72e932480838cb5ba48580a661d693785789b37d",
+          "url": "https://github.com/Rullst/Rullst/commit/b883cd6765c269023d359ed289725b98bbe77ecc"
+        },
+        "date": 1795708121312,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 9,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 3,
             "range": "± 0",
             "unit": "ns/iter"
           }
