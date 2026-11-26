@@ -26,7 +26,12 @@ PREFLIGHT = textwrap.dedent(MATCH.group(1))
 
 
 class MutationInventoryTests(unittest.TestCase):
-    def run_inventory(self, inventory: object, expected: str = "") -> tuple[int, dict[str, str]]:
+    def run_inventory(self, inventory: object, expected: str = "", mode: str = "full",
+                      file: str = "") -> tuple[int, dict[str, str]]:
+        return self.run_preflight(inventory, expected, mode, file)[:2]
+
+    def run_preflight(self, inventory: object, expected: str = "", mode: str = "full",
+                      file: str = "") -> tuple[int, dict[str, str], str]:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             fixture = root / "fixture.json"
@@ -39,7 +44,7 @@ class MutationInventoryTests(unittest.TestCase):
             output = root / "outputs"
             env = dict(os.environ, PATH=f"{bin_dir}:{os.environ['PATH']}",
                        MUTATION_FIXTURE=str(fixture), GITHUB_OUTPUT=str(output),
-                       MUTATION_MODE="full", MUTATION_FILE="",
+                       MUTATION_MODE=mode, MUTATION_FILE=file, TARGETED_SHARD="",
                        EXPECTED_INVENTORY_SHA256=expected)
             result = subprocess.run(
                 ["bash", "-euo", "pipefail", "-c", PREFLIGHT],
@@ -47,7 +52,7 @@ class MutationInventoryTests(unittest.TestCase):
             )
             outputs = dict(line.split("=", 1) for line in output.read_text().splitlines()) \
                 if output.exists() else {}
-            return result.returncode, outputs
+            return result.returncode, outputs, result.stdout
 
     def test_new_campaign_discovers_current_inventory_instead_of_historical_count(self) -> None:
         inventory = [{"name": f"crate/src/lib.rs: mutant {index}"} for index in range(17549)]
@@ -70,6 +75,13 @@ class MutationInventoryTests(unittest.TestCase):
                 status, outputs = self.run_inventory(inventory)
                 self.assertNotEqual(status, 0)
                 self.assertEqual(outputs, {})
+
+    def test_targeted_file_without_mutants_is_named_in_the_error(self) -> None:
+        status, outputs, stdout = self.run_preflight([], mode="targeted",
+                                                     file="crate/src/reexports.rs")
+        self.assertNotEqual(status, 0)
+        self.assertEqual(outputs, {})
+        self.assertIn("::error::crate/src/reexports.rs has no mutation candidates", stdout)
 
 
 if __name__ == "__main__":
