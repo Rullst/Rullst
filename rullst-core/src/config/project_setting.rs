@@ -242,6 +242,8 @@ mod tests {
         assert_eq!(resolve().unwrap(), Environment::Development);
         unsafe { std::env::set_var("RULLST_ENV", "production") };
         assert_eq!(resolve().unwrap(), Environment::Production);
+        // The working-directory form reads the same process variable first.
+        assert_eq!(project_environment().unwrap(), Environment::Production);
     }
 
     #[tokio::test]
@@ -263,5 +265,15 @@ mod tests {
         let error = project_environment_in(directory.path()).unwrap_err();
         assert!(matches!(error, ConfigError::Parse(_)));
         assert!(!error.to_string().contains("SECRET_MARKER"));
+
+        // A Rullst.toml that exists but is not UTF-8 is an error, not "unset".
+        std::fs::write(
+            directory.path().join("Rullst.toml"),
+            b"[app]\nenv = \"\xff-binary-marker\"\n",
+        )
+        .unwrap();
+        let error = project_environment_in(directory.path()).unwrap_err();
+        assert!(matches!(error, ConfigError::Read(_)));
+        assert!(!error.to_string().contains("binary-marker"));
     }
 }
