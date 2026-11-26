@@ -316,7 +316,7 @@ async fn relayed_requests_and_secure_environments_are_refused() {
 fn build_errors_explain_themselves() {
     assert_eq!(
         StudioBuildError::LocalAccessRequiresDebugBuild.to_string(),
-        "Studio local access requires a debug build outside staging and production; shared environments need an application-owned authenticated boundary"
+        "Studio local access is refused: it runs only in a debug build whose environment (RULLST_ENV, APP_ENV, .env or [app] env) is development or test; shared environments need an application-owned authenticated boundary"
     );
     assert_eq!(
         StudioBuildError::RandomnessUnavailable.to_string(),
