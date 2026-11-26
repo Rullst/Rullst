@@ -28,9 +28,10 @@ fn report_global_conflict(outcome: crate::config::GlobalOutcome) {
              Server starts."
         ),
         GlobalOutcome::Kept { differs: true } => tracing::warn!(
-            "RullstConfig::set_global() was called before Server started with a configuration \
-             that differs from Rullst.toml; RullstConfig::global() keeps that one, so \
-             [app] env and the other Rullst.toml settings are not what Server runs with."
+            "a global configuration was already set in this process, by \
+             RullstConfig::set_global() or by an earlier Server, and it differs from this \
+             Server's Rullst.toml; RullstConfig::global() keeps that one, so code that reads it \
+             does not see this Server's [app] env and other settings."
         ),
         _ => {}
     }
