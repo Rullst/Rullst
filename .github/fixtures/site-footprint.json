@@ -1,7 +1,7 @@
 {
   "schema_version": "rullst.footprint.v1",
   "schema": "rullst.footprint.v1",
-  "cli_version": "13.0.0-alpha.6",
+  "cli_version": "13.0.0-rc.1",
   "measured_at": "2026-11-22T01:26:12Z",
   "machine": {
     "os": "linux",

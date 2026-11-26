@@ -1005,7 +1005,7 @@ def validate_footprint_rendering() -> None:
         for lang, page in (("en", "index.html"), ("pt-BR", "pt-br/index.html")):
             line = made_with_line((site / page).read_text(encoding="utf-8").split("<footer", 1)[1])
             assert LANGUAGES[lang]["page_weight"] in line and '<time datetime="2026-11-22">' in line, f"{page}: page weight {line!r}"
-            assert "footprint 13.0.0-alpha.6</a>" in line, f"{page}: the page weight names the CLI version"
+            assert "footprint 13.0.0-rc.1</a>" in line, f"{page}: the page weight names the CLI version"
         for page in ("compare/index.html", "privacy.html"):
             assert "This page:" not in (site / page).read_text(encoding="utf-8"), f"{page}: only the landing is weighed"
         # A day later the report is still shown; two days later it is not.
