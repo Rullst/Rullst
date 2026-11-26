@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795710369819,
+  "lastUpdate": 1795714344709,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -16351,6 +16351,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 448,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "07573041339413db59d34fe9395e3cd062b66c9e",
+          "message": "Merge pull request #881 from Rullst/docs/v13-how-rullst-is-verified\n\ndocs: add how Rullst is verified and what that does not prove",
+          "timestamp": "2026-11-26T14:13:41-03:00",
+          "tree_id": "92e87a577df4e8f1ed87f325430f1bf8e99bfcce",
+          "url": "https://github.com/Rullst/Rullst/commit/07573041339413db59d34fe9395e3cd062b66c9e"
+        },
+        "date": 1795714343442,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 390,
+            "range": "± 17",
             "unit": "ns/iter"
           }
         ]
