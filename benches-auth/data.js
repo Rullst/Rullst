@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795710302158,
+  "lastUpdate": 1795713184256,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -26371,6 +26371,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2520,
             "range": "± 16",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c262886a3d9cd7a134e8248f82a660aee140dfc3",
+          "message": "Merge pull request #871 from Rullst/fix/v13-nexus-ai-keys-message\n\nfix(nexus): say that AI provider keys come from the process environment",
+          "timestamp": "2026-11-26T13:52:18-03:00",
+          "tree_id": "01745626217c0acd23e171b96aad646c2e7e7b22",
+          "url": "https://github.com/Rullst/Rullst/commit/c262886a3d9cd7a134e8248f82a660aee140dfc3"
+        },
+        "date": 1795713183411,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1014,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 759,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1762,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4177,
+            "range": "± 39",
             "unit": "ns/iter"
           }
         ]
