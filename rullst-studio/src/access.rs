@@ -101,7 +101,7 @@ impl fmt::Display for StudioBuildError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::LocalAccessRequiresDebugBuild => formatter.write_str(
-                "Studio local access requires a debug build outside staging and production; shared environments need an application-owned authenticated boundary",
+                "Studio local access is refused: it runs only in a debug build whose environment is development or test; shared environments need an application-owned authenticated boundary",
             ),
             Self::RandomnessUnavailable => formatter.write_str(
                 "Studio could not obtain operating-system randomness for local action tokens",

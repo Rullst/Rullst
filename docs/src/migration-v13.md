@@ -65,13 +65,19 @@ before that, and one on 13.0.0-alpha.2 the
 [alpha.2 to alpha.3 checklist](#upgrading-an-alpha2-application-to-alpha3)
 before those.
 
-Two things outside the Rust code change with every upgrade:
+Three things outside the Rust code change with every upgrade:
 
 - **Pinned CLIs.** Workflows and scripts that install a pinned CLI
   (`cargo install cargo-rullst --version =…`, often through a
   `RULLST_CLI_VERSION` variable) need the new version, whatever the workflow
   file is called: `grep -rn 'RULLST_CLI_VERSION\|cargo-rullst' .github/workflows`
   lists them. `cargo rullst upgrade` does not edit them.
+- **Other copies of the version.** After the upgrade, search the repository
+  for the previous version string (`grep -rn <old-version> .`, skipping
+  `target/`): CI files that install `cargo-rullst`, README badges,
+  deployment documentation, and kits or generated projects that embed a
+  Rullst manifest and lockfile (`cargo update -p rullst --precise <version>`
+  inside them moves only the Rullst packages) keep the old one.
 - **Lockfiles.** `cargo update -p rullst --precise <version>` (or the
   upgrade itself) can rewrite a large part of `Cargo.lock`: the new
   prerelease's requirements re-resolve shared dependencies, so dozens of
@@ -1916,7 +1922,17 @@ request. Code that `cargo rullst` generated earlier is never rewritten.
 13. **Verify.** Switch every Rullst requirement to `=13.0.0-rc.1`, run
     `cargo update -p rullst --precise 13.0.0-rc.1`, `cargo test` and a start
     with `RULLST_ENV=staging` and the deployment's settings, before the
-    production deployment.
+    production deployment. Then search the whole repository for the previous
+    version string (`grep -rn 13.0.0-alpha.6 .`, skipping `target/`) and
+    update what the manifests do not cover: the CI files that install
+    `cargo-rullst` (`RULLST_CLI_VERSION`, which otherwise keeps installing
+    the alpha.6 CLI against an rc.1 project and still passes), README
+    badges and text, deployment documentation, and any kit or generated
+    project that embeds a Rullst `Cargo.toml` and `Cargo.lock` (its
+    generated manifests, course texts and test assertions too). In an
+    embedded project, `cargo update -p rullst --precise 13.0.0-rc.1` moves
+    only the Rullst packages and leaves the other locked versions alone.
+    `cargo rullst upgrade` does not list these occurrences.
 
 ## Why the candidate uses a new major
 

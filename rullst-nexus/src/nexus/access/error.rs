@@ -82,7 +82,7 @@ impl fmt::Display for NexusBuildError {
                 "Nexus could not read {variable}: the project .env file is unreadable or malformed"
             ),
             Self::LocalAccessRequiresDebugBuild => formatter.write_str(
-                "Nexus loopback-only access is restricted to debug builds outside staging and production; configure an authenticated policy for release builds and shared environments",
+                "Nexus loopback-only access is refused: it runs only in a debug build whose environment is development or test; configure an authenticated policy for release builds and shared environments",
             ),
             Self::InvalidModelMetadata { reason } => {
                 write!(formatter, "Nexus rejected registered model metadata: {reason}")
