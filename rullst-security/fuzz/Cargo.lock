@@ -1678,7 +1678,6 @@ version = "0.0.0"
 dependencies = [
  "libfuzzer-sys",
  "rullst-security",
- "serde_json",
 ]
 
 [[package]]

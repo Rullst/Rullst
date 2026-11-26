@@ -14,7 +14,7 @@ license = "MIT"
 
 [dependencies]
 # No features: html! and Markup come with the facade's empty default set.
-rullst = { version = "=13.0.0-alpha.6", default-features = false }
+rullst = { version = "=13.0.0-rc.1", default-features = false }
 serde_json = "1.0"
 # Already in rullst-core's graph; content versions of the stylesheet and script.
 sha2 = "0.11"

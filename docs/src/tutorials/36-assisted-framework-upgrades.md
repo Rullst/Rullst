@@ -864,6 +864,7 @@ totals, which every new row or rule would change.
 | IoT simulator fixtures removed | (a) must-change | `V13-IOT-SIMULATORS-REMOVED` | `experimental-simulators` on each `rullst-iot` dependency that enables it (also renamed, in a dependency table or in `[workspace.dependencies]`) and at the first `[features]` entry that does (`rullst-iot/…` or `rullst-iot?/…`); `SimulatedHsmDevice`, `SimulatedHsmProfile`, `SimulatedPqcFixture` and `SimulatedMqttPayloadFormatter` in Rust code, at every location; introduced in 13.0.0-rc.1 |
 | Empty settings in staging and production | (c) none | — | Only a staging or production deployment with a missing setting changes, and the setting is deployment configuration, not application source |
 | Early configuration read | (c) none | — | An early `RullstConfig::global()` read keeps compiling; `Server` now replaces the defaults it returned and logs a warning, and a reference taken earlier still holds them |
+| Nexus AI setup text | (c) none | — | Only the text Nexus shows changes; where the provider keys are read from is unchanged |
 | Loopback environment at build time | (c) none | — | Only a debug build whose `.env` or `Rullst.toml` names staging or production changes, and that environment is deployment configuration, not application source |
 
 ## Planned simpler update experience

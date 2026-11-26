@@ -399,7 +399,7 @@ jobs:
           toolchain: 1.100.0
 
       - name: Install cargo-mutants
-        uses: taiki-e/install-action@4a76afe23f9e08d2d9550fb56e556444e8611d21 # v2.90.4
+        uses: taiki-e/install-action@75a7c0f87bd666af3cdb75c5b9e9d03ab6044e6f # v2.90.6
         with:
           tool: cargo-mutants@27.1.0
 
@@ -421,6 +421,11 @@ jobs:
           fi
           "${command[@]}" > mutation-inventory.json
 
+          if [ "$MUTATION_MODE" = "targeted" ] \
+            && jq -e 'type == "array" and length == 0' mutation-inventory.json >/dev/null; then
+            echo "::error::$MUTATION_FILE has no mutation candidates${TARGETED_SHARD:+ in shard $TARGETED_SHARD}: cargo mutants lists none (for example a file of re-exports or constants). Nothing to measure; choose another file."
+            exit 1
+          fi
           jq -e '
             type == "array" and
             length > 0 and
@@ -491,7 +496,7 @@ jobs:
           toolchain: 1.100.0
 
       - name: Install cargo-mutants
-        uses: taiki-e/install-action@4a76afe23f9e08d2d9550fb56e556444e8611d21 # v2.90.4
+        uses: taiki-e/install-action@75a7c0f87bd666af3cdb75c5b9e9d03ab6044e6f # v2.90.6
         with:
           tool: cargo-mutants@27.1.0
 
@@ -603,7 +608,7 @@ jobs:
           toolchain: 1.100.0
 
       - name: Install cargo-mutants
-        uses: taiki-e/install-action@4a76afe23f9e08d2d9550fb56e556444e8611d21 # v2.90.4
+        uses: taiki-e/install-action@75a7c0f87bd666af3cdb75c5b9e9d03ab6044e6f # v2.90.6
         with:
           tool: cargo-mutants@27.1.0
 

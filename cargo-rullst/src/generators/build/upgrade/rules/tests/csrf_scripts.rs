@@ -183,3 +183,165 @@ fn scripts_below_the_project_are_found_outside_build_and_dependency_folders() {
         "{found:?}"
     );
 }
+
+#[test]
+fn a_negated_includes_check_reads_the_whole_receiver_chain() {
+    // The `!` before the receiver turns `.includes` into the failing branch of
+    // the `if`, so each receiver is read back to its `!`: a call with
+    // arguments, a call with several arguments, a property chain and an
+    // optional chain.
+    for receiver in [
+        "foo(bar)",
+        "foo(a, b)",
+        "foo(a, not b)",
+        "foo(bar(baz))[0]",
+        "page.html",
+        "page?.html",
+        "page.html()",
+    ] {
+        let source = format!("if (!{receiver}.includes(cookie.value)) throw new Error('csrf');\n");
+        assert_eq!(js(&source), [1], "{receiver}");
+        // Without the `!` the same `if` fails when the page holds the cookie.
+        let plain = format!("if ({receiver}.includes(cookie.value)) throw new Error('csrf');\n");
+        assert_eq!(js(&plain), Vec::<usize>::new(), "{receiver}");
+    }
+}
+
+#[test]
+fn a_chained_includes_on_its_own_line_has_no_receiver() {
+    // The line starts at the `.`, so no receiver is read and the page cannot
+    // hold the cookie's value.
+    let source = "const cookie = jar.find(c => c.name === 'rullst_csrf');\nassert(html\n  .includes(cookie.value));\n";
+    assert_eq!(js(source), [3]);
+}
+
+#[test]
+fn an_expectation_chain_may_pass_through_non_call_links() {
+    let source = r#"const cookie = jar.find(c => c.name === 'rullst_csrf');
+await expect(token).resolves.toBe(cookie.value);
+await expect(token).not.resolves.toBe(cookie.value);
+await expect(token).resolves.not.toBe(cookie.value);
+await expect(token).rejects.resolves.toEqual(cookie.value);
+"#;
+    assert_eq!(js(source), [2, 5]);
+}
+
+#[test]
+fn an_expectation_reads_only_its_own_argument_group() {
+    // The cookie in a later statement of the line, or in the subject's
+    // property, is not what the matcher compares.
+    let source = r#"const cookie = jar.find(c => c.name === 'rullst_csrf');
+expect(pageToken.value).toBe(page); expect(cookie.value).toBe(1);
+expect(cookie.token).toBe(page);
+expect(cookie.value).toBe(token);
+"#;
+    assert_eq!(js(source), [4]);
+}
+
+#[test]
+fn an_escape_in_a_string_stands_for_the_character_it_escapes() {
+    // `\e` is `e`, so the right side is the text `token`.
+    assert_eq!(js("cookie.value === \"tok\\en\";\n"), [1]);
+    assert_eq!(py("assert cookie == 'tok\\en'\n"), [1]);
+    // An escaped delimiter does not end the string, so the comment stays
+    // inside it and the comparison after the string is still code.
+    assert_eq!(js("const s = 'a\\' // b'; cookie.value === token;\n"), [1]);
+}
+
+#[test]
+fn operands_and_arguments_stop_at_their_own_brackets_and_commas() {
+    let source = r#"const cookie = jar.find(c => c.name === 'rullst_csrf');
+check(tokenOf(a, b) === cookie.value);
+check(cookie, tokenOf(a) === cookie.value);
+check(cookie.value === token, 'the cookie');
+check(cookie.token == other);
+assert.equal(tokenOf(a, b), cookie.value);
+assert.equal(tokenOf(a), cookie.value);
+assert.equal(cookie.token, other);
+assert.equal(cookie.value, token, cookie);
+assert.equal(cookie.value, 'cookie', token);
+cookie.value === token;
+"#;
+    // Line 5 and line 8 compare the cookie's token property with something
+    // else; line 10's last argument is only the message.
+    assert_eq!(js(source), [2, 3, 4, 6, 7, 9, 11]);
+}
+
+#[test]
+fn a_closing_brace_run_before_else_if_still_reads_the_condition() {
+    let source = "const cookie = jar.find(c => c.name === 'rullst_csrf');\n} } } else if (pageToken != cookie.value) {\n";
+    assert_eq!(js(source), [2]);
+}
+
+#[test]
+fn python_assert_in_methods_report_a_page_that_holds_the_cookie() {
+    let source = r#"cookie = self.jar.find("rullst_csrf")
+self.assertIn(cookie.value, html)
+self.assertIn(cookie.value, set_cookie_header)
+self.assertIn(cookie.value, 'cookie jar')
+self.assertIn(token, html)
+"#;
+    assert_eq!(py(source), [2]);
+}
+
+#[test]
+fn a_block_comment_ends_at_its_own_closing_marker() {
+    // The code after a block comment on the same line is read from the
+    // marker's end, wherever the comment is, and its text is not read at all
+    // (here it ends in the operator that would make the line a comparison).
+    assert_eq!(js("/* note */ cookie.value === token;\n"), [1]);
+    assert_eq!(js("const x = 1; /* */ cookie.value === token;\n"), [1]);
+    assert_eq!(
+        js("const same = cookie.value /*==*/ token;\n"),
+        Vec::<usize>::new()
+    );
+    // A `*` after a name is an operator, not the start of a comment.
+    assert_eq!(js("const same = cookie.value*1 === token;\n"), [1]);
+    assert_eq!(py("assert cookie.value**1 == token\n"), [1]);
+}
+
+#[test]
+fn a_cookie_name_used_as_a_property_is_not_the_cookie() {
+    let source = r#"const csrf = jar.find(c => c.name === 'rullst_csrf');
+check(page.csrf === token);
+check(page?.csrf === token);
+check(csrf.value === token);
+"#;
+    assert_eq!(js(source), [4]);
+}
+
+#[test]
+fn the_extension_selects_the_comment_syntax_of_a_script() {
+    let project = Project::new();
+    project
+        // `//` starts a comment in JavaScript, `#` one in Python.
+        .write("scripts/note.js", "// csrf: cookie.value === token\n")
+        .write("scripts/note.py", "# csrf: assert cookie.value == token\n")
+        .write("scripts/hash.js", "// csrf\n# cookie.value === token\n")
+        .write("scripts/slash.py", "# csrf\ncookie.value // 2 == token\n")
+        // A file named only by its extension is no script.
+        .write("scripts/.js", BROWSER_SIGN_IN)
+        .write(
+            "scripts/.py",
+            "token = cookie.value  # csrf\nassert page_token == token\n",
+        );
+    assert_eq!(
+        csrf_comparisons(project.root()),
+        [
+            ("scripts/hash.js".to_string(), 2),
+            ("scripts/slash.py".to_string(), 2),
+        ]
+    );
+}
+
+#[test]
+fn the_right_operand_runs_to_its_own_boundary() {
+    let source = r#"const cookie = jar.find(c => c.name === 'rullst_csrf');
+check(cookie.value === pick(a, token));
+check(cookie.value === wrap(inner(a), token));
+check(cookie.value === wrap(inner(a), token), 'the cookie');
+check(cookie.value === token, 'the cookie');
+html.includes(cookie.value);
+"#;
+    assert_eq!(js(source), [2, 3, 4, 5, 6]);
+}

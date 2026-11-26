@@ -125,6 +125,15 @@ fn staging_and_production_come_from_the_process_dotenv_and_rullst_toml() {
     );
     remove("OPENAI_API_KEY");
     remove("GEMINI_API_KEY");
+    // A provider key in `.env` is not read: the setting is the process
+    // environment's, so production still refuses (and says which variables).
+    files(
+        &project,
+        Some("RULLST_ENV=production\nOPENAI_API_KEY=sk-fixture-dotenv-only\n"),
+        None,
+    );
+    refuses_in("production");
+    assert!(std::env::var_os("OPENAI_API_KEY").is_none());
     // An invalid or unreadable setting fails closed, without file content.
     files(&project, None, Some("[app]\nenv = \"nowhere\"\n"));
     assert_eq!(

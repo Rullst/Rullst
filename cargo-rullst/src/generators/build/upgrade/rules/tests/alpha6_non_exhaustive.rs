@@ -94,6 +94,23 @@ fn literals_with_fields_of_another_struct_are_not_reported() {
 }
 
 #[test]
+fn a_literal_through_crate_self_or_super_is_the_applications_own_type() {
+    let fields = "to: String::new(), subject: String::new()";
+    // The file names `rullst::mail`, so the same literal through that crate is
+    // reported; only the relative first segment keeps the others quiet.
+    let rullst = format!(
+        "use rullst::mail::Mailer;\nfn m() {{ let _ = rullst::mail::Message {{ {fields} }}; }}\n"
+    );
+    assert_eq!(found(&rullst, LITERAL), [2]);
+    for first in ["crate", "self", "super"] {
+        let own = format!(
+            "use rullst::mail::Mailer;\nfn m() {{ let _ = {first}::mail::Message {{ {fields} }}; }}\n"
+        );
+        assert_eq!(found(&own, LITERAL), Vec::<usize>::new(), "{first}");
+    }
+}
+
+#[test]
 fn literals_a_glob_may_bring_in_are_reviewed() {
     const GLOB: &str = "V13-NON-EXHAUSTIVE-LITERAL-GLOB";
     // A test module that reaches Connect's `HttpResponse` through its parent.

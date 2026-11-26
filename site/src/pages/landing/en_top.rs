@@ -14,7 +14,7 @@ pub fn page(cx: &Context, proof: Markup, summary: Markup) -> Markup {
             <head>
                 <meta charset="utf-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
-                <meta name="description" content="Rullst is an open-source full-stack Rust framework suite: web apps on Axum and SQLx with Blank, API and SaaS starters, plus optional packages for AI, payments, mail, messaging, IoT devices, learning platforms and privacy. v13 is in prerelease (13.0.0-alpha.6): see its measured performance, its security defaults and what it includes, each with its source." />
+                <meta name="description" content="Rullst is an open-source full-stack Rust framework suite: web apps on Axum and SQLx with Blank, API and SaaS starters, plus optional packages for AI, payments, mail, messaging, IoT devices, learning platforms and privacy. v13 is in prerelease (13.0.0-rc.1, the first release candidate): see its measured performance, its security defaults and what it includes, each with its source." />
                 <meta name="theme-color" content="#070b15" />
                 <meta name="referrer" content="no-referrer" />
                 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src 'none'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'" />
@@ -36,7 +36,7 @@ pub fn page(cx: &Context, proof: Markup, summary: Markup) -> Markup {
             <body>
                 <a class="skip-link" href="#main">"Skip to content"</a>" "
                 <div class="ambient-scene" aria-hidden="true"><span></span><span></span><span></span></div>
-                <aside class="release-banner" aria-label="Rullst release status"><span class="status-dot" aria-hidden="true"></span>" "<strong>"Rullst v13 prerelease"</strong>" "<span>"13.0.0-alpha.6 is the 13.0 feature freeze; 13.0.0-rc.1 and 13.0.0 follow, so install the exact version. v12 reached end of life on 16 October 2026."</span>" "<a href="/Rullst/book/compatibility-policy.html#source-branches">"Release status ↗"</a></aside>
+                <aside class="release-banner" aria-label="Rullst release status"><span class="status-dot" aria-hidden="true"></span>" "<strong>"Rullst v13 prerelease"</strong>" "<span>"13.0.0-rc.1 is the first release candidate, after the 13.0 feature freeze in 13.0.0-alpha.6; 13.0.0 follows, so install the exact version. v12 reached end of life on 16 October 2026."</span>" "<a href="/Rullst/book/compatibility-policy.html#source-branches">"Release status ↗"</a></aside>
                 {nav()}
                 <main id="main">
                     {hero(proof)}

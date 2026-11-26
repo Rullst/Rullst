@@ -14,7 +14,7 @@ pub fn page(cx: &Context, proof: Markup, summary: Markup) -> Markup {
             <head>
                 <meta charset="utf-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
-                <meta name="description" content="O Rullst é uma suíte de frameworks Rust full-stack, open source: aplicações web sobre Axum e SQLx com os starters Blank, API e SaaS, mais pacotes opcionais para IA, pagamentos, e-mail, mensageria, dispositivos IoT, plataformas de aprendizagem e privacidade. A v13 está em pré-lançamento (13.0.0-alpha.6): veja o desempenho medido, as proteções padrão e o que ele inclui, cada um com a sua fonte." />
+                <meta name="description" content="O Rullst é uma suíte de frameworks Rust full-stack, open source: aplicações web sobre Axum e SQLx com os starters Blank, API e SaaS, mais pacotes opcionais para IA, pagamentos, e-mail, mensageria, dispositivos IoT, plataformas de aprendizagem e privacidade. A v13 está em pré-lançamento (13.0.0-rc.1, o primeiro release candidate): veja o desempenho medido, as proteções padrão e o que ele inclui, cada um com a sua fonte." />
                 <meta name="theme-color" content="#070b15" />
                 <meta name="referrer" content="no-referrer" />
                 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src 'none'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'" />
@@ -36,7 +36,7 @@ pub fn page(cx: &Context, proof: Markup, summary: Markup) -> Markup {
             <body data-ui-copied="Comando copiado." data-ui-copied-button="Copiado" data-ui-copy-failed="Área de transferência indisponível. Selecione e copie o comando exibido." data-ui-copy-failed-button="Selecione o texto" data-ui-replay-intro="Repetir introdução" data-ui-stop-intro="Parar introdução" data-ui-say-hello="Dizer olá ↗" data-ui-stop-waving="Parar de acenar">
                 <a class="skip-link" href="#main">"Pular para o conteúdo"</a>" "
                 <div class="ambient-scene" aria-hidden="true"><span></span><span></span><span></span></div>
-                <aside class="release-banner" aria-label="Status de lançamento do Rullst"><span class="status-dot" aria-hidden="true"></span>" "<strong>"Pré-lançamento do Rullst v13"</strong>" "<span>"13.0.0-alpha.6 é o congelamento de funcionalidades da 13.0; depois vêm 13.0.0-rc.1 e 13.0.0, então instale a versão exata. A v12 chegou ao fim da vida útil em 16 de outubro de 2026."</span>" "<a href="/Rullst/book/compatibility-policy.html#source-branches">"Status de lançamento ↗"</a></aside>
+                <aside class="release-banner" aria-label="Status de lançamento do Rullst"><span class="status-dot" aria-hidden="true"></span>" "<strong>"Pré-lançamento do Rullst v13"</strong>" "<span>"13.0.0-rc.1 é o primeiro release candidate, depois do congelamento de funcionalidades da 13.0 na 13.0.0-alpha.6; depois vem a 13.0.0, então instale a versão exata. A v12 chegou ao fim da vida útil em 16 de outubro de 2026."</span>" "<a href="/Rullst/book/compatibility-policy.html#source-branches">"Status de lançamento ↗"</a></aside>
                 {nav()}
                 <main id="main">
                     {hero(proof)}
