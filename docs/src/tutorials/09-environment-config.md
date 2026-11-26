@@ -67,6 +67,16 @@ is set; a malformed `.env` yields a fixed error that never quotes file content.
 A malformed or mistyped `Rullst.toml` fails with only its line and column, so
 the error can be logged without exposing `app_key` or connection strings.
 
+`RullstConfig::global()` returns the configuration the `Server` loaded from
+`Rullst.toml`. A read before the `Server` starts returns the defaults, and the
+`Server` then replaces them (since 13.0.0; in 13.0.0-rc.1 it kept them, so
+`[app] env` and every other `Rullst.toml` setting were lost), so every later
+call sees the real configuration. A reference taken before still holds the
+defaults, and the `Server` logs a warning that names the early read when the
+two differ; it likewise warns when an earlier `RullstConfig::set_global` call
+installed a configuration that differs from `Rullst.toml`, which stays the
+global one. Read the configuration after the `Server` starts.
+
 ---
 
 ## Step 3: Configure the Browser Security Baseline
