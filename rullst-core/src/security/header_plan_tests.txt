@@ -1,0 +1,751 @@
+default, no headers:
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'nonce-<nonce>'; style-src 'self' 'nonce-<nonce>'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+default, text:
+  content-type: text/plain; charset=utf-8
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+default, page with cookies:
+  content-type: text/html; charset=utf-8
+  vary: HX-Request
+  set-cookie: a=1
+  set-cookie: b=2
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'nonce-<nonce>'; style-src 'self' 'nonce-<nonce>'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+default, xhtml:
+  content-type: Application/XHTML+XML
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'nonce-<nonce>'; style-src 'self' 'nonce-<nonce>'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+default, unreadable type:
+  content-type: text/plain\xff
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'nonce-<nonce>'; style-src 'self' 'nonce-<nonce>'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+default, own frame options:
+  content-type: text/plain
+  x-frame-options: SAMEORIGIN
+  cache-control: no-store
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+default, own cache policy:
+  cache-control: public, max-age=60
+  content-type: text/css
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+default, no-referrer among others:
+  referrer-policy: no-referrer
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'nonce-<nonce>'; style-src 'self' 'nonce-<nonce>'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+default, own referrer policy:
+  referrer-policy: origin
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'nonce-<nonce>'; style-src 'self' 'nonce-<nonce>'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+default, own csp:
+  content-security-policy: default-src 'none'
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+default, own hsts:
+  strict-transport-security: max-age=5
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'nonce-<nonce>'; style-src 'self' 'nonce-<nonce>'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+default, own coep:
+  cross-origin-embedder-policy: unsafe-none
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  referrer-policy: strict-origin-when-cross-origin
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'nonce-<nonce>'; style-src 'self' 'nonce-<nonce>'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+default, own cross-origin policies:
+  permissions-policy: camera=(self)
+  cross-origin-opener-policy: unsafe-none
+  cross-origin-resource-policy: cross-origin
+  x-xss-protection: 1
+  x-content-type-options: none
+  cache-control: no-store
+  x-frame-options: DENY
+  strict-transport-security: max-age=31536000; includeSubDomains
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'nonce-<nonce>'; style-src 'self' 'nonce-<nonce>'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+default, nine other names:
+  content-type: application/json
+  etag: "1"
+  last-modified: Wed, 01 Jan 2025 00:00:00 GMT
+  x-one: 1
+  x-two: 2
+  x-three: 3
+  x-four: 4
+  x-five: 5
+  x-six: 6
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+default, marked:
+  content-type: text/html
+  cache-control: no-store
+default, marked with cache policy:
+  cache-control: private
+over http, no headers:
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'nonce-<nonce>'; style-src 'self' 'nonce-<nonce>'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+over http, text:
+  content-type: text/plain; charset=utf-8
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+over http, page with cookies:
+  content-type: text/html; charset=utf-8
+  vary: HX-Request
+  set-cookie: a=1
+  set-cookie: b=2
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'nonce-<nonce>'; style-src 'self' 'nonce-<nonce>'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+over http, xhtml:
+  content-type: Application/XHTML+XML
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'nonce-<nonce>'; style-src 'self' 'nonce-<nonce>'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+over http, unreadable type:
+  content-type: text/plain\xff
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'nonce-<nonce>'; style-src 'self' 'nonce-<nonce>'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+over http, own frame options:
+  content-type: text/plain
+  x-frame-options: SAMEORIGIN
+  cache-control: no-store
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+over http, own cache policy:
+  cache-control: public, max-age=60
+  content-type: text/css
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+over http, no-referrer among others:
+  referrer-policy: no-referrer
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'nonce-<nonce>'; style-src 'self' 'nonce-<nonce>'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+over http, own referrer policy:
+  referrer-policy: origin
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'nonce-<nonce>'; style-src 'self' 'nonce-<nonce>'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+over http, own csp:
+  content-security-policy: default-src 'none'
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+over http, own hsts:
+  strict-transport-security: max-age=5
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'nonce-<nonce>'; style-src 'self' 'nonce-<nonce>'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+over http, own coep:
+  cross-origin-embedder-policy: unsafe-none
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  referrer-policy: strict-origin-when-cross-origin
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'nonce-<nonce>'; style-src 'self' 'nonce-<nonce>'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+over http, own cross-origin policies:
+  permissions-policy: camera=(self)
+  cross-origin-opener-policy: unsafe-none
+  cross-origin-resource-policy: cross-origin
+  x-xss-protection: 1
+  x-content-type-options: none
+  cache-control: no-store
+  x-frame-options: DENY
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'nonce-<nonce>'; style-src 'self' 'nonce-<nonce>'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+over http, nine other names:
+  content-type: application/json
+  etag: "1"
+  last-modified: Wed, 01 Jan 2025 00:00:00 GMT
+  x-one: 1
+  x-two: 2
+  x-three: 3
+  x-four: 4
+  x-five: 5
+  x-six: 6
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+over http, marked:
+  content-type: text/html
+  cache-control: no-store
+over http, marked with cache policy:
+  cache-control: private
+configured, no headers:
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=60; preload
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: credentialless
+  content-security-policy: default-src 'self' https://cdn.example
+configured, text:
+  content-type: text/plain; charset=utf-8
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=60; preload
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: credentialless
+  content-security-policy: default-src 'self' https://cdn.example
+configured, page with cookies:
+  content-type: text/html; charset=utf-8
+  vary: HX-Request
+  set-cookie: a=1
+  set-cookie: b=2
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=60; preload
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: credentialless
+  content-security-policy: default-src 'self' https://cdn.example
+configured, xhtml:
+  content-type: Application/XHTML+XML
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=60; preload
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: credentialless
+  content-security-policy: default-src 'self' https://cdn.example
+configured, unreadable type:
+  content-type: text/plain\xff
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=60; preload
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: credentialless
+  content-security-policy: default-src 'self' https://cdn.example
+configured, own frame options:
+  content-type: text/plain
+  x-frame-options: SAMEORIGIN
+  cache-control: no-store
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=60; preload
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: credentialless
+  content-security-policy: default-src 'self' https://cdn.example
+configured, own cache policy:
+  cache-control: public, max-age=60
+  content-type: text/css
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=60; preload
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: credentialless
+  content-security-policy: default-src 'self' https://cdn.example
+configured, no-referrer among others:
+  referrer-policy: no-referrer
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=60; preload
+  cross-origin-embedder-policy: credentialless
+  content-security-policy: default-src 'self' https://cdn.example
+configured, own referrer policy:
+  referrer-policy: origin
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=60; preload
+  cross-origin-embedder-policy: credentialless
+  content-security-policy: default-src 'self' https://cdn.example
+configured, own csp:
+  content-security-policy: default-src 'none'
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=60; preload
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: credentialless
+configured, own hsts:
+  strict-transport-security: max-age=5
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: credentialless
+  content-security-policy: default-src 'self' https://cdn.example
+configured, own coep:
+  cross-origin-embedder-policy: unsafe-none
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=60; preload
+  referrer-policy: strict-origin-when-cross-origin
+  content-security-policy: default-src 'self' https://cdn.example
+configured, own cross-origin policies:
+  permissions-policy: camera=(self)
+  cross-origin-opener-policy: unsafe-none
+  cross-origin-resource-policy: cross-origin
+  x-xss-protection: 1
+  x-content-type-options: none
+  cache-control: no-store
+  x-frame-options: DENY
+  strict-transport-security: max-age=60; preload
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: credentialless
+  content-security-policy: default-src 'self' https://cdn.example
+configured, nine other names:
+  content-type: application/json
+  etag: "1"
+  last-modified: Wed, 01 Jan 2025 00:00:00 GMT
+  x-one: 1
+  x-two: 2
+  x-three: 3
+  x-four: 4
+  x-five: 5
+  x-six: 6
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=60; preload
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: credentialless
+  content-security-policy: default-src 'self' https://cdn.example
+configured, marked:
+  content-type: text/html
+  cache-control: no-store
+configured, marked with cache policy:
+  cache-control: private
+nonce template, no headers:
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: script-src 'nonce-<nonce>'
+nonce template, text:
+  content-type: text/plain; charset=utf-8
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+nonce template, page with cookies:
+  content-type: text/html; charset=utf-8
+  vary: HX-Request
+  set-cookie: a=1
+  set-cookie: b=2
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: script-src 'nonce-<nonce>'
+nonce template, xhtml:
+  content-type: Application/XHTML+XML
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: script-src 'nonce-<nonce>'
+nonce template, unreadable type:
+  content-type: text/plain\xff
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: script-src 'nonce-<nonce>'
+nonce template, own frame options:
+  content-type: text/plain
+  x-frame-options: SAMEORIGIN
+  cache-control: no-store
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+nonce template, own cache policy:
+  cache-control: public, max-age=60
+  content-type: text/css
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+nonce template, no-referrer among others:
+  referrer-policy: no-referrer
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: script-src 'nonce-<nonce>'
+nonce template, own referrer policy:
+  referrer-policy: origin
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: script-src 'nonce-<nonce>'
+nonce template, own csp:
+  content-security-policy: default-src 'none'
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+nonce template, own hsts:
+  strict-transport-security: max-age=5
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: script-src 'nonce-<nonce>'
+nonce template, own coep:
+  cross-origin-embedder-policy: unsafe-none
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  referrer-policy: strict-origin-when-cross-origin
+  content-security-policy: script-src 'nonce-<nonce>'
+nonce template, own cross-origin policies:
+  permissions-policy: camera=(self)
+  cross-origin-opener-policy: unsafe-none
+  cross-origin-resource-policy: cross-origin
+  x-xss-protection: 1
+  x-content-type-options: none
+  cache-control: no-store
+  x-frame-options: DENY
+  strict-transport-security: max-age=31536000; includeSubDomains
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: script-src 'nonce-<nonce>'
+nonce template, nine other names:
+  content-type: application/json
+  etag: "1"
+  last-modified: Wed, 01 Jan 2025 00:00:00 GMT
+  x-one: 1
+  x-two: 2
+  x-three: 3
+  x-four: 4
+  x-five: 5
+  x-six: 6
+  cache-control: no-store
+  x-frame-options: DENY
+  x-content-type-options: nosniff
+  x-xss-protection: 0
+  permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: same-origin
+  strict-transport-security: max-age=31536000; includeSubDomains
+  referrer-policy: strict-origin-when-cross-origin
+  cross-origin-embedder-policy: require-corp
+  content-security-policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self' blob:
+nonce template, marked:
+  content-type: text/html
+  cache-control: no-store
+nonce template, marked with cache policy:
+  cache-control: private
