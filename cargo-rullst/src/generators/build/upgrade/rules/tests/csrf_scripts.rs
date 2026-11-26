@@ -183,3 +183,67 @@ fn scripts_below_the_project_are_found_outside_build_and_dependency_folders() {
         "{found:?}"
     );
 }
+
+#[test]
+fn a_negated_includes_check_reads_the_whole_receiver_chain() {
+    // The `!` before the receiver turns `.includes` into the failing branch of
+    // the `if`, so each receiver is read back to its `!`: a call with
+    // arguments, a call with several arguments, a property chain and an
+    // optional chain.
+    for receiver in [
+        "foo(bar)",
+        "foo(a, b)",
+        "foo(a, not b)",
+        "foo(bar(baz))[0]",
+        "page.html",
+        "page?.html",
+        "page.html()",
+    ] {
+        let source = format!("if (!{receiver}.includes(cookie.value)) throw new Error('csrf');\n");
+        assert_eq!(js(&source), [1], "{receiver}");
+        // Without the `!` the same `if` fails when the page holds the cookie.
+        let plain = format!("if ({receiver}.includes(cookie.value)) throw new Error('csrf');\n");
+        assert_eq!(js(&plain), Vec::<usize>::new(), "{receiver}");
+    }
+}
+
+#[test]
+fn a_chained_includes_on_its_own_line_has_no_receiver() {
+    // The line starts at the `.`, so no receiver is read and the page cannot
+    // hold the cookie's value.
+    let source = "const cookie = jar.find(c => c.name === 'rullst_csrf');\nassert(html\n  .includes(cookie.value));\n";
+    assert_eq!(js(source), [3]);
+}
+
+#[test]
+fn an_expectation_chain_may_pass_through_non_call_links() {
+    let source = r#"const cookie = jar.find(c => c.name === 'rullst_csrf');
+await expect(token).resolves.toBe(cookie.value);
+await expect(token).not.resolves.toBe(cookie.value);
+await expect(token).resolves.not.toBe(cookie.value);
+await expect(token).rejects.resolves.toEqual(cookie.value);
+"#;
+    assert_eq!(js(source), [2, 5]);
+}
+
+#[test]
+fn an_expectation_reads_only_its_own_argument_group() {
+    // The cookie in a later statement of the line, or in the subject's
+    // property, is not what the matcher compares.
+    let source = r#"const cookie = jar.find(c => c.name === 'rullst_csrf');
+expect(pageToken.value).toBe(page); expect(cookie.value).toBe(1);
+expect(cookie.token).toBe(page);
+expect(cookie.value).toBe(token);
+"#;
+    assert_eq!(js(source), [4]);
+}
+
+#[test]
+fn an_escape_in_a_string_stands_for_the_character_it_escapes() {
+    // `\e` is `e`, so the right side is the text `token`.
+    assert_eq!(js("cookie.value === \"tok\\en\";\n"), [1]);
+    assert_eq!(py("assert cookie == 'tok\\en'\n"), [1]);
+    // An escaped delimiter does not end the string, so the comment stays
+    // inside it and the comparison after the string is still code.
+    assert_eq!(js("const s = 'a\\' // b'; cookie.value === token;\n"), [1]);
+}
