@@ -421,6 +421,11 @@ jobs:
           fi
           "${command[@]}" > mutation-inventory.json
 
+          if [ "$MUTATION_MODE" = "targeted" ] \
+            && jq -e 'type == "array" and length == 0' mutation-inventory.json >/dev/null; then
+            echo "::error::$MUTATION_FILE has no mutation candidates${TARGETED_SHARD:+ in shard $TARGETED_SHARD}: cargo mutants lists none (for example a file of re-exports or constants). Nothing to measure; choose another file."
+            exit 1
+          fi
           jq -e '
             type == "array" and
             length > 0 and
