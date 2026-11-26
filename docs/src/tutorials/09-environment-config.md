@@ -77,6 +77,13 @@ two differ; it likewise warns when an earlier `RullstConfig::set_global` call
 installed a configuration that differs from `Rullst.toml`, which stays the
 global one. Read the configuration after the `Server` starts.
 
+Code that must decide before a `Server` exists, such as building a router,
+calls `rullst::config::project_environment()` (since 13.0.0). It reads the
+process variables, `./.env` and `./Rullst.toml` in the `Server` order and
+returns an error for an invalid value or an unreadable file. Studio's and
+Nexus's loopback boundary uses it at build time and refuses to build when it
+cannot resolve the environment.
+
 ---
 
 ## Step 3: Configure the Browser Security Baseline

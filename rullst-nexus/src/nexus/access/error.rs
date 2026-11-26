@@ -28,7 +28,8 @@ pub enum NexusBuildError {
     /// the project's `.env` file is unreadable or malformed. Added in v13.
     InvalidDotenv { variable: &'static str },
     /// Unauthenticated local access is never available in release builds, nor
-    /// when the process `RULLST_ENV` or `APP_ENV` is staging or production.
+    /// when the environment `Server` resolves (process variables, `.env`,
+    /// `[app] env`) is staging or production.
     LocalAccessRequiresDebugBuild,
     /// Registered model metadata is ambiguous, oversized, or unsafe for dynamic CRUD.
     InvalidModelMetadata { reason: &'static str },

@@ -28,7 +28,7 @@ pub use rate_limit::{
     NEXUS_BASIC_AUTH_FAILURE_WINDOW, NEXUS_BASIC_AUTH_LOCKOUT, NEXUS_BASIC_AUTH_MAX_FAILURES,
     NEXUS_BASIC_AUTH_MAX_PEERS,
 };
-use rullst_core::config::Environment;
+use rullst_core::config::{Environment, project_environment};
 use std::{fmt, net::SocketAddr, sync::Arc, time::Duration};
 use subtle::ConstantTimeEq;
 use transport::has_verified_tls;
@@ -171,7 +171,8 @@ impl NexusAuthPolicy {
 
     /// Uses credential-free loopback access in debug builds and validated
     /// environment credentials in release builds, and in debug builds whose
-    /// process `RULLST_ENV` or `APP_ENV` is staging or production.
+    /// environment (the one `Server` resolves from the process variables, `.env` and
+    /// `[app] env`) is staging or production.
     ///
     /// This is the ergonomic policy for generated applications and local
     /// examples. Debug access still requires Axum `ConnectInfo<SocketAddr>` and
@@ -208,8 +209,8 @@ impl NexusAuthPolicy {
 
     /// Uses credential-free loopback access in debug builds and the
     /// application's sign-in ([`Self::application`]) in release builds, as
-    /// the generated SaaS starter does. A debug build whose process
-    /// `RULLST_ENV` or `APP_ENV` is staging or production uses the
+    /// the generated SaaS starter does. A debug build whose environment
+    /// (process variables, `.env`, `[app] env`) is staging or production uses the
     /// application's sign-in too.
     pub fn local_development_or_application(authorizer: impl NexusAuthorizer) -> Self {
         if loopback_permitted() {
@@ -281,13 +282,15 @@ pub(crate) fn validate_policy(policy: NexusAuthPolicy) -> Result<NexusAuthPolicy
 /// Whether the credential-free loopback policy may be built: in a debug build
 /// whose process environment is not staging or production.
 fn loopback_permitted() -> bool {
-    cfg!(debug_assertions) && !process_environment_requires_secure_defaults()
+    cfg!(debug_assertions) && !project_environment_requires_secure_defaults()
 }
 
-/// The process `RULLST_ENV`, then `APP_ENV`, names staging or production, or
-/// is invalid (which fails closed).
-fn process_environment_requires_secure_defaults() -> bool {
-    Environment::detect(None).map_or(true, Environment::requires_secure_defaults)
+/// The environment `Server` would resolve for this project (the process
+/// `RULLST_ENV`, then `APP_ENV`, then either one from `.env`, then `[app] env`
+/// in `Rullst.toml`) is staging or production, or cannot be resolved, which
+/// fails closed.
+fn project_environment_requires_secure_defaults() -> bool {
+    project_environment().map_or(true, Environment::requires_secure_defaults)
 }
 
 /// A request the loopback policy refuses even from a loopback peer: one that a

@@ -10,7 +10,8 @@
 //! tunnel that adds no forwarding header and speaks HTTP/1.1 or newer still
 //! looks like a local browser, so Studio must never be published through one.
 //! [`LocalStudioAccess::protect_router`] also refuses to build in a release
-//! build, or when the process `RULLST_ENV` or `APP_ENV` is staging or
+//! build, or when the environment `Server` resolves for the project (process
+//! `RULLST_ENV`, then `APP_ENV`, then `.env`, then `[app] env`) is staging or
 //! production (an invalid value counts as one of them).
 
 use axum::{
@@ -21,7 +22,7 @@ use axum::{
     middleware::Next,
     response::Response,
 };
-use rullst_core::config::Environment;
+use rullst_core::config::{Environment, project_environment};
 use std::{fmt, net::SocketAddr};
 
 /// Explicit capability for serving Studio to verified loopback peers in a
@@ -58,13 +59,14 @@ impl LocalStudioAccess {
     /// Applies the Studio loopback boundary to a router.
     ///
     /// Fails with [`StudioBuildError::LocalAccessRequiresDebugBuild`] in a
-    /// release build, and when the process `RULLST_ENV` (then `APP_ENV`) is
-    /// staging, production or invalid.
+    /// release build, and when the environment `Server` would resolve for the
+    /// working directory (process `RULLST_ENV`, then `APP_ENV`, then `.env`,
+    /// then `[app] env` in `Rullst.toml`) is staging, production or invalid.
     pub fn protect_router<S>(&self, router: Router<S>) -> Result<Router<S>, StudioBuildError>
     where
         S: Clone + Send + Sync + 'static,
     {
-        if !cfg!(debug_assertions) || process_environment_requires_secure_defaults() {
+        if !cfg!(debug_assertions) || project_environment_requires_secure_defaults() {
             return Err(StudioBuildError::LocalAccessRequiresDebugBuild);
         }
         Ok(router.layer(axum::middleware::from_fn(loopback_only_middleware)))
@@ -91,7 +93,7 @@ where
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StudioBuildError {
     /// Credential-free Studio access is unavailable in release builds, and
-    /// when the process `RULLST_ENV` or `APP_ENV` is staging or production.
+    /// when the project's environment is staging or production.
     LocalAccessRequiresDebugBuild,
     /// The OS could not provide the key used for opaque local action tokens.
     RandomnessUnavailable,
@@ -120,10 +122,12 @@ impl std::error::Error for StudioBuildError {}
 /// Studio's own form submissions and still sends no referrer to other origins.
 const STUDIO_REFERRER_POLICY: &str = "same-origin";
 
-/// The process `RULLST_ENV`, then `APP_ENV`, names staging or production, or
-/// is invalid (which fails closed).
-fn process_environment_requires_secure_defaults() -> bool {
-    Environment::detect(None).map_or(true, Environment::requires_secure_defaults)
+/// The environment `Server` would resolve for this project (the process
+/// `RULLST_ENV`, then `APP_ENV`, then either one from `.env`, then `[app] env`
+/// in `Rullst.toml`) is staging or production, or cannot be resolved, which
+/// fails closed.
+fn project_environment_requires_secure_defaults() -> bool {
+    project_environment().map_or(true, Environment::requires_secure_defaults)
 }
 
 /// A request refused even from a loopback peer: one that a same-host proxy
