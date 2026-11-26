@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795708019315,
+  "lastUpdate": 1795710516788,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -26808,6 +26808,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1c6c2345b73f8aa8bc9a5410813f8cb2e0d9209d",
+          "message": "Merge pull request #876 from Rullst/ci/v13-ci-tools-and-template-pins\n\nci: update the ci-tools actions and sync the generated workflow pins",
+          "timestamp": "2026-11-26T13:02:52-03:00",
+          "tree_id": "449299144f8d6ce698f0245054b170bb0fe56e13",
+          "url": "https://github.com/Rullst/Rullst/commit/1c6c2345b73f8aa8bc9a5410813f8cb2e0d9209d"
+        },
+        "date": 1795710515322,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 4635,
+            "range": "± 35",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 545,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 8,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 4,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 14,
             "range": "± 0",
             "unit": "ns/iter"
           }
