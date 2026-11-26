@@ -863,6 +863,7 @@ totals, which every new row or rule would change.
 | Labs pinned-runner names | (a) must-change | `V13-LABS-VARIANTS-RENAMED` | The identifier `LinuxExperimental` (in a path, a pattern, a `use` item or bare after a glob import) and `ResultEvidence::Experimental` paths, also in `use` trees, at every location; string literals are left alone, because a configuration keeps the stored `"LinuxExperimental"` name; introduced in 13.0.0-rc.1 |
 | IoT simulator fixtures removed | (a) must-change | `V13-IOT-SIMULATORS-REMOVED` | `experimental-simulators` on each `rullst-iot` dependency that enables it (also renamed, in a dependency table or in `[workspace.dependencies]`) and at the first `[features]` entry that does (`rullst-iot/…` or `rullst-iot?/…`); `SimulatedHsmDevice`, `SimulatedHsmProfile`, `SimulatedPqcFixture` and `SimulatedMqttPayloadFormatter` in Rust code, at every location; introduced in 13.0.0-rc.1 |
 | Empty settings in staging and production | (c) none | — | Only a staging or production deployment with a missing setting changes, and the setting is deployment configuration, not application source |
+| Nexus AI setup text | (c) none | — | Only the text Nexus shows changes; where the provider keys are read from is unchanged |
 
 ## Planned simpler update experience
 

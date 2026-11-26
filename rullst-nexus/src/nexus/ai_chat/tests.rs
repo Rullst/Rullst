@@ -195,3 +195,27 @@ async fn without_a_provider_the_chat_answers_offline() {
     .0;
     assert!(answer.contains("Registered Database Models"), "{answer}");
 }
+
+/// `AutoAiConfig` reads provider keys from the process environment only, so
+/// neither the setup answer nor the chat page may send the reader to `.env`.
+#[tokio::test]
+async fn setup_text_says_keys_come_from_the_process_environment_not_dotenv() {
+    let state = Arc::new(make_test_state());
+    let guide = generate_smart_nexus_ai_response("How do I configure a provider key?", &state);
+    let page = nexus_chat_page(State(state), axum::http::HeaderMap::new())
+        .await
+        .0;
+    for text in [guide, page] {
+        assert!(text.contains("process"), "{text}");
+        assert!(!text.contains("to your project's"), "{text}");
+        assert!(!text.contains("key in .env"), "{text}");
+        assert!(
+            !text.contains("via your <code class=\"nexus-code\">.env"),
+            "{text}"
+        );
+        assert!(
+            text.contains("not <code class=\"nexus-code\">.env</code>")
+                || text.contains("is not picked up")
+        );
+    }
+}

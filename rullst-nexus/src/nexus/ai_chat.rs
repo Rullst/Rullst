@@ -89,7 +89,7 @@ pub(crate) fn generate_smart_nexus_ai_response(message: &str, state: &NexusState
         || msg_lower.contains("kimi")
     {
         return "<p><strong>🌐 Universal LLM Setup Guide:</strong></p>\
-             <p>Rullst AI supports <strong>the configured providers below</strong>. Add the corresponding variables to your project's <code class=\"nexus-code\">.env</code> file:</p>\
+             <p>Rullst AI supports <strong>the configured providers below</strong>. Set the corresponding variables in the environment of the process that runs your application (for example <code class=\"nexus-code\">export GEMINI_API_KEY=your_key</code>, or your host's environment settings). Rullst AI reads provider keys from the process environment only, so a line in <code class=\"nexus-code\">.env</code> is not picked up:</p>\
              <ul style=\"margin: 0.5rem 0; padding-left: 1.25rem; font-size: 0.85rem;\">\
                <li><strong>Google Gemini:</strong> <code class=\"nexus-code\">GEMINI_API_KEY=your_key</code></li>\
                <li><strong>OpenAI / ChatGPT:</strong> <code class=\"nexus-code\">OPENAI_API_KEY=your_key</code></li>\
@@ -257,7 +257,7 @@ fn chat_page_html(state: &NexusState, headers: &axum::http::HeaderMap) -> Html<S
             "&#128200; Count Table Rows",
         ),
         (
-            "How do I configure an AI provider key in .env?",
+            "How do I configure an AI provider key?",
             "&#127760; LLM Setup Instructions",
         ),
     ] {
@@ -271,7 +271,7 @@ fn chat_page_html(state: &NexusState, headers: &axum::http::HeaderMap) -> Html<S
     content.push_str("<div class=\"nexus-card nexus-chat-card nexus-chat-banner\">");
     content
         .push_str("<div class=\"nexus-chat-banner-title\">&#127760; Universal LLM Support</div>");
-    content.push_str("<p class=\"nexus-chat-banner-text\">Connect to <strong>Gemini, OpenAI, Claude, Ollama, DeepSeek, Qwen, or Kimi</strong> via your <code class=\"nexus-code\">.env</code> file:</p>");
+    content.push_str("<p class=\"nexus-chat-banner-text\">Connect to <strong>Gemini, OpenAI, Claude, Ollama, DeepSeek, Qwen, or Kimi</strong> through environment variables of the application process (not <code class=\"nexus-code\">.env</code>):</p>");
     content.push_str("<pre class=\"nexus-schema-pre nexus-schema-pre-compact\">GEMINI_API_KEY=key\nOPENAI_API_KEY=key\nANTHROPIC_API_KEY=key\nDEEPSEEK_API_KEY=key\nGROQ_API_KEY=key\nGROQ_MODEL=model\nOLLAMA_HOST=http://...\nOPENAI_BASE_URL=https://...\nOPENAI_MODEL=model</pre>");
     content.push_str("</div>");
 
