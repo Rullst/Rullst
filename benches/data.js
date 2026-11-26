@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795709565264,
+  "lastUpdate": 1795712408608,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -39335,6 +39335,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1577,
             "range": "± 13",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c262886a3d9cd7a134e8248f82a660aee140dfc3",
+          "message": "Merge pull request #871 from Rullst/fix/v13-nexus-ai-keys-message\n\nfix(nexus): say that AI provider keys come from the process environment",
+          "timestamp": "2026-11-26T13:52:18-03:00",
+          "tree_id": "01745626217c0acd23e171b96aad646c2e7e7b22",
+          "url": "https://github.com/Rullst/Rullst/commit/c262886a3d9cd7a134e8248f82a660aee140dfc3"
+        },
+        "date": 1795712403016,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 681,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 941,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 9,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 405,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1946,
+            "range": "± 55",
             "unit": "ns/iter"
           }
         ]
