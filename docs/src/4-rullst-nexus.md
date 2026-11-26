@@ -500,7 +500,10 @@ The AI query assistant at `/nexus/chat` (and its htmx endpoint
 `/nexus/chat/query`) answers questions about the registered models through
 the providers `rullst-ai` reads from the environment (`GEMINI_API_KEY`,
 `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OLLAMA_HOST`, …), and with a built-in
-offline schema helper when none is configured. Since 13.0.0-alpha.4 it is an
+offline schema helper when none is configured. The keys are read from the
+process environment only: a line in `.env` is not picked up, because `Server`
+and `cargo rullst dev` do not load `.env` into the process (the chat's setup
+answer says so since 13.0.0; it used to send the reader to `.env`). Since 13.0.0-alpha.4 it is an
 optional feature:
 
 | Dependency | Feature that enables the assistant |
