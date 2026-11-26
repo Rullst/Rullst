@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795707906536,
+  "lastUpdate": 1795710369819,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -16321,6 +16321,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 260,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1c6c2345b73f8aa8bc9a5410813f8cb2e0d9209d",
+          "message": "Merge pull request #876 from Rullst/ci/v13-ci-tools-and-template-pins\n\nci: update the ci-tools actions and sync the generated workflow pins",
+          "timestamp": "2026-11-26T13:02:52-03:00",
+          "tree_id": "449299144f8d6ce698f0245054b170bb0fe56e13",
+          "url": "https://github.com/Rullst/Rullst/commit/1c6c2345b73f8aa8bc9a5410813f8cb2e0d9209d"
+        },
+        "date": 1795710368876,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 448,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
