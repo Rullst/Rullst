@@ -7,11 +7,11 @@ limits of each capability, and [`CHANGELOG.md`](CHANGELOG.md) what shipped.
 
 ## In one minute
 
-- **Where v13 is (20 November 2026):** `13.0.0-alpha.1` to `alpha.6` were
-  published from 11 October to 20 November 2026; `13.0.0-alpha.6` is the 13.0
-  feature and public API freeze, and `13.0.0-rc.1` is in preparation.
-- **Next:** `13.0.0-rc.1` (fixes, documentation and the changes approved
-  after the freeze), `13.0.0`, then
+- **Where v13 is (26 November 2026):** `13.0.0-alpha.1` to `alpha.6` and
+  `13.0.0-rc.1` were published from 11 October to 26 November 2026;
+  `13.0.0-alpha.6` is the 13.0 feature and public API freeze, and
+  `13.0.0-rc.1` is the first release candidate.
+- **Next:** `13.0.0`, after the maintainer's applications have run rc.1, then
   [13.1](#next-131). v12 reached end of life on 16 October 2026 (12.3.0).
 - **Rule:** additive work in 13.x minors, breaking changes avoided, no v14 by
   choice ([release rule](#release-rule)).
@@ -40,10 +40,10 @@ limits of each capability, and [`CHANGELOG.md`](CHANGELOG.md) what shipped.
 1. **13.0.0-alpha.6** was published on 20 November 2026: the 13.0 feature
    and public API freeze ([release lines](#published-and-planned-release-lines),
    [history](#delivered-in-1300-alpha6)).
-2. **13.0.0-rc.1** fixes the defects found in alpha.6 (by its admission, the
-   applications upgraded to it and the first-hour and deployment jobs),
-   corrects documentation and carries the changes the maintainer approved
-   after the freeze; it adds no feature.
+2. **13.0.0-rc.1** was published on 26 November 2026. It fixes the defects
+   found in alpha.6 (by its admission, the applications upgraded to it and the
+   first-hour and deployment jobs), corrects documentation and carries the
+   changes the maintainer approved after the freeze; it adds no feature.
 3. **13.0.0** follows once rc.1 leaves no open defect in the stability scope;
    the [maturity tiers](docs/src/maturity.md) and the 13.x support window
    apply from it. It adds no new code: the maintainer's applications run rc.1
@@ -366,7 +366,7 @@ after its tag.
 | **v13.0.0-alpha.4** | `[x] Published prerelease` | All twenty packages were published on 31 October 2026 from tag `v13.0.0-alpha.4` at `2bd3c2ad` ([release run 41233925160](https://github.com/Rullst/Rullst/actions/runs/41233925160)). See the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha4---2026-10-31). |
 | **v13.0.0-alpha.5** | `[x] Published prerelease` | All twenty packages were published on 14 November 2026 from tag `v13.0.0-alpha.5` at `5feda4ac` ([release run 43631881119](https://github.com/Rullst/Rullst/actions/runs/43631881119)) after all 23 required workflows passed on that commit. A first tag at `034df65e` stopped in release verification before publishing anything (`cargo rullst audit` lacked the governed advisory exceptions, #690) and was replaced with the maintainer's approval. The fixes and additions from the applications upgraded to alpha.4; planned as the 13.0 feature and public API freeze, which moved to alpha.6 the same day. See [Delivered in 13.0.0-alpha.5](#delivered-in-1300-alpha5) and the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-14). |
 | **v13.0.0-alpha.6** | `[x] Published prerelease` | All twenty packages were published on 20 November 2026 from tag `v13.0.0-alpha.6` at `58438b64` ([release run 44753380780](https://github.com/Rullst/Rullst/actions/runs/44753380780)) after all 23 required workflows passed on that commit. Admission of the first candidate, `ef28c0e0`, found two Miri scopes and the packaged distribution's email-login consumer failing; [#773](https://github.com/Rullst/Rullst/pull/773) fixed them before the tag. The 13.0 feature and public API freeze: every pending fix and improvement, the Rust 1.100 toolchain and current dependency majors, the removal of every API still deprecated (in 12.x or during the 13.0 prereleases), smaller dependency graphs and the `#[non_exhaustive]` public API audit. See [Delivered in 13.0.0-alpha.6](#delivered-in-1300-alpha6) and the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha6---2026-11-20). |
-| **v13.0.0-rc.1** | `[ ] Release candidate` | Prepared on 22 November 2026 and not yet published; the coordinator records the tag, release run and publication here. Twenty packages; the first release candidate for 13.0.0: fixes, documentation and the changes the maintainer approved after the alpha.6 feature and API freeze. See [Planned after 13.0.0-alpha.6](#planned-after-1300-alpha6) and the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-rc1---2026-11-24). |
+| **v13.0.0-rc.1** | `[x] Published release candidate` | All twenty packages were published on 26 November 2026 from tag `v13.0.0-rc.1` at `9ea50d98` ([release run 45837583222](https://github.com/Rullst/Rullst/actions/runs/45837583222)) after all 23 required workflows passed on that commit; its changelog section keeps the date it was prepared for, 24 November. Admission of the first candidate, `1be0033f`, found a stale threat-model source path and `RUSTSEC-2026-0592` (`url`), fixed by [#862](https://github.com/Rullst/Rullst/pull/862); the fuzzing run of the second, `7ecad3bc`, was cancelled on GitHub's side, and `RUSTSEC-2026-0594` (`cookie`) appeared meanwhile, fixed by [#867](https://github.com/Rullst/Rullst/pull/867). The first release candidate for 13.0.0: fixes, documentation and the changes the maintainer approved after the alpha.6 feature and API freeze. See [Planned after 13.0.0-alpha.6](#planned-after-1300-alpha6) and the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-rc1---2026-11-24). |
 | **v13.0.0** | `[ ] Planned stable` | Follows once rc.1 leaves no open defect in the stability scope; the [maturity tiers](docs/src/maturity.md) apply from this release. |
 | **v13.x** | `[ ] After 13.0.0` | Compatible minors after 13.0.0: 13.1 is planned under [Next: 13.1](#next-131) and later ideas under [Later](#later-13x-no-date); breaking changes are avoided ([release rule](#release-rule)). |
 
