@@ -5,7 +5,9 @@
 This page lists what Rullst does not do by design, and what its own tests
 cannot establish because it depends on external services, hardware or
 upstream releases. It holds for every 13.x release until a release changes
-it, and that release's changelog says so. Limitations that belong to one
+it, and that release's changelog says so. How the project is verified, and
+what that verification does not prove, is on
+[How Rullst is verified](how-rullst-is-verified.md). Limitations that belong to one
 release (upgrading from the previous prerelease, figures measured on that
 release's source, work scheduled for the next one) are in that release's
 "Known limitations" in the [changelog](../../CHANGELOG.md).
@@ -225,7 +227,8 @@ The packages promoted to the Extension tier keep their documented scope
   getting started, tutorials 01, 02, 03, 05 and 11 and the REST API
   quickstart), without PostgreSQL or MySQL servers or external accounts.
   Other pages' commands are not run, and their Rust blocks marked
-  `rust,ignore` are not compiled. Only these pages and this one are
+  `rust,ignore` are not compiled. Only these pages, this one and
+  [How Rullst is verified](how-rullst-is-verified.md) are
   translated into Brazilian Portuguese; CI checks that their code blocks
   equal the English ones byte for byte, but only prints a notice when the
   English prose changed after the commit a translation names, so a

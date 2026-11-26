@@ -5,7 +5,9 @@
 Esta página lista o que o Rullst não faz por decisão de projeto e o que os
 testes do próprio Rullst não conseguem comprovar, porque depende de serviços
 externos, de hardware ou de versões de terceiros. Ela vale para toda versão
-13.x até que uma versão a altere, e o changelog dessa versão diz isso. As
+13.x até que uma versão a altere, e o changelog dessa versão diz isso. Como o
+projeto é verificado, e o que essa verificação não comprova, está em
+[Como o Rullst é verificado](how-rullst-is-verified.md). As
 limitações próprias de uma versão (a atualização a partir do pré-lançamento
 anterior, números medidos no código dessa versão, trabalho previsto para a
 próxima) estão nas "Known limitations" dessa versão no
@@ -243,8 +245,9 @@ Os pacotes promovidos ao nível Extension mantêm o escopo documentado
   rápido do README, os primeiros passos, os tutoriais 01, 02, 03, 05 e 11 e o
   guia rápido de API REST), sem servidores PostgreSQL ou MySQL nem contas
   externas. Os comandos das outras páginas não são executados, e seus blocos
-  Rust marcados `rust,ignore` não são compilados. Só essas páginas e esta
-  estão traduzidas para o português do Brasil; a CI verifica se os blocos de
+  Rust marcados `rust,ignore` não são compilados. Só essas páginas, esta e
+  [Como o Rullst é verificado](how-rullst-is-verified.md) estão
+  traduzidas para o português do Brasil; a CI verifica se os blocos de
   código são idênticos, byte a byte, aos da versão em inglês, mas só mostra
   um aviso quando o texto em inglês mudou depois do commit indicado na
   tradução, então uma tradução pode ficar desatualizada (vale a página em
