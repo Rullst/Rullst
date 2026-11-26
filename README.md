@@ -311,7 +311,10 @@ defines each promise, and the
 detailed feature and provider boundaries.
 [Scope and limits](https://rullst.github.io/Rullst/book/scope-and-limits.html)
 lists what Rullst does not do by design and what its own tests cannot
-establish.
+establish. [How Rullst is verified](https://rullst.github.io/Rullst/book/how-rullst-is-verified.html)
+lists the checks that run before a release, their evidence, and what they do
+not prove: no external security review has happened, and no automated test
+runs against a live provider account.
 
 <details>
 <summary><strong>Browse the 20 packages</strong></summary>

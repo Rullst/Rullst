@@ -12,6 +12,7 @@
 - [Simple Capability Status](capability-status.md)
 - [Maturity Tiers: Core and Extension](maturity.md)
 - [Scope and Limits](scope-and-limits.md)
+- [How Rullst is verified](how-rullst-is-verified.md)
 
 # 🍳 Rullst Cookbook & Tutorials
 
@@ -217,6 +218,7 @@
   - [05. Migrações e seeders](pt-BR/tutorials/05-migrations-and-seeds.md)
   - [11. Estrutura de autenticação](pt-BR/tutorials/11-authentication-system.md)
 - [Escopo e limites](pt-BR/scope-and-limits.md)
+- [Como o Rullst é verificado](pt-BR/how-rullst-is-verified.md)
 - [Robótica e IoT em sala de aula](pt-BR/iot-classroom.md)
 
 # Historical Records
