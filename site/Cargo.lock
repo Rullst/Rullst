@@ -983,9 +983,9 @@ checksum = "d902046e6a28a1e4c3cab97258a0ce11e994903f01c2d97a9447a0b3df85f4f6"
 
 [[package]]
 name = "rullst"
-version = "13.0.0-alpha.6"
+version = "13.0.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79496b2954fe4cbeac6405a0715fa956dd8106e95b843e179187e9aeeff8994a"
+checksum = "e77116d13e837fc1e5fdc491c334d5cada9cf38b6de387b6c09ced6bf1e1d723"
 dependencies = [
  "async-trait",
  "axum",
@@ -1011,9 +1011,9 @@ dependencies = [
 
 [[package]]
 name = "rullst-core"
-version = "13.0.0-alpha.6"
+version = "13.0.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3f4dfb1a2d321961c774b7f14954ba89a1a957b6fdb37def2a32b3a55f7ffd5"
+checksum = "b9a238e41ddf20b0fac6944f2ccb2429e3bcfb7de68ec972655230e1d99ac860"
 dependencies = [
  "async-trait",
  "axum",
@@ -1051,9 +1051,9 @@ dependencies = [
 
 [[package]]
 name = "rullst-macros"
-version = "13.0.0-alpha.6"
+version = "13.0.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c79b7b2721ddcd26efc58bcbdb4b360f0debfe8a2dfec4201a377192e6a677c7"
+checksum = "f432fe7a4979208445ac5b9db06885ff3e411d4b221cd07aa03a05ea075779e1"
 dependencies = [
  "proc-macro2",
  "quote",
