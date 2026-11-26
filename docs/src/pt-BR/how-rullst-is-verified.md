@@ -24,17 +24,19 @@ Versões posteriores mudam os números; os changelogs delas dizem isso.
 
 O Rullst é usado nas aplicações do próprio mantenedor. Academy, capoeira e
 vene.win rodam em domínios reais, numa máquina Arm Oracle Ampere A1, atrás de
-um Caddy compartilhado com certificados Let's Encrypt, e uma aplicação privada
-também roda em Rullst
+um Caddy compartilhado com certificados Let's Encrypt
 ([Escopo e limites](scope-and-limits.md#contas-e-provedores-externos)). O
-login com Google e GitHub e o adaptador Bunny Stream do `rullst-media` são
-usados por essas aplicações
+mantenedor também roda uma aplicação privada em Rullst. O login com Google e
+GitHub e o adaptador Bunny Stream do `rullst-media` são usados pelas aplicações
+de produção do mantenedor
 ([níveis de maturidade](../maturity.md#what-the-documentation-tells-you)).
 
-O que isso mostra: as partes que as aplicações usam funcionam em uso real, e
-atualizar as aplicações expõe defeitos que os testes não pegaram. Defeitos
-relatados pelas aplicações que migraram para a 13.0.0-alpha.6 foram corrigidos
-na rc.1 ([plano de entrega da v13](../v13-delivery-plan.md)).
+O que isso mostra: atualizar as aplicações para a 13.0.0-alpha.6 expôs defeitos
+que os testes não tinham pegado, e os defeitos que elas relataram foram
+corrigidos na rc.1
+([#781](https://github.com/Rullst/Rullst/pull/781),
+[changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-rc1---2026-11-24),
+[plano de entrega da v13](../v13-delivery-plan.md)).
 
 O que isso não mostra: as aplicações e o framework têm o mesmo autor, então
 não é uso independente. Nenhum teste automatizado roda contra essas
@@ -47,8 +49,9 @@ fronteira de features, a política de zero pânicos, a política de código
 `unsafe`, a verificação do MSRV, a política de dependências e a busca por
 segredos. A `main` exige 20 verificações nomeadas antes de um merge
 ([`GOVERNANCE.md`](https://github.com/Rullst/Rullst/blob/main/GOVERNANCE.md#change-and-release-controls)).
-A cobertura é medida com LLVM, e o workflow rejeita um resumo abaixo de 90%
-para o repositório ou para as bibliotecas do framework
+A cobertura roda depois de um merge na `main` (e semanalmente), não antes dele,
+e é exigida para a release. Ela é medida com LLVM, e o workflow rejeita um
+resumo abaixo de 90% para o repositório ou para as bibliotecas do framework
 ([Coverage](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md#coverage),
 [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml)).
 Os workflows de zero pânicos e de código `unsafe` estão descritos em
@@ -62,37 +65,58 @@ teste espera. Uma expectativa errada também passa.
 ### 3. Testes de mutação
 
 O [`mutants-pr.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants-pr.yml)
-altera as linhas que um pull request toca, uma pequena mudança (um mutante) de
-cada vez, e falha quando nenhum teste percebe. O
-[`mutants.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants.yml),
-manual, roda campanhas completas e direcionadas. Um mutante que sobrevive ou
-ganha um teste ou é listado, com o motivo, como mutante equivalente
-([registro dos testes de mutação](../mutation-testing.md)). A proteção de
-branch não exige o portão dos pull requests, e uma campanha não faz parte da
-admissão da release
-([portão de mutação nos pull requests](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md#pull-request-mutation-gate)).
+altera as linhas de Rust que um pull request altera, uma pequena mudança (um
+mutante) de cada vez, e falha quando nenhum teste percebe (um mutante perdido).
+Ele pula os globs de `.github/mutants-pr-exclude.txt` e os arquivos do
+`cargo-rullst` que não estão em `.github/mutants-pr-cli.txt`. Timeouts e
+mutantes inviáveis não o fazem falhar. A proteção de branch não o exige, e ele
+não faz parte da admissão da release
+([inventário de workflows](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md#workflow-inventory-36-definitions),
+[portão de mutação nos pull requests](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md#pull-request-mutation-gate)).
+O [`mutants.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants.yml),
+manual, roda campanhas completas e direcionadas, e um mutante que sobrevive a
+qualquer uma ganha um teste ou é listado, com o motivo, como mutante
+equivalente. O [registro dos testes de mutação](../mutation-testing.md) lista
+as campanhas até a 13.0.0-alpha.6 e seus equivalentes aceitos. A nova medição
+da rc.1 está registrada no
+[PR #872](https://github.com/Rullst/Rullst/pull/872), não nesse arquivo.
 
-Para a 13.0.0-rc.1, campanhas direcionadas mediram de novo os arquivos
-alterados desde a 13.0.0-alpha.6. Dez arquivos do `cargo-rullst` tinham 732
-mutantes: 579 capturados, 6 timeouts e 98 perdidos, e o resto inviável. Dos 94
-mutantes perdidos distintos, 80 ganharam um teste e 14 foram classificados como
+Para a 13.0.0-rc.1, campanhas direcionadas mediram de novo dez arquivos do
+`cargo-rullst` no fork do mantenedor. Eles tinham 732 mutantes: 579
+capturados, 6 timeouts e 98 perdidos, e o resto inviável. Dos 94 mutantes
+perdidos distintos, 80 ganharam um teste e 14 foram classificados como
 equivalentes ou inobserváveis
 ([PR #872](https://github.com/Rullst/Rullst/pull/872)). Uma nova medição dos
 dez arquivos naquele branch deixou 21 mutantes perdidos e 6 timeouts, todos
-entre os que o pull request classificou
+dentro das categorias que o pull request classificou como equivalentes ou
+inobserváveis
 ([comentário no PR #872](https://github.com/Rullst/Rullst/pull/872#issuecomment-7195513104)).
 
-O que isso não mostra: "equivalente" é um julgamento do mantenedor, registrado
-com um motivo, não uma prova. Um mutante sobrevivente que só uma resposta de um
-provedor real alcança fica para os testes com o provedor
-([MAINTAINING.md](https://github.com/Rullst/Rullst/blob/main/MAINTAINING.md#6-mutation-campaigns)).
+O que isso não cobre:
+
+- O código integrado depois do commit de origem das campanhas, `a0ee8c3f`,
+  ficou fora de qualquer campanha. O portão dos pull requests mutou as linhas
+  que ele tocou nas bibliotecas e nos arquivos listados do `cargo-rullst`; os
+  outros arquivos do `cargo-rullst` foram testados, mas não mutados.
+- As lacunas que as Known limitations da rc.1 listam: 30 mutantes do
+  `cargo-rullst` da primeira campanha, o toolkit de frontend da CLI e partes do
+  `footprint` fora do portão, um mutante não resolvido do `rullst-orm` e 17
+  timeouts, 29 mutantes do `rullst-capital` alcançáveis só por uma resposta
+  real do Stripe, e três mutantes do `rullst-ai` alcançáveis só por uma origem
+  HTTPS real
+  ([changelog, Known limitations](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-rc1---2026-11-24)).
+- "Equivalente" é um julgamento do mantenedor, registrado com um motivo, não
+  uma prova. Um mutante sobrevivente que só uma resposta de um provedor real
+  alcança fica para os testes com o provedor
+  ([MAINTAINING.md](https://github.com/Rullst/Rullst/blob/main/MAINTAINING.md#6-mutation-campaigns)).
 
 ### 4. Fuzzing
 
 O `fuzzing.yml` roda o libFuzzer em 42 alvos declarados, em onze workspaces de
 fuzzing
 ([Fuzzing and OSS-Fuzz](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md#fuzzing-and-oss-fuzz)).
-Uma release exige uma execução bem-sucedida no commit da release. Para a
+O workflow é iniciado à mão para uma release; não é uma verificação de pull
+request. Uma release exige uma execução bem-sucedida no commit da release. Para a
 13.0.0-rc.1, é a [execução 45693088611](https://github.com/Rullst/Rullst/actions/runs/45693088611)
 no commit `9ea50d98`: 42 alvos selecionados, nenhum reaproveitado de execução
 anterior (o artefato `fuzz-evidence-9ea50d98…` dessa execução registra isso),
@@ -105,6 +129,10 @@ O diretório `oss-fuzz/` é um rascunho local; o OSS-Fuzz upstream não aceitou 
 projeto.
 
 ### 5. Miri, Kani, sanitizers e testes de propriedade
+
+Eles rodam em agenda (Kani e Miri semanalmente, os sanitizers diariamente) ou
+são iniciados à mão para uma release; nenhum é uma verificação de pull request
+([inventário de workflows](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md#workflow-inventory-36-definitions)).
 
 - O **Kani** prova propriedades limitadas de decisões puras, com vinte
   harnesses em dez pacotes. O **Miri** roda 15 escopos nomeados de Rust puro.
@@ -130,16 +158,18 @@ rodam.
 ### 6. Varreduras de segurança estáticas e dinâmicas
 
 - O **CodeQL** (`codeql.yml`) analisa o código Rust e o JavaScript/TypeScript
-  em pushes, pull requests e semanalmente.
+  depois de cada push na `main`, semanalmente, e em pull requests para os
+  branches `v12` e `v13`. Um pull request para a `main` não o executa, e ele
+  não é uma verificação que a `main` exige
+  ([`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml)).
 - O **OWASP ZAP** (`dast-zap.yml`) varre um starter de API REST e um starter
   SaaS recém-gerados (páginas públicas e depois páginas autenticadas) e o
-  exemplo LMS. Os alvos são representativos, não todos os starters, papéis ou
+  exemplo LMS. Ele é iniciado à mão para uma release, não em pull requests. Os alvos são representativos, não todos os starters, papéis ou
   instalações; administradores do Nexus não são varridos
   ([`dast-zap.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/dast-zap.yml),
   [Formal, dynamic and stress analysis](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md#formal-dynamic-and-stress-analysis)).
-- O **SonarCloud** analisa pull requests. Não é uma verificação obrigatória: a
-  verificação dele falhou no [PR #872](https://github.com/Rullst/Rullst/pull/872),
-  que foi integrado, e ele não está entre as verificações que a `main` exige
+- O **SonarCloud** analisa pull requests. Não é uma verificação obrigatória:
+  ele não está entre as verificações que a `main` exige
   ([ruleset](https://github.com/Rullst/Rullst/rules/24175738)).
 
 CodeQL e ZAP estão entre os workflows que precisam passar para uma release
@@ -186,6 +216,14 @@ release lê a documentação pública e o código, os testes e a CI, e relata o 
 a documentação afirma mas não sustenta. Cada achado é corrigido ou declarado
 nas limitações conhecidas
 ([MAINTAINING.md](https://github.com/Rullst/Rullst/blob/main/MAINTAINING.md#7-releasing-a-prerelease)).
+Para a rc.1 o registro está em quatro pull requests integrados:
+o [#784](https://github.com/Rullst/Rullst/pull/784) alinhou as afirmações
+públicas com o código, os testes e a CI, o
+[#855](https://github.com/Rullst/Rullst/pull/855) corrigiu as afirmações da
+rc.1 que a revisão pré-release encontrou, o
+[#857](https://github.com/Rullst/Rullst/pull/857) restringiu as afirmações do
+site e o [#856](https://github.com/Rullst/Rullst/pull/856) corrigiu um defeito
+da CLI (`--from` sem versão do projeto).
 O [`GOVERNANCE.md`](https://github.com/Rullst/Rullst/blob/main/GOVERNANCE.md#change-and-release-controls)
 diz claramente que um assistente não é um revisor humano independente.
 
@@ -204,10 +242,17 @@ diz claramente que um assistente não é um revisor humano independente.
   imprimem o que verificaram e marcam o resto como não avaliado.
 - **Nenhuma conta real de provedor nos testes automatizados.** A CI exercita
   os provedores de pagamento, vídeo, OAuth, e-mail e IA contra mocks locais,
-  fixtures e servidores de teste. O adaptador S3/R2 do `rullst-media` é testado
-  apenas offline
+  fixtures e servidores de teste
   ([Escopo e limites](scope-and-limits.md#contas-e-provedores-externos),
   [níveis de maturidade](../maturity.md#what-the-documentation-tells-you)).
+  Vários provedores nunca rodaram contra uma conta real: login com Microsoft,
+  Apple, Auth0, AWS Cognito, Facebook, X, Discord, LinkedIn e OpenID Connect
+  genérico; OpenAI, Anthropic Claude, DeepSeek e Ollama; AWS SES e SendPulse; e
+  o adaptador S3/R2 do `rullst-media`. Turso, Meilisearch, SurrealDB, Redis,
+  MySQL e pgvector rodaram só contra containers locais. Veja as Known
+  limitations da rc.1 no
+  [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-rc1---2026-11-24)
+  e a issue de acompanhamento [#801](https://github.com/Rullst/Rullst/issues/801).
 - **Um único mantenedor.** Uma pessoa é dona do código, dos testes, da
   especificação e das verificações, e faz os merges. As aprovações exigidas na
   `main` são zero enquanto houver um único mantenedor ativo
@@ -240,7 +285,8 @@ gerador de carga, e não o servidor, limitava o resultado
 
 **A falha do `PUT /world/{id}` favoreceu o Rullst.** A versão 3 passou nas
 próprias verificações de conformidade, e sua primeira execução oficial (Rullst
-13.0.0-alpha.6) publicou resultados. Uma revisão independente em 20 de
+13.0.0-alpha.6) publicou resultados. Uma revisão cética conduzida por assistente (o assistente de IA do mantenedor,
+sem o contexto da release; não uma revisão externa nem humana) em 20 de
 novembro de 2026 descobriu que o endpoint `PUT` não media nenhuma escrita nas
 implementações cujo ORM grava só as colunas alteradas, entre elas o Rullst: a
 carga repetia pares que o aquecimento já havia gravado. A razão de `PUT` e a
@@ -255,8 +301,8 @@ O mesmo README diz que o mantenedor escreveu todas as implementações e
 projetou o método.
 
 A lição para esta página: uma verificação verde diz que a verificação passou.
-Se ela era a verificação certa é outra pergunta, e uma revisão independente,
-não as verificações do próprio benchmark, encontrou a falha do `PUT`.
+Se ela era a verificação certa é outra pergunta, e uma revisão conduzida por
+assistente, não as verificações do próprio benchmark, encontrou a falha do `PUT`.
 
 ## Confira você mesmo
 
@@ -285,7 +331,9 @@ não as verificações do próprio benchmark, encontrou a falha do `PUT`.
 - **Benchmarks.** O [repositório Benchmarks](https://github.com/Rullst/Benchmarks)
   publica seu método, a saída bruta e seus limites.
 - **Registro de mutação.** O [registro dos testes de mutação](../mutation-testing.md)
-  lista cada campanha e cada mutante equivalente aceito.
+  lista as campanhas até a 13.0.0-alpha.6 e seus mutantes equivalentes
+  aceitos; o [PR #872](https://github.com/Rullst/Rullst/pull/872) guarda a nova
+  medição da rc.1.
 
 Se uma afirmação desta página não for sustentada pelo seu link, ou se você
 encontrar uma falha, [abra uma issue](https://github.com/Rullst/Rullst/issues/new/choose).
