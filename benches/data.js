@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795712408608,
+  "lastUpdate": 1795713590214,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -39389,6 +39389,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1946,
             "range": "± 55",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "07573041339413db59d34fe9395e3cd062b66c9e",
+          "message": "Merge pull request #881 from Rullst/docs/v13-how-rullst-is-verified\n\ndocs: add how Rullst is verified and what that does not prove",
+          "timestamp": "2026-11-26T14:13:41-03:00",
+          "tree_id": "92e87a577df4e8f1ed87f325430f1bf8e99bfcce",
+          "url": "https://github.com/Rullst/Rullst/commit/07573041339413db59d34fe9395e3cd062b66c9e"
+        },
+        "date": 1795713584836,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 495,
+            "range": "± 27",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 692,
+            "range": "± 34",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 337,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1391,
+            "range": "± 59",
             "unit": "ns/iter"
           }
         ]
