@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795638517557,
+  "lastUpdate": 1795705203142,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -16261,6 +16261,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 380,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dc05285b0ef6ea82f4018a7332a6032d88f6be86",
+          "message": "Merge pull request #868 from Rullst/feat/v13-site-suite-and-compare\n\nfeat(site): suite framing, plain-words performance, live applications and redesigned comparison",
+          "timestamp": "2026-11-26T11:40:41-03:00",
+          "tree_id": "904cb305dd96e3c3723ceb7a9f8a6c848fdfff25",
+          "url": "https://github.com/Rullst/Rullst/commit/dc05285b0ef6ea82f4018a7332a6032d88f6be86"
+        },
+        "date": 1795705201701,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 386,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
