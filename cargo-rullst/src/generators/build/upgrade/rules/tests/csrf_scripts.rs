@@ -283,3 +283,53 @@ self.assertIn(token, html)
 "#;
     assert_eq!(py(source), [2]);
 }
+
+#[test]
+fn a_block_comment_ends_at_its_own_closing_marker() {
+    // The code after a block comment on the same line is read from the
+    // marker's end, wherever the comment is, and its text is not read at all
+    // (here it ends in the operator that would make the line a comparison).
+    assert_eq!(js("/* note */ cookie.value === token;\n"), [1]);
+    assert_eq!(js("const x = 1; /* */ cookie.value === token;\n"), [1]);
+    assert_eq!(
+        js("const same = cookie.value /*==*/ token;\n"),
+        Vec::<usize>::new()
+    );
+    // A `*` after a name is an operator, not the start of a comment.
+    assert_eq!(js("const same = cookie.value*1 === token;\n"), [1]);
+    assert_eq!(py("assert cookie.value**1 == token\n"), [1]);
+}
+
+#[test]
+fn a_cookie_name_used_as_a_property_is_not_the_cookie() {
+    let source = r#"const csrf = jar.find(c => c.name === 'rullst_csrf');
+check(page.csrf === token);
+check(page?.csrf === token);
+check(csrf.value === token);
+"#;
+    assert_eq!(js(source), [4]);
+}
+
+#[test]
+fn the_extension_selects_the_comment_syntax_of_a_script() {
+    let project = Project::new();
+    project
+        // `//` starts a comment in JavaScript, `#` one in Python.
+        .write("scripts/note.js", "// csrf: cookie.value === token\n")
+        .write("scripts/note.py", "# csrf: assert cookie.value == token\n")
+        .write("scripts/hash.js", "// csrf\n# cookie.value === token\n")
+        .write("scripts/slash.py", "# csrf\ncookie.value // 2 == token\n")
+        // A file named only by its extension is no script.
+        .write("scripts/.js", BROWSER_SIGN_IN)
+        .write(
+            "scripts/.py",
+            "token = cookie.value  # csrf\nassert page_token == token\n",
+        );
+    assert_eq!(
+        csrf_comparisons(project.root()),
+        [
+            ("scripts/hash.js".to_string(), 2),
+            ("scripts/slash.py".to_string(), 2),
+        ]
+    );
+}
