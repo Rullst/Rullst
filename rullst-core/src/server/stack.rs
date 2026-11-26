@@ -80,14 +80,14 @@ impl Server {
             pii_masking: crate::security::masks_pii(&security, environment),
         }
         .vary_in_baseline();
-        app = match access_log {
-            None if vary_in_baseline => app,
-            None => app.layer(axum::middleware::from_fn(crate::htmx::vary_on_htmx_request)),
-            Some(access_log) => app.layer(axum::middleware::from_fn_with_state(
+        if let Some(access_log) = access_log {
+            app = app.layer(axum::middleware::from_fn_with_state(
                 access_log,
                 super::console::access_log_and_vary_middleware,
-            )),
-        };
+            ));
+        } else if !vary_in_baseline {
+            app = app.layer(axum::middleware::from_fn(crate::htmx::vary_on_htmx_request));
+        }
 
         let static_mounted = Path::new("static").exists();
         if static_mounted {
