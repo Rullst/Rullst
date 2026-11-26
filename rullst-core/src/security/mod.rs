@@ -28,6 +28,9 @@ mod tests;
 mod headers_tests;
 
 #[cfg(test)]
+mod header_plan_tests;
+
+#[cfg(test)]
 mod csp_nonce_tests;
 
 #[cfg(test)]
