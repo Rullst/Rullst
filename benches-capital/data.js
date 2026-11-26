@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795710686282,
+  "lastUpdate": 1795715497662,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -20340,6 +20340,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ca3793d71842e902df24c043e5399f59cde3c1ed",
+          "message": "Merge pull request #882 from Rullst/fix/v13-rc1-app-findings-2\n\nfix(studio): word the rc.1 application findings (#877, #878, #879)",
+          "timestamp": "2026-11-26T14:32:24-03:00",
+          "tree_id": "92f8a799f317e66b6f01e427f529dfc7ae95696e",
+          "url": "https://github.com/Rullst/Rullst/commit/ca3793d71842e902df24c043e5399f59cde3c1ed"
+        },
+        "date": 1795715496679,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
             "range": "± 0",
             "unit": "ns/iter"
           }
