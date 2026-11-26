@@ -183,6 +183,10 @@ fn missing_static_warning(directory: &Path) -> String {
 mod tests;
 
 #[cfg(test)]
+#[path = "stack_headers_tests.rs"]
+mod headers_tests;
+
+#[cfg(test)]
 #[path = "monitor_stack_tests.rs"]
 mod monitor_tests;
 
