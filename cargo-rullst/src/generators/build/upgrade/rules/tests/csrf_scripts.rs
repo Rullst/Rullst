@@ -333,3 +333,15 @@ fn the_extension_selects_the_comment_syntax_of_a_script() {
         ]
     );
 }
+
+#[test]
+fn the_right_operand_runs_to_its_own_boundary() {
+    let source = r#"const cookie = jar.find(c => c.name === 'rullst_csrf');
+check(cookie.value === pick(a, token));
+check(cookie.value === wrap(inner(a), token));
+check(cookie.value === wrap(inner(a), token), 'the cookie');
+check(cookie.value === token, 'the cookie');
+html.includes(cookie.value);
+"#;
+    assert_eq!(js(source), [2, 3, 4, 5, 6]);
+}
