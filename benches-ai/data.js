@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795638729162,
+  "lastUpdate": 1795705427385,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -23491,6 +23491,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 270,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dc05285b0ef6ea82f4018a7332a6032d88f6be86",
+          "message": "Merge pull request #868 from Rullst/feat/v13-site-suite-and-compare\n\nfeat(site): suite framing, plain-words performance, live applications and redesigned comparison",
+          "timestamp": "2026-11-26T11:40:41-03:00",
+          "tree_id": "904cb305dd96e3c3723ceb7a9f8a6c848fdfff25",
+          "url": "https://github.com/Rullst/Rullst/commit/dc05285b0ef6ea82f4018a7332a6032d88f6be86"
+        },
+        "date": 1795705426252,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1436,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 255,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 272,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
