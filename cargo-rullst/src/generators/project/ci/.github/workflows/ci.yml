@@ -94,7 +94,7 @@ jobs:
           persist-credentials: false
 
       - name: Install cargo-audit
-        uses: taiki-e/install-action@4a76afe23f9e08d2d9550fb56e556444e8611d21 # v2.90.4
+        uses: taiki-e/install-action@75a7c0f87bd666af3cdb75c5b9e9d03ab6044e6f # v2.90.6
         with:
           tool: cargo-audit
 
@@ -132,7 +132,7 @@ jobs:
           fetch-depth: 0
 
       - name: Scan for verified secrets
-        uses: trufflesecurity/trufflehog@ffdee00aded8ed6e545aba48ef7956522d3b076e # main @ 2026-11-16
+        uses: trufflesecurity/trufflehog@4ef51f69ca6347aaa76a5e64a87eac9c0c909f71 # main @ 2026-11-20
         with:
           path: ./
           # The scanner image is pinned as well as the action.
