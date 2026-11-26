@@ -247,3 +247,39 @@ fn an_escape_in_a_string_stands_for_the_character_it_escapes() {
     // inside it and the comparison after the string is still code.
     assert_eq!(js("const s = 'a\\' // b'; cookie.value === token;\n"), [1]);
 }
+
+#[test]
+fn operands_and_arguments_stop_at_their_own_brackets_and_commas() {
+    let source = r#"const cookie = jar.find(c => c.name === 'rullst_csrf');
+check(tokenOf(a, b) === cookie.value);
+check(cookie, tokenOf(a) === cookie.value);
+check(cookie.value === token, 'the cookie');
+check(cookie.token == other);
+assert.equal(tokenOf(a, b), cookie.value);
+assert.equal(tokenOf(a), cookie.value);
+assert.equal(cookie.token, other);
+assert.equal(cookie.value, token, cookie);
+assert.equal(cookie.value, 'cookie', token);
+cookie.value === token;
+"#;
+    // Line 5 and line 8 compare the cookie's token property with something
+    // else; line 10's last argument is only the message.
+    assert_eq!(js(source), [2, 3, 4, 6, 7, 9, 11]);
+}
+
+#[test]
+fn a_closing_brace_run_before_else_if_still_reads_the_condition() {
+    let source = "const cookie = jar.find(c => c.name === 'rullst_csrf');\n} } } else if (pageToken != cookie.value) {\n";
+    assert_eq!(js(source), [2]);
+}
+
+#[test]
+fn python_assert_in_methods_report_a_page_that_holds_the_cookie() {
+    let source = r#"cookie = self.jar.find("rullst_csrf")
+self.assertIn(cookie.value, html)
+self.assertIn(cookie.value, set_cookie_header)
+self.assertIn(cookie.value, 'cookie jar')
+self.assertIn(token, html)
+"#;
+    assert_eq!(py(source), [2]);
+}
