@@ -61,16 +61,30 @@ pub enum SecurityBaselineError {
 /// configuration rather than a process-global fallback. Session,
 /// authentication, tenancy and authorization remain application-owned layers.
 pub fn apply_security_baseline(
+    app: Router,
+    security: SecurityConfig,
+    environment: Environment,
+) -> Result<Router, SecurityBaselineError> {
+    apply_server_baseline(app, security, environment, false)
+}
+
+/// [`apply_security_baseline`] for [`crate::Server`]'s stack. With
+/// `vary_html`, the baseline also adds `Vary: HX-Request` to the HTML
+/// responses of `app`'s routes, right after them, where the server's
+/// separate `Vary` layer would; the server asks for it only when no layer
+/// between the baseline and the routes answers or changes a response.
+pub(crate) fn apply_server_baseline(
     mut app: Router,
     security: SecurityConfig,
     environment: Environment,
+    vary_html: bool,
 ) -> Result<Router, SecurityBaselineError> {
     security
         .validate()
         .map_err(|error| SecurityBaselineError::InvalidConfiguration(error.to_string()))?;
     let cors = cors_layer(&security)?;
 
-    if environment.requires_secure_defaults() && security.enable_pii_masking {
+    if masks_pii(&security, environment) {
         app = app.layer(axum::middleware::from_fn(
             crate::security::pii_masking_middleware,
         ));
@@ -92,6 +106,7 @@ pub fn apply_security_baseline(
         },
         security,
         environment,
+        vary_html,
     });
     // Only a CORS policy splits the baseline, to keep its place.
     Ok(match cors {
@@ -110,6 +125,12 @@ pub fn apply_security_baseline(
                 headers_layer,
             )),
     })
+}
+
+/// Whether the baseline masks PII in responses: in staging and production,
+/// when `enable_pii_masking` is set.
+pub(crate) fn masks_pii(security: &SecurityConfig, environment: Environment) -> bool {
+    environment.requires_secure_defaults() && security.enable_pii_masking
 }
 
 /// The CORS layer of `security.cors_allow_origins`, if it lists any origin.
@@ -168,6 +189,26 @@ struct Baseline {
     /// production.
     headers_over_http: super::headers::HeaderPlan,
     waf: Waf,
+    /// Whether the baseline adds `Vary: HX-Request` itself (see
+    /// [`apply_server_baseline`]).
+    vary_html: bool,
+}
+
+/// What runs inside the baseline's checks: the routes, then, when the
+/// baseline adds `Vary: HX-Request` itself, that step on their response.
+struct Routes {
+    next: Next,
+    vary_html: bool,
+}
+
+impl super::Run for Routes {
+    async fn run(self, req: Request) -> Response {
+        let mut response = self.next.run(req).await;
+        if self.vary_html {
+            crate::htmx::vary_route_response(&mut response);
+        }
+        response
+    }
 }
 
 /// The baseline without a CORS policy, outer to inner: configuration
@@ -180,7 +221,7 @@ async fn whole_baseline(
     let req = baseline.install(req);
     let plan = baseline.header_plan(&req);
     super::headers::with_security_headers(req, plan, |req| {
-        with_request_checks(req, baseline.waf, next)
+        with_request_checks(req, baseline.waf, baseline.routes(next))
     })
     .await
 }
@@ -204,14 +245,14 @@ async fn request_checks(
     req: Request,
     next: Next,
 ) -> Response {
-    with_request_checks(req, baseline.waf, next).await
+    with_request_checks(req, baseline.waf, baseline.routes(next)).await
 }
 
-async fn with_request_checks(req: Request, waf: Waf, next: Next) -> Response {
+async fn with_request_checks(req: Request, waf: Waf, next: Routes) -> Response {
     super::secure_cookies::with_secure_framework_cookies(req, |req| inspected(req, waf, next)).await
 }
 
-async fn inspected(req: Request, waf: Waf, next: Next) -> Response {
+async fn inspected(req: Request, waf: Waf, next: Routes) -> Response {
     match waf {
         Waf::Enforce => super::waf::with_waf(req, |req| super::csrf::with_csrf(req, next)).await,
         Waf::Report => {
@@ -231,6 +272,14 @@ impl Baseline {
         req
     }
 
+    /// `next`, with this baseline's `Vary: HX-Request` step.
+    fn routes(&self, next: Next) -> Routes {
+        Routes {
+            next,
+            vary_html: self.vary_html,
+        }
+    }
+
     /// The header values for `req`: HSTS only over HTTPS outside staging and
     /// production.
     fn header_plan(&self, req: &Request) -> &super::headers::HeaderPlan {
@@ -247,256 +296,5 @@ impl Baseline {
 mod environment_tests;
 
 #[cfg(test)]
-#[allow(
-    clippy::expect_used,
-    clippy::unwrap_used,
-    clippy::field_reassign_with_default
-)]
-mod tests {
-    use super::*;
-    use crate::security::{CspNonce, CsrfToken};
-    use axum::{
-        body::{Body, to_bytes},
-        extract::Extension,
-        http::{Request, StatusCode, header},
-        routing::{get, post},
-    };
-    use tower::ServiceExt;
-
-    fn production_app() -> Router {
-        let mut security = SecurityConfig::default();
-        security.csrf_same_site = "Strict".to_string();
-        security.cors_allow_origins = vec!["https://academy.example".to_string()];
-        security.cors_allow_credentials = true;
-        let app = Router::new()
-            .route(
-                "/",
-                get(
-                    |Extension(nonce): Extension<CspNonce>,
-                     Extension(csrf): Extension<CsrfToken>,
-                     Extension(config): Extension<SecurityConfig>| async move {
-                        // A page: only a document's policy carries the nonce.
-                        axum::response::Html(format!(
-                            "{}|{}|{}",
-                            nonce.as_str(),
-                            csrf.as_str(),
-                            config.csrf_same_site
-                        ))
-                    },
-                ),
-            )
-            .route("/write", post(|| async { StatusCode::NO_CONTENT }));
-        apply_security_baseline(app, security, Environment::Production)
-            .expect("production security baseline")
-    }
-
-    fn browser_request(method: http::Method, path: &str) -> http::request::Builder {
-        Request::builder()
-            .method(method)
-            .uri(path)
-            .header(header::USER_AGENT, "Mozilla/5.0")
-            .header(header::ORIGIN, "https://academy.example")
-    }
-
-    #[tokio::test]
-    async fn production_baseline_composes_nonce_cors_csrf_and_headers() {
-        // TM-NEXUS-05: a cookie-authenticated write is denied before the handler
-        // unless the exact double-submit token accompanies the request.
-        let app = production_app();
-        let response = app
-            .clone()
-            .oneshot(
-                browser_request(http::Method::GET, "/")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(response.status(), StatusCode::OK);
-        assert_eq!(
-            response.headers().get(header::ACCESS_CONTROL_ALLOW_ORIGIN),
-            Some(&http::HeaderValue::from_static("https://academy.example")),
-        );
-        assert_eq!(
-            response
-                .headers()
-                .get(header::ACCESS_CONTROL_ALLOW_CREDENTIALS),
-            Some(&http::HeaderValue::from_static("true")),
-        );
-        assert_eq!(
-            response.headers().get(header::X_FRAME_OPTIONS),
-            Some(&http::HeaderValue::from_static("DENY")),
-        );
-        let csp = response
-            .headers()
-            .get(header::CONTENT_SECURITY_POLICY)
-            .expect("CSP header")
-            .to_str()
-            .expect("CSP text")
-            .to_string();
-        let cookie = response
-            .headers()
-            .get(header::SET_COOKIE)
-            .expect("CSRF cookie")
-            .to_str()
-            .expect("CSRF cookie text")
-            .to_string();
-        let body = to_bytes(response.into_body(), 1024).await.unwrap();
-        let body = std::str::from_utf8(&body).expect("baseline response text");
-        let mut fields = body.split('|');
-        let nonce = fields.next().expect("nonce field");
-        let csrf = fields.next().expect("CSRF field");
-        assert_eq!(fields.next(), Some("Strict"));
-        assert!(csp.contains(&format!("'nonce-{nonce}'")));
-        // The page gets the cookie token masked for this response.
-        let cookie_token = cookie
-            .strip_prefix("rullst_csrf=")
-            .and_then(|rest| rest.split(';').next())
-            .expect("CSRF cookie token");
-        assert_eq!((cookie_token.len(), csrf.len()), (32, 86));
-        assert!(cookie.contains("SameSite=Strict"));
-        assert!(cookie.contains("; Secure"));
-
-        let denied = app
-            .clone()
-            .oneshot(
-                browser_request(http::Method::POST, "/write")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(denied.status(), StatusCode::FORBIDDEN);
-        assert!(
-            denied
-                .headers()
-                .contains_key(header::CONTENT_SECURITY_POLICY)
-        );
-
-        let accepted = app
-            .oneshot(
-                browser_request(http::Method::POST, "/write")
-                    .header(header::COOKIE, format!("rullst_csrf={cookie_token}"))
-                    .header("x-csrf-token", csrf)
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(accepted.status(), StatusCode::NO_CONTENT);
-    }
-
-    #[tokio::test]
-    async fn production_baseline_without_cors_runs_every_layer() {
-        let app = Router::new()
-            .route(
-                "/",
-                get(
-                    |Extension(nonce): Extension<CspNonce>,
-                     Extension(csrf): Extension<CsrfToken>,
-                     Extension(config): Extension<SecurityConfig>,
-                     Extension(environment): Extension<Environment>| async move {
-                        axum::response::Html(format!(
-                            "{}|{}|{}|{environment:?}",
-                            nonce.as_str(),
-                            csrf.as_str(),
-                            config.csrf_same_site
-                        ))
-                    },
-                ),
-            )
-            .route("/write", post(|| async { StatusCode::NO_CONTENT }));
-        let app = apply_security_baseline(app, SecurityConfig::default(), Environment::Staging)
-            .expect("staging security baseline");
-        let get_page = |agent: &str| {
-            Request::get("/")
-                .header(header::USER_AGENT, agent)
-                .body(Body::empty())
-                .unwrap()
-        };
-
-        let response = app.clone().oneshot(get_page("Mozilla/5.0")).await.unwrap();
-        assert_eq!(response.status(), StatusCode::OK);
-        assert_eq!(response.headers()[header::X_FRAME_OPTIONS], "DENY");
-        assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
-        assert!(
-            !response
-                .headers()
-                .contains_key(header::ACCESS_CONTROL_ALLOW_ORIGIN)
-        );
-        let csp = response.headers()[header::CONTENT_SECURITY_POLICY]
-            .to_str()
-            .unwrap()
-            .to_string();
-        let cookie = response.headers()[header::SET_COOKIE]
-            .to_str()
-            .unwrap()
-            .to_string();
-        let body = to_bytes(response.into_body(), 1024).await.unwrap();
-        let body = std::str::from_utf8(&body).unwrap().to_string();
-        let fields: Vec<&str> = body.split('|').collect();
-        assert_eq!(fields[2..], ["Lax", "Staging"]);
-        assert!(csp.contains(&format!("'nonce-{}'", fields[0])), "{csp}");
-        // The page's token may be a masked form of the cookie's.
-        assert!(!fields[1].is_empty());
-        assert!(cookie.starts_with("rullst_csrf="), "{cookie}");
-        assert!(
-            cookie.ends_with("; Path=/; SameSite=Lax; Secure"),
-            "{cookie}"
-        );
-
-        // The WAF and CSRF refusals still carry the secure headers.
-        for request in [
-            get_page("GPTBot/1.0"),
-            Request::post("/write").body(Body::empty()).unwrap(),
-        ] {
-            let refused = app.clone().oneshot(request).await.unwrap();
-            assert_eq!(refused.status(), StatusCode::FORBIDDEN);
-            assert!(
-                refused
-                    .headers()
-                    .contains_key(header::CONTENT_SECURITY_POLICY)
-            );
-            assert_eq!(refused.headers()[header::X_FRAME_OPTIONS], "DENY");
-        }
-    }
-
-    #[tokio::test]
-    async fn cors_preflight_is_exact_and_unlisted_origins_receive_no_grant() {
-        let app = production_app();
-        let preflight = app
-            .clone()
-            .oneshot(
-                browser_request(http::Method::OPTIONS, "/write")
-                    .header(header::ACCESS_CONTROL_REQUEST_METHOD, "POST")
-                    .header(header::ACCESS_CONTROL_REQUEST_HEADERS, "x-csrf-token")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(preflight.status(), StatusCode::OK);
-        assert_eq!(
-            preflight.headers().get(header::ACCESS_CONTROL_ALLOW_ORIGIN),
-            Some(&http::HeaderValue::from_static("https://academy.example")),
-        );
-
-        let unlisted = app
-            .oneshot(
-                Request::builder()
-                    .uri("/")
-                    .header(header::USER_AGENT, "Mozilla/5.0")
-                    .header(header::ORIGIN, "https://evil.example")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(unlisted.status(), StatusCode::OK);
-        assert!(
-            !unlisted
-                .headers()
-                .contains_key(header::ACCESS_CONTROL_ALLOW_ORIGIN)
-        );
-    }
-}
+#[path = "baseline_tests.rs"]
+mod tests;

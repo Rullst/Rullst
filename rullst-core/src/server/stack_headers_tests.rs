@@ -406,3 +406,6 @@ async fn refusals_of_the_layers_inside_the_baseline_are_pinned() {
     }
     assert_eq!(lines.join("\n"), expand(REFUSALS));
 }
+
+#[path = "stack_vary_tests.rs"]
+mod vary;

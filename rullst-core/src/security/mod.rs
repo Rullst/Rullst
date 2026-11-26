@@ -73,6 +73,7 @@ where
 pub use baseline::{
     SecurityBaselineError, apply_security_baseline, apply_security_baseline_with_machine_endpoints,
 };
+pub(crate) use baseline::{apply_server_baseline, masks_pii};
 pub use csrf::{CsrfToken, csrf_middleware, generate_csrf_token};
 pub use csrf_mask::mask_csrf_token;
 pub(crate) use csrf_multipart::{
