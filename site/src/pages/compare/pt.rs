@@ -88,9 +88,9 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                                     minus: html! { "Um ORM escrito para o Rullst, e não um ORM de terceiros já estabelecido, então você aprende a API dele, e ele tem um único mantenedor." },
                                 },
                                 Choice {
-                                    chose: html! { "Sea-ORM 2.0 com migrações. Os drivers de banco documentados são SQLite e PostgreSQL." },
+                                    chose: html! { "Sea-ORM 2.0 com migrações. O Loco 1.3.1 tem features de driver de banco para SQLite e PostgreSQL ("<code>"db-sqlite"</code>", "<code>"db-postgres"</code>")." },
                                     plus: html! { "Usa um ORM que é um projeto à parte." },
-                                    minus: html! { "MySQL não está entre os drivers documentados." },
+                                    minus: html! { "O MySQL não tem feature de driver no Loco 1.3.1, embora o próprio Sea-ORM o suporte." },
                                 },
                                 Choice {
                                     chose: html! { "Sem ORM no crate "<code>"topcoat"</code>". "<code>"topcoat new --database toasty"</code>" gera uma aplicação que usa o Toasty sobre SQLite, com as migrações do Toasty." },
@@ -104,7 +104,7 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                             html! { <strong>"Em palavras simples: "</strong>"o hash guarda senhas de modo que um banco roubado não as revele (Argon2 é um deliberadamente lento). Uma sessão criptografada faz com que um cookie roubado não possa ser lido nem alterado. Uma passkey troca a senha por uma chave no seu dispositivo. RBAC deixa papéis decidirem quem pode o quê, e OAuth2/OIDC é o \"entrar com o Google\". Cabeçalhos seguros, proteção CSRF e um WAF (um filtro de requisições hostis) bloqueiam ataques comuns. Uma proteção ligada em toda requisição também custa tempo em toda requisição." },
                             [
                                 Choice {
-                                    chose: html! { "Hash de senhas com Argon2 e sessões criptografadas no "<code>"rullst-auth"</code>"; passkeys, RBAC e login OAuth2/OIDC quando você precisar. Em todo starter gerado, o "<code>"Server"</code>" monta cabeçalhos seguros e proteção CSRF com double-submit em todos os ambientes, e um WAF que recusa requisições suspeitas em staging e produção e só as registra em desenvolvimento; o "<code>"rullst-security"</code>" acrescenta um bloqueio de tentativas de login (login jail) e mais camadas." },
+                                    chose: html! { "Hash de senhas com Argon2 e sessões criptografadas no "<code>"rullst-auth"</code>"; passkeys, RBAC e login OAuth2/OIDC quando você precisar. Em todo starter gerado, o "<code>"Server"</code>" monta cabeçalhos seguros e proteção CSRF com double-submit em todos os ambientes, e um WAF que recusa requisições suspeitas em staging e produção e só as registra em desenvolvimento (no ambiente de teste ele não roda); o "<code>"rullst-security"</code>" acrescenta um bloqueio de tentativas de login (login jail) e mais camadas." },
                                     plus: html! { "Mais proteções ligadas por padrão: uma aplicação nova já começa com elas e um teste gerado as verifica, em vez de você achar e ligar cada uma." },
                                     minus: html! { "Toda requisição paga por elas, o que reduz a vazão (veja "<a href="#benchmarks">"Desempenho"</a>"). Um único mantenedor, nenhuma auditoria externa, e as regras de autorização da sua aplicação continuam sendo suas." },
                                 },
