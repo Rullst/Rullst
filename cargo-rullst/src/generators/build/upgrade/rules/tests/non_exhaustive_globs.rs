@@ -185,3 +185,161 @@ fn a_reviewed_marker_still_removes_the_finding() {
     ];
     assert_eq!(scan(&files), Vec::new());
 }
+
+/// A chain of `links` modules below `src/lib.rs`: each file imports nothing
+/// but `use super::*;`, the deepest is the test module, and `src/lib.rs`
+/// imports the Connect type. A module file declares its children in a
+/// directory named after it.
+fn chain(links: usize) -> Vec<(String, String)> {
+    let mut files = vec![(
+        "src/lib.rs".to_string(),
+        "use rullst::connect::client::HttpResponse;\nmod m1;\n".to_string(),
+    )];
+    let mut directory = "src".to_string();
+    for link in 1..=links {
+        let text = if link == links {
+            TEST_MODULE.to_string()
+        } else {
+            format!("use super::*;\nmod m{};\n", link + 1)
+        };
+        files.push((format!("{directory}/m{link}.rs"), text));
+        directory = format!("{directory}/m{link}");
+    }
+    files
+}
+
+fn scan_owned(files: &[(String, String)]) -> Vec<(String, &'static str, usize)> {
+    let borrowed: Vec<(&str, &str)> = files
+        .iter()
+        .map(|(path, text)| (path.as_str(), text.as_str()))
+        .collect();
+    scan(&borrowed)
+}
+
+/// The path of the deepest module of `chain(links)`.
+fn last_file(links: usize) -> String {
+    let directories: Vec<String> = (1..links).map(|link| format!("m{link}")).collect();
+    format!("src/{}/m{links}.rs", directories.join("/"))
+}
+
+#[test]
+fn a_chain_of_globs_is_followed_for_sixteen_links_and_no_further() {
+    // `src/lib.rs` is the 16th parent of `src/m16.rs`, and the 17th of
+    // `src/m17.rs`.
+    assert_eq!(scan_owned(&chain(16)), found(&last_file(16), LITERAL, 3));
+    assert_eq!(scan_owned(&chain(17)), found(&last_file(17), GLOB, 3));
+}
+
+#[test]
+fn a_module_that_is_its_own_parent_ends_the_search() {
+    // `a.rs` declares itself as its module, so `use super::*;` leads back to
+    // it (and nothing else declares it); the search stops at the depth limit instead of recursing for ever.
+    let files = [(
+        "src/a.rs",
+        "use super::*;\n#[path = \"a.rs\"]\nmod again;\nfn ok(body: String) -> HttpResponse {\n    HttpResponse { status: 200, body }\n}\n",
+    )];
+    assert_eq!(scan(&files), found("src/a.rs", GLOB, 5));
+}
+
+#[test]
+fn only_a_direct_super_import_follows_the_parent() {
+    // `use super::other::HttpResponse;` names a sibling, not the parent's own
+    // import, and `use super::HttpResponse;` is the parent's.
+    let files = [
+        (
+            "src/lib.rs",
+            "use rullst::connect::client::HttpResponse;\nmod http;\n",
+        ),
+        (
+            "src/http.rs",
+            "use super::other::HttpResponse;\nmod tests;\n",
+        ),
+        ("src/http/tests.rs", TEST_MODULE),
+    ];
+    assert_eq!(scan(&files), found("src/http/tests.rs", GLOB, 3));
+}
+
+#[test]
+fn an_import_from_a_rullst_path_that_does_not_name_the_crate_is_unknown() {
+    // Not Connect's path, so the name may be anything: the review stays.
+    for import in [
+        "use rullst::prelude::HttpResponse;",
+        "use rullst_core::HttpResponse;",
+        "use rullst_ai::HttpResponse;",
+    ] {
+        let files = [
+            ("src/http.rs", format!("{import}\nmod tests;\n")),
+            ("src/http/tests.rs", TEST_MODULE.to_string()),
+        ];
+        let borrowed: Vec<(&str, &str)> = files
+            .iter()
+            .map(|(path, text)| (*path, text.as_str()))
+            .collect();
+        assert_eq!(
+            scan(&borrowed),
+            found("src/http/tests.rs", GLOB, 3),
+            "{import}"
+        );
+    }
+}
+
+#[test]
+fn enums_unions_and_aliases_define_the_application_s_own_name() {
+    for definition in [
+        "pub enum HttpResponse { Ok }",
+        "pub union HttpResponse { status: u16 }",
+        "pub type HttpResponse = my_http::Response;",
+    ] {
+        let files = [
+            ("src/http.rs", format!("{definition}\nmod tests;\n")),
+            ("src/http/tests.rs", TEST_MODULE.to_string()),
+        ];
+        let borrowed: Vec<(&str, &str)> = files
+            .iter()
+            .map(|(path, text)| (*path, text.as_str()))
+            .collect();
+        assert_eq!(scan(&borrowed), Vec::new(), "{definition}");
+    }
+}
+
+#[test]
+fn an_inline_module_does_not_declare_a_file() {
+    // `mod http { .. }` is in the file; `src/http.rs` belongs to no module.
+    let files = [
+        (
+            "src/lib.rs",
+            "use rullst::connect::client::HttpResponse;\nmod http {\n    pub fn inner() {}\n}\n",
+        ),
+        ("src/http.rs", TEST_MODULE),
+    ];
+    assert_eq!(scan(&files), found("src/http.rs", GLOB, 3));
+}
+
+#[test]
+fn each_review_finding_is_resolved_on_its_own() {
+    // Three test modules with their literal on the same line: one reaches the
+    // Rullst type, one the application's own and one neither. Resolving one
+    // must leave the other two as they are.
+    let files = [
+        ("src/lib.rs", "mod a;\nmod b;\nmod c;\n"),
+        (
+            "src/a.rs",
+            "use rullst::connect::client::HttpResponse;\nmod tests;\n",
+        ),
+        ("src/a/tests.rs", TEST_MODULE),
+        ("src/b.rs", "use crate::client::*;\nmod tests;\n"),
+        ("src/b/tests.rs", TEST_MODULE),
+        (
+            "src/c.rs",
+            "pub struct HttpResponse { pub status: u16, pub body: String }\nmod tests;\n",
+        ),
+        ("src/c/tests.rs", TEST_MODULE),
+    ];
+    assert_eq!(
+        scan(&files),
+        [
+            ("src/a/tests.rs".to_string(), LITERAL, 3),
+            ("src/b/tests.rs".to_string(), GLOB, 3),
+        ]
+    );
+}
