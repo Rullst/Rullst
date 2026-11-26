@@ -157,6 +157,14 @@ fn strict_transport_security(config: &crate::config::SecurityConfig) -> String {
     value
 }
 
+const PERMISSIONS_POLICY: HeaderName = HeaderName::from_static("permissions-policy");
+const CROSS_ORIGIN_OPENER_POLICY: HeaderName =
+    HeaderName::from_static("cross-origin-opener-policy");
+const CROSS_ORIGIN_RESOURCE_POLICY: HeaderName =
+    HeaderName::from_static("cross-origin-resource-policy");
+const CROSS_ORIGIN_EMBEDDER_POLICY: HeaderName =
+    HeaderName::from_static("cross-origin-embedder-policy");
+
 /// The fixed headers of the baseline, each added when the response has none.
 const DEFAULT_HEADERS: [(HeaderName, HeaderValue); 6] = [
     (header::X_FRAME_OPTIONS, HeaderValue::from_static("DENY")),
@@ -165,25 +173,39 @@ const DEFAULT_HEADERS: [(HeaderName, HeaderValue); 6] = [
         HeaderValue::from_static("nosniff"),
     ),
     // The legacy XSS auditor has caused response mutation vulnerabilities in old browsers.
+    (header::X_XSS_PROTECTION, HeaderValue::from_static("0")),
     (
-        HeaderName::from_static("x-xss-protection"),
-        HeaderValue::from_static("0"),
-    ),
-    (
-        HeaderName::from_static("permissions-policy"),
+        PERMISSIONS_POLICY,
         HeaderValue::from_static("camera=(), microphone=(), geolocation=(), payment=(), usb=()"),
     ),
     (
-        HeaderName::from_static("cross-origin-opener-policy"),
+        CROSS_ORIGIN_OPENER_POLICY,
         HeaderValue::from_static("same-origin"),
     ),
     (
-        HeaderName::from_static("cross-origin-resource-policy"),
+        CROSS_ORIGIN_RESOURCE_POLICY,
         HeaderValue::from_static("same-origin"),
     ),
 ];
-const CROSS_ORIGIN_EMBEDDER_POLICY: HeaderName =
-    HeaderName::from_static("cross-origin-embedder-policy");
+/// Every header [`with_security_headers`] can add: `Cache-Control`, then
+/// those of [`HeaderPlan::apply`] in its order.
+const STEP_HEADERS: [HeaderName; 11] = [
+    header::CACHE_CONTROL,
+    header::X_FRAME_OPTIONS,
+    header::X_CONTENT_TYPE_OPTIONS,
+    header::X_XSS_PROTECTION,
+    PERMISSIONS_POLICY,
+    CROSS_ORIGIN_OPENER_POLICY,
+    CROSS_ORIGIN_RESOURCE_POLICY,
+    header::STRICT_TRANSPORT_SECURITY,
+    header::REFERRER_POLICY,
+    CROSS_ORIGIN_EMBEDDER_POLICY,
+    header::CONTENT_SECURITY_POLICY,
+];
+/// The most header names a response may have for [`HeaderPlan::append_all`]:
+/// comparing them with [`STEP_HEADERS`] then costs less than the lookups it
+/// saves.
+const SCANNED_NAMES: usize = 8;
 const NO_STORE: HeaderValue = HeaderValue::from_static("no-store");
 /// The headers [`HeaderPlan::apply`] can add: the defaults, HSTS,
 /// `Referrer-Policy`, COEP and CSP.
@@ -249,9 +271,43 @@ impl HeaderPlan {
             .unwrap_or_else(|_| HeaderValue::from_static("default-src 'none'"))
     }
 
+    /// The `Content-Security-Policy` of a response: with `nonce` when it may
+    /// be a document.
+    fn policy(&self, document: bool, nonce: &CspNonce) -> HeaderValue {
+        // Only a document can run the inline scripts and styles a nonce
+        // admits; any other response gets the fixed policy without one.
+        if document {
+            self.csp(nonce)
+        } else {
+            self.static_csp.clone()
+        }
+    }
+
+    /// `Cache-Control: no-store` and every header of the plan, for a
+    /// response that has none of [`STEP_HEADERS`] ([`lacks_step_headers`]):
+    /// what the default and [`Self::apply`] add to it, in the same order,
+    /// appended without looking each one up first.
+    fn append_all(&self, headers: &mut HeaderMap, nonce: &CspNonce) {
+        let document = may_be_html(headers);
+        make_room(headers, STEP_HEADERS.len());
+        headers.append(header::CACHE_CONTROL, NO_STORE);
+        for (name, value) in DEFAULT_HEADERS {
+            headers.append(name, value);
+        }
+        if let Some(hsts) = &self.hsts {
+            headers.append(header::STRICT_TRANSPORT_SECURITY, hsts.clone());
+        }
+        headers.append(header::REFERRER_POLICY, STRICT_ORIGIN_WHEN_CROSS_ORIGIN);
+        headers.append(CROSS_ORIGIN_EMBEDDER_POLICY, self.coep.clone());
+        headers.append(
+            header::CONTENT_SECURITY_POLICY,
+            self.policy(document, nonce),
+        );
+    }
+
     /// Adds every header of the plan that `headers` lacks.
     fn apply(&self, headers: &mut HeaderMap, nonce: &CspNonce) {
-        make_room(headers);
+        make_room(headers, PLANNED_HEADERS);
         for (name, value) in DEFAULT_HEADERS {
             headers.entry(name).or_insert(value);
         }
@@ -272,19 +328,18 @@ impl HeaderPlan {
         headers
             .entry(CROSS_ORIGIN_EMBEDDER_POLICY)
             .or_insert_with(|| self.coep.clone());
-        // Only a document can run the inline scripts and styles a nonce
-        // admits; any other response gets the fixed policy without one.
         let document = may_be_html(headers);
         headers
             .entry(header::CONTENT_SECURITY_POLICY)
-            .or_insert_with(|| {
-                if document {
-                    self.csp(nonce)
-                } else {
-                    self.static_csp.clone()
-                }
-            });
+            .or_insert_with(|| self.policy(document, nonce));
     }
+}
+
+/// Whether a response with `headers` has none of [`STEP_HEADERS`], found by
+/// comparing its names when it has at most [`SCANNED_NAMES`]; with more,
+/// `false`, and [`HeaderPlan::apply`] looks each header up instead.
+pub(super) fn lacks_step_headers(headers: &HeaderMap) -> bool {
+    headers.keys_len() <= SCANNED_NAMES && !headers.keys().any(|name| STEP_HEADERS.contains(name))
 }
 
 /// Whether a response with `headers` can be an HTML document: its
@@ -301,13 +356,13 @@ fn may_be_html(headers: &HeaderMap) -> bool {
     }
 }
 
-/// Grows `headers` once for every header of a plan, instead of several
-/// times while they are added. Capacity only: a map that cannot grow keeps
-/// its size, and the headers are the same either way.
+/// Grows `headers` once for the `additional` headers of a plan, instead of
+/// several times while they are added. Capacity only: a map that cannot grow
+/// keeps its size, and the headers are the same either way.
 #[cfg_attr(mutants, mutants::skip)]
-fn make_room(headers: &mut HeaderMap) {
-    if headers.capacity() < headers.len() + PLANNED_HEADERS {
-        let _ = headers.try_reserve(PLANNED_HEADERS);
+fn make_room(headers: &mut HeaderMap, additional: usize) {
+    if headers.capacity() < headers.len() + additional {
+        let _ = headers.try_reserve(additional);
     }
 }
 
@@ -411,6 +466,10 @@ where
         .get::<SecurityHeadersApplied>()
         .is_some();
     let headers = response.headers_mut();
+    if !inner_layer_applied && lacks_step_headers(headers) {
+        plan.append_all(headers, &nonce);
+        return response;
+    }
 
     // Dynamic responses are private by default. A handler can still opt into an explicit,
     // reviewed cache policy for public/static content before this middleware runs.

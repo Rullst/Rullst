@@ -207,3 +207,47 @@ async fn every_plan_and_response_keeps_its_headers_in_order() {
     }
     assert_eq!(actual.lines().count(), EXPECTED.lines().count());
 }
+
+#[test]
+fn only_a_response_without_any_step_header_and_few_names_takes_the_appending_path() {
+    let map = |names: &[&'static str]| {
+        let mut headers = HeaderMap::new();
+        for name in names {
+            headers.append(HeaderName::from_static(name), HeaderValue::from_static("1"));
+        }
+        headers
+    };
+    let lacks = |names: &[&'static str]| super::headers::lacks_step_headers(&map(names));
+    let others = [
+        "content-type",
+        "set-cookie",
+        "vary",
+        "etag",
+        "x-one",
+        "x-two",
+        "x-three",
+        "x-four",
+        "x-five",
+    ];
+    assert!(lacks(&[]));
+    assert!(lacks(&others[..1]));
+    // Names, not values: a second cookie is still eight names.
+    assert!(lacks(&[&others[..8], &["set-cookie"]].concat()));
+    assert!(!lacks(&others));
+    for name in [
+        "cache-control",
+        "x-frame-options",
+        "x-content-type-options",
+        "x-xss-protection",
+        "permissions-policy",
+        "cross-origin-opener-policy",
+        "cross-origin-resource-policy",
+        "strict-transport-security",
+        "referrer-policy",
+        "cross-origin-embedder-policy",
+        "content-security-policy",
+    ] {
+        assert!(!lacks(&[name]), "{name}");
+        assert!(!lacks(&[&others[..7], &[name]].concat()), "{name}");
+    }
+}
