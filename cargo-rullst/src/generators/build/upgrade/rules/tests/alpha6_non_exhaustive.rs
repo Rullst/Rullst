@@ -98,10 +98,14 @@ fn a_literal_through_crate_self_or_super_is_the_applications_own_type() {
     let fields = "to: String::new(), subject: String::new()";
     // The file names `rullst::mail`, so the same literal through that crate is
     // reported; only the relative first segment keeps the others quiet.
-    let rullst = format!("use rullst::mail::Mailer;\nfn m() {{ let _ = rullst::mail::Message {{ {fields} }}; }}\n");
+    let rullst = format!(
+        "use rullst::mail::Mailer;\nfn m() {{ let _ = rullst::mail::Message {{ {fields} }}; }}\n"
+    );
     assert_eq!(found(&rullst, LITERAL), [2]);
     for first in ["crate", "self", "super"] {
-        let own = format!("use rullst::mail::Mailer;\nfn m() {{ let _ = {first}::mail::Message {{ {fields} }}; }}\n");
+        let own = format!(
+            "use rullst::mail::Mailer;\nfn m() {{ let _ = {first}::mail::Message {{ {fields} }}; }}\n"
+        );
         assert_eq!(found(&own, LITERAL), Vec::<usize>::new(), "{first}");
     }
 }

@@ -318,3 +318,123 @@ fn sqlite_projects_choose_wal_in_rullst_toml() {
     assert!(SQLITE_WAL_SETTING.starts_with("# WAL: "));
     assert!(SQLITE_WAL_SETTING.contains("set \"delete\" for a database on NFS/SMB storage"));
 }
+
+/// Each provider's connection string in the development and example
+/// environment files; Turso and a database-free project get none.
+#[test]
+fn environment_files_name_the_database_url_of_the_chosen_provider() {
+    for (provider, url) in [
+        ("Postgres", "postgres://user:password@localhost:5432/db"),
+        ("MySQL", "mysql://user:password@localhost:3306/db"),
+        ("MariaDB", "mysql://user:password@localhost:3306/db"),
+        ("Sqlite", "sqlite://db.sqlite?mode=rwc"),
+    ] {
+        let root = tempfile::tempdir().expect("temporary project");
+        generate_env_and_configs(
+            root.path(),
+            true,
+            provider,
+            &[],
+            BLANK_BLUEPRINT_ID,
+            "0123456789abcdef0123456789abcdef",
+        )
+        .expect("environment scaffold");
+        for filename in [".env", ".env.example"] {
+            let generated = fs::read_to_string(root.path().join(filename)).expect("environment");
+            let urls: Vec<&str> = generated
+                .lines()
+                .filter(|line| line.starts_with("DATABASE_URL="))
+                .collect();
+            assert_eq!(
+                urls,
+                [format!("DATABASE_URL={url}")],
+                "{provider} {filename}"
+            );
+        }
+    }
+}
+
+/// Runs the scaffold in the project that a parent test names; otherwise does
+/// nothing. The parent controls `PATH`, which `has_binary` searches.
+#[cfg(target_os = "linux")]
+#[test]
+fn linker_child_fixture() {
+    let Some(project) = std::env::var_os("RULLST_LINKER_PROJECT") else {
+        return;
+    };
+    generate_env_and_configs(
+        Path::new(&project),
+        false,
+        "Sqlite",
+        &[],
+        BLANK_BLUEPRINT_ID,
+        "0123456789abcdef0123456789abcdef",
+    )
+    .expect("environment scaffold");
+}
+
+/// The linker named in the generated `.cargo/config.toml` when only the given
+/// programs are on `PATH` (and a `which` that looks them up there).
+#[cfg(target_os = "linux")]
+fn linker_with(programs: &[&str]) -> Vec<String> {
+    use std::os::unix::fs::PermissionsExt;
+    let tools = tempfile::tempdir().expect("fake programs");
+    let project = tempfile::tempdir().expect("temporary project");
+    let write = |name: &str, body: &str| {
+        let path = tools.path().join(name);
+        fs::write(&path, format!("#!/bin/sh\n{body}\n")).expect("fake program");
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).expect("executable");
+        // Another test's fork may briefly hold the new file open for writing
+        // (ETXTBSY); run it once so the child never sees that.
+        for _ in 0..100 {
+            match std::process::Command::new(&path).arg("probe").output() {
+                Err(error) if error.raw_os_error() == Some(26) => {
+                    std::thread::sleep(std::time::Duration::from_millis(20));
+                }
+                _ => return,
+            }
+        }
+        panic!("{name} stayed busy");
+    };
+    write(
+        "which",
+        "IFS=:\nfor dir in $PATH; do [ -x \"$dir/$1\" ] && exit 0; done\nexit 1",
+    );
+    for program in programs {
+        write(program, "exit 0");
+    }
+    let output = std::process::Command::new(std::env::current_exe().expect("test binary"))
+        .args([
+            "--exact",
+            "generators::project::env_config::tests::linker_child_fixture",
+        ])
+        .env("PATH", tools.path())
+        .env("RULLST_LINKER_PROJECT", project.path())
+        .stdin(std::process::Stdio::null())
+        .output()
+        .expect("child test process");
+    assert!(output.status.success(), "{output:?}");
+    let config: toml::Value = toml::from_str(
+        &fs::read_to_string(project.path().join(".cargo/config.toml")).expect("config"),
+    )
+    .expect("valid TOML");
+    config["target"]["x86_64-unknown-linux-gnu"]["rustflags"]
+        .as_array()
+        .expect("rustflags array")
+        .iter()
+        .filter_map(|flag| flag.as_str()?.strip_prefix("link-arg=-fuse-ld="))
+        .map(str::to_string)
+        .collect()
+}
+
+/// A new project's `.cargo/config.toml` selects mold when the machine has it,
+/// else lld or lld-link, else no linker.
+#[cfg(target_os = "linux")]
+#[test]
+fn the_linker_comes_from_the_programs_found_on_the_machine() {
+    assert_eq!(linker_with(&[]), Vec::<String>::new());
+    assert_eq!(linker_with(&["mold"]), ["mold"]);
+    assert_eq!(linker_with(&["mold", "lld", "lld-link"]), ["mold"]);
+    assert_eq!(linker_with(&["lld"]), ["lld"]);
+    assert_eq!(linker_with(&["lld-link"]), ["lld"]);
+}
