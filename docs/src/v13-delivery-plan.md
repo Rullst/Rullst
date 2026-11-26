@@ -1,10 +1,17 @@
 # v13 delivery plan and evidence
 
-**13.0.0-rc.1 prepared on November 22, 2026, for a tag on November 24 or
-later.** The release-preparation pull request sets all twenty packages of the
-release order to `13.0.0-rc.1`; the coordinator records the tag, the
-exact-SHA admission and the release run here after publication. It is the
-first release candidate for 13.0.0: the fixes reported by the applications
+**13.0.0-rc.1 published on November 26, 2026.** All twenty packages were
+published from tag `v13.0.0-rc.1` at `9ea50d98`
+([release run 45837583222](https://github.com/Rullst/Rullst/actions/runs/45837583222))
+after the 23 required workflows passed on that exact commit; its changelog
+section keeps the date it was prepared for, November 24. Admission of the
+first candidate, `1be0033f`, found a stale threat-model source path and
+`RUSTSEC-2026-0592` (`url`), fixed by
+[#862](https://github.com/Rullst/Rullst/pull/862); the fuzzing run of the
+second, `7ecad3bc`, was cancelled on GitHub's side, and `RUSTSEC-2026-0594`
+(`cookie`) appeared meanwhile, fixed by
+[#867](https://github.com/Rullst/Rullst/pull/867). It is the first release
+candidate for 13.0.0: the fixes reported by the applications
 upgraded to alpha.6 and by an independent review of the documentation's
 claims, no silent offline mock in staging and production, and the changes
 the maintainer approved after the alpha.6 freeze (the `rullst-iot`
