@@ -196,3 +196,14 @@ fn the_session_call_rule_names_both_epoch_functions() {
         assert_eq!(session_call_rule(path, &without), None, "{path:?}");
     }
 }
+
+/// The message covers the guarded transition the migration guide recommends:
+/// a call reached only for non-registry cookies is fine until the epoch
+/// cookies expire, and is then removed (#877).
+#[test]
+fn the_epoch_calls_message_covers_the_guarded_transition() {
+    let rule = &super::super::catalog::AUTH_SESSION_EPOCH_CALLS;
+    let text = format!("{} {}", rule.message, rule.guidance);
+    assert!(text.contains("not registry cookies"), "{text}");
+    assert!(text.contains("30 days by default"), "{text}");
+}

@@ -37,6 +37,8 @@ TRANSLATIONS: dict[str, tuple[str, str | None, str]] = {
     "docs/src/pt-BR/index.md": ("README.md", "## ⚡ Rullst in 30 seconds", BOOK + "pt-BR/index.html"),
     "docs/src/pt-BR/1-getting-started.md": ("docs/src/1-getting-started.md", None, "pt-BR/1-getting-started.md"),
     "docs/src/pt-BR/scope-and-limits.md": ("docs/src/scope-and-limits.md", None, "pt-BR/scope-and-limits.md"),
+    "docs/src/pt-BR/how-rullst-is-verified.md": ("docs/src/how-rullst-is-verified.md", None,
+                                                 "pt-BR/how-rullst-is-verified.md"),
     "docs/src/pt-BR/iot-classroom.md": ("docs/src/iot-classroom.md", None, "pt-BR/iot-classroom.md"),
     **{
         f"docs/src/pt-BR/tutorials/{name}.md": (f"docs/src/tutorials/{name}.md", None, f"../pt-BR/tutorials/{name}.md")
