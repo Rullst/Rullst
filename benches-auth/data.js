@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795714292660,
+  "lastUpdate": 1795715220314,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -26467,6 +26467,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2201,
             "range": "± 81",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ca3793d71842e902df24c043e5399f59cde3c1ed",
+          "message": "Merge pull request #882 from Rullst/fix/v13-rc1-app-findings-2\n\nfix(studio): word the rc.1 application findings (#877, #878, #879)",
+          "timestamp": "2026-11-26T14:32:24-03:00",
+          "tree_id": "92f8a799f317e66b6f01e427f529dfc7ae95696e",
+          "url": "https://github.com/Rullst/Rullst/commit/ca3793d71842e902df24c043e5399f59cde3c1ed"
+        },
+        "date": 1795715219390,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 878,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 675,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1553,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3697,
+            "range": "± 13",
             "unit": "ns/iter"
           }
         ]
