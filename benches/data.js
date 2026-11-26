@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795637888780,
+  "lastUpdate": 1795704451159,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -39173,6 +39173,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1494,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dc05285b0ef6ea82f4018a7332a6032d88f6be86",
+          "message": "Merge pull request #868 from Rullst/feat/v13-site-suite-and-compare\n\nfeat(site): suite framing, plain-words performance, live applications and redesigned comparison",
+          "timestamp": "2026-11-26T11:40:41-03:00",
+          "tree_id": "904cb305dd96e3c3723ceb7a9f8a6c848fdfff25",
+          "url": "https://github.com/Rullst/Rullst/commit/dc05285b0ef6ea82f4018a7332a6032d88f6be86"
+        },
+        "date": 1795704446157,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 545,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 721,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 317,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1492,
+            "range": "± 18",
             "unit": "ns/iter"
           }
         ]
