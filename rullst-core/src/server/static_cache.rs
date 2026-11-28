@@ -60,7 +60,8 @@ pub(crate) fn mount_static_assets_at(app: axum::Router, root: &Path) -> axum::Ro
 ///
 /// Those three layers wrap only the `/static` mount: each passes through any
 /// other path, and as layers of the whole router they cost every page and
-/// API request three middleware calls.
+/// API request three middleware calls. Every response of the mount carries
+/// [`crate::htmx::OutsideRoutes`].
 fn mount_static_assets_with(
     app: axum::Router,
     root: &Path,
@@ -83,7 +84,13 @@ fn mount_static_assets_with(
         .layer(axum::middleware::from_fn(
             move |req: axum::extract::Request, next: axum::middleware::Next| {
                 let manifest = Arc::clone(&manifest);
-                async move { hashed::hashed_static_middleware(manifest, req, next).await }
+                async move {
+                    let mut response = hashed::hashed_static_middleware(manifest, req, next).await;
+                    // The server's `Vary: HX-Request` step covers the
+                    // application's routes only.
+                    response.extensions_mut().insert(crate::htmx::OutsideRoutes);
+                    response
+                }
             },
         ));
     app.merge(assets)

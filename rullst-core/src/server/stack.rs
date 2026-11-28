@@ -35,7 +35,9 @@ impl Server {
     /// → access log of refused requests → security baseline → lifecycle →
     /// Traffic Shield → rate limit (both skipped for exact health probes) →
     /// development/static/access log layers → `Vary: HX-Request` on HTML
-    /// responses → application routes. The development reload and telemetry
+    /// responses → application routes. When none of the layers between the
+    /// baseline and the routes is mounted, the baseline runs the `Vary` step
+    /// itself ([`InnerLayers::vary_in_baseline`]). The development reload and telemetry
     /// routes and the telemetry recorder exist only in a supervised debug
     /// Development process; the monitor route and its recorder only with
     /// [`Server::with_monitor`] and a configured credential.
@@ -72,13 +74,20 @@ impl Server {
                 recording: self.access_log_recording,
             },
         );
-        app = match access_log {
-            None => app.layer(axum::middleware::from_fn(crate::htmx::vary_on_htmx_request)),
-            Some(access_log) => app.layer(axum::middleware::from_fn_with_state(
+        let vary_in_baseline = InnerLayers {
+            access_log: access_log.is_some(),
+            console: development_console_enabled(cfg!(debug_assertions), environment),
+            pii_masking: crate::security::masks_pii(&security, environment),
+        }
+        .vary_in_baseline();
+        if let Some(access_log) = access_log {
+            app = app.layer(axum::middleware::from_fn_with_state(
                 access_log,
                 super::console::access_log_and_vary_middleware,
-            )),
-        };
+            ));
+        } else if !vary_in_baseline {
+            app = app.layer(axum::middleware::from_fn(crate::htmx::vary_on_htmx_request));
+        }
 
         let static_mounted = Path::new("static").exists();
         if static_mounted {
@@ -119,17 +128,12 @@ impl Server {
             app = apply_lifecycle(app, lifecycle);
         }
 
-        app = if let Some(policy) = self.machine_endpoints {
-            crate::security::apply_security_baseline_with_machine_endpoints(
-                app,
-                security,
-                environment,
-                policy,
-            )
-        } else {
-            crate::security::apply_security_baseline(app, security, environment)
+        app = crate::security::apply_server_baseline(app, security, environment, vary_in_baseline)
+            .map_err(|error| ServerError::Configuration(error.to_string()))?;
+        // As `apply_security_baseline_with_machine_endpoints` does.
+        if let Some(policy) = self.machine_endpoints {
+            app = app.layer(axum::Extension(policy));
         }
-        .map_err(|error| ServerError::Configuration(error.to_string()))?;
 
         // The requests that the layers above refuse themselves (CSRF, the
         // WAF, Traffic Shield, the rate limiter, lifecycle admission) never
@@ -158,6 +162,36 @@ impl Server {
     }
 }
 
+/// The layers of [`Server::into_static_app`] between the security baseline
+/// and the application's routes that answer or change a response the
+/// `Vary: HX-Request` step must not see, or must see first.
+///
+/// The others leave it to the baseline: lifecycle admission, Traffic Shield
+/// and the rate limiter pass the routes' responses on unchanged and refuse
+/// with plain text, which the step never changes; the `/static` mount,
+/// merged beside the routes, marks its responses so that the step leaves
+/// them alone.
+#[derive(Clone, Copy, Debug, Default)]
+struct InnerLayers {
+    /// The access log, which runs the `Vary` step itself.
+    access_log: bool,
+    /// The development error console: its routes and its panic page.
+    console: bool,
+    /// Response PII masking, inside the baseline, which rewrites the
+    /// response after the step.
+    pii_masking: bool,
+}
+
+impl InnerLayers {
+    /// Whether the baseline adds `Vary: HX-Request` to the routes' HTML
+    /// responses itself, which saves a middleware per request: only when
+    /// none of these layers is mounted, so that the step sees exactly the
+    /// responses a separate layer on the routes would, in the same state.
+    fn vary_in_baseline(self) -> bool {
+        !(self.access_log || self.console || self.pii_masking)
+    }
+}
+
 /// The `static/` directory of the working directory, which the server
 /// serves under `/static`, as an absolute path when the working directory is
 /// known.
@@ -181,6 +215,10 @@ fn missing_static_warning(directory: &Path) -> String {
 #[cfg(test)]
 #[path = "stack_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "stack_headers_tests.rs"]
+mod headers_tests;
 
 #[cfg(test)]
 #[path = "monitor_stack_tests.rs"]

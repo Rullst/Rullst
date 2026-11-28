@@ -397,6 +397,22 @@ pub(crate) async fn vary_on_htmx_request(request: Request, next: Next) -> Respon
     response
 }
 
+/// Response extension of the server's `/static` mount, which is served
+/// beside the application's routes, not by them: [`vary_route_response`]
+/// leaves such a response as it is, as [`vary_on_htmx_request`], which never
+/// sees the mount, does.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct OutsideRoutes;
+
+/// [`vary_html_on_htmx_request`] for a response that reached the security
+/// baseline from inside, which runs this step itself when nothing between it
+/// and the routes answers or changes a response (see `server::stack`).
+pub(crate) fn vary_route_response(response: &mut Response) {
+    if response.extensions().get::<OutsideRoutes>().is_none() {
+        vary_html_on_htmx_request(response.headers_mut());
+    }
+}
+
 pub(crate) fn vary_html_on_htmx_request(headers: &mut HeaderMap) {
     let is_html = headers
         .get(header::CONTENT_TYPE)
