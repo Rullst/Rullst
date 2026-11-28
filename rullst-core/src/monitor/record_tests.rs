@@ -275,7 +275,11 @@ async fn the_process_subscriber_counts_the_orm_operations_of_recorded_requests()
             // rullst-access: public — test fixture without data.
             .route("/posts/{id}", axum::routing::get(post_with_comments)),
     );
-    let process = subscriber(crate::telemetry::DEFAULT_LOG_FILTER, Lines::default());
+    let process = subscriber(
+        crate::telemetry::DEFAULT_LOG_FILTER,
+        crate::server::dev_telemetry::spans_recorded(),
+        Lines::default(),
+    );
     let _guard = tracing::subscriber::set_default(process);
     let request = get("/posts/42", CLIENT, &[]);
     assert_eq!(app.oneshot(request).await.unwrap().status(), StatusCode::OK);
@@ -285,4 +289,15 @@ async fn the_process_subscriber_counts_the_orm_operations_of_recorded_requests()
     let (total, findings) = collector.findings();
     assert_eq!(total, 1);
     assert_eq!(findings[0].fingerprint, "Comment.find (comments)");
+}
+
+#[test]
+fn mounting_the_recording_layer_turns_the_orm_spans_on() {
+    use crate::server::dev_telemetry::spans_recorded_tests::{orm_spans_start_with, ran_in_child};
+    if ran_in_child("monitor::record_tests::mounting_the_recording_layer_turns_the_orm_spans_on") {
+        return;
+    }
+    orm_spans_start_with(|| {
+        let _ = installed().record(Router::new());
+    });
 }

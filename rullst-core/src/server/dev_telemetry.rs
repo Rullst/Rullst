@@ -29,9 +29,11 @@ pub(crate) mod request_scope;
 #[cfg(test)]
 mod span_filter_tests;
 #[cfg(test)]
+pub(crate) mod spans_recorded_tests;
+#[cfg(test)]
 mod tests;
 
-pub(crate) use orm_layer::{mark_installed, query_layer};
+pub(crate) use orm_layer::{mark_installed, query_layer, record_spans, spans_recorded};
 use recorder::{record_repeated, record_request};
 
 use crate::queue::Queue;

@@ -5,6 +5,7 @@ use tracing_subscriber::Layer;
 /// Explicit minimized OTLP export and trusted cross-process propagation.
 #[cfg(feature = "telemetry")]
 pub mod distributed;
+pub(crate) mod orm_spans;
 #[cfg(test)]
 pub(crate) mod subscriber_tests;
 
@@ -128,9 +129,17 @@ pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
     let telemetry_layer = tracing_opentelemetry::layer().with_tracer(tracer);
 
     let filter_layer = log_filter(tracing_subscriber::EnvFilter::try_from_default_env());
+    // The OpenTelemetry layer exports every span it receives, so the ORM
+    // spans are recorded from the start, as `RUST_LOG` selects them.
+    crate::server::dev_telemetry::record_spans();
+    let orm_spans = orm_spans::OrmSpansOnDemand::new(
+        &filter_layer,
+        crate::server::dev_telemetry::spans_recorded(),
+    );
 
     tracing_subscriber::registry()
         .with(filter_layer)
+        .with(orm_spans)
         .with(tracing_subscriber::fmt::layer())
         .with(RedactPersonalDataLayer)
         .with(telemetry_layer)
@@ -154,9 +163,16 @@ pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
     let filter_layer = log_filter(tracing_subscriber::EnvFilter::try_from_default_env());
+    // ORM spans wait until the development endpoint or the production
+    // monitor records them.
+    let orm_spans = orm_spans::OrmSpansOnDemand::new(
+        &filter_layer,
+        crate::server::dev_telemetry::spans_recorded(),
+    );
 
     if tracing_subscriber::registry()
         .with(filter_layer)
+        .with(orm_spans)
         .with(tracing_subscriber::fmt::layer())
         .with(RedactPersonalDataLayer)
         .with(crate::server::dev_telemetry::query_layer())

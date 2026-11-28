@@ -295,7 +295,10 @@ route, and the endpoint's own requests are not counted in its statistics.
   recently seen replaced first). It needs the framework's tracing subscriber
   (`Server` installs it) and a `RUST_LOG` that keeps `rullst_orm` at `info`;
   otherwise it reports `{"state": "unavailable", "reason":
-  "subscriber_not_installed"}` or `"orm_spans_filtered"`.
+  "subscriber_not_installed"}` or `"orm_spans_filtered"`. That subscriber
+  creates the ORM spans only once the monitor (or the development dashboard)
+  is mounted (since 13.1.0), so a process without either does not pay for
+  them.
 - **Queues**: `pending` is read from the queue store (all workers, with a
   250 ms limit per queue; `timeout` or `driver_error` otherwise, never the
   driver's message). The other counters cover this process's workers since

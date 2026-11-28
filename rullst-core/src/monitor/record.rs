@@ -24,8 +24,10 @@ use std::time::Instant;
 /// Wraps every route of `router` (and its fallback) with the recorder. Add
 /// it after the framework layers, so their refusals (`403`, `429`, `503`)
 /// are counted too. Requests to [`MONITOR_PATH`] and [`MONITOR_V2_PATH`]
-/// themselves are not counted.
+/// themselves are not counted. From then on the ORM spans that attribute
+/// queries to requests are created.
 pub(crate) fn record_requests(router: axum::Router, collector: Arc<Collector>) -> axum::Router {
+    crate::server::dev_telemetry::record_spans();
     router.layer(axum::middleware::from_fn(
         move |request: Request, next: Next| {
             let collector = Arc::clone(&collector);

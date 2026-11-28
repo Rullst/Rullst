@@ -31,6 +31,7 @@ pub(super) fn global() -> Option<&'static Arc<Recorder>> {
 
 /// Enables recording for this process and returns the shared recorder.
 pub(super) fn enable_global() -> Arc<Recorder> {
+    super::orm_layer::record_spans();
     GLOBAL.get_or_init(|| Arc::new(Recorder::new())).clone()
 }
 
