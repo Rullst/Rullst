@@ -230,6 +230,7 @@ pub rullst_nexus::NexusBuildError::InvalidModelMetadata { .. }
 pub rullst_nexus::NexusBuildError::InvalidModelMetadata::reason: &'static str
 pub rullst_nexus::NexusBuildError::InvalidLoginPath
 pub rullst_nexus::NexusBuildError::InvalidStylesheet
+pub rullst_nexus::NexusBuildError::LocalAccessRequiresDevelopmentEnvironment
 impl core::clone::Clone for rullst_nexus::NexusBuildError
 impl core::cmp::Eq for rullst_nexus::NexusBuildError
 impl core::cmp::PartialEq for rullst_nexus::NexusBuildError

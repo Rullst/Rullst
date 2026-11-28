@@ -40,7 +40,14 @@ fn loopback_permitted() -> bool {
             true
         }
         Err(error) => {
-            assert_eq!(error, NexusBuildError::LocalAccessRequiresDebugBuild);
+            // A release build is refused for being one before its environment
+            // is read.
+            let expected = if cfg!(debug_assertions) {
+                NexusBuildError::LocalAccessRequiresDevelopmentEnvironment
+            } else {
+                NexusBuildError::LocalAccessRequiresDebugBuild
+            };
+            assert_eq!(error, expected);
             assert!(matches!(application, NexusAuthPolicy::Application(_)));
             assert!(!matches!(basic, Ok(NexusAuthPolicy::LoopbackOnly(_))));
             false

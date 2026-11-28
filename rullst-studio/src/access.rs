@@ -59,15 +59,20 @@ impl LocalStudioAccess {
     /// Applies the Studio loopback boundary to a router.
     ///
     /// Fails with [`StudioBuildError::LocalAccessRequiresDebugBuild`] in a
-    /// release build, and when the environment `Server` would resolve for the
-    /// working directory (process `RULLST_ENV`, then `APP_ENV`, then `.env`,
-    /// then `[app] env` in `Rullst.toml`) is staging, production or invalid.
+    /// release build, and with
+    /// [`StudioBuildError::LocalAccessRequiresDevelopmentEnvironment`] when the
+    /// environment `Server` would resolve for the working directory (process
+    /// `RULLST_ENV`, then `APP_ENV`, then `.env`, then `[app] env` in
+    /// `Rullst.toml`) is staging, production or invalid.
     pub fn protect_router<S>(&self, router: Router<S>) -> Result<Router<S>, StudioBuildError>
     where
         S: Clone + Send + Sync + 'static,
     {
-        if !cfg!(debug_assertions) || project_environment_requires_secure_defaults() {
+        if !cfg!(debug_assertions) {
             return Err(StudioBuildError::LocalAccessRequiresDebugBuild);
+        }
+        if project_environment_requires_secure_defaults() {
+            return Err(StudioBuildError::LocalAccessRequiresDevelopmentEnvironment);
         }
         Ok(router.layer(axum::middleware::from_fn(loopback_only_middleware)))
     }
@@ -92,18 +97,26 @@ where
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StudioBuildError {
-    /// Credential-free Studio access is unavailable in release builds, and
-    /// when the project's environment is staging or production.
+    /// Credential-free Studio access is unavailable in release builds.
     LocalAccessRequiresDebugBuild,
     /// The OS could not provide the key used for opaque local action tokens.
     RandomnessUnavailable,
+    /// Credential-free Studio access is unavailable in a debug build whose
+    /// environment, resolved as `Server` resolves it, is staging, production
+    /// or invalid, or whose `.env` or `Rullst.toml` cannot be read when the
+    /// resolution needs it. Added in 13.1.0; earlier releases returned
+    /// [`Self::LocalAccessRequiresDebugBuild`] for this case too.
+    LocalAccessRequiresDevelopmentEnvironment,
 }
 
 impl fmt::Display for StudioBuildError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::LocalAccessRequiresDebugBuild => formatter.write_str(
-                "Studio local access is refused: it runs only in a debug build whose environment is development or test; shared environments need an application-owned authenticated boundary",
+                "Studio local access is refused in a release build: it runs only in a debug build whose environment is development or test; shared environments need an application-owned authenticated boundary",
+            ),
+            Self::LocalAccessRequiresDevelopmentEnvironment => formatter.write_str(
+                "Studio local access is refused: the environment (RULLST_ENV, APP_ENV, .env or [app] env in Rullst.toml) is staging, production or invalid, or a file it is read from is unreadable; it runs only in development or test, and shared environments need an application-owned authenticated boundary",
             ),
             Self::RandomnessUnavailable => formatter.write_str(
                 "Studio could not obtain operating-system randomness for local action tokens",

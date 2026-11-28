@@ -29,6 +29,7 @@ impl core::marker::Unpin for rullst_studio::Studio
 #[non_exhaustive] pub enum rullst_studio::StudioBuildError
 pub rullst_studio::StudioBuildError::LocalAccessRequiresDebugBuild
 pub rullst_studio::StudioBuildError::RandomnessUnavailable
+pub rullst_studio::StudioBuildError::LocalAccessRequiresDevelopmentEnvironment
 impl core::clone::Clone for rullst_studio::StudioBuildError
 impl core::cmp::Eq for rullst_studio::StudioBuildError
 impl core::cmp::PartialEq for rullst_studio::StudioBuildError

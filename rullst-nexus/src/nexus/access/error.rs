@@ -27,9 +27,7 @@ pub enum NexusBuildError {
     /// A required Nexus credential is absent from the process environment and
     /// the project's `.env` file is unreadable or malformed. Added in v13.
     InvalidDotenv { variable: &'static str },
-    /// Unauthenticated local access is never available in release builds, nor
-    /// when the environment `Server` resolves (process variables, `.env`,
-    /// `[app] env`) is staging or production.
+    /// Unauthenticated local access is never available in release builds.
     LocalAccessRequiresDebugBuild,
     /// Registered model metadata is ambiguous, oversized, or unsafe for dynamic CRUD.
     InvalidModelMetadata { reason: &'static str },
@@ -43,6 +41,13 @@ pub enum NexusBuildError {
     ///
     /// [`Nexus::with_stylesheet`]: crate::nexus::Nexus::with_stylesheet
     InvalidStylesheet,
+    /// Unauthenticated local access is unavailable in a debug build whose
+    /// environment, resolved as `Server` resolves it (process variables,
+    /// `.env`, `[app] env`), is staging, production or invalid, or whose
+    /// `.env` or `Rullst.toml` cannot be read when the resolution needs it.
+    /// Added in 13.1.0; earlier releases returned
+    /// [`Self::LocalAccessRequiresDebugBuild`] for this case too.
+    LocalAccessRequiresDevelopmentEnvironment,
 }
 
 impl fmt::Display for NexusBuildError {
@@ -83,7 +88,7 @@ impl fmt::Display for NexusBuildError {
                 "Nexus could not read {variable}: the project .env file is unreadable or malformed"
             ),
             Self::LocalAccessRequiresDebugBuild => formatter.write_str(
-                "Nexus loopback-only access is refused: it runs only in a debug build whose environment is development or test; configure an authenticated policy for release builds and shared environments",
+                "Nexus loopback-only access is refused in a release build: it runs only in a debug build whose environment is development or test; configure an authenticated policy for release builds and shared environments",
             ),
             Self::InvalidModelMetadata { reason } => {
                 write!(formatter, "Nexus rejected registered model metadata: {reason}")
@@ -93,6 +98,9 @@ impl fmt::Display for NexusBuildError {
             ),
             Self::InvalidStylesheet => formatter.write_str(
                 "a Nexus stylesheet must be a same-origin path starting with a single '/', of at most 512 visible ASCII characters without quotes, '<', '>', '`' or '\\', and at most 8 may be added",
+            ),
+            Self::LocalAccessRequiresDevelopmentEnvironment => formatter.write_str(
+                "Nexus loopback-only access is refused: the environment (RULLST_ENV, APP_ENV, .env or [app] env in Rullst.toml) is staging, production or invalid, or a file it is read from is unreadable; it runs only in development or test, so configure an authenticated policy for shared environments",
             ),
         }
     }

@@ -17,6 +17,16 @@ fn set(name: &str, value: Option<&str>) {
     }
 }
 
+/// The refusal for an environment that is not development or test: a release
+/// build is refused for being one before its environment is read.
+fn environment_refusal() -> StudioBuildError {
+    if cfg!(debug_assertions) {
+        StudioBuildError::LocalAccessRequiresDevelopmentEnvironment
+    } else {
+        StudioBuildError::LocalAccessRequiresDebugBuild
+    }
+}
+
 fn local_access_follows_the_process_environment() {
     let debug = cfg!(debug_assertions);
     for (rullst_env, app_env, permitted) in [
@@ -36,7 +46,7 @@ fn local_access_follows_the_process_environment() {
         match built {
             Ok(_) => assert!(permitted, "RULLST_ENV={rullst_env:?} APP_ENV={app_env:?}"),
             Err(error) => {
-                assert_eq!(error, StudioBuildError::LocalAccessRequiresDebugBuild);
+                assert_eq!(error, environment_refusal());
                 assert!(!permitted, "RULLST_ENV={rullst_env:?} APP_ENV={app_env:?}");
             }
         }
@@ -77,8 +87,12 @@ fn built() -> Result<(), StudioBuildError> {
 
 fn local_access_follows_the_dotenv_and_rullst_toml_environment_a_server_reads() {
     let debug = cfg!(debug_assertions);
-    let refused = Err(StudioBuildError::LocalAccessRequiresDebugBuild);
-    let allowed = if debug { Ok(()) } else { refused };
+    let refused = Err(environment_refusal());
+    let allowed = if debug {
+        Ok(())
+    } else {
+        Err(StudioBuildError::LocalAccessRequiresDebugBuild)
+    };
     let cases: [Case; 6] = [
         (
             "studio-env-prod",

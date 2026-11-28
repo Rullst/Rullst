@@ -84,6 +84,10 @@ async fn requests_received_by_a_staging_or_production_server_are_refused() {
 fn the_refusal_names_the_environment_rule() {
     assert_eq!(
         NexusBuildError::LocalAccessRequiresDebugBuild.to_string(),
-        "Nexus loopback-only access is refused: it runs only in a debug build whose environment is development or test; configure an authenticated policy for release builds and shared environments"
+        "Nexus loopback-only access is refused in a release build: it runs only in a debug build whose environment is development or test; configure an authenticated policy for release builds and shared environments"
+    );
+    assert_eq!(
+        NexusBuildError::LocalAccessRequiresDevelopmentEnvironment.to_string(),
+        "Nexus loopback-only access is refused: the environment (RULLST_ENV, APP_ENV, .env or [app] env in Rullst.toml) is staging, production or invalid, or a file it is read from is unreadable; it runs only in development or test, so configure an authenticated policy for shared environments"
     );
 }

@@ -267,13 +267,10 @@ pub(crate) fn validate_policy(policy: NexusAuthPolicy) -> Result<NexusAuthPolicy
             validate_password(&credentials.password)?;
             Ok(NexusAuthPolicy::Basic(credentials))
         }
-        NexusAuthPolicy::LoopbackOnly(access) => {
-            if loopback_permitted() {
-                Ok(NexusAuthPolicy::LoopbackOnly(access))
-            } else {
-                Err(NexusBuildError::LocalAccessRequiresDebugBuild)
-            }
-        }
+        NexusAuthPolicy::LoopbackOnly(access) => match loopback_refusal() {
+            Some(refusal) => Err(refusal),
+            None => Ok(NexusAuthPolicy::LoopbackOnly(access)),
+        },
         NexusAuthPolicy::Application(access) => {
             validate_login_path(access.login_path())?;
             Ok(NexusAuthPolicy::Application(access))
@@ -285,7 +282,19 @@ pub(crate) fn validate_policy(policy: NexusAuthPolicy) -> Result<NexusAuthPolicy
 /// whose environment, resolved as `Server` resolves it, is not staging or
 /// production.
 fn loopback_permitted() -> bool {
-    cfg!(debug_assertions) && !project_environment_requires_secure_defaults()
+    loopback_refusal().is_none()
+}
+
+/// Why the credential-free loopback policy cannot be built here: a release
+/// build, or an environment that is not development or test.
+fn loopback_refusal() -> Option<NexusBuildError> {
+    if !cfg!(debug_assertions) {
+        return Some(NexusBuildError::LocalAccessRequiresDebugBuild);
+    }
+    if project_environment_requires_secure_defaults() {
+        return Some(NexusBuildError::LocalAccessRequiresDevelopmentEnvironment);
+    }
+    None
 }
 
 /// The environment `Server` would resolve for this project (the process

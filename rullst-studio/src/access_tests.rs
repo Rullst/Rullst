@@ -316,7 +316,11 @@ async fn relayed_requests_and_secure_environments_are_refused() {
 fn build_errors_explain_themselves() {
     assert_eq!(
         StudioBuildError::LocalAccessRequiresDebugBuild.to_string(),
-        "Studio local access is refused: it runs only in a debug build whose environment is development or test; shared environments need an application-owned authenticated boundary"
+        "Studio local access is refused in a release build: it runs only in a debug build whose environment is development or test; shared environments need an application-owned authenticated boundary"
+    );
+    assert_eq!(
+        StudioBuildError::LocalAccessRequiresDevelopmentEnvironment.to_string(),
+        "Studio local access is refused: the environment (RULLST_ENV, APP_ENV, .env or [app] env in Rullst.toml) is staging, production or invalid, or a file it is read from is unreadable; it runs only in development or test, and shared environments need an application-owned authenticated boundary"
     );
     assert_eq!(
         StudioBuildError::RandomnessUnavailable.to_string(),
