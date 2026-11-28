@@ -16,6 +16,7 @@ mod alpha6_defaults;
 mod alpha6_deprecated;
 mod alpha6_gaps;
 mod alpha6_jiff;
+mod alpha6_jiff_reads;
 mod alpha6_media;
 mod alpha6_non_exhaustive;
 mod alpha6_orm_save_mode;

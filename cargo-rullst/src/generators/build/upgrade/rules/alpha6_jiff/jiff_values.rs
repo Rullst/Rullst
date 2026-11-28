@@ -23,6 +23,21 @@ const ORM_PATHS: [&str; 3] = ["orm", "rullst_orm", "db"];
 /// value (`at.in_tz("America/Sao_Paulo")?`).
 const JIFF_METHODS: [&str; 3] = ["in_tz", "to_zoned", "to_zoned_datetime"];
 
+/// Methods that return the value they are called on, or the fallback they
+/// are given (`paid_at.unwrap_or_else(Timestamp::now)`), so a field read
+/// keeps its type through them.
+const KEEPING_METHODS: [&str; 9] = [
+    "clone",
+    "to_owned",
+    "cloned",
+    "copied",
+    "unwrap",
+    "expect",
+    "unwrap_or",
+    "unwrap_or_else",
+    "unwrap_or_default",
+];
+
 /// Whether the type `tokens` is a jiff value's: a type that does not name
 /// chrono and names jiff, `civil`, `Zoned`, `Timestamp`, or one of
 /// [`JIFF_TYPES`] without a type argument (`rullst::orm::Date`).
@@ -71,16 +86,43 @@ impl ChronoBindings {
     /// Whether the argument at `index` of `args` (a call's arguments) needs
     /// no change for an API that takes jiff values: it holds a jiff value
     /// and no chrono value, or it reads a field the file does not declare
-    /// with a chrono type (`payment.paid_at`). Such a field belongs to a
-    /// struct declared elsewhere; a model's chrono field is reported there
-    /// (`V13-ORM-CHRONO-TYPES`), and the read compiles unchanged once the
-    /// field is a Rullst ORM type. A chrono field of another file's struct
-    /// that is not a model is reported by no rule; the compiler reports the
-    /// call.
+    /// with a chrono type (`payment.paid_at`), also through `?` and
+    /// [`KEEPING_METHODS`] (`payment.paid_at.unwrap_or_else(Timestamp::now)`).
+    /// Such a field belongs to a struct declared elsewhere; a model's chrono
+    /// field is reported there (`V13-ORM-CHRONO-TYPES`), and the read
+    /// compiles unchanged once the field is a Rullst ORM type. A chrono field
+    /// of another file's struct that is not a model is reported by no rule;
+    /// the compiler reports the call.
     pub(in super::super::super) fn jiff_argument(&self, args: &[TokenTree], index: usize) -> bool {
         elements(args).nth(index).is_some_and(|argument| {
-            self.holds_jiff(argument) || (field_read(argument) && !self.is_chrono_value(argument))
+            let read = self.before_kept_calls(argument);
+            self.holds_jiff(argument) || (field_read(read) && !self.is_chrono_value(read))
         })
+    }
+
+    /// The expression `tokens` without the `?` and the calls of
+    /// [`KEEPING_METHODS`] that end it, as long as their arguments hold and
+    /// name no chrono value (`paid_at.unwrap_or_else(Utc::now)` keeps a
+    /// chrono field).
+    fn before_kept_calls<'a>(&self, mut tokens: &'a [TokenTree]) -> &'a [TokenTree] {
+        loop {
+            tokens = match tokens {
+                [rest @ .., TokenTree::Punct(question)] if question.as_char() == '?' => rest,
+                [
+                    rest @ ..,
+                    TokenTree::Punct(dot),
+                    TokenTree::Ident(method),
+                    TokenTree::Group(args),
+                ] if dot.as_char() == '.'
+                    && KEEPING_METHODS.iter().any(|name| method == name)
+                    && !self.carries_chrono(&args.stream())
+                    && !is_chrono_type(&collect(args.stream())) =>
+                {
+                    rest
+                }
+                _ => return tokens,
+            };
+        }
     }
 
     /// Whether the expression `tokens` holds a jiff value (see the module

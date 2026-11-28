@@ -16,7 +16,8 @@
 //! `jiff::`, `civil::`, `Zoned` or `Timestamp` path, Rullst's ORM types
 //! (`rullst::orm::Timestamp`), a name, field or function of such a type, and
 //! a chain through a method only jiff has (`.in_tz(..)`); and a read of a
-//! field the file does not declare as chrono ([`ChronoBindings::jiff_argument`]).
+//! field the file does not declare as chrono, also followed by `?`,
+//! `.clone()` or `.unwrap_or_else(..)` ([`ChronoBindings::jiff_argument`]).
 
 use proc_macro2::{Delimiter, Spacing, TokenStream, TokenTree};
 use std::collections::BTreeSet;

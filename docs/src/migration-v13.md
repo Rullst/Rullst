@@ -1737,12 +1737,16 @@ Work through the steps in order.
     that its value is a jiff one: a `jiff::`, `civil::`, `Zoned` or
     `Timestamp` path, an ORM type's path (`rullst::orm::Timestamp::now()`),
     a parameter, binding or struct field of such a type, a function of the
-    file that returns one, or a chain through `.in_tz(..)`. A value whose
-    type the file does not show, such as a field of a model declared in
-    another file, is still reported, so an application that finished the
-    move can still see such calls with `--all-rules` or `--from`; they are
-    must-change findings, so check that each compiles and continue with
-    `--keep-on-failure`.
+    file that returns one, or a chain through `.in_tz(..)`. A read of a
+    field the file does not declare as chrono, such as a field of a model
+    declared in another file, is left alone too, also (since the
+    13.0.0-rc.2 CLI) through `?`, `.clone()`, `.unwrap()` or an
+    `.unwrap_or_else(..)` whose fallback is not chrono
+    (`charge.paid_at.unwrap_or_else(Timestamp::now)`). Another value whose
+    type the file does not show is still reported, so an application that
+    finished the move can still see such calls with `--all-rules` or
+    `--from`; they are must-change findings, so check that each compiles
+    and continue with `--keep-on-failure`.
 
     Code that keeps chrono for its own work declares `chrono` itself and
     converts where it meets Rullst; its own SQLx queries that bind or read
