@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795835526854,
+  "lastUpdate": 1795838347676,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -23731,6 +23731,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 311,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b56805483f3a602b78649839186303a575293999",
+          "message": "Merge pull request #885 from Rullst/docs/v13-site-review-2026-11-27\n\ndocs(site): correct the rc.1 status, the benchmark's access log and comparison rows",
+          "timestamp": "2026-11-28T00:36:57-03:00",
+          "tree_id": "3cc603f8421cfbd889b26fff177e322fcb3e7c00",
+          "url": "https://github.com/Rullst/Rullst/commit/b56805483f3a602b78649839186303a575293999"
+        },
+        "date": 1795838346855,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1446,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 254,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 281,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
