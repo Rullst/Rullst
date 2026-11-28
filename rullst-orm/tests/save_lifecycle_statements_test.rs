@@ -139,7 +139,7 @@ async fn lifecycle_saves(recorder: &Recorder) {
     assert_sent(
         &seen,
         1,
-        &["UPDATE sp_drafts SET title = ? WHERE id = ? RETURNING *"],
+        &["UPDATE sp_drafts SET title = ? WHERE id = ?"],
         "before_save hook",
     );
 
@@ -155,7 +155,7 @@ async fn lifecycle_saves(recorder: &Recorder) {
     assert_sent(
         &seen,
         1,
-        &["UPDATE sp_receipts SET title = ? WHERE id = ? RETURNING *"],
+        &["UPDATE sp_receipts SET title = ? WHERE id = ?"],
         "failing after_save hook",
     );
     let title = stored_text("SELECT title FROM sp_receipts WHERE id = ?", receipt.id).await;
@@ -185,7 +185,7 @@ async fn lifecycle_saves(recorder: &Recorder) {
     assert_sent(
         &seen,
         1,
-        &["UPDATE sp_guarded SET title = ? WHERE id = ? RETURNING *"],
+        &["UPDATE sp_guarded SET title = ? WHERE id = ?"],
         "policy",
     );
 
@@ -209,7 +209,7 @@ async fn lifecycle_saves(recorder: &Recorder) {
     assert_sent(
         &seen,
         1,
-        &["UPDATE sp_watched SET title = ? WHERE id = ? RETURNING *"],
+        &["UPDATE sp_watched SET title = ? WHERE id = ?"],
         "failing saved observer",
     );
     let title = stored_text("SELECT title FROM sp_watched WHERE id = ?", watched.id).await;
@@ -262,8 +262,8 @@ async fn joined_saves(recorder: &Recorder) {
         &seen,
         1,
         &[
-            "UPDATE sp_tallies SET hits = ? WHERE id = ? RETURNING *",
-            "UPDATE sp_tallies SET hits = ? WHERE id = ? RETURNING *",
+            "UPDATE sp_tallies SET hits = ? WHERE id = ?",
+            "UPDATE sp_tallies SET hits = ? WHERE id = ?",
         ],
         "saves inside Orm::transaction",
     );

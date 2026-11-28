@@ -2924,14 +2924,20 @@ compares: with no difference it returns `Ok` and runs nothing else (no
 `updating`/`updated`/`saved` observer, `after_save` hook, audit entry or
 post-commit effect); otherwise it runs the `updating` observers, recomputes
 the difference and issues `UPDATE <table> SET <changed columns> WHERE id = ?`
-(plus the tenant predicate) with `RETURNING *` on PostgreSQL and SQLite, or
-followed by `SELECT * ... WHERE id = ?` in the same transaction on
-MySQL/MariaDB. No row is `RecordNotFound` (the tenant-scope `Validation` error
-on tenant models). The handle's unwritten tracked columns,
+(plus the tenant predicate). No row is `RecordNotFound` (the tenant-scope
+`Validation` error on tenant models). When that statement leaves a tracked
+column unwritten, or the model has an `#[orm(db_default)]` column or a
+soft-delete marker, the save reads the stored row back, with `RETURNING *` on
+PostgreSQL and SQLite or with `SELECT * ... WHERE id = ?` in the same
+transaction on MySQL/MariaDB: the handle's unwritten tracked columns,
 `#[orm(db_default)]` columns and soft-delete marker take the stored values,
 so observers, the audit diff, events and the Scout document see the stored
-row, and the snapshot is recaptured. An insert records the snapshot of the
-inserted values. Without a `before_save` hook, policy or registered observer,
+row. An `UPDATE` that writes every tracked column of a model without such
+columns reads nothing back, because the handle already holds every value it
+wrote (since 13.1; before, every tracked update read the row back, so a
+stored value the model could not decode failed even such a save). The
+snapshot is then recaptured. An insert records the snapshot of the inserted
+values. Without a `before_save` hook, policy or registered observer,
 an unchanged `save()`/`save_with_tx()` returns before opening a transaction
 or savepoint (it still applies and checks the tenant context). A failed save
 restores the previous snapshot, so its changes stay pending; a rollback of a

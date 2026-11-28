@@ -161,7 +161,7 @@ async fn plain_saves(recorder: &Recorder, expected: &Expected) {
     expected.check(
         &recorder.take(),
         1,
-        &expected.update_returning("contract_save_tallies", "hits = ?"),
+        &expected.update("contract_save_tallies", "hits = ?"),
         "tracked update of every column",
     );
 
@@ -186,7 +186,7 @@ async fn plain_saves(recorder: &Recorder, expected: &Expected) {
     expected.check(
         &recorder.take(),
         1,
-        &expected.update_returning("contract_save_cards", "code = ?, title = ?"),
+        &expected.update("contract_save_cards", "code = ?, title = ?"),
         "tracked update after mark_all_dirty()",
     );
 
@@ -306,7 +306,7 @@ async fn failed_saves(recorder: &Recorder, expected: &Expected) {
     expected.check(
         &recorder.take(),
         1,
-        &expected.update_returning("contract_save_tallies", "hits = ?")[..1],
+        &expected.update("contract_save_tallies", "hits = ?"),
         "update of a deleted row",
     );
     assert_eq!(vanished.dirty_columns(), ["hits"], "{driver}");
@@ -332,7 +332,7 @@ async fn hooked_and_joined_saves(recorder: &Recorder, expected: &Expected) {
     expected.check(
         &recorder.take(),
         1,
-        &expected.update_returning("contract_save_receipts", "title = ?"),
+        &expected.update("contract_save_receipts", "title = ?"),
         "failing after_save hook",
     );
     let stored = ContractSaveReceipt::find(receipt.id)
@@ -384,7 +384,7 @@ async fn hooked_and_joined_saves(recorder: &Recorder, expected: &Expected) {
     expected.check(
         &recorder.take(),
         1,
-        &expected.update_returning("contract_save_tallies", "hits = ?"),
+        &expected.update("contract_save_tallies", "hits = ?"),
         "save inside Orm::transaction",
     );
     let stored = ContractSaveTally::find(id)
@@ -407,7 +407,7 @@ async fn hooked_and_joined_saves(recorder: &Recorder, expected: &Expected) {
     expected.check(
         &recorder.take(),
         1,
-        &expected.update_returning("contract_save_tallies", "hits = ?"),
+        &expected.update("contract_save_tallies", "hits = ?"),
         "tracked update under a query timeout",
     );
 }

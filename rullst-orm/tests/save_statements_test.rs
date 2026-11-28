@@ -90,7 +90,7 @@ async fn plain_saves(recorder: &Recorder) {
     assert_sent(
         &seen,
         1,
-        &["UPDATE sp_tallies SET hits = ? WHERE id = ? RETURNING *"],
+        &["UPDATE sp_tallies SET hits = ? WHERE id = ?"],
         "tracked update of every column",
     );
 
@@ -121,7 +121,7 @@ async fn plain_saves(recorder: &Recorder) {
     assert_sent(
         &seen,
         1,
-        &["UPDATE sp_cards SET code = ?, title = ? WHERE id = ? RETURNING *"],
+        &["UPDATE sp_cards SET code = ?, title = ? WHERE id = ?"],
         "tracked update of every column of two",
     );
 
@@ -178,7 +178,7 @@ async fn plain_saves(recorder: &Recorder) {
     assert_sent(
         &seen,
         1,
-        &["UPDATE sp_tallies SET hits = ? WHERE id = ? RETURNING *"],
+        &["UPDATE sp_tallies SET hits = ? WHERE id = ?"],
         "tracked update under a query timeout",
     );
 }
@@ -255,7 +255,7 @@ async fn failed_plain_saves(recorder: &Recorder) {
     assert_sent(
         &seen,
         1,
-        &["UPDATE sp_tallies SET hits = ? WHERE id = ? RETURNING *"],
+        &["UPDATE sp_tallies SET hits = ? WHERE id = ?"],
         "update of a deleted row",
     );
     assert_eq!(vanished.id, 1);

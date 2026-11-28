@@ -404,12 +404,15 @@ async fn rename(id: i32, name: String) -> Result<(), rullst_orm::Error> {
   plaintext, so an unchanged secret is not encrypted again, JSON fields
   (`#[sqlx(json)]`, `Json<T>`, `serde_json::Value`) by their canonical
   document, and other fields by their Serde serialization.
-- The `UPDATE` sets only the changed columns, keeps the tenant predicate and
-  returns the stored row (PostgreSQL and SQLite; MySQL/MariaDB read it again in
-  the same transaction). The columns it did not write, `#[orm(db_default)]`
-  columns and the soft-delete marker take their stored values, so the handle,
-  the audit diff, model events and the search document describe the row as
-  stored. A row deleted meanwhile still fails with `RecordNotFound`.
+- The `UPDATE` sets only the changed columns and keeps the tenant predicate.
+  When it leaves a column unwritten, or the model has `#[orm(db_default)]`
+  columns or a soft-delete marker, it returns the stored row (PostgreSQL and
+  SQLite; MySQL/MariaDB read it again in the same transaction): the columns it
+  did not write, `#[orm(db_default)]` columns and the soft-delete marker take
+  their stored values, so the handle, the audit diff, model events and the
+  search document describe the row as stored. An `UPDATE` that writes every
+  column of a model without such columns reads nothing back. A row deleted
+  meanwhile still fails with `RecordNotFound`.
 - When nothing changed, `save()` runs no `UPDATE`, no `updating`, `updated` or
   `saved` observers, no `after_save` hook, audit entry or post-commit event.
   The `before_save` hook and the `saving` observers run first and may change

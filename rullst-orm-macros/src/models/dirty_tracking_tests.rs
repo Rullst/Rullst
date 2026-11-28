@@ -170,7 +170,10 @@ fn a_tracked_update_writes_only_changed_columns_and_reloads_the_rest() {
         update.contains("if written [1usize] { query = query . bind (self . body . clone ()) ; }")
     );
     assert!(update.contains("if assignments . is_empty () { return Ok (false) ; }"));
-    assert!(update.contains("let returning = driver != \"mysql\""));
+    // Database-managed columns are read back after every UPDATE.
+    assert!(update.contains("let refresh = true ;"), "{update}");
+    assert!(!update.contains("written . contains"), "{update}");
+    assert!(update.contains("let returning = refresh && driver != \"mysql\""));
     assert!(update.contains("final_sql . push_str (\" RETURNING *\")"));
     assert!(update.contains("\"posts\""));
     assert!(update.contains("query . bind (self . id) ;"));
@@ -187,6 +190,39 @@ fn a_tracked_update_writes_only_changed_columns_and_reloads_the_rest() {
     assert!(update.contains(
         ":: core :: mem :: swap (& mut self . deleted_at , & mut stored . deleted_at) ;"
     ));
+    assert!(update.ends_with("self . __rullst_capture_snapshot () ;"));
+}
+
+/// Without database-managed columns, an UPDATE that writes every tracked
+/// column reads nothing back: no `RETURNING *`, no MySQL/MariaDB `SELECT`.
+#[test]
+fn a_tracked_update_of_every_column_reads_nothing_back() {
+    let parsed = parse(parse_quote! {
+        #[orm(table = "posts")]
+        struct Post { id: i32, title: String, body: String, #[sqlx(skip)] snapshot: RowSnapshot }
+    });
+    let update = update_parts(&parsed, "", quote! {});
+    assert!(
+        update.contains("let refresh = written . contains (& false) ;"),
+        "{update}"
+    );
+    assert!(update.contains("let returning = refresh && driver != \"mysql\""));
+    // The plain branch is the last `else`: the read-back keeps its own
+    // MySQL/MariaDB `execute` branch.
+    let (read_back, plain) = update
+        .rsplit_once("} else { let update_result =")
+        .expect("read-back and plain branches");
+    let read_back = read_back
+        .rsplit_once("if refresh {")
+        .expect("read-back branch")
+        .1;
+    assert!(read_back.contains("\"SELECT * FROM posts WHERE id = ?\""));
+    assert!(read_back.contains("stored . __rullst_decrypt_encrypted_fields () ? ;"));
+    assert!(!plain.contains("stored"), "{plain}");
+    assert!(!plain.contains("fetch_optional"), "{plain}");
+    assert!(plain.starts_with(" if let Some (t) = timeout"), "{plain}");
+    assert!(plain.contains("query . execute (& mut * conn)"));
+    assert!(plain.contains("check_rows () ;"));
     assert!(update.ends_with("self . __rullst_capture_snapshot () ;"));
 }
 
