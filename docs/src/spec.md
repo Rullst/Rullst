@@ -2042,7 +2042,13 @@ the same server-authoritative controls.
   subscriber that `Server::run` and `telemetry::init_telemetry` install reads
   `RUST_LOG`; when it is unset or does not parse, the filter is
   `info,sqlx=warn`, so SQLx's own connection and statement events below WARN
-  are dropped while `rullst_orm` spans stay at INFO. Lines are queued as
+  are dropped while `rullst_orm` spans stay at INFO. Since 13.1.0 that
+  subscriber creates the `rullst.orm.*` spans only once something records
+  them: the development dashboard endpoint or the production monitor's
+  recording layer is mounted, or, in the `telemetry` build, from the start; a
+  `RUST_LOG` with a span directive (`target[span]=level`) keeps them all.
+  Until then an event logged during an ORM call carries no ORM span, and
+  event filtering is unchanged. Lines are queued as
   responses finish, so the log is in completion order, not arrival order.
   Since 13.0.0-rc.1 a request that one of `Server`'s layers answers itself
   (the CSRF check, machine-endpoint authentication, the enforcing WAF, the

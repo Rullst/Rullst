@@ -123,6 +123,21 @@ connection and statement events, such as `acquired connection`, appear only
 from WARN up. To see them again, set `RUST_LOG=info,sqlx=info` (or
 `sqlx=debug`); any `RUST_LOG` replaces the default as a whole.
 
+Since 13.1.0 that subscriber creates the ORM's `rullst.orm.*` spans only
+while something in the process records them: once the
+[development dashboard endpoint](#development-dashboard-endpoint) or the
+[production monitor](production-monitoring.md) is mounted, and from the start
+in the `telemetry` build, whose OpenTelemetry layer exports them. Until then an
+ORM call creates no span, so it does not pay for creating it, formatting its
+fields and entering it again on every poll of SQLx's streams. The difference
+shows in the log: an event written during such an ORM call, for example SQLx's
+warning about a slow connection acquisition or an application event inside an
+`Orm::transaction` closure, has no `rullst.orm.query{...}:` or
+`rullst.orm.transaction{...}:` prefix. `RUST_LOG` selects the same events as
+before, a `RUST_LOG` with a span directive (such as
+`info,[rullst.orm.query]=debug`) keeps every ORM span, and an application that
+installs its own subscriber is not affected.
+
 ### Health probes in the access log
 
 `Server` prints one `[HTTP] GET /orders -> 200 (1.20 ms)` line per request. In

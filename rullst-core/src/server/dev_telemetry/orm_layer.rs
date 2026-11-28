@@ -29,6 +29,7 @@ const MAX_ANCESTORS: usize = 64;
 const TRAVERSALS: [&str; 2] = ["chunk", "chunk_by_id"];
 
 static INSTALLED: AtomicBool = AtomicBool::new(false);
+static SPANS_RECORDED: AtomicBool = AtomicBool::new(false);
 
 /// Records that the global subscriber includes [`OrmQueryLayer`].
 pub(crate) fn mark_installed() {
@@ -37,6 +38,20 @@ pub(crate) fn mark_installed() {
 
 pub(super) fn installed() -> bool {
     INSTALLED.load(Ordering::Relaxed)
+}
+
+/// Set once something in this process records the ORM spans. The
+/// subscriber that `telemetry::init_telemetry` installs creates no ORM span
+/// before.
+pub(crate) fn spans_recorded() -> &'static AtomicBool {
+    &SPANS_RECORDED
+}
+
+/// Records that the ORM spans are recorded from now on: by this layer, once
+/// the development endpoint or the production monitor's recording layer is
+/// mounted, or by the OpenTelemetry layer of the `telemetry` build.
+pub(crate) fn record_spans() {
+    SPANS_RECORDED.store(true, Ordering::Relaxed);
 }
 
 /// The layer `telemetry::init_telemetry` adds in every build. It is passive
