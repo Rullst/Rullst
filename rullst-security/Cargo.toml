@@ -50,7 +50,7 @@ zeroize = { version = "1.8", features = ["derive"] }
 tracing = { workspace = true }
 thiserror = { workspace = true }
 urlencoding = { workspace = true }
-qrcode = { version = "0.14.1", default-features = false, features = ["svg"] }
+qrcode = { version = "0.15.0", default-features = false, features = ["svg"] }
 redis = { workspace = true, features = ["tokio-comp", "aio"], optional = true }
 
 [dev-dependencies]
