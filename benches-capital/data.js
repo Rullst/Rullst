@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795840675495,
+  "lastUpdate": 1795864108818,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -20508,6 +20508,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c20dd93a234d58b1b48eafba66f614c5cf103b82",
+          "message": "Merge pull request #890 from Rullst/fix/v13-rc2-retain-replaced-defaults\n\nfix(core): keep the defaults a published configuration replaced reachable",
+          "timestamp": "2026-11-28T07:45:31-03:00",
+          "tree_id": "3dee323d854c99583868f9b5c57f4abe5488a29d",
+          "url": "https://github.com/Rullst/Rullst/commit/c20dd93a234d58b1b48eafba66f614c5cf103b82"
+        },
+        "date": 1795864108155,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 19,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
             "range": "± 0",
             "unit": "ns/iter"
           }
