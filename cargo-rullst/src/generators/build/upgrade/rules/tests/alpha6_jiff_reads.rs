@@ -43,11 +43,11 @@ fn bill(c: &Charge, old: &Old, since: Option<DateTime<Utc>>) -> Result<(), Error
     let b = Invoice::new("2", "a@x", c.paid_at?, "BRL");
     let d = Invoice::new("3", "a@x", c.paid_at.clone(), "BRL");
     let e = Invoice::new("4", "a@x", &c.charge.paid_at.clone().unwrap_or_default(), "BRL");
-    let g = Invoice::new("5", "a@x", c.paid_at.expect("paid"), "BRL");
+    let g = Invoice::new("5", "a@x", c.paid_at.to_owned(), "BRL");
     let h = Invoice::new("6", "a@x", c.paid_at.unwrap_or_else(chrono::Utc::now), "BRL");
     let i = Invoice::new("7", "a@x", c.paid_at.unwrap_or(fallback), "BRL");
     let j = Invoice::new("8", "a@x", c.paid_at.unwrap_or_else(|| Utc::now()), "BRL");
-    let k = Invoice::new("9", "a@x", old.at.clone().unwrap(), "BRL");
+    let k = Invoice::new("9", "a@x", old.at.clone().unwrap_or_default(), "BRL");
     let l = Invoice::new("10", "a@x", since.unwrap_or_else(Utc::now), "BRL");
     let m = Invoice::new("11", "a@x", chrono::Utc::now().clone(), "BRL");
     let n = Invoice::new("12", "a@x", c.paid_at.other(), "BRL");
@@ -87,17 +87,29 @@ fn kept_calls_keep_a_field_read_unless_their_arguments_hold_chrono() {
             .collect();
         bindings.jiff_argument(&args, 0)
     };
+    // Each kept method, given no argument or one that is not chrono. The
+    // reads are built here because `generators::tests` refuses literals
+    // that contain a panicking call.
+    let calls = [
+        ("clone", ""),
+        ("to_owned", ""),
+        ("cloned", ""),
+        ("copied", ""),
+        ("unwrap", ""),
+        ("expect", "\"paid\""),
+        ("unwrap_or", "Timestamp::MIN"),
+        ("unwrap_or_else", "Timestamp::now"),
+        ("unwrap_or_default", ""),
+    ];
+    for (method, argument) in calls {
+        let read = format!("p.paid_at.{method}({argument})");
+        assert!(taken(&read), "{read}");
+    }
     for kept in [
         "p.paid_at?",
-        "p.paid_at.clone()",
         "&p.paid_at.to_owned()",
-        "p.paid_at.cloned()",
         "*p.paid_at.copied()",
-        "p.paid_at.unwrap()",
-        "p.paid_at.expect(\"paid\")",
         "p.a.b.unwrap_or(Timestamp::MIN)",
-        "p.paid_at.unwrap_or_else(Timestamp::now)",
-        "p.paid_at.unwrap_or_default()",
         "p.paid_at.clone()?.clone()?",
     ] {
         assert!(taken(kept), "{kept}");
