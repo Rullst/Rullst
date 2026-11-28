@@ -16,7 +16,7 @@ unsupported streaming, tool, timeout, retry, and cancellation boundaries.
 ```toml
 [dependencies]
 rullst = {
-    version = "=13.0.0-rc.1",
+    version = "=13.0.0-rc.2",
     default-features = false,
     features = ["ai"]
 }
@@ -253,7 +253,7 @@ framework-owned fixed schema rather than generated models:
 
 ```toml
 rullst = {
-    version = "=13.0.0-rc.1",
+    version = "=13.0.0-rc.2",
     default-features = false,
     features = ["ai-sql-memory"]
 }

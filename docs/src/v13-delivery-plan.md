@@ -1,5 +1,16 @@
 # v13 delivery plan and evidence
 
+**13.0.0-rc.2 prepared on November 27, 2026.** The release-preparation pull
+request sets all twenty packages to `13.0.0-rc.2`; the coordinator records
+the tag, the exact-SHA admission and the release run here after publication.
+It is the second release candidate for 13.0.0 and fixes two defects found in
+rc.1: a configuration read before `Server` starts no longer hides the
+`Rullst.toml` settings ([#858](https://github.com/Rullst/Rullst/issues/858)),
+and the build-time checks of the local Studio and a loopback Nexus resolve
+the environment as `Server` does
+([#860](https://github.com/Rullst/Rullst/issues/860)), both in
+[#874](https://github.com/Rullst/Rullst/pull/874). Then comes 13.0.0.
+
 **13.0.0-rc.1 published on November 26, 2026.** All twenty packages were
 published from tag `v13.0.0-rc.1` at `9ea50d98`
 ([release run 45837583222](https://github.com/Rullst/Rullst/actions/runs/45837583222))
@@ -16,7 +27,7 @@ upgraded to alpha.6 and by an independent review of the documentation's
 claims, no silent offline mock in staging and production, and the changes
 the maintainer approved after the alpha.6 freeze (the `rullst-iot`
 simulator fixtures removed, two `rullst-labs` variants renamed, fewer ORM
-pool pings). Then comes 13.0.0. The
+pool pings). The
 [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-rc1---2026-11-24)
 lists every change and the known limitations.
 

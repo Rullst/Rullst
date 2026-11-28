@@ -8,7 +8,7 @@ Start here when your frontend is a separate app, mobile client or integration.
 [complete API learning-path index](../api-reference.md#httprest-a-connected-learning-path).
 
 This quickstart creates one runnable JSON endpoint without a database or an AI
-provider. It targets the v13 prerelease `13.0.0-rc.1`; the v12 line reached
+provider. It targets the v13 prerelease `13.0.0-rc.2`; the v12 line reached
 end of life (see the [release record](../v12.md)). You need Rust 1.96.0 or
 newer, and the latest stable Rust is recommended
 ([Tutorial 01](01-hello-world.md#1-install-rust-and-cargo) shows how to
@@ -20,7 +20,7 @@ install it).
 ```bash
 cargo new first_rullst_api
 cd first_rullst_api
-cargo add rullst@=13.0.0-rc.1
+cargo add rullst@=13.0.0-rc.2
 cargo add tokio --features macros,rt-multi-thread
 cargo add serde --features derive
 ```
