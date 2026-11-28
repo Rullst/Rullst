@@ -54,9 +54,17 @@ pub async fn row_count(table: &str) -> i64 {
 }
 
 /// Runs `future` and returns its output with what it sent.
+///
+/// The worker logs a statement when it drops the statement, which can be
+/// after the caller already has the result; the worker handles one command
+/// at a time, so a round trip on the pool's only connection waits for it.
 pub async fn record<T>(recorder: &Recorder, future: impl Future<Output = T>) -> (T, Recorded) {
     recorder.take();
     let output = future.await;
+    rullst_orm::_sqlx::query("SELECT 1")
+        .execute(Orm::pool().expect("pool"))
+        .await
+        .expect("wait for the worker");
     (output, recorder.take())
 }
 

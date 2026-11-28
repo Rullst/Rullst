@@ -115,6 +115,9 @@ async fn lifecycle_save_paths_send_their_pinned_statements() {
     rullst_orm::audit::create_audit_table()
         .await
         .expect("create audit table");
+    // Without a query timeout, only what the model declares keeps the
+    // transaction.
+    Orm::set_query_timeout(0);
     lifecycle_saves(&recorder).await;
     joined_saves(&recorder).await;
 }

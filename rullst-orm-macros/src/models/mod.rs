@@ -1,4 +1,5 @@
 pub mod ai_ops;
+mod autocommit_save;
 pub mod column_enum;
 pub mod crud_ops;
 pub mod delete_ops;

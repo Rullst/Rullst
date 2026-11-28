@@ -3467,6 +3467,24 @@ while portability and semantic review remain the model author's responsibility.
   restores the model's `id`, so a caller that catches the error and commits
   does not persist the failed write. A direct `save()` owns its transaction
   and needs no savepoint.
+* Since 13.1 a direct `save()` that sends one statement runs it without
+  `BEGIN`/`COMMIT`, so the statement commits on its own and the save records
+  no `rullst.orm.transaction.begin` span. That needs a model that is not
+  auditable and declares no `before_save`/`after_save` hook and no policy, no
+  registered observer, the query timeout off (`Orm::set_query_timeout(0)`;
+  it is 30 seconds by default, and a statement that times out keeps running
+  on the server, where only a transaction undoes it), and an insert, a
+  full-row update, or a tracked update that writes every tracked column of a
+  model without `#[orm(db_default)]` or soft-delete columns; a tracked update
+  that reads the row back keeps its transaction. A rejected statement
+  persists nothing and restores `id` and the snapshot as a rollback does,
+  with the same error, and post-commit callbacks run after the statement
+  under the same `PostCommit` contract. Two outcomes differ from a
+  transaction: an insert decodes its `id` from the statement's result, so a
+  table whose `id` column contradicts the model's `i32` key (another type,
+  `NULL`, or a value past `i32::MAX` on SQLite) keeps the inserted row when
+  `save()` returns the decode error; and a save whose future is dropped after
+  its statement was sent may still persist, as a dropped `COMMIT` may.
 * Every queued callback is attempted. A failure is returned as `PostCommit`,
   whose contract explicitly means the database mutation is already durable.
   Applications must not retry the database mutation blindly from this error.

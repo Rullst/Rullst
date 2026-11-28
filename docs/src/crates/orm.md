@@ -418,6 +418,17 @@ async fn rename(id: i32, name: String) -> Result<(), rullst_orm::Error> {
   The `before_save` hook and the `saving` observers run first and may change
   fields; a model with neither, and without a policy, does not even open a
   transaction.
+- Since 13.1, with the query timeout off (`Orm::set_query_timeout(0)`; it is
+  30 seconds by default), a model that is not auditable and has no hooks,
+  policy or registered observers saves without a transaction when the save is
+  one statement: an insert, or an `UPDATE` that writes every column of a model
+  without `#[orm(db_default)]` columns or a soft-delete marker (a full-row
+  model's update always is). A failed statement persists nothing, as before.
+  A statement that outlives the timeout keeps running on the server, and only
+  a transaction undoes it, so with a timeout every save keeps its
+  transaction. The
+  [specification](../spec.md#55-process-local-post-commit-contract) lists
+  the two cases where the outcome differs from a transaction.
 - A record built in code holds `RowSnapshot::default()`: `save()` inserts it,
   or, with a non-zero `id`, writes every column. `mark_all_dirty()` makes a
   loaded record do the same, for code that relied on overwriting the row.

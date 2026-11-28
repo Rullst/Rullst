@@ -49,6 +49,12 @@ fn is_json_document(parsed: &ParsedModel, column: &syn::Ident) -> bool {
         .is_some_and(|(_, ty)| crate::parser::is_json_document_type(ty))
 }
 
+/// Whether the model has columns that every tracked update reads back from
+/// the stored row: `#[orm(db_default)]` columns and the soft-delete marker.
+pub(crate) fn has_database_managed_columns(parsed: &ParsedModel) -> bool {
+    !database_managed_columns(parsed).is_empty()
+}
+
 /// Whether `save()` of an unchanged record may return before opening a
 /// transaction: no `before_save` hook or policy could change or reject it.
 fn has_fast_clean_save(parsed: &ParsedModel) -> bool {
@@ -181,7 +187,7 @@ pub(crate) struct TrackedUpdate<'a> {
 /// The update branch of a tracked `save_with_tx_internal`: it returns
 /// `Ok(false)` when nothing changed, otherwise writes the changed columns and
 /// reloads the others, and the database-managed ones, from the stored row.
-/// Expects `observers` and `conn`.
+/// Expects `observers`, `conn` and `autocommit`.
 pub(crate) fn tracked_update(parsed: &ParsedModel, update: &TrackedUpdate<'_>) -> TokenStream {
     let Some(snapshot) = parsed.snapshot_field.as_ref() else {
         return quote! {};
@@ -226,6 +232,13 @@ pub(crate) fn tracked_update(parsed: &ParsedModel, update: &TrackedUpdate<'_>) -
         }
     };
     let read_back = quote! {
+        // A save outside a transaction cannot undo its UPDATE if the row
+        // read back fails to decode, so it never gets here.
+        if autocommit {
+            return Err(rullst_orm::Error::Internal(
+                "a save without a transaction cannot read its row back".to_string()
+            ));
+        }
         let stored: Option<Self> = if returning {
             let row = if let Some(t) = timeout {
                 rullst_orm::_tokio::time::timeout(t, query.fetch_optional(&mut *conn))

@@ -172,6 +172,14 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
     };
 
     let save_entrypoints = save_entrypoints::generate(parsed);
+    let observer_trait = quote::format_ident!("{}Observer", name);
+    // Only a tracked update can read a row back, which `autocommit` forbids.
+    let autocommit_unused =
+        if parsed.snapshot_field.is_none() || dirty_tracking::update_columns(parsed).is_empty() {
+            quote! { let _ = autocommit; }
+        } else {
+            quote! {}
+        };
     let saved_redis_effects = saved_redis_effects(parsed);
     let capture_inserted = dirty_tracking::capture(parsed, &quote! { self });
     let full_row_update = quote! {
@@ -233,6 +241,20 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
                 let list = Self::observers().read().unwrap_or_else(|poisoned| poisoned.into_inner());
                 list.clone()
             };
+            self.__rullst_save_observed(conn, is_new, observers, false).await
+        }
+
+        /// The save lifecycle after the `before_save` hook, with the observers
+        /// read when the save started. `autocommit`: the save runs outside a
+        /// transaction, so it must not send a second statement.
+        async fn __rullst_save_observed(
+            &mut self,
+            conn: &mut <rullst_orm::RullstDatabase as rullst_orm::_sqlx::Database>::Connection,
+            is_new: bool,
+            observers: Vec<std::sync::Arc<dyn #observer_trait + Send + Sync>>,
+            autocommit: bool,
+        ) -> Result<bool, rullst_orm::Error> {
+            #autocommit_unused
             for obs in &observers {
                 rullst_orm::__transaction_access::run(obs.saving(self)).await?;
             }

@@ -1,6 +1,6 @@
 use super::{
-    TrackedUpdate, capture, clean_save_return, generate_methods, snapshot_guard, tracked_update,
-    update_columns,
+    TrackedUpdate, capture, clean_save_return, generate_methods, has_database_managed_columns,
+    snapshot_guard, tracked_update, update_columns,
 };
 use quote::quote;
 use syn::{DeriveInput, parse_quote};
@@ -171,7 +171,9 @@ fn a_tracked_update_writes_only_changed_columns_and_reloads_the_rest() {
     );
     assert!(update.contains("if assignments . is_empty () { return Ok (false) ; }"));
     // Database-managed columns are read back after every UPDATE.
+    assert!(has_database_managed_columns(&parsed));
     assert!(update.contains("let refresh = true ;"), "{update}");
+    assert!(update.contains("if autocommit { return Err"), "{update}");
     assert!(!update.contains("written . contains"), "{update}");
     assert!(update.contains("let returning = refresh && driver != \"mysql\""));
     assert!(update.contains("final_sql . push_str (\" RETURNING *\")"));
@@ -216,8 +218,13 @@ fn a_tracked_update_of_every_column_reads_nothing_back() {
         .rsplit_once("if refresh {")
         .expect("read-back branch")
         .1;
+    // A save without a transaction refuses before it sends the UPDATE.
+    assert!(read_back.trim_start().starts_with(
+        "if autocommit { return Err (rullst_orm :: Error :: Internal (\"a save without a transaction cannot read its row back\" . to_string ())) ; }"
+    ), "{read_back}");
     assert!(read_back.contains("\"SELECT * FROM posts WHERE id = ?\""));
     assert!(read_back.contains("stored . __rullst_decrypt_encrypted_fields () ? ;"));
+    assert!(!has_database_managed_columns(&parsed));
     assert!(!plain.contains("stored"), "{plain}");
     assert!(!plain.contains("fetch_optional"), "{plain}");
     assert!(plain.starts_with(" if let Some (t) = timeout"), "{plain}");

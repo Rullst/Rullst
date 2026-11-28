@@ -64,11 +64,65 @@ async fn plain_save_paths_send_their_pinned_statements() {
         "CREATE TABLE sp_ledgers (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL UNIQUE, amount INTEGER NOT NULL)",
     ])
     .await;
+    default_timeout_saves(&recorder).await;
+    Orm::set_query_timeout(0);
     plain_saves(&recorder).await;
     failed_plain_saves(&recorder).await;
 }
 
-/// Saves of models without hooks, policy, observers or auditing.
+/// Under a query timeout, 30 seconds by default, every save keeps its
+/// transaction: a statement that outlives the timeout keeps running on the
+/// server, and only the rollback undoes it.
+async fn default_timeout_saves(recorder: &Recorder) {
+    assert_eq!(
+        rullst_orm::schema::get_query_timeout(),
+        Some(std::time::Duration::from_secs(30)),
+        "the default query timeout"
+    );
+    let mut tally = Tally {
+        id: 0,
+        hits: 1,
+        snapshot: RowSnapshot::default(),
+    };
+    let (saved, seen) = record(recorder, tally.save()).await;
+    saved.expect("insert tally under the default timeout");
+    assert_sent(
+        &seen,
+        1,
+        &["INSERT INTO sp_tallies (hits) VALUES (?) RETURNING id"],
+        "insert under the default timeout",
+    );
+    tally.hits = 2;
+    let (saved, seen) = record(recorder, tally.save()).await;
+    saved.expect("update tally under the default timeout");
+    assert_sent(
+        &seen,
+        1,
+        &["UPDATE sp_tallies SET hits = ? WHERE id = ?"],
+        "tracked update under the default timeout",
+    );
+    let mut ledger = Ledger {
+        id: 0,
+        code: "l-0".into(),
+        amount: 1,
+    };
+    ledger.save().await.expect("insert ledger");
+    ledger.amount = 2;
+    let (saved, seen) = record(recorder, ledger.save()).await;
+    saved.expect("update ledger under the default timeout");
+    assert_sent(
+        &seen,
+        1,
+        &["UPDATE sp_ledgers SET code = ?, amount = ? WHERE id = ?"],
+        "full-row update under the default timeout",
+    );
+}
+
+/// With the query timeout off, saves of models without hooks, policy,
+/// observers or auditing run an insert, a full-row update and a tracked
+/// update of every column as a single statement without a transaction
+/// (since 13.1); a tracked update that reads the row back, or any save under
+/// a query timeout, keeps its transaction.
 async fn plain_saves(recorder: &Recorder) {
     let mut tally = Tally {
         id: 0,
@@ -79,7 +133,7 @@ async fn plain_saves(recorder: &Recorder) {
     saved.expect("insert tally");
     assert_sent(
         &seen,
-        1,
+        0,
         &["INSERT INTO sp_tallies (hits) VALUES (?) RETURNING id"],
         "insert",
     );
@@ -89,7 +143,7 @@ async fn plain_saves(recorder: &Recorder) {
     saved.expect("update tally");
     assert_sent(
         &seen,
-        1,
+        0,
         &["UPDATE sp_tallies SET hits = ? WHERE id = ?"],
         "tracked update of every column",
     );
@@ -120,7 +174,7 @@ async fn plain_saves(recorder: &Recorder) {
     saved.expect("update both card columns");
     assert_sent(
         &seen,
-        1,
+        0,
         &["UPDATE sp_cards SET code = ?, title = ? WHERE id = ?"],
         "tracked update of every column of two",
     );
@@ -155,7 +209,7 @@ async fn plain_saves(recorder: &Recorder) {
     saved.expect("insert ledger");
     assert_sent(
         &seen,
-        1,
+        0,
         &["INSERT INTO sp_ledgers (code, amount) VALUES (?, ?) RETURNING id"],
         "full-row insert",
     );
@@ -164,12 +218,12 @@ async fn plain_saves(recorder: &Recorder) {
     saved.expect("update ledger");
     assert_sent(
         &seen,
-        1,
+        0,
         &["UPDATE sp_ledgers SET code = ?, amount = ? WHERE id = ?"],
         "full-row update",
     );
 
-    // A query timeout bounds each statement.
+    // A query timeout set again brings the transaction back.
     Orm::set_query_timeout(30);
     tally.hits = 3;
     let (saved, seen) = record(recorder, tally.save()).await;
@@ -199,7 +253,7 @@ async fn failed_plain_saves(recorder: &Recorder) {
     );
     assert_sent(
         &seen,
-        1,
+        0,
         &["INSERT INTO sp_cards (code, title) VALUES (?, ?) RETURNING id"],
         "insert of a duplicate",
     );
@@ -243,9 +297,9 @@ async fn failed_plain_saves(recorder: &Recorder) {
         matches!(saved, Err(Error::UniqueViolation { .. })),
         "{saved:?}"
     );
-    assert_eq!(seen.begins, 1, "full-row insert of a duplicate");
+    assert_eq!(seen.begins, 0, "full-row insert of a duplicate");
     assert_eq!(ledger.id, 0);
-    assert_eq!(row_count("sp_ledgers").await, 1);
+    assert_eq!(row_count("sp_ledgers").await, 2);
 
     let mut vanished = Tally::find(1).await.expect("load").expect("tally 1");
     execute("DELETE FROM sp_tallies WHERE id = 1").await;
@@ -254,7 +308,7 @@ async fn failed_plain_saves(recorder: &Recorder) {
     assert!(matches!(saved, Err(Error::RecordNotFound)), "{saved:?}");
     assert_sent(
         &seen,
-        1,
+        0,
         &["UPDATE sp_tallies SET hits = ? WHERE id = ?"],
         "update of a deleted row",
     );

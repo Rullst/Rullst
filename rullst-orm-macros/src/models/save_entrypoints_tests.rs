@@ -95,17 +95,20 @@ fn tracked_saves_skip_unchanged_records_and_restore_the_snapshot_on_failure() {
                 "{entrypoint}: {prologue}"
             );
         }
+        // save(), save_with_tx() and, without auditing, the save without a
+        // transaction keep the snapshot; each restores it after a failure.
+        let autocommit = usize::from(!parsed.auditable);
         assert_eq!(
             generated
                 .matches("let original_snapshot = self . snapshot . clone () ;")
                 .count(),
-            2
+            2 + autocommit
         );
         assert_eq!(
             generated
                 .matches("self . id = original_id ; self . snapshot = original_snapshot ;")
                 .count(),
-            4
+            4 + autocommit
         );
     }
     let untracked: DeriveInput = parse_quote! { struct Lesson { id: i32, title: String } };
@@ -193,4 +196,44 @@ fn save_assigns_the_active_tenant_and_checks_the_policy() {
             .to_string()
             .contains("self . tenant_id = tenant . try_into ()")
     );
+}
+
+/// Without auditing, `save()` tries the single-statement save after joining
+/// a task-scoped transaction and before opening its own.
+#[test]
+fn save_tries_the_save_without_a_transaction_only_without_auditing() {
+    let plain: DeriveInput = parse_quote! {
+        struct Lesson { id: i32, title: String, #[sqlx(skip)] snapshot: RowSnapshot }
+    };
+    let parsed = crate::parser::parse(&plain).expect("parse model");
+    let generated = super::generate(&parsed).to_string();
+    let save = generated
+        .split_once("pub async fn save (& mut self)")
+        .expect("save()")
+        .1;
+    let (joined, owned) = save
+        .split_once("return self . save_with_tx (tx) . await ;")
+        .expect("task-scoped transaction join");
+    assert!(!joined.contains("__rullst_save_autocommit"), "{joined}");
+    let attempt = owned
+        .split_once("rullst_orm :: Orm :: begin_transaction ()")
+        .expect("owned transaction")
+        .0;
+    assert!(
+        attempt.contains("return self . __rullst_save_autocommit () . await ;"),
+        "{attempt}"
+    );
+    assert!(generated.contains("async fn __rullst_save_autocommit (& mut self)"));
+
+    let audited: DeriveInput = parse_quote! {
+        #[orm(auditable)]
+        struct Lesson { id: i32, title: String, #[sqlx(skip)] snapshot: RowSnapshot }
+    };
+    let parsed = crate::parser::parse(&audited).expect("parse model");
+    let generated = super::generate(&parsed).to_string();
+    assert!(
+        !generated.contains("__rullst_save_autocommit"),
+        "{generated}"
+    );
+    assert!(!generated.contains("__rullst_saves_in_one_statement"));
 }

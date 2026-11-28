@@ -17,6 +17,10 @@ For a counter, run one atomic statement such as \
 (`$1`, `$2` on PostgreSQL); raw SQL skips the model's tenant scope, policy, hooks, \
 audit and cache invalidation.
 
+With the query timeout off (`Orm::set_query_timeout(0)`; it is 30 seconds by default) \
+and without auditing, hooks, a policy or observers, the save runs its single \
+statement without a transaction.
+
 An insert also sends every field, so database column defaults do not apply, \
 except to fields marked `#[orm(db_default)]`, which inserts and updates never write.";
 
@@ -29,7 +33,10 @@ loaded or last saved with (see `dirty_columns()`), so concurrent edits of other 
 columns persist; the columns it did not write are then refreshed from the stored row. \
 With nothing changed it writes nothing, and runs nothing after the `saving` \
 observers; without a `before_save` hook, policy or observers it does not even open \
-a transaction. A handle that was not loaded from the database, or after \
+a transaction. With the query timeout off (`Orm::set_query_timeout(0)`; it is 30 \
+seconds by default) and without auditing, hooks, a policy or observers, an insert, or \
+an update that writes every column of a model without `#[orm(db_default)]` or \
+soft-delete columns, runs its single statement without a transaction. A handle that was not loaded from the database, or after \
 `mark_all_dirty()`, writes every column. Two writers of the same column still race \
 and the last writer wins: for a read-modify-write such as a counter, use \
 `update_partial()`, which merges into the freshly read row (locked with \

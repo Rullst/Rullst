@@ -2,7 +2,9 @@
 //! SQL backend: the transactions it opens, its statements (recorded here on
 //! PostgreSQL and MySQL/MariaDB; `save_statements_test` records SQLite's),
 //! and the stored row and handle after a rejected write, a missing row, a
-//! failing `after_save` hook and an outer rollback.
+//! failing `after_save` hook and an outer rollback. Since 13.1 an insert, a
+//! full-row update and a tracked update of every column of a model without
+//! hooks, policy, observers or auditing run without a transaction.
 
 use super::save_recorder::{Recorded, Recorder};
 use rullst_orm::schema::Schema;
@@ -137,9 +139,14 @@ pub(super) async fn exercise() {
     let expected = Expected { driver };
     let (recorder, _guard) = Recorder::install_local(&["contract_save_"]);
 
+    // Under a query timeout every save keeps its transaction (see
+    // `hooked_and_joined_saves`); these paths drop it only without one.
+    let timeout = rullst_orm::schema::get_query_timeout().map_or(0, |timeout| timeout.as_secs());
+    Orm::set_query_timeout(0);
     plain_saves(&recorder, &expected).await;
     failed_saves(&recorder, &expected).await;
     hooked_and_joined_saves(&recorder, &expected).await;
+    Orm::set_query_timeout(timeout);
 }
 
 async fn plain_saves(recorder: &Recorder, expected: &Expected) {
@@ -152,7 +159,7 @@ async fn plain_saves(recorder: &Recorder, expected: &Expected) {
     tally.save().await.expect("insert tally");
     expected.check(
         &recorder.take(),
-        1,
+        0,
         &expected.insert("contract_save_tallies", "hits"),
         "insert",
     );
@@ -160,7 +167,7 @@ async fn plain_saves(recorder: &Recorder, expected: &Expected) {
     tally.save().await.expect("update tally");
     expected.check(
         &recorder.take(),
-        1,
+        0,
         &expected.update("contract_save_tallies", "hits = ?"),
         "tracked update of every column",
     );
@@ -185,7 +192,7 @@ async fn plain_saves(recorder: &Recorder, expected: &Expected) {
     card.save().await.expect("full write of a card");
     expected.check(
         &recorder.take(),
-        1,
+        0,
         &expected.update("contract_save_cards", "code = ?, title = ?"),
         "tracked update after mark_all_dirty()",
     );
@@ -198,7 +205,7 @@ async fn plain_saves(recorder: &Recorder, expected: &Expected) {
     ledger.save().await.expect("insert ledger");
     expected.check(
         &recorder.take(),
-        1,
+        0,
         &expected.insert("contract_save_ledgers", "code, amount"),
         "full-row insert",
     );
@@ -206,7 +213,7 @@ async fn plain_saves(recorder: &Recorder, expected: &Expected) {
     ledger.save().await.expect("update ledger");
     expected.check(
         &recorder.take(),
-        1,
+        0,
         &expected.update("contract_save_ledgers", "code = ?, amount = ?"),
         "full-row update",
     );
@@ -230,7 +237,7 @@ async fn failed_saves(recorder: &Recorder, expected: &Expected) {
     );
     expected.check(
         &recorder.take(),
-        1,
+        0,
         &expected.insert("contract_save_cards", "code, title"),
         "insert of a duplicate",
     );
@@ -305,7 +312,7 @@ async fn failed_saves(recorder: &Recorder, expected: &Expected) {
     );
     expected.check(
         &recorder.take(),
-        1,
+        0,
         &expected.update("contract_save_tallies", "hits = ?"),
         "update of a deleted row",
     );
@@ -397,7 +404,8 @@ async fn hooked_and_joined_saves(recorder: &Recorder, expected: &Expected) {
     );
     recorder.take();
 
-    // A query timeout bounds each statement of the save.
+    // A statement that outlives a query timeout keeps running on the
+    // server, and only the transaction's rollback undoes it.
     let mut timed = stored;
     timed.hits = 3;
     Orm::set_query_timeout(30);
