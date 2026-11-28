@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795714550046,
+  "lastUpdate": 1795834440050,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -39497,6 +39497,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1477,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "44facd0393b7d047097cb556f20450c6fb507a4e",
+          "message": "Merge pull request #874 from Rullst/fix/v13-13-0-environment-resolution\n\nfix(core): resolve the configuration and environment before Server starts as Server does",
+          "timestamp": "2026-11-27T23:48:17-03:00",
+          "tree_id": "2e0127a360a7db4660db5666793c845ee5bc4777",
+          "url": "https://github.com/Rullst/Rullst/commit/44facd0393b7d047097cb556f20450c6fb507a4e"
+        },
+        "date": 1795834434142,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 546,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 774,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 383,
+            "range": "± 47",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1582,
+            "range": "± 22",
             "unit": "ns/iter"
           }
         ]
