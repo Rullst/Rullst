@@ -265,3 +265,24 @@ async fn orm_operations_outside_a_recorded_request_are_not_counted() {
     assert_eq!(installed.collector().queries(), 0);
     assert_eq!(installed.collector().findings().0, 0);
 }
+
+#[tokio::test]
+async fn the_process_subscriber_counts_the_orm_operations_of_recorded_requests() {
+    use crate::telemetry::subscriber_tests::{Lines, subscriber};
+    let installed = installed();
+    let app = installed.record(
+        Router::new()
+            // rullst-access: public — test fixture without data.
+            .route("/posts/{id}", axum::routing::get(post_with_comments)),
+    );
+    let process = subscriber(crate::telemetry::DEFAULT_LOG_FILTER, Lines::default());
+    let _guard = tracing::subscriber::set_default(process);
+    let request = get("/posts/42", CLIENT, &[]);
+    assert_eq!(app.oneshot(request).await.unwrap().status(), StatusCode::OK);
+
+    let collector = installed.collector();
+    assert_eq!(collector.queries(), 4);
+    let (total, findings) = collector.findings();
+    assert_eq!(total, 1);
+    assert_eq!(findings[0].fingerprint, "Comment.find (comments)");
+}

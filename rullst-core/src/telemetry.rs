@@ -5,6 +5,8 @@ use tracing_subscriber::Layer;
 /// Explicit minimized OTLP export and trusted cross-process propagation.
 #[cfg(feature = "telemetry")]
 pub mod distributed;
+#[cfg(test)]
+pub(crate) mod subscriber_tests;
 
 /// A diagnostic layer that warns when known sensitive field names appear in tracing events.
 ///
