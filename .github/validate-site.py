@@ -276,8 +276,8 @@ def local_home_target(reference: str) -> Path | None:
     if parsed.scheme or parsed.netloc or reference.startswith("mailto:"):
         return None
     path = parsed.path
-    if not path or path == "/" or path == "/Benchmarks/" or path.startswith("/Rullst/benches/"):
-        # The root landing itself, the separate Rullst/Benchmarks site and the
+    if not path or path == "/" or path.startswith("/Benchmarks/") or path.startswith("/Rullst/benches/"):
+        # The root landing itself, the separate Rullst/Benchmarks site (any of its pages) and the
         # dashboards assembled from gh-pages data are checked elsewhere.
         return None
     if path == "/Rullst/":
@@ -615,11 +615,11 @@ def validate_comparison(home: Document, home_pt: Document) -> None:
         assert text.count(RESULTS_BLOCK[0]) == 1 and 'class="benchmark-pending"' in text, (
             f"{name}: needs the benchmark-results block with its pending text"
         )
-    # "How to read these numbers": the same six points in both languages, naming
+    # "How to read these numbers": the same seven points in both languages, naming
     # the minimal row as the generator labels it, before the results block.
     for text, name, lang in ((source, COMPARE.name, "en"), (source_pt, COMPARE_PT_BR.name, "pt-BR")):
         howto = re.search(r'<div class="benchmark-howto">(.*?)</div>', text, re.DOTALL)
-        assert howto and len(re.findall(r"<li>", howto[1])) == 6, f"{name}: needs the six-point benchmark-howto block"
+        assert howto and len(re.findall(r"<li>", howto[1])) == 7, f"{name}: needs the seven-point benchmark-howto block"
         assert text.index('class="benchmark-howto"') < text.index(RESULTS_BLOCK[0]), f"{name}: benchmark-howto goes before the results"
         minimal = MINIMAL_NAMES[lang]
         assert f'"{minimal}"' in howto[1] and "cargo rullst new" in howto[1], f"{name}: benchmark-howto must explain {minimal}"
@@ -676,7 +676,8 @@ LANDING_RENDERING = {
         '<span class="landing-bench-value">0.90×* ‡</span>',
         "RAM: 12 MiB at the high-water mark under load (Axum: 17 MiB); 470 MiB after the 125 logins",
         "Stability under heavier load: pass.",
-        "scores Hello world 1.00×* ≈, Database 0.87×*, Application 0.98×* ‡ ≈; the gap between the two rows is what those layers cost.",
+        "scores Hello world 1.00×* ≈, Database 0.87×*, Application 0.98×* ‡ ≈; the gap between the two rows is roughly what <code>Server</code>'s production stack costs, <code>Server</code> itself included.",
+        "secure headers of Server&#x27;s production stack, on by default (its access log, also on by default, is off in the benchmark).",
         "<strong>12 MiB</strong> of RAM at its high-water mark under load and 470 MiB after 125 logins; Axum: 17 and 927 MiB",
         "MiB on the same runners (the RAM after the logins is in no score). Its Memory score is 1.00×: a tie with Axum. Its lowest speed score",
         "Its lowest speed score is Hello world: 0.48× Axum's.",

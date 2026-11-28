@@ -85,9 +85,48 @@ pub fn render_note(note: &str) -> Markup {
         .collect()
 }
 
+/// Whether Rullst `version` honours `RULLST_ACCESS_LOG=off`, which Rullst/Benchmarks sets:
+/// 13.0.0-alpha.6 and every later release do; earlier ones wrote an access-log line per request.
+pub fn access_log_off(version: &str) -> bool {
+    let (release, pre) = version.split_once('-').unwrap_or((version, ""));
+    let parts: Vec<Option<u64>> = release.split('.').map(|part| part.parse().ok()).collect();
+    let [Some(major), Some(minor), Some(patch)] = parts[..] else {
+        return false;
+    };
+    if (major, minor, patch) != (13, 0, 0) {
+        return (major, minor, patch) > (13, 0, 0);
+    }
+    match pre.strip_prefix("alpha.") {
+        Some(number) => number.parse::<u64>().is_ok_and(|number| number >= 6),
+        None => true,
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{number, render_note};
+    use super::{access_log_off, number, render_note};
+
+    #[test]
+    fn the_access_log_is_off_from_alpha_6() {
+        for version in [
+            "13.0.0-alpha.6",
+            "13.0.0-rc.1",
+            "13.0.0",
+            "13.1.0",
+            "14.0.0-alpha.1",
+        ] {
+            assert!(access_log_off(version), "{version}");
+        }
+        for version in [
+            "13.0.0-alpha.5",
+            "13.0.0-alpha.1",
+            "12.3.0",
+            "13.0",
+            "unknown",
+        ] {
+            assert!(!access_log_off(version), "{version}");
+        }
+    }
     use crate::pages::Lang;
 
     #[test]
