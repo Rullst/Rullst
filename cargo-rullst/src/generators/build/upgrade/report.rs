@@ -95,7 +95,8 @@ fn selection_note(selection: &RuleSelection) -> Option<String> {
 /// The warning of a plan for a project that already uses the target
 /// version without `--from`: the rules introduced in that version were
 /// skipped with the earlier ones, so a plan without findings says nothing
-/// about them.
+/// about them. It also names the `--from` that reruns the alpha.6 rules
+/// rc.1 widened, which keep alpha.6 as their release (#896).
 pub(super) fn at_target_warning(target: &Version, selection: &RuleSelection) -> Option<String> {
     let current = selection.current.as_ref()?;
     if selection.from.is_some()
@@ -108,7 +109,7 @@ pub(super) fn at_target_warning(target: &Version, selection: &RuleSelection) -> 
         .map(|release| format!(" (for example `--from {release}`)"))
         .unwrap_or_default();
     Some(format!(
-        "this project already uses {current}, the target version, so the rules introduced in {current} and earlier did not run, and a plan without findings says nothing about them; to apply the rules introduced since the version you upgraded from, run `cargo rullst upgrade --dry-run --from <VERSION>` with that version{example}, or `--all-rules` for every rule"
+        "this project already uses {current}, the target version, so the rules introduced in {current} and earlier did not run, and a plan without findings says nothing about them; to apply the rules introduced since the version you upgraded from, run `cargo rullst upgrade --dry-run --from <VERSION>` with that version{example}, or `--all-rules` for every rule; a rule keeps the release that introduced it when a later release widens it, so the five alpha.6 rules that 13.0.0-rc.1 widened need `--from 13.0.0-alpha.5` or earlier"
     ))
 }
 

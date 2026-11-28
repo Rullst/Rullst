@@ -377,7 +377,7 @@ introduced in it, not after it. Since the 13.0.0-rc.1 CLI the plan says so,
 under the `Rules:` line:
 
 ```text
-  WARNING: this project already uses 13.0.0-alpha.6, the target version, so the rules introduced in 13.0.0-alpha.6 and earlier did not run, and a plan without findings says nothing about them; to apply the rules introduced since the version you upgraded from, run `cargo rullst upgrade --dry-run --from <VERSION>` with that version (for example `--from 13.0.0-alpha.5`), or `--all-rules` for every rule
+  WARNING: this project already uses 13.0.0-alpha.6, the target version, so the rules introduced in 13.0.0-alpha.6 and earlier did not run, and a plan without findings says nothing about them; to apply the rules introduced since the version you upgraded from, run `cargo rullst upgrade --dry-run --from <VERSION>` with that version (for example `--from 13.0.0-alpha.5`), or `--all-rules` for every rule; a rule keeps the release that introduced it when a later release widens it, so the five alpha.6 rules that 13.0.0-rc.1 widened need `--from 13.0.0-alpha.5` or earlier
 ```
 
 `--from <VERSION>` applies the rules introduced after that exact version
@@ -389,11 +389,20 @@ cargo rullst upgrade --dry-run --from 13.0.0-alpha.5
 
 The plan then names both versions (`Rules: introduced after
 13.0.0-alpha.5, passed with --from (this project uses 13.0.0-alpha.6); …`)
-and links the checklist for the `--from` version. `--from` cannot be newer
+and links the checklist for the `--from` version (only that one: with
+`--from 13.0.0-alpha.5 --to 13.0.0-rc.1`, follow the alpha.6 to rc.1
+checklist after the alpha.5 to alpha.6 one). `--from` cannot be newer
 than the project's version, which would skip rules the project was never
 checked against, and cannot be combined with `--all-rules`. It is refused
 when the project's version cannot be read from its manifests or
 `Cargo.lock`, because every rule applies then.
+
+A rule that a later release widens keeps the release that introduced it, so
+`--from` with the version a project upgraded from does not rerun it.
+13.0.0-rc.1 widened five alpha.6 rules; an application upgraded from alpha.6
+runs them with `--from 13.0.0-alpha.5`, as step 2 of the
+[alpha.6 to rc.1 checklist](../migration-v13.md#upgrading-an-alpha6-application-to-rc1)
+describes. Since the 13.0.0-rc.2 CLI the warning above ends with this.
 
 ### JSON plan fields
 

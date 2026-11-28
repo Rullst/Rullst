@@ -20,7 +20,7 @@ fn a_project_already_on_the_target_is_warned_that_its_rules_did_not_run() {
     let root = Path::new("/project");
     let alpha3 = Version::parse("13.0.0-alpha.3").unwrap();
     let scan = scan_from(Some("13.0.0-alpha.3"), None);
-    let warning = "this project already uses 13.0.0-alpha.3, the target version, so the rules introduced in 13.0.0-alpha.3 and earlier did not run, and a plan without findings says nothing about them; to apply the rules introduced since the version you upgraded from, run `cargo rullst upgrade --dry-run --from <VERSION>` with that version (for example `--from 13.0.0-alpha.2`), or `--all-rules` for every rule";
+    let warning = "this project already uses 13.0.0-alpha.3, the target version, so the rules introduced in 13.0.0-alpha.3 and earlier did not run, and a plan without findings says nothing about them; to apply the rules introduced since the version you upgraded from, run `cargo rullst upgrade --dry-run --from <VERSION>` with that version (for example `--from 13.0.0-alpha.2`), or `--all-rules` for every rule; a rule keeps the release that introduced it when a later release widens it, so the five alpha.6 rules that 13.0.0-rc.1 widened need `--from 13.0.0-alpha.5` or earlier";
     let text = report::plan_text(root, &alpha3, &[], &scan);
     assert!(
         text.contains(&format!(
@@ -48,8 +48,23 @@ fn a_project_already_on_the_target_is_warned_that_its_rules_did_not_run() {
         report::at_target_warning(&alpha1, &scan_from(Some("13.0.0-alpha.1"), None).selection)
             .as_deref(),
         Some(
-            "this project already uses 13.0.0-alpha.1, the target version, so the rules introduced in 13.0.0-alpha.1 and earlier did not run, and a plan without findings says nothing about them; to apply the rules introduced since the version you upgraded from, run `cargo rullst upgrade --dry-run --from <VERSION>` with that version, or `--all-rules` for every rule"
+            "this project already uses 13.0.0-alpha.1, the target version, so the rules introduced in 13.0.0-alpha.1 and earlier did not run, and a plan without findings says nothing about them; to apply the rules introduced since the version you upgraded from, run `cargo rullst upgrade --dry-run --from <VERSION>` with that version, or `--all-rules` for every rule; a rule keeps the release that introduced it when a later release widens it, so the five alpha.6 rules that 13.0.0-rc.1 widened need `--from 13.0.0-alpha.5` or earlier"
         )
+    );
+
+    // An rc.1 project upgraded from alpha.6: the example reruns the rc.1
+    // rules only, so the warning also names the `--from` that reruns the
+    // alpha.6 rules rc.1 widened (#896).
+    let rc1 = Version::parse("13.0.0-rc.1").unwrap();
+    let warning =
+        report::at_target_warning(&rc1, &scan_from(Some("13.0.0-rc.1"), None).selection).unwrap();
+    assert!(
+        warning.contains("with that version (for example `--from 13.0.0-alpha.6`), or `--all-rules` for every rule; "),
+        "{warning}"
+    );
+    assert!(
+        warning.ends_with("the five alpha.6 rules that 13.0.0-rc.1 widened need `--from 13.0.0-alpha.5` or earlier"),
+        "{warning}"
     );
 
     // An older project, `--from`, `--all-rules`, an unknown version, and a
