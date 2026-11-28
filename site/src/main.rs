@@ -19,10 +19,11 @@
 //! `--benchmarks-max-age-days` days before `--today` (default 90), the pages keep their
 //! "no current results" text and the program prints a warning instead of failing.
 //!
-//! `--footprint` reads `footprint.json` and `footprint-pt-br.json` from the working
-//! directory: the `cargo rullst footprint --url https://rullst.win --page-weight --json`
-//! reports of the published `/` and `/pt-br/`. Each landing's footer shows its page weight
-//! only when its report passes every check; otherwise the line is left out, with a warning.
+//! `--footprint` reads the `cargo rullst footprint --url https://rullst.win --page-weight
+//! --json` reports of the published pages from the working directory, by the names in
+//! `footprint::FILES` (`footprint.json` for `/`, `footprint-pt-br.json` for `/pt-br/`, and the
+//! comparison and privacy pages). Each page's footer shows its weight only when its report
+//! passes every check; otherwise the line is left out, with a warning.
 //!
 //! The Rullst/Rullst.github.io deployment runs this program from a read-only checkout of
 //! this repository's main branch; `validate-site.py` runs it too.

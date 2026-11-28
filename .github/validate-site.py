@@ -725,7 +725,16 @@ def table_rows(results: str) -> list[str]:
 
 # The files the generator reads from its working directory, by fixed name.
 BENCHMARK_INPUT = "benchmarks.json"
-FOOTPRINT_INPUTS = ("footprint.json", "footprint-pt-br.json")
+# The report of each weighed page (site/src/footprint.rs FILES) and the page it describes.
+FOOTPRINT_PAGES = {
+    "footprint.json": ("/", "index.html", "en"),
+    "footprint-pt-br.json": ("/pt-br/", "pt-br/index.html", "pt-BR"),
+    "footprint-compare.json": ("/compare/", "compare/index.html", "en"),
+    "footprint-pt-br-compare.json": ("/pt-br/comparar/", "pt-br/comparar/index.html", "pt-BR"),
+    "footprint-privacy.json": ("/privacy.html", "privacy.html", "en"),
+    "footprint-pt-br-privacy.json": ("/pt-br/privacy.html", "pt-br/privacy.html", "pt-BR"),
+}
+FOOTPRINT_INPUTS = tuple(FOOTPRINT_PAGES)
 
 
 def write_input(path: Path, text: str) -> None:
@@ -999,17 +1008,29 @@ def footprint_variant(change=None, path: str = "/") -> str:
 
 
 def validate_footprint_rendering() -> None:
-    """The landing's page weight from a report of the published site, and the reports it must not show."""
-    reports = {"footprint.json": footprint_variant(), "footprint-pt-br.json": footprint_variant(path="/pt-br/")}
+    """Each page's weight from a report of the published site, and the reports it must not show."""
+    reports = {name: footprint_variant(path=path) for name, (path, _page, _lang) in FOOTPRINT_PAGES.items()}
+    details = {"en": ("0 kB on a repeat visit (7 of 7 answered by the browser cache)", "no request to another site",
+                      "bodies compressed with gzip and zstd"),
+               "pt-BR": ("0 kB numa nova visita (7 de 7 respostas vindas do cache do navegador)",
+                         "nenhuma requisição a outro site", "corpos compactados com gzip e zstd")}
     with tempfile.TemporaryDirectory(prefix="rullst-root-site-") as temp:
         site, warnings = generate(Path(temp) / "measured", today=FOOTPRINT_DAY, footprint=reports)
         assert not warnings, f"the footprint fixture must be shown: {warnings!r}"
-        for lang, page in (("en", "index.html"), ("pt-BR", "pt-br/index.html")):
-            line = made_with_line((site / page).read_text(encoding="utf-8").split("<footer", 1)[1])
+        for _path, page, lang in FOOTPRINT_PAGES.values():
+            footer = (site / page).read_text(encoding="utf-8").split("<footer", 1)[1]
+            line = made_with_line(footer)
+            assert 'class="built-with"' in footer, f"{page}: the footer carries the Made with Rullst badge"
             assert LANGUAGES[lang]["page_weight"] in line and '<time datetime="2026-11-22">' in line, f"{page}: page weight {line!r}"
             assert "footprint 13.0.0-rc.1</a>" in line, f"{page}: the page weight names the CLI version"
+            for detail in details[lang]:
+                assert detail in line, f"{page}: the page weight needs {detail!r}: {line!r}"
+        # A page without a report has no weight line; the others keep theirs.
+        site, _warnings = generate(Path(temp) / "landing-only", today=FOOTPRINT_DAY,
+                                   footprint={"footprint.json": reports["footprint.json"]})
+        assert "This page:" in (site / "index.html").read_text(encoding="utf-8"), "the landing keeps its weight"
         for page in ("compare/index.html", "privacy.html"):
-            assert "This page:" not in (site / page).read_text(encoding="utf-8"), f"{page}: only the landing is weighed"
+            assert "This page:" not in (site / page).read_text(encoding="utf-8"), f"{page}: no report, no weight line"
         # A day later the report is still shown; two days later it is not.
         later = date.fromordinal(date.fromisoformat(FOOTPRINT_DAY).toordinal() + 2).isoformat()
         rejected = (

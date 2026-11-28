@@ -333,7 +333,7 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                     </section>
                     <section id="benchmarks" aria-labelledby="benchmarks-heading">
                         <h2 id="benchmarks-heading">"Performance"</h2>
-                        <p>"These numbers are not written by hand: each daily build of this site inserts the latest results of the "<a href="/Benchmarks/">"Rullst/Benchmarks"</a>" suite for the three frameworks, Actix Web and Gin, plus a minimal Rullst configuration. Rullst's maintainer also maintains that benchmark and wrote every implementation in it. Its results page says whether these results pass the benchmark's own publication gate."</p>
+                        <p>"These numbers are not written by hand. The benchmark measures each new Rullst release once, and each daily build of this site inserts its latest results from the "<a href="/Benchmarks/">"Rullst/Benchmarks"</a>" suite for the three frameworks, Actix Web and Gin, plus a minimal Rullst configuration. Rullst's maintainer also maintains that benchmark and wrote every implementation in it. Its results page says whether these results pass the benchmark's own publication gate."</p>
                         <div class="benchmark-howto">
                             <h3>"How to read these numbers"</h3>
                             <ul>
@@ -361,7 +361,7 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                         </ul>
                     </section>
                 </main>
-                <footer class="shell footer-bottom"><a href="/">"Rullst home"</a>{made_with::short(Lang::En)}<a href="mailto:officialrullst@gmail.com">"Contact the team"</a></footer>
+                {made_with::page_footer(cx, Lang::En, "/compare/", ("/", "Rullst home"), "Contact the team")}
             </body>
         </html>
     }

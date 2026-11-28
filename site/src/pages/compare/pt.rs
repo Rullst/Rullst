@@ -333,7 +333,7 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                     </section>
                     <section id="benchmarks" aria-labelledby="benchmarks-heading">
                         <h2 id="benchmarks-heading">"Desempenho"</h2>
-                        <p>"Estes números não são escritos à mão: cada build diário deste site insere os resultados mais recentes da suíte "<a href="/Benchmarks/">"Rullst/Benchmarks"</a>" para os três frameworks, o Actix Web e o Gin, além de uma configuração mínima do Rullst. O mantenedor do Rullst também mantém esse benchmark e escreveu todas as implementações dele. A página de resultados dele diz se estes resultados passam pela porta de publicação do próprio benchmark."</p>
+                        <p>"Estes números não são escritos à mão. O benchmark mede cada nova versão do Rullst uma vez, e cada build diário deste site insere os resultados mais recentes da suíte "<a href="/Benchmarks/">"Rullst/Benchmarks"</a>" para os três frameworks, o Actix Web e o Gin, além de uma configuração mínima do Rullst. O mantenedor do Rullst também mantém esse benchmark e escreveu todas as implementações dele. A página de resultados dele diz se estes resultados passam pela porta de publicação do próprio benchmark."</p>
                         <div class="benchmark-howto">
                             <h3>"Como ler estes números"</h3>
                             <ul>
@@ -361,7 +361,7 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                         </ul>
                     </section>
                 </main>
-                <footer class="shell footer-bottom"><a href="/pt-br/">"Página inicial do Rullst"</a>{made_with::short(Lang::PtBr)}<a href="mailto:officialrullst@gmail.com">"Fale com a equipe"</a></footer>
+                {made_with::page_footer(cx, Lang::PtBr, "/pt-br/comparar/", ("/pt-br/", "Página inicial do Rullst"), "Fale com a equipe")}
             </body>
         </html>
     }

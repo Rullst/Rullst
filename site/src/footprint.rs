@@ -1,5 +1,6 @@
-//! The landing pages' weight, as `cargo rullst footprint --url https://rullst.win --page-weight
-//! --json` measured the published pages during the deployment.
+//! Each page's weight, as `cargo rullst footprint --url https://rullst.win --page-weight
+//! --json` measured the published pages during the deployment: the landing, comparison and
+//! privacy pages in both languages.
 //!
 //! A report is shown only when every check passes: the schema, the CLI version this site is
 //! built with, the published origin and page path, a measurement from today or yesterday
@@ -19,32 +20,47 @@ use crate::pages::{Lang, RULLST_VERSION};
 pub const SCHEMA: &str = "rullst.footprint.v1";
 /// The published site; a report's target is this origin and the page path.
 pub const ORIGIN: &str = "https://rullst.win";
-/// The report of each landing, by the fixed names `--footprint` reads.
-pub const FILES: [(&str, &str); 2] = [("footprint.json", "/"), ("footprint-pt-br.json", "/pt-br/")];
+/// The report of each page, by the fixed names `--footprint` reads, and the page's path.
+pub const FILES: [(&str, &str); 6] = [
+    ("footprint.json", "/"),
+    ("footprint-pt-br.json", "/pt-br/"),
+    ("footprint-compare.json", "/compare/"),
+    ("footprint-pt-br-compare.json", "/pt-br/comparar/"),
+    ("footprint-privacy.json", "/privacy.html"),
+    ("footprint-pt-br-privacy.json", "/pt-br/privacy.html"),
+];
 
-/// One page's measured first visit.
+/// One page's measured first and repeat visits.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Weight {
     pub bytes: u64,
     pub requests: u64,
+    /// The bytes a repeat visit downloaded, and how many of the page's requests the browser
+    /// cache answered then; `None` when the report has no repeat visit.
+    pub repeat: Option<(u64, u64)>,
+    /// The content encodings the published site served the bodies with, such as `zstd`.
+    pub encodings: Vec<String>,
     pub measured_on: Date,
     pub cli_version: String,
 }
 
-/// The measured weight of each landing, when its report passed the checks.
+/// The measured weight of each page whose report passed the checks, by path.
 #[derive(Clone, Debug, Default)]
 pub struct Weights {
-    pub en: Option<Weight>,
-    pub pt: Option<Weight>,
+    pub pages: Vec<(&'static str, Weight)>,
 }
 
 impl Weights {
+    /// The landing of `lang`.
     pub fn of(&self, lang: Lang) -> Option<&Weight> {
-        if lang.is_pt() {
-            self.pt.as_ref()
-        } else {
-            self.en.as_ref()
-        }
+        self.page(if lang.is_pt() { "/pt-br/" } else { "/" })
+    }
+
+    pub fn page(&self, path: &str) -> Option<&Weight> {
+        self.pages
+            .iter()
+            .find(|(page, _)| *page == path)
+            .map(|(_, weight)| weight)
     }
 }
 
@@ -121,9 +137,27 @@ pub fn check(report: &Value, path: &str, today: Date) -> Result<Weight, String> 
     if !first_is_page || !all_ok || u64::try_from(resources.len()).ok() != Some(requests) {
         return Err("a resource did not load with 200".to_string());
     }
+    let repeat = count(&["repeat_visit", "bytes"])
+        .zip(count(&["repeat_visit", "from_cache"]))
+        .filter(|(_, from_cache)| *from_cache <= requests);
+    let mut encodings: Vec<String> = resources
+        .iter()
+        .filter_map(|resource| resource.get("content_encoding").and_then(Value::as_str))
+        .filter(|encoding| {
+            !encoding.is_empty()
+                && encoding
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '-')
+        })
+        .map(str::to_string)
+        .collect();
+    encodings.sort();
+    encodings.dedup();
     Ok(Weight {
         bytes,
         requests,
+        repeat,
+        encodings,
         measured_on,
         cli_version: cli_version.to_string(),
     })
@@ -141,12 +175,13 @@ fn load(file: &str, path: &str, today: Date) -> Option<Weight> {
     }
 }
 
-/// The weight of both landings, each from its report in the working directory.
+/// The weight of every page in [`FILES`], each from its report in the working directory.
 pub fn load_all(today: Date) -> Weights {
-    let [(en_file, en_path), (pt_file, pt_path)] = FILES;
     Weights {
-        en: load(en_file, en_path, today),
-        pt: load(pt_file, pt_path, today),
+        pages: FILES
+            .iter()
+            .filter_map(|&(file, path)| load(file, path, today).map(|weight| (path, weight)))
+            .collect(),
     }
 }
 
@@ -155,18 +190,78 @@ pub fn kilobytes(bytes: u64) -> u64 {
     (bytes.saturating_add(500) / 1000).max(1)
 }
 
-/// "This page: 484 kB in 7 requests …", for the landing's footer.
+/// The words of the weight sentence in one language.
+struct Words {
+    page: &'static str,
+    first_visit: &'static str,
+    repeat_visit: &'static str,
+    of: &'static str,
+    from_cache: &'static str,
+    no_other_site: &'static str,
+    compressed_with: &'static str,
+    and: &'static str,
+    as_served: &'static str,
+    bodies_as_served: &'static str,
+    measured_with: &'static str,
+    on: &'static str,
+}
+
+const EN: Words = Words {
+    page: "This page: ",
+    first_visit: " requests on a first visit",
+    repeat_visit: " kB on a repeat visit (",
+    of: " of ",
+    from_cache: " answered by the browser cache)",
+    no_other_site: ", no request to another site; ",
+    compressed_with: "bodies compressed with ",
+    and: " and ",
+    as_served: ", as the published site serves them",
+    bodies_as_served: "bodies as the published site serves them",
+    measured_with: ". Measured with ",
+    on: " on ",
+};
+
+const PT: Words = Words {
+    page: "Esta página: ",
+    first_visit: " requisições na primeira visita",
+    repeat_visit: " kB numa nova visita (",
+    of: " de ",
+    from_cache: " respostas vindas do cache do navegador)",
+    no_other_site: ", nenhuma requisição a outro site; ",
+    compressed_with: "corpos compactados com ",
+    and: " e ",
+    as_served: ", como o site publicado os serve",
+    bodies_as_served: "corpos como o site publicado os serve",
+    measured_with: ". Medida com o ",
+    on: " em ",
+};
+
+/// "This page: 484 kB in 7 requests on a first visit, …", for a page's footer. Every figure
+/// comes from the report; a part the report lacks is left out.
 pub fn render(weight: &Weight, lang: Lang) -> Markup {
-    let size = crate::benchmarks::format::number(kilobytes(weight.bytes) as f64, 0, lang);
+    let words = if lang.is_pt() { &PT } else { &EN };
+    let kb = |bytes: u64| crate::benchmarks::format::number(kilobytes(bytes) as f64, 0, lang);
     let requests = weight.requests;
     let day = weight.measured_on;
     let date = html! { <time datetime={day.iso()}>{day.long(lang.is_pt())}</time> };
     let tool = html! { <a href="/Rullst/book/footprint.html#a-published-site">"cargo rullst footprint "{weight.cli_version.as_str()}</a> };
-    if lang.is_pt() {
-        html! { "Esta página: "{size}" kB em "{requests}" requisições na primeira visita (corpos compactados, como o site publicado os serve), medida com o "{tool}" em "{date}"." }
+    let repeat = weight.repeat.map(|(bytes, from_cache)| {
+        let size = if bytes == 0 {
+            "0".to_string()
+        } else {
+            kb(bytes)
+        };
+        html! { ", "{size}{words.repeat_visit}{from_cache}{words.of}{requests}{words.from_cache} }
+    });
+    let compressed = if weight.encodings.is_empty() {
+        html! { {words.bodies_as_served} }
     } else {
-        html! { "This page: "{size}" kB in "{requests}" requests on a first visit (bodies compressed as the published site serves them), measured with "{tool}" on "{date}"." }
-    }
+        let encodings = weight.encodings.join(words.and);
+        html! { {words.compressed_with}{encodings}{words.as_served} }
+    };
+    let size = kb(weight.bytes);
+    let unit = if lang.is_pt() { " kB em " } else { " kB in " };
+    html! { {words.page}{size}{unit}{requests}{words.first_visit}{repeat}{words.no_other_site}{compressed}{words.measured_with}{tool}{words.on}{date}"." }
 }
 
 #[cfg(test)]
@@ -182,6 +277,8 @@ mod tests {
         let day = Date::parse("2026-11-22").unwrap();
         let weight = check(&report(), "/", day).unwrap();
         assert_eq!((weight.bytes, weight.requests), (483_633, 7));
+        assert_eq!(weight.repeat, Some((0, 7)));
+        assert!(weight.encodings.iter().any(|encoding| encoding == "zstd"));
         assert!(check(&report(), "/", Date::from_days(day.days() + 1)).is_ok());
         assert!(check(&report(), "/", Date::from_days(day.days() + 2)).is_err());
         assert!(check(&report(), "/", Date::from_days(day.days() - 1)).is_err());

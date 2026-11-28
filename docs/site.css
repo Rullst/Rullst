@@ -352,6 +352,19 @@ h1 { margin: 0; font-size: clamp(3rem, 4.5vw, 4rem); line-height: 1.08; font-wei
 .made-with-line a { color: #c4d8b6; }
 .made-with-line code { color: #c4d8b6; }
 .footer-bottom .made-with-line { padding-top: 0; }
+.built-with { display: flex; align-items: center; gap: 1rem; margin: 1.6rem 0 0; padding: 1rem 1.2rem; border: 1px solid #3d503a; border-radius: 12px; background: linear-gradient(150deg, #152017, #0c130f); }
+.built-with-mark { display: flex; flex: none; align-items: center; justify-content: center; width: 2.6rem; height: 2.6rem; border: 1px solid #3d503a; border-radius: 10px; background: #1b2a1d; color: var(--green); font-size: 1.25rem; font-weight: 700; }
+.built-with-mark span { color: var(--orange); }
+.built-with-body { flex: 1; min-width: 0; }
+.built-with-title { margin: 0; color: var(--text); font-size: 0.95rem; font-weight: 600; }
+.built-with .made-with-line { padding-top: 0.3rem; }
+.built-with-source { flex: none; color: var(--green); font: 0.72rem var(--mono); text-decoration: none; }
+.built-with-source:hover { text-decoration: underline; }
+.page-footer { padding-bottom: 0.4rem; }
+@media (max-width: 580px) {
+  .built-with { flex-wrap: wrap; }
+  .built-with-source { flex-basis: 100%; }
+}
 
 .hero { grid-template-areas: "copy art" "copy install" "proof proof"; row-gap: 1rem; }
 .hero-content { grid-area: copy; }

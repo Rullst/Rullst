@@ -242,7 +242,7 @@ pub fn footer(cx: &Context) -> Markup {
                         </div>
                     </details>
                 </section>
-                {made_with::line(Lang::En, weight)}
+                {made_with::badge(Lang::En, weight)}
                 <div class="footer-bottom"><span>"Built with care. Shared in the open."</span><a href="#main">"Back to top ↑"</a></div>
             </div>
             <p class="glory">"All glory and honor to God יהוה in the name of Yeshua the Messiah (Jesus Christ)."</p>
