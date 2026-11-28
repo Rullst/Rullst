@@ -3,7 +3,7 @@
 //! struct fields of [`ChronoBindings`] that hold one, and the expressions
 //! that start with or reach one.
 
-use super::{ChronoBindings, collect, elements, is_chrono_type, is_punct};
+use super::{ChronoBindings, collect, elements, is_chrono_type, is_ident, is_punct};
 use proc_macro2::{Delimiter, TokenTree};
 use std::collections::BTreeSet;
 
@@ -23,6 +23,21 @@ const ORM_PATHS: [&str; 3] = ["orm", "rullst_orm", "db"];
 /// value (`at.in_tz("America/Sao_Paulo")?`).
 const JIFF_METHODS: [&str; 3] = ["in_tz", "to_zoned", "to_zoned_datetime"];
 
+/// Methods that return the value they are called on, or the fallback they
+/// are given (`paid_at.unwrap_or_else(Timestamp::now)`), so a field read
+/// keeps its type through them.
+const KEEPING_METHODS: [&str; 9] = [
+    "clone",
+    "to_owned",
+    "cloned",
+    "copied",
+    "unwrap",
+    "expect",
+    "unwrap_or",
+    "unwrap_or_else",
+    "unwrap_or_default",
+];
+
 /// Whether the type `tokens` is a jiff value's: a type that does not name
 /// chrono and names jiff, `civil`, `Zoned`, `Timestamp`, or one of
 /// [`JIFF_TYPES`] without a type argument (`rullst::orm::Date`).
@@ -39,6 +54,17 @@ pub(super) fn is_jiff_type(tokens: &[TokenTree]) -> bool {
         })
     }
     !is_chrono_type(tokens) && names(tokens)
+}
+
+/// The body of the closure `tokens` (`|..| body`, also after `move`), or
+/// `None` when `tokens` is not a closure.
+fn closure_body(tokens: &[TokenTree]) -> Option<&[TokenTree]> {
+    let start = usize::from(is_ident(tokens.first(), "move"));
+    if !is_punct(tokens.get(start), '|') {
+        return None;
+    }
+    let close = (start + 1..tokens.len()).find(|at| is_punct(tokens.get(*at), '|'))?;
+    Some(&tokens[close + 1..])
 }
 
 /// Whether the expression `tokens` only reads a field: `name.field`, more
@@ -71,16 +97,58 @@ impl ChronoBindings {
     /// Whether the argument at `index` of `args` (a call's arguments) needs
     /// no change for an API that takes jiff values: it holds a jiff value
     /// and no chrono value, or it reads a field the file does not declare
-    /// with a chrono type (`payment.paid_at`). Such a field belongs to a
-    /// struct declared elsewhere; a model's chrono field is reported there
-    /// (`V13-ORM-CHRONO-TYPES`), and the read compiles unchanged once the
-    /// field is a Rullst ORM type. A chrono field of another file's struct
-    /// that is not a model is reported by no rule; the compiler reports the
-    /// call.
+    /// with a chrono type (`payment.paid_at`), also through `?` and
+    /// [`KEEPING_METHODS`] (`payment.paid_at.unwrap_or_else(Timestamp::now)`).
+    /// Such a field belongs to a struct declared elsewhere; a model's chrono
+    /// field is reported there (`V13-ORM-CHRONO-TYPES`), and the read
+    /// compiles unchanged once the field is a Rullst ORM type. A chrono field
+    /// of another file's struct that is not a model is reported by no rule;
+    /// the compiler reports the call.
     pub(in super::super::super) fn jiff_argument(&self, args: &[TokenTree], index: usize) -> bool {
         elements(args).nth(index).is_some_and(|argument| {
-            self.holds_jiff(argument) || (field_read(argument) && !self.is_chrono_value(argument))
+            let read = self.before_kept_calls(argument);
+            self.holds_jiff(argument) || (field_read(read) && !self.is_chrono_value(read))
         })
+    }
+
+    /// The expression `tokens` without the `?` and the calls of
+    /// [`KEEPING_METHODS`] that end it, as long as their arguments are not
+    /// chrono ([`Self::not_chrono`]; `paid_at.unwrap_or_else(Utc::now)`
+    /// reads a chrono field).
+    fn before_kept_calls<'a>(&self, mut tokens: &'a [TokenTree]) -> &'a [TokenTree] {
+        loop {
+            tokens = match tokens {
+                [rest @ .., TokenTree::Punct(question)] if question.as_char() == '?' => rest,
+                [
+                    rest @ ..,
+                    TokenTree::Punct(dot),
+                    TokenTree::Ident(method),
+                    TokenTree::Group(args),
+                ] if dot.as_char() == '.'
+                    && KEEPING_METHODS.iter().any(|name| method == name)
+                    && elements(&collect(args.stream())).all(|arg| self.not_chrono(arg)) =>
+                {
+                    rest
+                }
+                _ => return tokens,
+            };
+        }
+    }
+
+    /// Whether the fallback `tokens` is not chrono: it holds no chrono
+    /// value, names no chrono type and is not a function of the file that
+    /// returns one (`now_utc`). A closure counts only when its body holds a
+    /// jiff value (`|| Timestamp::now()`).
+    fn not_chrono(&self, tokens: &[TokenTree]) -> bool {
+        match closure_body(tokens) {
+            Some(body) => self.holds_jiff(body),
+            None => {
+                let function = tokens.last().is_some_and(|last| {
+                    matches!(last, TokenTree::Ident(name) if self.functions.contains(&name.to_string()))
+                });
+                !self.is_chrono_value(tokens) && !is_chrono_type(tokens) && !function
+            }
+        }
     }
 
     /// Whether the expression `tokens` holds a jiff value (see the module
