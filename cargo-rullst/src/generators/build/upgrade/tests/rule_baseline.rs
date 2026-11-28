@@ -52,6 +52,32 @@ fn a_project_already_on_the_target_is_warned_that_its_rules_did_not_run() {
         )
     );
 
+    // An rc.1 project upgraded from alpha.6: the example reruns the rc.1
+    // rules only, so the warning also names the `--from` that reruns the
+    // alpha.6 rules rc.1 widened (#896).
+    let rc1 = Version::parse("13.0.0-rc.1").unwrap();
+    let warning =
+        report::at_target_warning(&rc1, &scan_from(Some("13.0.0-rc.1"), None).selection).unwrap();
+    assert!(
+        warning.contains("with that version (for example `--from 13.0.0-alpha.6`), or `--all-rules` for every rule; "),
+        "{warning}"
+    );
+    assert!(
+        warning.ends_with("the five alpha.6 rules that 13.0.0-rc.1 widened need `--from 13.0.0-alpha.5` or earlier"),
+        "{warning}"
+    );
+    // Before rc.1 the sentence would name a `--from` newer than the project,
+    // which the CLI refuses: an alpha.6 project, like the alpha.1 and alpha.3
+    // ones above, ends with `--all-rules`.
+    let alpha6 = Version::parse("13.0.0-alpha.6").unwrap();
+    let warning =
+        report::at_target_warning(&alpha6, &scan_from(Some("13.0.0-alpha.6"), None).selection)
+            .unwrap();
+    assert!(
+        warning.ends_with("(for example `--from 13.0.0-alpha.5`), or `--all-rules` for every rule"),
+        "{warning}"
+    );
+
     // An older project, `--from`, `--all-rules`, an unknown version, and a
     // selection that skipped nothing are not warned.
     let all = selected_scan(Some("13.0.0-alpha.3"), true);

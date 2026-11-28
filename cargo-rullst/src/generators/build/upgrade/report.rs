@@ -25,6 +25,9 @@ pub(super) const ALPHA5_CHECKLIST: &str = "upgrading-an-alpha5-application-to-al
 pub(super) const ALPHA6_CHECKLIST: &str = "upgrading-an-alpha6-application-to-rc1";
 /// Its checklist for 13.0.0-rc.1 applications, the changes of 13.0.0-rc.2.
 pub(super) const RC1_CHECKLIST: &str = "upgrading-an-rc1-application-to-rc2";
+/// The release that widened five alpha.6 rules, which keep alpha.6 as the
+/// release that introduced them.
+const WIDENED_ALPHA6_RULES_IN: &str = "13.0.0-rc.1";
 
 /// The checklist for an application on the 13.0 prerelease `current`, if
 /// the guide has one: alpha.2 to alpha.6 have their own, a release candidate
@@ -95,7 +98,9 @@ fn selection_note(selection: &RuleSelection) -> Option<String> {
 /// The warning of a plan for a project that already uses the target
 /// version without `--from`: the rules introduced in that version were
 /// skipped with the earlier ones, so a plan without findings says nothing
-/// about them.
+/// about them. From a 13.0.0-rc.1 target on, it also names the `--from`
+/// that reruns the alpha.6 rules rc.1 widened, which keep alpha.6 as their
+/// release (#896); an earlier project cannot pass that `--from`.
 pub(super) fn at_target_warning(target: &Version, selection: &RuleSelection) -> Option<String> {
     let current = selection.current.as_ref()?;
     if selection.from.is_some()
@@ -107,8 +112,15 @@ pub(super) fn at_target_warning(target: &Version, selection: &RuleSelection) -> 
     let example = rules::release_before(current)
         .map(|release| format!(" (for example `--from {release}`)"))
         .unwrap_or_default();
+    let widened = if Version::parse(WIDENED_ALPHA6_RULES_IN)
+        .is_ok_and(|release| target.cmp_precedence(&release).is_ge())
+    {
+        "; a rule keeps the release that introduced it when a later release widens it, so the five alpha.6 rules that 13.0.0-rc.1 widened need `--from 13.0.0-alpha.5` or earlier"
+    } else {
+        ""
+    };
     Some(format!(
-        "this project already uses {current}, the target version, so the rules introduced in {current} and earlier did not run, and a plan without findings says nothing about them; to apply the rules introduced since the version you upgraded from, run `cargo rullst upgrade --dry-run --from <VERSION>` with that version{example}, or `--all-rules` for every rule"
+        "this project already uses {current}, the target version, so the rules introduced in {current} and earlier did not run, and a plan without findings says nothing about them; to apply the rules introduced since the version you upgraded from, run `cargo rullst upgrade --dry-run --from <VERSION>` with that version{example}, or `--all-rules` for every rule{widened}"
     ))
 }
 

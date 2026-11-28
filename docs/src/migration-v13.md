@@ -1863,6 +1863,34 @@ request. Code that `cargo rullst` generated earlier is never rewritten.
    `V13-IOT-SIMULATORS-REMOVED`, `V13-LABS-VARIANTS-RENAMED` and
    `V13-AUTH-SESSION-EPOCH-CALLS`. If the manifests already pin
    `=13.0.0-rc.1`, add `--from 13.0.0-alpha.6`.
+
+   Then run `cargo rullst upgrade --dry-run --from 13.0.0-alpha.5` too. A
+   rule keeps the release that introduced it when a later release changes
+   it, so the first plan skips the five alpha.6 rules that rc.1 widened:
+   `V13-CSRF-TOKEN-COMPARED` (now also every JavaScript, TypeScript and
+   Python file that mentions CSRF, for a line that expects the form token
+   to equal the `rullst_csrf` cookie), `V13-CSRF-COOKIE-IN-PAGE` (every
+   `"rullst_csrf"` or `"rullst_csrf="` string outside tests in a file that
+   never calls `mask_csrf_token`), `V13-CSRF-STATIC-PREFIXES` (also routes
+   with a `get_service` of a `ServeDir` or `ServeFile`, and `GET` routes
+   whose path ends in a file extension that alpha.5 treated as static, such
+   as `.xml` or `.json`, whether the handler serves a file or renders the
+   response), `V13-AUTH-SESSION-REGISTRY` (session-epoch cookie calls in any
+   file outside tests) and `V13-NON-EXHAUSTIVE-LITERAL` (also literals
+   reached through `use super::*;`, which the alpha.6 CLI reported only for
+   review as `V13-NON-EXHAUSTIVE-LITERAL-GLOB`). rc.1 also narrowed
+   `V13-LOCALE-JIFF-DATES` and `V13-CAPITAL-INVOICE-JIFF-DATE`,
+   which no longer report jiff values. This second plan runs every alpha.6
+   rule again, so it also lists what the alpha.6 upgrade already handled,
+   and it links the
+   [alpha.5 to alpha.6 checklist](#upgrading-an-alpha5-application-to-alpha6),
+   which explains these rules. A `REVIEW` finding you checked can carry a
+   `rullst-upgrade: reviewed <CODE>` comment after the code on its line, or
+   alone on the line above it
+   (`// rullst-upgrade: reviewed V13-CSRF-COOKIE-IN-PAGE: masked by the caller`);
+   the plan then leaves that location out. A `MUST-CHANGE` finding ignores
+   the marker. One whose message says the code no longer compiles needs no
+   change where that code builds with alpha.6: the finding is wrong.
 3. **The two API changes.** `rullst-iot` no longer has the
    `experimental-simulators` feature or its `Simulated*` types; remove the
    feature and give tests their own fixed bytes (`V13-IOT-SIMULATORS-REMOVED`).
@@ -1874,7 +1902,11 @@ request. Code that `cargo rullst` generated earlier is never rewritten.
    and production row; no rule locates them). The `Mail` facade returns
    `MailError::ConfigError` when the selected driver's credential
    (`RESEND_API_KEY`, `SENDPULSE_API_KEY`, the SES proxy token) is empty or
-   unset, or `MAIL_HOST` is empty; `AiClient::auto()` returns
+   unset. For `MAIL_DRIVER=smtp` only an empty `MAIL_HOST` (`MAIL_HOST=`
+   or blanks) is refused: an unset `MAIL_HOST` still means `127.0.0.1`
+   (port 25 unless `MAIL_PORT` is set), with no configuration error, so an
+   SMTP deployment that dropped the line sees each send fail unless a relay
+   listens there. `AiClient::auto()` returns
    `AiError::ConfigError` when no AI provider is configured, and a client
    from `AutoAiConfig::into_client()` then fails every request. On alpha.6
    both answered with an offline mock. Both resolve staging and production
@@ -1940,7 +1972,13 @@ request. Code that `cargo rullst` generated earlier is never rewritten.
     generated manifests, course texts and test assertions too). In an
     embedded project, `cargo update -p rullst --precise 13.0.0-rc.1` moves
     only the Rullst packages and leaves the other locked versions alone.
-    `cargo rullst upgrade` does not list these occurrences.
+    `cargo rullst upgrade` does not list these occurrences. It does not
+    refresh the generated AI context either: in a project with `.llms.txt`
+    and `.rullst/context-map.json` (written by `cargo rullst new` and
+    `cargo rullst generate:ai-context`), which record the Rullst
+    requirements, run `cargo rullst generate:ai-context` after the switch,
+    then `cargo rullst generate:ai-context --check`, which fails until the
+    files match the new versions.
 
 ## Upgrading an rc.1 application to rc.2
 
@@ -1955,14 +1993,21 @@ configuration structs. `cargo rullst upgrade` has no rule for rc.2.
    lists (`RULLST_CLI_VERSION` in CI, README badges, deployment
    documentation, embedded kits). The next `cargo build` moves the locked
    Rullst packages; between rc.1 and rc.2 no other dependency changed.
-2. **A configuration read before `Server` starts** (Early configuration read
+2. **The alpha.6 rules rc.1 widened.** If the project was upgraded from
+   alpha.6 without `cargo rullst upgrade --dry-run --from 13.0.0-alpha.5`
+   (the [alpha.6 to rc.1 checklist](#upgrading-an-alpha6-application-to-rc1)
+   did not name it before rc.2), run it now with the rc.2 CLI: a plan
+   without `--from` runs none of these rules. Step 2 of that checklist names
+   the five widened rules and how to mark findings that the alpha.6 upgrade
+   already handled.
+3. **A configuration read before `Server` starts** (Early configuration read
    row). If code calls `RullstConfig::global()` before `Server` starts, the
    reads after start-up now see `Rullst.toml`, and `Server` logs a warning
    that names the early read when the two differed. A reference taken before
    start-up keeps the defaults: read the configuration after `Server`
    starts, or call `rullst::config::project_environment()` where only the
    environment is needed.
-3. **Studio and Nexus at build time** (Loopback environment at build time
+4. **Studio and Nexus at build time** (Loopback environment at build time
    row). In a debug build whose `.env` or `[app] env` sets staging,
    production or an invalid value, or whose `.env` or `Rullst.toml` is
    malformed when it has to be read, the local Studio and an explicit
@@ -1975,9 +2020,12 @@ configuration structs. `cargo rullst upgrade` has no rule for rc.2.
    TLS; `local_development_or_application()` (the SaaS starter) uses the
    application's sign-in. Run local development with a development or test
    environment, or give a shared environment an authenticated policy.
-4. **Verify.** Run `cargo test` and compare with the rc.1 result, start the
+5. **Verify.** Run `cargo test` and compare with the rc.1 result, start the
    application with its staging settings and check the start-up log for the
-   new warning.
+   new warning. In a project with `.llms.txt` and `.rullst/context-map.json`,
+   run `cargo rullst generate:ai-context` and then
+   `cargo rullst generate:ai-context --check`: `cargo rullst upgrade` does
+   not refresh them, and they record the Rullst requirements.
 
 ## Why the candidate uses a new major
 
