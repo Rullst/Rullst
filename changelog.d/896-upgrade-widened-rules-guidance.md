@@ -13,8 +13,8 @@
   alpha.6 upgrade already handled with `rullst-upgrade: reviewed <CODE>`;
   the rc.1 to rc.2 checklist tells an application upgraded without it to
   run it. The warning that `cargo rullst upgrade` prints for a project
-  already on the target version now ends by saying that these rules need
-  `--from 13.0.0-alpha.5` or earlier. Both checklists' verification steps
+  already on the target version now ends, for 13.0.0-rc.1 and later, by
+  saying that these rules need `--from 13.0.0-alpha.5` or earlier. Both checklists' verification steps
   now say to run `cargo rullst generate:ai-context` and its `--check`,
   because `cargo rullst upgrade` leaves `.llms.txt` and
   `.rullst/context-map.json` at the previous versions, and step 4 says that

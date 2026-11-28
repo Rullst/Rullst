@@ -1867,17 +1867,19 @@ request. Code that `cargo rullst` generated earlier is never rewritten.
    Then run `cargo rullst upgrade --dry-run --from 13.0.0-alpha.5` too. A
    rule keeps the release that introduced it when a later release changes
    it, so the first plan skips the five alpha.6 rules that rc.1 widened:
-   `V13-CSRF-TOKEN-COMPARED` (now also JavaScript, TypeScript and Python
-   test scripts that expect the form token to equal the `rullst_csrf`
-   cookie), `V13-CSRF-COOKIE-IN-PAGE` (every `"rullst_csrf"` or
-   `"rullst_csrf="` string outside tests in a file that never calls
-   `mask_csrf_token`), `V13-CSRF-STATIC-PREFIXES` (also `GET` routes that
-   serve files outside the static prefixes), `V13-AUTH-SESSION-REGISTRY`
-   (session-epoch cookie calls in any file outside tests) and
-   `V13-NON-EXHAUSTIVE-LITERAL` (also literals reached through
-   `use super::*;`, which the alpha.6 CLI reported only for review as
-   `V13-NON-EXHAUSTIVE-LITERAL-GLOB`). rc.1 also
-   narrowed `V13-LOCALE-JIFF-DATES` and `V13-CAPITAL-INVOICE-JIFF-DATE`,
+   `V13-CSRF-TOKEN-COMPARED` (now also every JavaScript, TypeScript and
+   Python file that mentions CSRF, for a line that expects the form token
+   to equal the `rullst_csrf` cookie), `V13-CSRF-COOKIE-IN-PAGE` (every
+   `"rullst_csrf"` or `"rullst_csrf="` string outside tests in a file that
+   never calls `mask_csrf_token`), `V13-CSRF-STATIC-PREFIXES` (also routes
+   with a `get_service` of a `ServeDir` or `ServeFile`, and `GET` routes
+   whose path ends in a file extension that alpha.5 treated as static, such
+   as `.xml` or `.json`, whether the handler serves a file or renders the
+   response), `V13-AUTH-SESSION-REGISTRY` (session-epoch cookie calls in any
+   file outside tests) and `V13-NON-EXHAUSTIVE-LITERAL` (also literals
+   reached through `use super::*;`, which the alpha.6 CLI reported only for
+   review as `V13-NON-EXHAUSTIVE-LITERAL-GLOB`). rc.1 also narrowed
+   `V13-LOCALE-JIFF-DATES` and `V13-CAPITAL-INVOICE-JIFF-DATE`,
    which no longer report jiff values. This second plan runs every alpha.6
    rule again, so it also lists what the alpha.6 upgrade already handled,
    and it links the

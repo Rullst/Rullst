@@ -377,7 +377,7 @@ introduced in it, not after it. Since the 13.0.0-rc.1 CLI the plan says so,
 under the `Rules:` line:
 
 ```text
-  WARNING: this project already uses 13.0.0-alpha.6, the target version, so the rules introduced in 13.0.0-alpha.6 and earlier did not run, and a plan without findings says nothing about them; to apply the rules introduced since the version you upgraded from, run `cargo rullst upgrade --dry-run --from <VERSION>` with that version (for example `--from 13.0.0-alpha.5`), or `--all-rules` for every rule; a rule keeps the release that introduced it when a later release widens it, so the five alpha.6 rules that 13.0.0-rc.1 widened need `--from 13.0.0-alpha.5` or earlier
+  WARNING: this project already uses 13.0.0-alpha.6, the target version, so the rules introduced in 13.0.0-alpha.6 and earlier did not run, and a plan without findings says nothing about them; to apply the rules introduced since the version you upgraded from, run `cargo rullst upgrade --dry-run --from <VERSION>` with that version (for example `--from 13.0.0-alpha.5`), or `--all-rules` for every rule
 ```
 
 `--from <VERSION>` applies the rules introduced after that exact version
@@ -402,7 +402,10 @@ A rule that a later release widens keeps the release that introduced it, so
 13.0.0-rc.1 widened five alpha.6 rules; an application upgraded from alpha.6
 runs them with `--from 13.0.0-alpha.5`, as step 2 of the
 [alpha.6 to rc.1 checklist](../migration-v13.md#upgrading-an-alpha6-application-to-rc1)
-describes. Since the 13.0.0-rc.2 CLI the warning above ends with this.
+describes. Since the 13.0.0-rc.2 CLI, the warning for a project already on
+13.0.0-rc.1 or later ends with this: "a rule keeps the release that
+introduced it when a later release widens it, so the five alpha.6 rules that
+13.0.0-rc.1 widened need `--from 13.0.0-alpha.5` or earlier".
 
 ### JSON plan fields
 
