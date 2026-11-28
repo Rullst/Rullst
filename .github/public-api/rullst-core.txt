@@ -5,6 +5,7 @@ pub rullst_core::AppConfig::env: core::option::Option<alloc::string::String>
 pub rullst_core::AppConfig::port: core::option::Option<u16>
 pub rullst_core::AppConfig::access_log_paths: rullst_core::config::AccessLogPaths
 impl core::clone::Clone for rullst_core::AppConfig
+impl core::cmp::PartialEq for rullst_core::AppConfig
 impl core::default::Default for rullst_core::AppConfig
 impl core::fmt::Debug for rullst_core::AppConfig
 impl<'de> serde_core::de::Deserialize<'de> for rullst_core::AppConfig
@@ -134,6 +135,7 @@ impl core::marker::Unpin for rullst_core::Container
 pub rullst_core::DatabaseConfig::url: core::option::Option<alloc::string::String>
 pub rullst_core::DatabaseConfig::sqlite_journal_mode: core::option::Option<rullst_orm::pool::config::SqliteJournalMode>
 impl core::clone::Clone for rullst_core::DatabaseConfig
+impl core::cmp::PartialEq for rullst_core::DatabaseConfig
 impl core::default::Default for rullst_core::DatabaseConfig
 impl core::fmt::Debug for rullst_core::DatabaseConfig
 impl<'de> serde_core::de::Deserialize<'de> for rullst_core::DatabaseConfig
@@ -617,6 +619,7 @@ pub fn rullst_core::RullstConfig::new() -> Self
 pub fn rullst_core::RullstConfig::set_global(config: Self) -> core::result::Result<(), Self>
 pub fn rullst_core::RullstConfig::validate(&self) -> core::result::Result<(), rullst_core::config::ConfigError>
 impl core::clone::Clone for rullst_core::RullstConfig
+impl core::cmp::PartialEq for rullst_core::RullstConfig
 impl core::default::Default for rullst_core::RullstConfig
 impl core::fmt::Debug for rullst_core::RullstConfig
 impl<'de> serde_core::de::Deserialize<'de> for rullst_core::RullstConfig
@@ -755,6 +758,7 @@ pub fn rullst_core::SecurityConfig::validate(&self) -> core::result::Result<(), 
 pub fn rullst_core::SecurityConfig::with_csrf_static_path(self, path: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn rullst_core::SecurityConfig::with_csrf_static_prefix(self, prefix: impl core::convert::Into<alloc::string::String>) -> Self
 impl core::clone::Clone for rullst_core::SecurityConfig
+impl core::cmp::PartialEq for rullst_core::SecurityConfig
 impl core::default::Default for rullst_core::SecurityConfig
 impl core::fmt::Debug for rullst_core::SecurityConfig
 impl<'de> serde_core::de::Deserialize<'de> for rullst_core::SecurityConfig
@@ -1427,6 +1431,7 @@ pub use rullst_core::config::SecurityConfig = struct rullst_core::SecurityConfig
 #[non_exhaustive] pub struct rullst_core::config::StorageConfig
 pub rullst_core::config::StorageConfig::root: core::option::Option<alloc::string::String>
 impl core::clone::Clone for rullst_core::config::StorageConfig
+impl core::cmp::PartialEq for rullst_core::config::StorageConfig
 impl core::default::Default for rullst_core::config::StorageConfig
 impl core::fmt::Debug for rullst_core::config::StorageConfig
 impl<'de> serde_core::de::Deserialize<'de> for rullst_core::config::StorageConfig
@@ -1435,6 +1440,7 @@ impl core::marker::Sync for rullst_core::config::StorageConfig
 impl core::marker::Unpin for rullst_core::config::StorageConfig
 impl core::panic::unwind_safe::RefUnwindSafe for rullst_core::config::StorageConfig
 impl core::panic::unwind_safe::UnwindSafe for rullst_core::config::StorageConfig
+pub fn rullst_core::config::project_environment() -> core::result::Result<rullst_core::config::Environment, rullst_core::config::ConfigError>
 pub fn rullst_core::config::project_setting(name: &str) -> core::result::Result<core::option::Option<alloc::string::String>, rullst_core::config::ConfigError>
 pub mod rullst_core::db
 pub use rullst_core::db::FromRow = trait sqlx_core::from_row::FromRow
