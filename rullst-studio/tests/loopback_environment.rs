@@ -1,5 +1,5 @@
-//! Studio's loopback access is refused when the process environment names
-//! staging or production. Its own test binary, with a single test, because it
+//! Studio's loopback access is refused when the environment `Server` resolves
+//! (process variables, `.env`, `[app] env`) names staging or production. Its own test binary, with a single test, because it
 //! changes the process environment.
 #![allow(clippy::expect_used)]
 
@@ -17,7 +17,6 @@ fn set(name: &str, value: Option<&str>) {
     }
 }
 
-#[test]
 fn local_access_follows_the_process_environment() {
     let debug = cfg!(debug_assertions);
     for (rullst_env, app_env, permitted) in [
@@ -44,4 +43,93 @@ fn local_access_follows_the_process_environment() {
     }
     set("RULLST_ENV", None);
     set("APP_ENV", None);
+}
+
+/// Runs `check` in a fresh project directory holding the given files, with the
+/// process variables cleared, and restores the working directory.
+fn in_project(files: &[(&str, &str)], name: &str, check: impl FnOnce()) {
+    let original = std::env::current_dir().expect("working directory");
+    let directory = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join(name);
+    let _ = std::fs::remove_dir_all(&directory);
+    std::fs::create_dir_all(&directory).expect("project directory");
+    for (file, content) in files {
+        std::fs::write(directory.join(file), content).expect("project file");
+    }
+    set("RULLST_ENV", None);
+    set("APP_ENV", None);
+    std::env::set_current_dir(&directory).expect("enter project");
+    check();
+    std::env::set_current_dir(original).expect("leave project");
+}
+
+/// A project name, its files and the build result they must produce.
+type Case<'a> = (
+    &'a str,
+    &'a [(&'a str, &'a str)],
+    Result<(), StudioBuildError>,
+);
+
+fn built() -> Result<(), StudioBuildError> {
+    LocalStudioAccess::loopback_only()
+        .protect_router(Router::<()>::new())
+        .map(|_| ())
+}
+
+fn local_access_follows_the_dotenv_and_rullst_toml_environment_a_server_reads() {
+    let debug = cfg!(debug_assertions);
+    let refused = Err(StudioBuildError::LocalAccessRequiresDebugBuild);
+    let allowed = if debug { Ok(()) } else { refused };
+    let cases: [Case; 6] = [
+        (
+            "studio-env-prod",
+            &[(".env", "RULLST_ENV=production\n")],
+            refused,
+        ),
+        (
+            "studio-env-app-staging",
+            &[(".env", "APP_ENV=staging\n")],
+            refused,
+        ),
+        (
+            "studio-toml-prod",
+            &[("Rullst.toml", "[app]\nenv = \"production\"\n")],
+            refused,
+        ),
+        ("studio-env-bad", &[(".env", "RULLST_ENV=bogus\n")], refused),
+        (
+            "studio-env-dev",
+            &[(".env", "RULLST_ENV=development\n")],
+            allowed,
+        ),
+        // `.env` outranks `[app] env`, as for `Server`.
+        (
+            "studio-env-over-toml",
+            &[
+                (".env", "RULLST_ENV=development\n"),
+                ("Rullst.toml", "[app]\nenv = \"production\"\n"),
+            ],
+            allowed,
+        ),
+    ];
+    for (name, files, expected) in cases {
+        in_project(files, name, || assert_eq!(built(), expected, "{name}"));
+    }
+    // The process variable still outranks both files.
+    in_project(
+        &[(".env", "RULLST_ENV=production\n")],
+        "studio-process",
+        || {
+            set("RULLST_ENV", Some("development"));
+            assert_eq!(built(), allowed);
+            set("RULLST_ENV", None);
+        },
+    );
+}
+
+/// One test, because both parts change the process environment and the working
+/// directory.
+#[test]
+fn local_access_follows_the_project_environment() {
+    local_access_follows_the_process_environment();
+    local_access_follows_the_dotenv_and_rullst_toml_environment_a_server_reads();
 }

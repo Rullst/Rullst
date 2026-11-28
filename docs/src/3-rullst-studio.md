@@ -13,7 +13,11 @@ Projects generated from the Blank, API and SaaS starters (and the LMS and Blog
 examples in `examples/`) start the standalone server only in debug builds and
 link to `http://127.0.0.1:5555`.
 Release builds do not start it; runtime `RULLST_ENV` or legacy `APP_ENV` values
-cannot override that compile-time boundary.
+cannot override that compile-time boundary. A debug build refuses to build the
+loopback boundary when the environment `Server` resolves for the project (the
+process `RULLST_ENV`, then `APP_ENV`, then either one from `.env`, then
+`[app] env` in `Rullst.toml`; since 13.0.0, earlier it read the process
+variables only) is staging, production or invalid.
 
 To watch a deployed application, mount the read-only
 [production monitoring endpoint](production-monitoring.md) instead (new in

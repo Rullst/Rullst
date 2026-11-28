@@ -12,7 +12,7 @@ pub use access_log::AccessLogPaths;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) use project_setting::parse_dotenv_entries;
 #[cfg(not(target_arch = "wasm32"))]
-pub use project_setting::project_setting;
+pub use project_setting::{project_environment, project_setting};
 
 /// Validated runtime environment shared by every Rullst subsystem.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -124,7 +124,7 @@ fn read_environment_variable(name: &str) -> Result<Option<String>, ConfigError> 
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Default)]
 #[non_exhaustive]
 /// Main configuration container for Rullst applications.
 pub struct RullstConfig {
@@ -142,7 +142,7 @@ pub struct RullstConfig {
     pub storage: StorageConfig,
 }
 
-#[derive(Debug, Clone, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Default)]
 #[non_exhaustive]
 /// Configuration settings for storage drivers.
 pub struct StorageConfig {
@@ -150,7 +150,7 @@ pub struct StorageConfig {
     pub root: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Default)]
 #[non_exhaustive]
 /// General configuration options for the application instance.
 pub struct AppConfig {
@@ -164,7 +164,7 @@ pub struct AppConfig {
     pub access_log_paths: AccessLogPaths,
 }
 
-#[derive(Clone, Deserialize, Default)]
+#[derive(Clone, PartialEq, Deserialize, Default)]
 #[non_exhaustive]
 /// Database connection configuration.
 ///
@@ -211,7 +211,7 @@ pub(crate) fn redacted_url(url: &str) -> String {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 #[non_exhaustive]
 /// Configuration options for application security layers.
 pub struct SecurityConfig {
@@ -377,7 +377,73 @@ impl Default for SecurityConfig {
     }
 }
 
-static GLOBAL_CONFIG: std::sync::OnceLock<RullstConfig> = std::sync::OnceLock::new();
+/// The process-wide configuration and whether it is only the defaults that an
+/// early [`RullstConfig::global`] read installed.
+struct GlobalSlot {
+    config: &'static RullstConfig,
+    from_defaults: bool,
+}
+
+static GLOBAL_CONFIG: GlobalCell = std::sync::RwLock::new(None);
+
+type GlobalCell = std::sync::RwLock<Option<GlobalSlot>>;
+
+fn read_global(cell: &'static GlobalCell) -> &'static RullstConfig {
+    if let Some(slot) = cell
+        .read()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .as_ref()
+    {
+        return slot.config;
+    }
+    cell.write()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .get_or_insert_with(|| GlobalSlot {
+            // One small allocation, made at most once for the defaults and
+            // once for the configuration that replaces them.
+            config: Box::leak(Box::new(RullstConfig::default())),
+            from_defaults: true,
+        })
+        .config
+}
+
+fn publish_in(cell: &GlobalCell, config: &RullstConfig) -> GlobalOutcome {
+    let mut slot = cell
+        .write()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let (outcome, replace) = match slot.as_ref() {
+        None => (GlobalOutcome::Installed, true),
+        Some(current) => {
+            let differs = *current.config != *config;
+            if current.from_defaults {
+                (GlobalOutcome::ReplacedDefaults { differs }, true)
+            } else {
+                (GlobalOutcome::Kept { differs }, false)
+            }
+        }
+    };
+    if replace {
+        *slot = Some(GlobalSlot {
+            config: Box::leak(Box::new(config.clone())),
+            from_defaults: false,
+        });
+    }
+    outcome
+}
+
+/// What [`RullstConfig::set_global`] did with the configuration it was given.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+pub(crate) enum GlobalOutcome {
+    /// Nothing was installed yet; the configuration is now the global one.
+    Installed,
+    /// [`RullstConfig::global`] had already handed out the defaults; the
+    /// configuration replaced them. `differs` is whether it is not the defaults.
+    ReplacedDefaults { differs: bool },
+    /// A configuration was set explicitly before and stays. `differs` is whether
+    /// the one offered now is another.
+    Kept { differs: bool },
+}
 
 /// `RULLST_ENV` (else `APP_ENV`) from the `.env` the last started `Server`
 /// read, which `Server` places between the process variables and `[app].env`.
@@ -400,15 +466,35 @@ fn project_environment_selector() -> Option<String> {
 }
 
 impl RullstConfig {
-    /// Gets the global configuration reference, initializing it with default values if not set.
+    /// Gets the global configuration reference.
+    ///
+    /// A [`crate::Server`] publishes the configuration it loaded from
+    /// `Rullst.toml` when it starts. A read before that returns the defaults;
+    /// the `Server` then replaces them, so every later call sees the real
+    /// configuration, and it logs a warning naming this call when the two
+    /// differ. A reference obtained before the replacement keeps the defaults:
+    /// read the configuration after the `Server` has started, or load it with
+    /// [`RullstConfig::load_from_file`] and pass it to [`RullstConfig::set_global`].
     pub fn global() -> &'static RullstConfig {
-        GLOBAL_CONFIG.get_or_init(Self::default)
+        read_global(&GLOBAL_CONFIG)
     }
 
     /// Sets the global configuration instance.
+    ///
+    /// Returns the configuration back when another one was set explicitly
+    /// before. Defaults that an earlier [`RullstConfig::global`] read installed
+    /// do not count: they are replaced.
     #[allow(clippy::result_large_err)]
     pub fn set_global(config: Self) -> Result<(), Self> {
-        GLOBAL_CONFIG.set(config)
+        match Self::publish_global(&config) {
+            GlobalOutcome::Kept { .. } => Err(config),
+            GlobalOutcome::Installed | GlobalOutcome::ReplacedDefaults { .. } => Ok(()),
+        }
+    }
+
+    /// [`Self::set_global`] that also says what happened to an earlier value.
+    pub(crate) fn publish_global(config: &Self) -> GlobalOutcome {
+        publish_in(&GLOBAL_CONFIG, config)
     }
 
     /// Creates a new `RullstConfig` with default values.

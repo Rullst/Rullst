@@ -228,7 +228,11 @@ which a dual-stack `::` listener reports for IPv4 clients, counts as IPv4); rele
 `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD` from the process environment,
 then the working directory's `.env`. Missing connection metadata
 is denied, and neither `RULLST_ENV` nor legacy `APP_ENV` can turn credential-free access on in a release
-binary. Applications can call `basic_from_env()` directly in debug when testing
+binary. A debug build whose environment is staging, production or invalid
+uses the application's sign-in or credentials as well; since 13.0.0 that
+environment is the one `Server` resolves (the process `RULLST_ENV`, then
+`APP_ENV`, then either one from `.env`, then `[app] env`), where 13.0.0-rc.1
+read the process variables only at build time. Applications can call `basic_from_env()` directly in debug when testing
 the production authentication flow.
 
 `Nexus::try_build()` returns a plain `axum::Router`. Mount it on a

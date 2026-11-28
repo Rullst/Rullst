@@ -1,7 +1,7 @@
 //! Application settings with the precedence `Server` applies to its own:
 //! the process environment first, then the project's `.env`.
 
-use super::{ConfigError, read_environment_variable};
+use super::{ConfigError, Environment, RullstConfig, read_environment_variable};
 use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::path::Path;
@@ -56,6 +56,59 @@ pub(crate) fn project_setting_in(
     Ok(parse_dotenv_entries(&content)
         .map_err(ConfigError::Parse)?
         .remove(name))
+}
+
+/// Resolves the runtime environment of the application in the current working
+/// directory exactly as [`crate::Server`] does, without starting one: the
+/// process `RULLST_ENV`, then the process `APP_ENV`, then either one from
+/// `./.env`, then `env` under `[app]` in `./Rullst.toml`; none set is
+/// development.
+///
+/// Use it where a decision depends on the environment before a `Server`
+/// exists, such as when a router is built. [`Environment::detect`] reads the
+/// process variables only and so misses an environment set in `.env` or
+/// `Rullst.toml`. Added in 13.0.0.
+///
+/// # Errors
+/// [`ConfigError::InvalidEnvironment`] for an unknown name,
+/// [`ConfigError::NonUnicodeEnvironmentVariable`], and the read and parse
+/// errors of [`project_setting`] and [`RullstConfig::from_toml`]. A caller that
+/// guards a staging or production boundary treats any error as production.
+///
+/// ```no_run
+/// let secure = rullst_core::config::project_environment()
+///     .map_or(true, |environment| environment.requires_secure_defaults());
+/// # let _ = secure;
+/// ```
+pub fn project_environment() -> Result<Environment, ConfigError> {
+    project_environment_in(Path::new("."))
+}
+
+/// [`project_environment`] for the project in `project_dir`.
+pub(crate) fn project_environment_in(project_dir: &Path) -> Result<Environment, ConfigError> {
+    let dotenv = match project_setting_in(project_dir, "RULLST_ENV")? {
+        Some(value) => Some(value),
+        None => project_setting_in(project_dir, "APP_ENV")?,
+    };
+    let configured = match dotenv {
+        Some(value) => Some(value),
+        None => configured_environment(project_dir)?,
+    };
+    // The process variables come first, as in `Server`; `project_setting_in`
+    // returned a process value above only when it also wins here.
+    Environment::detect(configured.as_deref())
+}
+
+/// `env` under `[app]` in `Rullst.toml`; a missing file sets none.
+fn configured_environment(project_dir: &Path) -> Result<Option<String>, ConfigError> {
+    match std::fs::read_to_string(project_dir.join("Rullst.toml")) {
+        Ok(content) => Ok(RullstConfig::from_toml(&content)?.app.env),
+        Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(ConfigError::Read(format!(
+            "Rullst.toml could not be read: {}",
+            error.kind()
+        ))),
+    }
 }
 
 /// Parses dotenv content with errors that never contain file content: dotenvy's
@@ -166,5 +219,61 @@ mod tests {
                 .as_deref(),
             Some("from-process")
         );
+    }
+
+    #[tokio::test]
+    async fn project_environment_follows_the_server_precedence() {
+        let _lock = crate::server::TEST_ENV_LOCK.lock().await;
+        let _cleared = Cleared::new(&["RULLST_ENV", "APP_ENV"]);
+        let directory = tempfile::tempdir().unwrap();
+        let write = |name: &str, content: &str| {
+            std::fs::write(directory.path().join(name), content).unwrap();
+        };
+        let resolve = || project_environment_in(directory.path());
+
+        assert_eq!(resolve().unwrap(), Environment::Development);
+        write("Rullst.toml", "[app]\nenv = \"staging\"\n");
+        assert_eq!(resolve().unwrap(), Environment::Staging);
+        write(".env", "APP_ENV=production\n");
+        assert_eq!(resolve().unwrap(), Environment::Production);
+        write(".env", "APP_ENV=test\nRULLST_ENV=production\n");
+        assert_eq!(resolve().unwrap(), Environment::Production);
+        unsafe { std::env::set_var("APP_ENV", "development") };
+        assert_eq!(resolve().unwrap(), Environment::Development);
+        unsafe { std::env::set_var("RULLST_ENV", "production") };
+        assert_eq!(resolve().unwrap(), Environment::Production);
+        // The working-directory form reads the same process variable first.
+        assert_eq!(project_environment().unwrap(), Environment::Production);
+    }
+
+    #[tokio::test]
+    async fn project_environment_reports_bad_sources_without_their_content() {
+        let _lock = crate::server::TEST_ENV_LOCK.lock().await;
+        let _cleared = Cleared::new(&["RULLST_ENV", "APP_ENV"]);
+        let directory = tempfile::tempdir().unwrap();
+        std::fs::write(directory.path().join(".env"), "RULLST_ENV=nonsense\n").unwrap();
+        assert!(matches!(
+            project_environment_in(directory.path()),
+            Err(ConfigError::InvalidEnvironment(_))
+        ));
+        std::fs::write(directory.path().join(".env"), "").unwrap();
+        std::fs::write(
+            directory.path().join("Rullst.toml"),
+            "[app]\nenv = \"production\"\nSECRET_MARKER = [\n",
+        )
+        .unwrap();
+        let error = project_environment_in(directory.path()).unwrap_err();
+        assert!(matches!(error, ConfigError::Parse(_)));
+        assert!(!error.to_string().contains("SECRET_MARKER"));
+
+        // A Rullst.toml that exists but is not UTF-8 is an error, not "unset".
+        std::fs::write(
+            directory.path().join("Rullst.toml"),
+            b"[app]\nenv = \"\xff-binary-marker\"\n",
+        )
+        .unwrap();
+        let error = project_environment_in(directory.path()).unwrap_err();
+        assert!(matches!(error, ConfigError::Read(_)));
+        assert!(!error.to_string().contains("binary-marker"));
     }
 }
