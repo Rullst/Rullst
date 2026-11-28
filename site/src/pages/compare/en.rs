@@ -36,20 +36,56 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                     </ul>
                     <section id="fit" aria-labelledby="fit-heading">
                         <h2 id="fit-heading">"Where each one fits"</h2>
+                        <p>"The table sums up what the topics below document, and the cards say when each framework is the better choice. Not documented means the project's documentation does not describe it; you can still add it yourself."</p>
+                        <p class="compare-glance-caption" id="glance-caption">"At a glance: what each framework documents, checked on 27 November 2026."</p>
+                        <div class="compare-glance" role="region" aria-labelledby="glance-caption" tabindex="0">
+                            <table aria-labelledby="glance-caption">
+                                <thead><tr><th scope="col">"You need"</th><th scope="col">"Rullst"</th><th scope="col">"Loco"</th><th scope="col">"Topcoat"</th></tr></thead>
+                                <tbody>
+                                    <tr><th scope="row">"CSRF protection"</th><td>"On in every generated starter"</td><td>"Not documented"</td><td>"An origin check, on by default; CSRF tokens are not documented"</td></tr>
+                                    <tr><th scope="row">"Secure headers"</th><td>"On in every generated starter"</td><td>"Available, off by default"</td><td>"Not documented"</td></tr>
+                                    <tr><th scope="row">"Filter for hostile requests (WAF)"</th><td>"On: refuses them in staging and production, only logs them in development, off in tests"</td><td>"Not documented"</td><td>"Not documented"</td></tr>
+                                    <tr><th scope="row">"User accounts and passwords"</th><td>"Argon2 and encrypted sessions; opt-in passkeys and OAuth2/OIDC"</td><td>"JWT and Argon2id; opt-in sessions and OAuth2"</td><td>"Sessions with storage you provide; authentication is on its roadmap, password hashing is not documented"</td></tr>
+                                    <tr><th scope="row">"Payments and their webhooks"</th><td>"Stripe (signed webhooks, replay checks) and InfinitePay for Pix (each notification confirmed with InfinitePay)"</td><td>"Not documented"</td><td>"Not documented"</td></tr>
+                                    <tr><th scope="row">"Admin for your data"</th><td>"Generated for the models you register (Nexus)"</td><td>"Not documented"</td><td>"Not built in (an admin demo app exists)"</td></tr>
+                                    <tr><th scope="row">"Background jobs"</th><td>"In-process, SQLite or Redis queues and a cron scheduler; retries and dead-letter queues in rullst-messaging"</td><td>"In-process, Redis, PostgreSQL or SQLite, with a scheduler"</td><td>"On its roadmap"</td></tr>
+                                    <tr><th scope="row">"Mail services"</th><td>"Resend, AWS SES, SendPulse, SMTP"</td><td>"SMTP"</td><td>"SMTP"</td></tr>
+                                    <tr><th scope="row">"Databases"</th><td>"SQLite, PostgreSQL, MySQL/MariaDB"</td><td>"SQLite, PostgreSQL"</td><td>"SQLite, through Toasty"</td></tr>
+                                    <tr><th scope="row">"Browser behaviour written in Rust"</th><td>"No: htmx and Alpine.js"</td><td>"No: Tera templates, or a React SPA"</td><td>"Yes: "<code>"$(...)"</code>" expressions become JavaScript"</td></tr>
+                                    <tr><th scope="row">"Stable release"</th><td>"Not yet: 13.0 is in release candidates"</td><td>"Yes: 1.x since July 2026"</td><td>"No: 0.x, which its README calls experimental"</td></tr>
+                                    <tr><th scope="row">"Community"</th><td>"The smallest of the three; one maintainer"</td><td>"The largest of the three"</td><td>"Growing, in the tokio-rs organization"</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                         <ul class="compare-fit">
                             <li>
-                                <h3>"Rullst"</h3>
-                                <p>"A good fit when you want one coordinated suite on Axum and SQLx that already includes sessions and passkeys, CSRF protection, billing (Stripe and InfinitePay), transactional mail, a model admin and a local developer control room, with server-rendered HTML."</p>
-                                <p>"Keep in mind: 13.0 is still a prerelease, and the project was first published in May 2026 by its sole maintainer."</p>
+                                <h3>"Choose Rullst when"</h3>
+                                <ul>
+                                    <li>"your application has sign-in and forms, and you want CSRF protection and secure headers on from the first commit, a WAF that blocks in staging and production, and a generated test that checks them;"</li>
+                                    <li>"you charge customers with Stripe, with webhook signatures and replays checked for you, or with Pix through InfinitePay, with each payment confirmed with InfinitePay;"</li>
+                                    <li>"staff need an admin over the application's data and you would rather not build one;"</li>
+                                    <li>"you need MySQL or MariaDB, or mail through Resend, AWS SES or SendPulse (the last two tested offline only);"</li>
+                                    <li>"you want htmx and the CSP build of Alpine.js already set up, with "<code>"html!"</code>" escaping text by default."</li>
+                                </ul>
+                                <p>"Keep in mind: 13.0 is still a prerelease, the project was first published in May 2026 by its sole maintainer, it has had no external audit, and every request pays for those security layers (see "<a href="#benchmarks">"Performance"</a>")."</p>
                             </li>
                             <li>
-                                <h3>"Loco"</h3>
-                                <p>"A good fit when you want a stable 1.x release with Rails-style conventions, Sea-ORM, JWT or cookie authentication, job queues on Redis, PostgreSQL or SQLite, and generators for models, scaffolds and workers. It has the largest community of the three."</p>
-                                <p>"Keep in mind: payments and an admin UI are not part of its documentation."</p>
+                                <h3>"Choose Loco when"</h3>
+                                <ul>
+                                    <li>"you need a stable 1.x release today;"</li>
+                                    <li>"you want Rails-style conventions and generators for models, scaffolds, workers and deployment files;"</li>
+                                    <li>"you prefer Sea-ORM, or JWT authentication for API clients;"</li>
+                                    <li>"you want job queues on PostgreSQL as well as Redis or SQLite, and the largest community of the three."</li>
+                                </ul>
+                                <p>"Keep in mind: payments, an admin UI and CSRF protection are not part of its documentation, and its secure headers stay off until you enable them."</p>
                             </li>
                             <li>
-                                <h3>"Topcoat"</h3>
-                                <p>"A good fit when you want server-rendered components whose "<code>"$(...)"</code>" expressions also run in the browser as generated JavaScript, with no Wasm bundle and no client build step."</p>
+                                <h3>"Choose Topcoat when"</h3>
+                                <ul>
+                                    <li>"you want browser behaviour written in Rust: its "<code>"$(...)"</code>" expressions run in the browser as generated JavaScript, with no Wasm bundle and no client build step;"</li>
+                                    <li>"you want strict session cookies and a cross-origin check on by default, or OpenAPI generation for your API;"</li>
+                                    <li>"you want a small framework maintained in the tokio-rs organization."</li>
+                                </ul>
                                 <p>"Keep in mind: its README calls it early-stage and experimental; authentication and background jobs are on its roadmap, and so are its deployment docs."</p>
                             </li>
                         </ul>
@@ -168,7 +204,7 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                             [
                                 Choice {
                                     chose: html! { <code>"rullst-capital"</code>": Stripe and InfinitePay adapters, verified webhooks with replay protection, quotas, entitlements and invoices." },
-                                    plus: html! { "Payment code you do not write yourself, with webhook signature checks and replay protection." },
+                                    plus: html! { "Payment code you do not write yourself: Stripe webhooks with signature checks and replay protection, and InfinitePay payments confirmed with InfinitePay." },
                                     minus: html! { "Stripe has real purchases in the maintainer's SaaS but no automated test against a live account; InfinitePay was validated with one real Pix payment. Another gateway means writing an adapter." },
                                 },
                                 Choice {

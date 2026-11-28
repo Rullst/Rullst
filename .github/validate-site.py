@@ -89,7 +89,6 @@ FLAG_SIGNS = ("*", "†", "‡", "≈")
 LLMS_INDEX_LIMIT = 128 * 1024
 LLMS_FULL_LIMIT = 8 * 1024 * 1024
 SUMMARY_PAGE = re.compile(r"\[[^\]]+\]\(([^)]+\.md)\)")
-CLI_VERSION = re.compile(r'^version = "([^"]+)"$', re.MULTILINE)
 INSTALL_PIN = re.compile(r"cargo install cargo-rullst --version =(\S+) --locked")
 
 
@@ -428,11 +427,13 @@ def validate_landing(lang: str) -> tuple[Document, str]:
     assert "Rullst v12 stable" not in source, f"{path.name}: still presents end-of-life v12 as current"
     assert "evaluate before stable v12" not in source, f"{path.name}: retains obsolete RC copy"
     assert "/Rullst/book/v12.html" not in home.links, f"{path.name}: release-status links must not point to the v12 record"
-    cli_version = CLI_VERSION.search((ROOT / "cargo-rullst" / "Cargo.toml").read_text(encoding="utf-8"))
-    assert cli_version, "cannot read the cargo-rullst version"
+    # The published release the site is built with (site/Cargo.lock takes it from crates.io),
+    # not cargo-rullst/Cargo.toml: after a release preparation merges, main names a version
+    # that is not on crates.io yet, and an install command pinning it fails.
+    published = site_rullst_version()
     pins = INSTALL_PIN.findall(source)
-    assert pins and set(pins) == {cli_version[1]}, (
-        f"{path.name}: install command must pin the current CLI version ={cli_version[1]}: {pins}"
+    assert pins and set(pins) == {published}, (
+        f"{path.name}: install command must pin the published version the site is built with ={published}: {pins}"
     )
     assert "Content-Security-Policy" in source, f"{path.name}: must declare a CSP"
     assert f'<link rel="canonical" href="{facts["url"]}" />' in source, f"{path.name}: canonical must be {facts['url']}"

@@ -36,21 +36,57 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                     </ul>
                     <section id="fit" aria-labelledby="fit-heading">
                         <h2 id="fit-heading">"Quando cada um faz sentido"</h2>
+                        <p>"A tabela resume o que os temas abaixo documentam, e os cartões dizem quando cada framework é a melhor escolha. Não documentado quer dizer que a documentação do projeto não descreve aquilo; você ainda pode implementá-lo por conta própria."</p>
+                        <p class="compare-glance-caption" id="glance-caption">"Visão geral: o que cada framework documenta, verificado em 27 de novembro de 2026."</p>
+                        <div class="compare-glance" role="region" aria-labelledby="glance-caption" tabindex="0">
+                            <table aria-labelledby="glance-caption">
+                                <thead><tr><th scope="col">"Você precisa de"</th><th scope="col">"Rullst"</th><th scope="col">"Loco"</th><th scope="col">"Topcoat"</th></tr></thead>
+                                <tbody>
+                                    <tr><th scope="row">"Proteção contra CSRF"</th><td>"Ligada em todo starter gerado"</td><td>"Não documentada"</td><td>"Uma checagem de origem, ligada por padrão; tokens CSRF não são documentados"</td></tr>
+                                    <tr><th scope="row">"Cabeçalhos de segurança"</th><td>"Ligados em todo starter gerado"</td><td>"Disponíveis, desligados por padrão"</td><td>"Não documentados"</td></tr>
+                                    <tr><th scope="row">"Filtro de requisições hostis (WAF)"</th><td>"Ligado: recusa requisições suspeitas em staging e produção, só as registra em desenvolvimento e não roda nos testes"</td><td>"Não documentado"</td><td>"Não documentado"</td></tr>
+                                    <tr><th scope="row">"Contas de usuário e senhas"</th><td>"Argon2 e sessões criptografadas; passkeys e OAuth2/OIDC opcionais"</td><td>"JWT e Argon2id; sessões e OAuth2 opcionais"</td><td>"Sessões com armazenamento que você fornece; autenticação está no roadmap dele, hash de senha não é documentado"</td></tr>
+                                    <tr><th scope="row">"Pagamentos e seus webhooks"</th><td>"Stripe (webhooks assinados, proteção contra repetição) e InfinitePay para Pix (cada notificação confirmada com a InfinitePay)"</td><td>"Não documentados"</td><td>"Não documentados"</td></tr>
+                                    <tr><th scope="row">"Admin para os seus dados"</th><td>"Gerado para os modelos que você registra (Nexus)"</td><td>"Não documentado"</td><td>"Não incluído (existe um app de demonstração de admin)"</td></tr>
+                                    <tr><th scope="row">"Jobs em segundo plano"</th><td>"Filas em processo, SQLite ou Redis e um agendador cron; novas tentativas e filas de mensagens mortas no rullst-messaging"</td><td>"Em processo, Redis, PostgreSQL ou SQLite, com agendador"</td><td>"No roadmap dele"</td></tr>
+                                    <tr><th scope="row">"Serviços de e-mail"</th><td>"Resend, AWS SES, SendPulse, SMTP"</td><td>"SMTP"</td><td>"SMTP"</td></tr>
+                                    <tr><th scope="row">"Bancos de dados"</th><td>"SQLite, PostgreSQL, MySQL/MariaDB"</td><td>"SQLite, PostgreSQL"</td><td>"SQLite, pelo Toasty"</td></tr>
+                                    <tr><th scope="row">"Comportamento no navegador escrito em Rust"</th><td>"Não: htmx e Alpine.js"</td><td>"Não: templates Tera, ou uma SPA em React"</td><td>"Sim: expressões "<code>"$(...)"</code>" viram JavaScript"</td></tr>
+                                    <tr><th scope="row">"Versão estável"</th><td>"Ainda não: a 13.0 está na fase de release candidate"</td><td>"Sim: 1.x desde julho de 2026"</td><td>"Não: 0.x, que o README dele chama de experimental"</td></tr>
+                                    <tr><th scope="row">"Comunidade"</th><td>"A menor dos três; um mantenedor"</td><td>"A maior dos três"</td><td>"Em crescimento, na organização tokio-rs"</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                         <ul class="compare-fit">
                             <li>
-                                <h3>"Rullst"</h3>
-                                <p>"Faz sentido quando você quer uma suíte coordenada sobre Axum e SQLx que já traga sessões e passkeys, proteção contra CSRF, cobrança (Stripe e InfinitePay), e-mail transacional, um admin de modelos e uma sala de controle local para desenvolvimento, com HTML renderizado no servidor."</p>
-                                <p>"Leve em conta: a 13.0 ainda é um pré-lançamento, e o projeto foi publicado pela primeira vez em maio de 2026 pelo seu único mantenedor."</p>
+                                <h3>"Escolha o Rullst quando"</h3>
+                                <ul>
+                                    <li>"a sua aplicação tem login e formulários, e você quer proteção contra CSRF e cabeçalhos de segurança ligados desde o primeiro commit, um WAF que bloqueia em staging e produção, e um teste gerado que os confere;"</li>
+                                    <li>"você cobra clientes com Stripe, com a assinatura dos webhooks e a proteção contra repetição conferidas para você, ou com Pix pela InfinitePay, com cada pagamento confirmado com a InfinitePay;"</li>
+                                    <li>"a equipe precisa de um admin para os dados da aplicação e você prefere não construir um;"</li>
+                                    <li>"você precisa de MySQL ou MariaDB, ou de e-mail pelo Resend, AWS SES ou SendPulse (os dois últimos testados só offline);"</li>
+                                    <li>"você quer htmx e a build CSP do Alpine.js já configurados, com o "<code>"html!"</code>" escapando o texto por padrão."</li>
+                                </ul>
+                                <p>"Leve em conta: a 13.0 ainda é um pré-lançamento, o projeto foi publicado pela primeira vez em maio de 2026 pelo seu único mantenedor, não passou por auditoria externa, e toda requisição paga por essas camadas de segurança (veja "<a href="#benchmarks">"Desempenho"</a>")."</p>
                             </li>
                             <li>
-                                <h3>"Loco"</h3>
-                                <p>"Faz sentido quando você quer uma versão 1.x estável com convenções no estilo Rails, Sea-ORM, autenticação por JWT ou cookie, filas de jobs em Redis, PostgreSQL ou SQLite e geradores de modelos, scaffolds e workers. É a maior comunidade dos três."</p>
-                                <p>"Leve em conta: pagamentos e uma interface de admin não fazem parte da documentação dele."</p>
+                                <h3>"Escolha o Loco quando"</h3>
+                                <ul>
+                                    <li>"você precisa de uma versão 1.x estável hoje;"</li>
+                                    <li>"você quer convenções no estilo Rails e geradores de modelos, scaffolds, workers e arquivos de deploy;"</li>
+                                    <li>"você prefere o Sea-ORM, ou autenticação por JWT para clientes de API;"</li>
+                                    <li>"você quer filas de jobs também no PostgreSQL, além de Redis ou SQLite, e a maior comunidade dos três."</li>
+                                </ul>
+                                <p>"Leve em conta: pagamentos, uma interface de admin e proteção contra CSRF não fazem parte da documentação dele, e os cabeçalhos de segurança ficam desligados até você ligá-los."</p>
                             </li>
                             <li>
-                                <h3>"Topcoat"</h3>
-                                <p>"Faz sentido quando você quer componentes renderizados no servidor cujas expressões "<code>"$(...)"</code>" também rodam no navegador como JavaScript gerado, sem bundle Wasm e sem etapa de build no cliente."</p>
-                                <p>"Leve em conta: o README o descreve como inicial e experimental; autenticação e jobs em segundo plano estão no roadmap dele, assim como a documentação de deploy."</p>
+                                <h3>"Escolha o Topcoat quando"</h3>
+                                <ul>
+                                    <li>"você quer comportamento no navegador escrito em Rust: as expressões "<code>"$(...)"</code>" dele rodam no navegador como JavaScript gerado, sem bundle Wasm e sem etapa de build no cliente;"</li>
+                                    <li>"você quer cookies de sessão rigorosos e uma checagem de origem ligada por padrão, ou geração de OpenAPI para a sua API;"</li>
+                                    <li>"você quer um framework pequeno, mantido na organização tokio-rs."</li>
+                                </ul>
+                                <p>"Leve em conta: o README o descreve como em estágio inicial e experimental; autenticação e jobs em segundo plano estão no roadmap dele, assim como a documentação de deploy."</p>
                             </li>
                         </ul>
                     </section>
@@ -168,7 +204,7 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                             [
                                 Choice {
                                     chose: html! { <code>"rullst-capital"</code>": adaptadores de Stripe e InfinitePay, webhooks verificados com proteção contra repetição, cotas, direitos de uso e faturas." },
-                                    plus: html! { "Código de pagamento que você não escreve, com verificação de assinatura de webhooks e proteção contra repetição." },
+                                    plus: html! { "Código de pagamento que você não escreve: webhooks do Stripe com verificação de assinatura e proteção contra repetição, e pagamentos da InfinitePay confirmados com a InfinitePay." },
                                     minus: html! { "O Stripe tem compras reais no SaaS do mantenedor, mas nenhum teste automatizado contra uma conta real; o InfinitePay foi validado com um pagamento Pix real. Outro gateway significa escrever um adaptador." },
                                 },
                                 Choice {
