@@ -361,10 +361,7 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                         </ul>
                     </section>
                 </main>
-                <footer class="shell page-footer">
-                    {made_with::badge(Lang::En, cx.weights.page("/compare/").map(|weight| crate::footprint::render(weight, Lang::En)))}
-                    <div class="footer-bottom"><a href="/">"Rullst home"</a><a href="mailto:officialrullst@gmail.com">"Contact the team"</a></div>
-                </footer>
+                {made_with::page_footer(cx, Lang::En, "/compare/")}
             </body>
         </html>
     }

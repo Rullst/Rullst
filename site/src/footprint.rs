@@ -190,41 +190,78 @@ pub fn kilobytes(bytes: u64) -> u64 {
     (bytes.saturating_add(500) / 1000).max(1)
 }
 
+/// The words of the weight sentence in one language.
+struct Words {
+    page: &'static str,
+    first_visit: &'static str,
+    repeat_visit: &'static str,
+    of: &'static str,
+    from_cache: &'static str,
+    no_other_site: &'static str,
+    compressed_with: &'static str,
+    and: &'static str,
+    as_served: &'static str,
+    bodies_as_served: &'static str,
+    measured_with: &'static str,
+    on: &'static str,
+}
+
+const EN: Words = Words {
+    page: "This page: ",
+    first_visit: " requests on a first visit",
+    repeat_visit: " kB on a repeat visit (",
+    of: " of ",
+    from_cache: " answered by the browser cache)",
+    no_other_site: ", no request to another site; ",
+    compressed_with: "bodies compressed with ",
+    and: " and ",
+    as_served: ", as the published site serves them",
+    bodies_as_served: "bodies as the published site serves them",
+    measured_with: ". Measured with ",
+    on: " on ",
+};
+
+const PT: Words = Words {
+    page: "Esta página: ",
+    first_visit: " requisições na primeira visita",
+    repeat_visit: " kB numa nova visita (",
+    of: " de ",
+    from_cache: " respostas vindas do cache do navegador)",
+    no_other_site: ", nenhuma requisição a outro site; ",
+    compressed_with: "corpos compactados com ",
+    and: " e ",
+    as_served: ", como o site publicado os serve",
+    bodies_as_served: "corpos como o site publicado os serve",
+    measured_with: ". Medida com o ",
+    on: " em ",
+};
+
 /// "This page: 484 kB in 7 requests on a first visit, …", for a page's footer. Every figure
 /// comes from the report; a part the report lacks is left out.
 pub fn render(weight: &Weight, lang: Lang) -> Markup {
+    let words = if lang.is_pt() { &PT } else { &EN };
     let kb = |bytes: u64| crate::benchmarks::format::number(kilobytes(bytes) as f64, 0, lang);
-    let size = kb(weight.bytes);
     let requests = weight.requests;
     let day = weight.measured_on;
     let date = html! { <time datetime={day.iso()}>{day.long(lang.is_pt())}</time> };
     let tool = html! { <a href="/Rullst/book/footprint.html#a-published-site">"cargo rullst footprint "{weight.cli_version.as_str()}</a> };
-    let encodings = weight
-        .encodings
-        .join(if lang.is_pt() { " e " } else { " and " });
-    if lang.is_pt() {
-        let repeat = weight.repeat.map(|(bytes, from_cache)| {
-            let size = if bytes == 0 { "0".to_string() } else { kb(bytes) };
-            html! { ", "{size}" kB numa nova visita ("{from_cache}" de "{requests}" respostas vindas do cache do navegador)" }
-        });
-        let compressed = if encodings.is_empty() {
-            html! { "corpos como o site publicado os serve" }
+    let repeat = weight.repeat.map(|(bytes, from_cache)| {
+        let size = if bytes == 0 {
+            "0".to_string()
         } else {
-            html! { "corpos compactados com "{encodings}", como o site publicado os serve" }
+            kb(bytes)
         };
-        html! { "Esta página: "{size}" kB em "{requests}" requisições na primeira visita"{repeat}", nenhuma requisição a outro site; "{compressed}". Medida com o "{tool}" em "{date}"." }
+        html! { ", "{size}{words.repeat_visit}{from_cache}{words.of}{requests}{words.from_cache} }
+    });
+    let compressed = if weight.encodings.is_empty() {
+        html! { {words.bodies_as_served} }
     } else {
-        let repeat = weight.repeat.map(|(bytes, from_cache)| {
-            let size = if bytes == 0 { "0".to_string() } else { kb(bytes) };
-            html! { ", "{size}" kB on a repeat visit ("{from_cache}" of "{requests}" answered by the browser cache)" }
-        });
-        let compressed = if encodings.is_empty() {
-            html! { "bodies as the published site serves them" }
-        } else {
-            html! { "bodies compressed with "{encodings}", as the published site serves them" }
-        };
-        html! { "This page: "{size}" kB in "{requests}" requests on a first visit"{repeat}", no request to another site; "{compressed}". Measured with "{tool}" on "{date}"." }
-    }
+        let encodings = weight.encodings.join(words.and);
+        html! { {words.compressed_with}{encodings}{words.as_served} }
+    };
+    let size = kb(weight.bytes);
+    let unit = if lang.is_pt() { " kB em " } else { " kB in " };
+    html! { {words.page}{size}{unit}{requests}{words.first_visit}{repeat}{words.no_other_site}{compressed}{words.measured_with}{tool}{words.on}{date}"." }
 }
 
 #[cfg(test)]

@@ -4,7 +4,7 @@
 use rullst::html;
 use rullst::html::Markup;
 
-use super::{Lang, RULLST_VERSION};
+use super::{Context, Lang, RULLST_VERSION};
 
 /// The source of these pages.
 pub const SOURCE: &str = "https://github.com/Rullst/Rullst/tree/main/site";
@@ -120,5 +120,25 @@ pub fn badge(lang: Lang, weight: Option<Markup>) -> Markup {
             </div>
             <a class="built-with-source" href={SOURCE}>{source}</a>
         </aside>
+    }
+}
+
+/// The footer of the comparison and privacy pages: the badge with the weight of `path` (the
+/// published page), then the home and contact links.
+pub fn page_footer(cx: &Context, lang: Lang, path: &str) -> Markup {
+    let weight = cx
+        .weights
+        .page(path)
+        .map(|weight| crate::footprint::render(weight, lang));
+    let (home, home_label, contact) = if lang.is_pt() {
+        ("/pt-br/", "Página inicial do Rullst", "Fale com a equipe")
+    } else {
+        ("/", "Rullst home", "Contact the team")
+    };
+    html! {
+        <footer class="shell page-footer">
+            {badge(lang, weight)}
+            <div class="footer-bottom"><a href={home}>{home_label}</a><a href="mailto:officialrullst@gmail.com">{contact}</a></div>
+        </footer>
     }
 }

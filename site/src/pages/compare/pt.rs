@@ -361,10 +361,7 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                         </ul>
                     </section>
                 </main>
-                <footer class="shell page-footer">
-                    {made_with::badge(Lang::PtBr, cx.weights.page("/pt-br/comparar/").map(|weight| crate::footprint::render(weight, Lang::PtBr)))}
-                    <div class="footer-bottom"><a href="/pt-br/">"Página inicial do Rullst"</a><a href="mailto:officialrullst@gmail.com">"Fale com a equipe"</a></div>
-                </footer>
+                {made_with::page_footer(cx, Lang::PtBr, "/pt-br/comparar/")}
             </body>
         </html>
     }
