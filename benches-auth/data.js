@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795863766401,
+  "lastUpdate": 1795891859671,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -26707,6 +26707,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4339,
             "range": "± 28",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f2400a573bb05def80afe1f5470dd54db0de0bd6",
+          "message": "Merge pull request #891 from Rullst/docs/site-why-rullst\n\ndocs(site): say when each framework fits and pin the published CLI version",
+          "timestamp": "2026-11-28T15:33:07-03:00",
+          "tree_id": "2700c2f6c9042c7a3861976b826c5ba96f465418",
+          "url": "https://github.com/Rullst/Rullst/commit/f2400a573bb05def80afe1f5470dd54db0de0bd6"
+        },
+        "date": 1795891858666,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 663,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 518,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1219,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3251,
+            "range": "± 143",
             "unit": "ns/iter"
           }
         ]
