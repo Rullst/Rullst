@@ -382,6 +382,10 @@ impl Default for SecurityConfig {
 struct GlobalSlot {
     config: &'static RullstConfig,
     from_defaults: bool,
+    /// The defaults this configuration replaced. Readers may still hold them,
+    /// so they stay allocated, and are kept here so that they stay reachable
+    /// (a leak checker would otherwise report them).
+    _replaced: Option<&'static RullstConfig>,
 }
 
 static GLOBAL_CONFIG: GlobalCell = std::sync::RwLock::new(None);
@@ -403,6 +407,7 @@ fn read_global(cell: &'static GlobalCell) -> &'static RullstConfig {
             // once for the configuration that replaces them.
             config: Box::leak(Box::new(RullstConfig::default())),
             from_defaults: true,
+            _replaced: None,
         })
         .config
 }
@@ -423,9 +428,11 @@ fn publish_in(cell: &GlobalCell, config: &RullstConfig) -> GlobalOutcome {
         }
     };
     if replace {
+        let replaced = slot.as_ref().map(|current| current.config);
         *slot = Some(GlobalSlot {
             config: Box::leak(Box::new(config.clone())),
             from_defaults: false,
+            _replaced: replaced,
         });
     }
     outcome
