@@ -12,6 +12,23 @@ pub trait HtmlEscape {
     fn escape_attribute(&self) -> Cow<'_, str> {
         self.escape_html()
     }
+
+    /// Appends [`HtmlEscape::escape_html`] to `out`. `html!` writes every
+    /// `{value}` through it into the page's one buffer; the implementations
+    /// in this crate write the same text without an intermediate string.
+    #[doc(hidden)]
+    #[inline]
+    fn push_html(&self, out: &mut String) {
+        out.push_str(&self.escape_html());
+    }
+
+    /// Appends [`HtmlEscape::escape_attribute`] to `out`, as
+    /// [`HtmlEscape::push_html`] does for text.
+    #[doc(hidden)]
+    #[inline]
+    fn push_attribute(&self, out: &mut String) {
+        out.push_str(&self.escape_attribute());
+    }
 }
 
 #[path = "html_markup.rs"]
@@ -20,7 +37,11 @@ pub use markup::Markup;
 
 #[path = "html_attribute.rs"]
 mod attribute;
+
+#[path = "html_push.rs"]
+mod push;
 pub use attribute::{AttributePresence, OptionalAttribute};
+use push::{push_decimal, push_escaped_str, push_wide_decimal};
 // Used by `html!` for `name?={value}` attributes.
 #[doc(hidden)]
 pub use attribute::optional_attr;
@@ -61,6 +82,27 @@ impl HtmlEscape for RawHtml {
     fn escape_html(&self) -> Cow<'_, str> {
         Cow::Borrowed(&self.0)
     }
+
+    fn push_html(&self, out: &mut String) {
+        out.push_str(&self.0);
+    }
+
+    fn push_attribute(&self, out: &mut String) {
+        out.push_str(&self.0);
+    }
+}
+
+// Text is escaped as `escape_str` escapes it, without the intermediate string.
+macro_rules! push_escaped_text {
+    () => {
+        fn push_html(&self, out: &mut String) {
+            push_escaped_str(out, self);
+        }
+
+        fn push_attribute(&self, out: &mut String) {
+            push_escaped_str(out, self);
+        }
+    };
 }
 
 #[cfg_attr(mutants, mutants::skip)]
@@ -68,18 +110,24 @@ impl HtmlEscape for String {
     fn escape_html(&self) -> Cow<'_, str> {
         escape_str(self)
     }
+
+    push_escaped_text!();
 }
 
 impl HtmlEscape for &str {
     fn escape_html(&self) -> Cow<'_, str> {
         escape_str(self)
     }
+
+    push_escaped_text!();
 }
 
 impl<'a> HtmlEscape for Cow<'a, str> {
     fn escape_html(&self) -> Cow<'_, str> {
         escape_str(self.as_ref())
     }
+
+    push_escaped_text!();
 }
 
 #[cfg_attr(mutants, mutants::skip)]
@@ -90,6 +138,14 @@ impl<T: HtmlEscape + ?Sized> HtmlEscape for &T {
 
     fn escape_attribute(&self) -> Cow<'_, str> {
         (*self).escape_attribute()
+    }
+
+    fn push_html(&self, out: &mut String) {
+        (*self).push_html(out);
+    }
+
+    fn push_attribute(&self, out: &mut String) {
+        (*self).push_attribute(out);
     }
 }
 
@@ -108,24 +164,60 @@ impl<T: HtmlEscape> HtmlEscape for Option<T> {
             None => Cow::Borrowed(""),
         }
     }
+
+    fn push_html(&self, out: &mut String) {
+        if let Some(value) = self {
+            value.push_html(out);
+        }
+    }
+
+    fn push_attribute(&self, out: &mut String) {
+        if let Some(value) = self {
+            value.push_attribute(out);
+        }
+    }
 }
 
-// Automatically treat numbers and booleans as safe since they cannot contain HTML characters
+// Automatically treat numbers and booleans as safe since they cannot contain
+// HTML characters. `html!` writes them straight into its buffer, with the
+// text `to_string` writes: integers through `push`, floats and booleans with
+// their `Display` implementation.
 macro_rules! impl_safe_primitives {
-    ($($t:ty),*) => {
+    ($($t:ty),* => |$value:ident, $out:ident| $push:expr) => {
         $(
             impl HtmlEscape for $t {
                 fn escape_html(&self) -> Cow<'_, str> {
                     Cow::Owned(self.to_string())
+                }
+
+                fn push_html(&self, $out: &mut String) {
+                    let $value = *self;
+                    $push
+                }
+
+                fn push_attribute(&self, out: &mut String) {
+                    self.push_html(out);
                 }
             }
         )*
     };
 }
 
-impl_safe_primitives!(
-    i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64, bool
-);
+impl_safe_primitives!(u8, u16, u32, u64, usize => |value, out| {
+    push_decimal(out, false, value as u64)
+});
+impl_safe_primitives!(i8, i16, i32, i64, isize => |value, out| {
+    push_decimal(out, value < 0, (value as i64).unsigned_abs())
+});
+impl_safe_primitives!(u128 => |value, out| push_wide_decimal(out, false, value));
+impl_safe_primitives!(i128 => |value, out| {
+    push_wide_decimal(out, value < 0, value.unsigned_abs())
+});
+impl_safe_primitives!(f32, f64, bool => |value, out| {
+    use std::fmt::Write as _;
+    // Writing to a `String` cannot fail.
+    let _ = write!(out, "{value}");
+});
 
 /// Helper function to escape standard strings
 #[cfg_attr(mutants, mutants::skip)]
@@ -166,6 +258,21 @@ pub fn escape_str(s: &str) -> Cow<'_, str> {
 #[inline(always)]
 pub fn escape<T: HtmlEscape + ?Sized>(val: &T) -> Cow<'_, str> {
     val.escape_html()
+}
+
+/// Writes `{value}` into the buffer of an `html!` expansion.
+#[doc(hidden)]
+#[inline(always)]
+pub fn push_escaped<T: HtmlEscape + ?Sized>(out: &mut String, val: &T) {
+    val.push_html(out);
+}
+
+/// Writes the value of `name={value}` into the buffer of an `html!`
+/// expansion.
+#[doc(hidden)]
+#[inline(always)]
+pub fn push_escaped_attr<T: HtmlEscape + ?Sized>(out: &mut String, val: &T) {
+    val.push_attribute(out);
 }
 
 /// Helper function to escape attribute values (see
@@ -224,6 +331,10 @@ mod macro_tests;
 #[cfg(test)]
 #[path = "html_syntax_tests.rs"]
 mod syntax_tests;
+
+#[cfg(test)]
+#[path = "html_push_tests.rs"]
+mod push_tests;
 
 #[cfg(kani)]
 #[cfg_attr(mutants, mutants::skip)]

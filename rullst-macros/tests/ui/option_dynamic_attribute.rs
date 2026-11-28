@@ -11,12 +11,12 @@ pub mod html {
         }
     }
 
-    pub fn escape<T: ?Sized>(_: &T) -> String {
-        String::new()
+    pub fn push_escaped<T: ?Sized>(_: &mut String, _: &T) {
+        // Writes nothing: only the `Option` values fail.
     }
 
-    pub fn escape_attr<T: ?Sized>(_: &T) -> String {
-        String::new()
+    pub fn push_escaped_attr<T: ?Sized>(_: &mut String, _: &T) {
+        // Writes nothing.
     }
 }
 

@@ -38,9 +38,9 @@ fn values_split_the_text_around_them() {
     let tokens = expansion("<tr><td>{id}</td><td>{message}</td></tr>");
     for expected in [
         r#"s . push_str ("<tr><td>") ;"#,
-        "s . push_str (& rullst :: html :: escape (& (id))) ;",
+        "rullst :: html :: push_escaped (& mut s , & (id)) ;",
         r#"s . push_str ("</td><td>") ;"#,
-        "s . push_str (& rullst :: html :: escape (& (message))) ;",
+        "rullst :: html :: push_escaped (& mut s , & (message)) ;",
         r#"s . push_str ("</td></tr>") ;"#,
     ] {
         assert!(tokens.contains(expected), "{expected} in {tokens}");

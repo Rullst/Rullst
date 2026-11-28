@@ -11,6 +11,14 @@ pub mod html {
         format!("attr:{value}")
     }
 
+    pub fn push_escaped(out: &mut String, value: &impl std::fmt::Display) {
+        out.push_str(&escape(value));
+    }
+
+    pub fn push_escaped_attr(out: &mut String, value: &impl std::fmt::Display) {
+        out.push_str(&escape_attr(value));
+    }
+
     /// Stand-in for the presence of a conditional `name?={value}` attribute.
     pub enum AttributePresence {
         Absent,

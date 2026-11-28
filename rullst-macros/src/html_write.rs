@@ -1,7 +1,8 @@
 //! The statements of an `html!` expansion. Every node writes into one
 //! `String`: text known at compile time is joined into one `push_str` per
-//! run, and interpolated values are escaped into the same buffer, so a page
-//! allocates its buffer once instead of a `String` per element.
+//! run, and interpolated values are escaped (numbers formatted) into the same
+//! buffer, so a page allocates its buffer once instead of a `String` per
+//! element and per value.
 //!
 //! `continue` and `break` inside an `@for` body leave the expansion's loop in
 //! the middle of a node. Each node used to build its own `String`, so the
@@ -89,14 +90,14 @@ impl Helpers {
     }
 }
 
-/// Writes `{expr}`: the value escaped as text.
+/// Writes `{expr}`: the value escaped as text, straight into the buffer.
 pub(super) fn escaped_text(buffer: &Ident, expr: &Expr) -> TokenStream {
-    quote! { #buffer.push_str(&rullst::html::escape(&(#expr))); }
+    quote! { rullst::html::push_escaped(&mut #buffer, &(#expr)); }
 }
 
 /// Writes `value` (a reference) escaped for a double-quoted attribute.
 pub(super) fn escaped_attribute(buffer: &Ident, value: &Ident) -> TokenStream {
-    quote! { #buffer.push_str(&rullst::html::escape_attr(#value)); }
+    quote! { rullst::html::push_escaped_attr(&mut #buffer, #value); }
 }
 
 /// Writes the nodes of an `@for` body. A node that mentions `continue` or

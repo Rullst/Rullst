@@ -71,8 +71,7 @@ pub fn allows_data_urls(tag: &str) -> bool {
 /// Local helper emitted once into an expansion with dynamic URL attributes.
 /// The escaped value has just been written to `buffer` from `start`; a
 /// script-capable scheme replaces it with `#`. It is generated inline instead
-/// of calling a runtime function, so the expansion works with any
-/// `rullst::html` version that provides `escape_attr`.
+/// of calling a runtime function.
 ///
 /// Like the URL parser, it skips leading C0 controls and spaces and ignores
 /// ASCII tab, LF and CR anywhere before reading the scheme. Every character
@@ -126,8 +125,7 @@ fn static_attribute_value(lit: &LitStr) -> String {
 /// autoref to the deprecated method for an `Option` (or `&Option`) and to the
 /// plain one for every other type, so `name={option}` raises a deprecation
 /// warning at the value while the attribute is written exactly as before. The
-/// calls do nothing at run time. Generated inline, like the URL guard, so the
-/// expansion needs nothing new from `rullst::html`.
+/// calls do nothing at run time. Generated inline, like the URL guard.
 pub fn option_value_probe_tokens() -> TokenStream {
     quote! {
         struct RullstAttributeValue<'a, T: ?Sized>(&'a T);
