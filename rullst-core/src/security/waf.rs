@@ -136,7 +136,7 @@ impl Rule {
 pub(super) fn security_config(req: &Request) -> &crate::config::SecurityConfig {
     req.extensions()
         .get::<crate::config::SecurityConfig>()
-        .unwrap_or(&crate::config::RullstConfig::global().security)
+        .unwrap_or_else(|| &crate::config::RullstConfig::global().security)
 }
 
 fn should_inspect_body(headers: &HeaderMap) -> bool {

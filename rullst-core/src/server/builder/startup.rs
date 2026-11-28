@@ -17,6 +17,26 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex, RwLock};
 
+/// Names a global configuration that the one `Server` loaded did not become.
+fn report_global_conflict(outcome: crate::config::GlobalOutcome) {
+    use crate::config::GlobalOutcome;
+    match outcome {
+        GlobalOutcome::ReplacedDefaults { differs: true } => tracing::warn!(
+            "RullstConfig::global() was read before Server started and returned the defaults; \
+             Server replaced them with Rullst.toml, but a reference taken earlier still holds \
+             the defaults (for example a missing [app] env). Read the configuration after \
+             Server starts."
+        ),
+        GlobalOutcome::Kept { differs: true } => tracing::warn!(
+            "a global configuration was already set in this process, by \
+             RullstConfig::set_global() or by an earlier Server, and it differs from this \
+             Server's Rullst.toml; RullstConfig::global() keeps that one, so code that reads it \
+             does not see this Server's [app] env and other settings."
+        ),
+        _ => {}
+    }
+}
+
 impl Server {
     pub(super) async fn run_inner<F>(mut self, port: u16, shutdown: F) -> Result<(), ServerError>
     where
@@ -110,7 +130,7 @@ impl Server {
         app_config
             .validate()
             .map_err(|error| ServerError::Configuration(error.to_string()))?;
-        let _ = crate::config::RullstConfig::set_global(app_config.clone());
+        report_global_conflict(crate::config::RullstConfig::publish_global(&app_config));
         Ok(app_config)
     }
 
@@ -363,4 +383,63 @@ async fn flush_access_log() {
         crate::server::access_log_writer::flush(std::time::Duration::from_secs(1))
     })
     .await;
+}
+
+#[cfg(test)]
+mod global_conflict_tests {
+    use super::report_global_conflict;
+    use crate::config::GlobalOutcome;
+    use std::sync::{Arc, Mutex};
+
+    #[derive(Clone, Default)]
+    struct Captured(Arc<Mutex<Vec<u8>>>);
+
+    impl std::io::Write for Captured {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            if let Ok(mut buffer) = self.0.lock() {
+                buffer.extend_from_slice(bytes);
+            }
+            Ok(bytes.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for Captured {
+        type Writer = Captured;
+        fn make_writer(&'a self) -> Self::Writer {
+            self.clone()
+        }
+    }
+
+    fn logged(outcome: GlobalOutcome) -> String {
+        let captured = Captured::default();
+        let subscriber = tracing_subscriber::fmt()
+            .with_writer(captured.clone())
+            .with_ansi(false)
+            .finish();
+        tracing::subscriber::with_default(subscriber, || report_global_conflict(outcome));
+        let bytes = captured
+            .0
+            .lock()
+            .map(|buffer| buffer.clone())
+            .unwrap_or_default();
+        String::from_utf8_lossy(&bytes).into_owned()
+    }
+
+    #[test]
+    fn a_differing_early_global_is_named_and_agreement_is_silent() {
+        let early = logged(GlobalOutcome::ReplacedDefaults { differs: true });
+        assert!(early.contains("RullstConfig::global() was read before Server started"));
+        let explicit = logged(GlobalOutcome::Kept { differs: true });
+        assert!(explicit.contains("RullstConfig::set_global()"));
+        for quiet in [
+            GlobalOutcome::Installed,
+            GlobalOutcome::ReplacedDefaults { differs: false },
+            GlobalOutcome::Kept { differs: false },
+        ] {
+            assert_eq!(logged(quiet), "");
+        }
+    }
 }

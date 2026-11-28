@@ -364,3 +364,62 @@ fn parse_errors_name_their_line_and_column() {
         other => panic!("expected a parse error, got {other:?}"),
     }
 }
+
+/// A configuration that carries `[app] env`, as a loaded `Rullst.toml` does.
+fn production_config() -> RullstConfig {
+    RullstConfig::from_toml("[app]\nenv = \"production\"\n").unwrap()
+}
+
+#[test]
+fn early_global_read_returns_defaults_and_server_publication_replaces_them() {
+    static CELL: GlobalCell = std::sync::RwLock::new(None);
+    let early = read_global(&CELL);
+    assert_eq!(early.app.env, None);
+    assert!(std::ptr::eq(early, read_global(&CELL)));
+
+    let outcome = publish_in(&CELL, &production_config());
+    assert_eq!(outcome, GlobalOutcome::ReplacedDefaults { differs: true });
+    let later = read_global(&CELL);
+    assert_eq!(later.app.env.as_deref(), Some("production"));
+    // The reference taken before the replacement is the one that is stale.
+    assert_eq!(early.app.env, None);
+}
+
+#[test]
+fn early_read_followed_by_identical_configuration_is_not_a_conflict() {
+    static CELL: GlobalCell = std::sync::RwLock::new(None);
+    read_global(&CELL);
+    assert_eq!(
+        publish_in(&CELL, &RullstConfig::default()),
+        GlobalOutcome::ReplacedDefaults { differs: false }
+    );
+}
+
+#[test]
+fn explicit_global_is_kept_and_a_different_offer_is_reported() {
+    static CELL: GlobalCell = std::sync::RwLock::new(None);
+    assert_eq!(
+        publish_in(&CELL, &production_config()),
+        GlobalOutcome::Installed
+    );
+    assert_eq!(
+        publish_in(&CELL, &RullstConfig::default()),
+        GlobalOutcome::Kept { differs: true }
+    );
+    assert_eq!(
+        publish_in(&CELL, &production_config()),
+        GlobalOutcome::Kept { differs: false }
+    );
+    assert_eq!(read_global(&CELL).app.env.as_deref(), Some("production"));
+}
+
+#[test]
+fn global_configuration_comparison_sees_database_url_and_security_changes() {
+    let mut other = RullstConfig::default();
+    assert_eq!(other, RullstConfig::default());
+    other.database.url = Some("sqlite://other.db".into());
+    assert_ne!(other, RullstConfig::default());
+    let mut other = RullstConfig::default();
+    other.security.hsts_preload = true;
+    assert_ne!(other, RullstConfig::default());
+}
