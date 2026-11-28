@@ -924,12 +924,29 @@ another node's proof early. An in-memory SQLite URL (`sqlite::memory:` or
 database; its claims are still lost on restart.
 
 That middleware path records the payload before calling the handler, so it is
-a replay firewall rather than an exactly-once delivery protocol. The claim is
-kept whatever the handler returns: when the handler answers with an error
-status, times out or the process crashes before the business mutation, the
-provider's retry of the same payload gets `409 Conflict` for the replay TTL
-(24 hours by default) and the event is lost. Store the event durably (an outbox
-row or a queue job) before answering `2xx`, or use the event-key path below.
+a replay firewall rather than an exactly-once delivery protocol. By default
+the claim is kept whatever the handler returns: when the handler answers with
+an error status, times out or the process crashes before the business
+mutation, the provider's retry of the same payload gets `409 Conflict` for the
+replay TTL (24 hours by default) and the event is lost. Store the event
+durably (an outbox row or a queue job) before answering `2xx`, or use the
+event-key path below.
+
+Since 13.1.0, `WebhookMiddlewareState::with_retry_after_server_error()` makes
+`verify_webhook_with_state` and `verify_webhook_actix_with_state` remove the
+claim when the handler answers with a server error (5xx), so the provider's
+retry reaches the handler again. The SQL store removes it in a task of its
+own, so the retry is accepted once that task has run. While the handler keeps
+failing, anyone holding a captured signed body can deliver it again (within
+the signature's freshness window, or at any time for a provider that signs
+only the body), and each delivery runs the handler. Enable it only when a 5xx
+answer means nothing was applied: the work commits in one transaction or is
+idempotent, and no layer between the middleware and the handler (a timeout or
+load-shedding layer, a panic catcher) can answer 5xx after the handler
+committed. The claim is still kept after a `2xx` or `4xx` answer, when its
+removal fails, and when the request is dropped before the handler answers.
+`verify_webhook`, `verify_webhook_mock_local` and their Actix equivalents
+never remove it.
 
 When a verified provider protocol supplies a stable event ID, prefer
 `check_and_record_event_key` over payload-only replay detection. A relational

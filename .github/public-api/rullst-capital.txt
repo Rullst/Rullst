@@ -1242,6 +1242,7 @@ pub fn rullst_capital::WebhookMiddlewareState::local_mock(replay_store: impl cor
 pub fn rullst_capital::WebhookMiddlewareState::local_mock_with_provider<P>(provider: alloc::sync::Arc<P>, replay_store: impl core::convert::Into<rullst_capital::WebhookReplayBackend>) -> Self where P: rullst_capital::BillingProvider + 'static
 pub fn rullst_capital::WebhookMiddlewareState::production(replay_store: impl core::convert::Into<rullst_capital::WebhookReplayBackend>) -> Self
 pub fn rullst_capital::WebhookMiddlewareState::production_with_provider<P>(provider: alloc::sync::Arc<P>, replay_store: impl core::convert::Into<rullst_capital::WebhookReplayBackend>) -> Self where P: rullst_capital::BillingProvider + 'static
+pub fn rullst_capital::WebhookMiddlewareState::with_retry_after_server_error(self) -> Self
 impl core::clone::Clone for rullst_capital::WebhookMiddlewareState
 impl core::fmt::Debug for rullst_capital::WebhookMiddlewareState
 impl !core::panic::unwind_safe::RefUnwindSafe for rullst_capital::WebhookMiddlewareState

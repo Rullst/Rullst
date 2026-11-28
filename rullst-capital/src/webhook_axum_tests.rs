@@ -254,3 +254,123 @@ async fn a_body_of_exactly_two_mebibytes_reaches_signature_verification() {
         StatusCode::UNAUTHORIZED
     );
 }
+
+/// Answers each delivery with the next status of `statuses`, then 204.
+fn scripted_app(state: WebhookMiddlewareState, statuses: Vec<StatusCode>) -> Router {
+    let statuses = Arc::new(std::sync::Mutex::new(statuses.into_iter()));
+    Router::new()
+        .route(
+            "/webhook",
+            post(move || {
+                let statuses = Arc::clone(&statuses);
+                async move {
+                    statuses
+                        .lock()
+                        .unwrap()
+                        .next()
+                        .unwrap_or(StatusCode::NO_CONTENT)
+                }
+            }),
+        )
+        .layer(middleware::from_fn_with_state(
+            state,
+            verify_webhook_with_state,
+        ))
+}
+
+#[tokio::test]
+async fn a_server_error_releases_the_claim_so_the_retry_is_accepted() {
+    let app = scripted_app(
+        state(true).with_retry_after_server_error(),
+        vec![
+            StatusCode::INTERNAL_SERVER_ERROR,
+            StatusCode::SERVICE_UNAVAILABLE,
+        ],
+    );
+    let deliver = || request(payload(), Some("mock_axum_signature"));
+    for expected in [
+        StatusCode::INTERNAL_SERVER_ERROR,
+        StatusCode::SERVICE_UNAVAILABLE,
+        StatusCode::NO_CONTENT,
+        // Once the handler succeeded, the payload is a replay again.
+        StatusCode::CONFLICT,
+    ] {
+        assert_eq!(
+            app.clone().oneshot(deliver()).await.unwrap().status(),
+            expected
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_client_error_keeps_the_claim() {
+    let app = scripted_app(
+        state(true).with_retry_after_server_error(),
+        vec![StatusCode::UNPROCESSABLE_ENTITY],
+    );
+    let deliver = || request(payload(), Some("mock_axum_signature"));
+    assert_eq!(
+        app.clone().oneshot(deliver()).await.unwrap().status(),
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
+    assert_eq!(
+        app.oneshot(deliver()).await.unwrap().status(),
+        StatusCode::CONFLICT
+    );
+}
+
+#[tokio::test]
+async fn without_the_opt_in_a_server_error_keeps_the_claim() {
+    let app = scripted_app(state(true), vec![StatusCode::INTERNAL_SERVER_ERROR]);
+    let deliver = || request(payload(), Some("mock_axum_signature"));
+    assert_eq!(
+        app.clone().oneshot(deliver()).await.unwrap().status(),
+        StatusCode::INTERNAL_SERVER_ERROR
+    );
+    assert_eq!(
+        app.oneshot(deliver()).await.unwrap().status(),
+        StatusCode::CONFLICT
+    );
+    assert!(format!("{:?}", state(true)).contains("retry_after_server_error: false"));
+    assert!(
+        format!("{:?}", state(true).with_retry_after_server_error())
+            .contains("retry_after_server_error: true")
+    );
+}
+
+#[cfg(feature = "webhook-sql")]
+#[tokio::test]
+async fn the_sql_store_releases_the_claim_after_a_server_error() {
+    let store = Arc::new(
+        SqlWebhookReplayStore::connect("sqlite::memory:", 8, std::time::Duration::from_secs(60))
+            .await
+            .unwrap(),
+    );
+    store.prepare_schema().await.unwrap();
+    let state = WebhookMiddlewareState::local_mock_with_provider(
+        Arc::new(StripeProvider::new("mock_api", "mock_axum_signature")),
+        Arc::clone(&store),
+    )
+    .with_retry_after_server_error();
+    let app = scripted_app(state, vec![StatusCode::INTERNAL_SERVER_ERROR]);
+    let deliver = || request(payload(), Some("mock_axum_signature"));
+    assert_eq!(
+        app.clone().oneshot(deliver()).await.unwrap().status(),
+        StatusCode::INTERNAL_SERVER_ERROR
+    );
+    // The release runs in a task of its own; until it ends the retry is a replay.
+    let mut status = StatusCode::CONFLICT;
+    for _ in 0..200 {
+        status = app.clone().oneshot(deliver()).await.unwrap().status();
+        if status != StatusCode::CONFLICT {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    assert_eq!(
+        app.oneshot(deliver()).await.unwrap().status(),
+        StatusCode::CONFLICT
+    );
+    store.close().await;
+}

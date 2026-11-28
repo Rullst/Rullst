@@ -3,7 +3,7 @@ use crate::capital::provider;
 #[cfg(any(feature = "axum", feature = "actix", test))]
 use crate::capital::{BillingProvider, WebhookEvent, WebhookVerificationMode};
 use crate::error::CapitalError;
-#[cfg(any(feature = "axum", feature = "actix", test))]
+#[cfg(any(feature = "axum", feature = "actix"))]
 use crate::one_off::PaymentNotification;
 #[cfg(feature = "axum")]
 use axum::{
@@ -33,6 +33,8 @@ pub use inbox::{
 };
 
 mod replay;
+#[cfg(any(feature = "axum", feature = "actix", test))]
+use replay::ReplayClaim;
 pub use replay::{InMemoryWebhookReplayStore, WebhookReplayBackend};
 
 pub(super) const MAX_WEBHOOK_PAYLOAD_BYTES: usize = 2 * 1024 * 1024;
@@ -47,6 +49,7 @@ pub struct WebhookMiddlewareState {
     replay_store: WebhookReplayBackend,
     allow_mock: bool,
     provider: Option<Arc<dyn BillingProvider>>,
+    retry_after_server_error: bool,
 }
 
 #[cfg(any(feature = "axum", feature = "actix"))]
@@ -56,6 +59,7 @@ impl std::fmt::Debug for WebhookMiddlewareState {
             .debug_struct("WebhookMiddlewareState")
             .field("replay_store", &self.replay_store)
             .field("allow_mock", &self.allow_mock)
+            .field("retry_after_server_error", &self.retry_after_server_error)
             .field(
                 "provider",
                 &self.provider.as_ref().map(|provider| provider.name()),
@@ -72,6 +76,7 @@ impl WebhookMiddlewareState {
             replay_store: replay_store.into(),
             allow_mock: false,
             provider: None,
+            retry_after_server_error: false,
         }
     }
 
@@ -81,6 +86,7 @@ impl WebhookMiddlewareState {
             replay_store: replay_store.into(),
             allow_mock: true,
             provider: None,
+            retry_after_server_error: false,
         }
     }
 
@@ -96,6 +102,7 @@ impl WebhookMiddlewareState {
             replay_store: replay_store.into(),
             allow_mock: false,
             provider: Some(provider),
+            retry_after_server_error: false,
         }
     }
 
@@ -111,7 +118,29 @@ impl WebhookMiddlewareState {
             replay_store: replay_store.into(),
             allow_mock: true,
             provider: Some(provider),
+            retry_after_server_error: false,
         }
+    }
+
+    /// Removes a delivery's replay claim when the handler answers with a
+    /// server error (5xx), so the provider's retry of the same payload reaches
+    /// the handler again instead of getting `409 Conflict` for the replay TTL.
+    /// Added in 13.1.0; off by default.
+    ///
+    /// While the handler keeps failing, anyone holding a captured signed body
+    /// can deliver it again (within the signature's freshness window, or at
+    /// any time for a provider that signs only the body), and each delivery
+    /// runs the handler. Enable it only when a 5xx answer means nothing was
+    /// applied: the handler commits its work in one transaction or makes it
+    /// idempotent, and no layer between this middleware and the handler (a
+    /// timeout or load-shedding layer, a panic catcher) can answer 5xx after
+    /// the handler committed. The claim is still kept after a `2xx` or `4xx`
+    /// answer, when its removal fails, and when the request is dropped before
+    /// the handler answers.
+    #[must_use]
+    pub fn with_retry_after_server_error(mut self) -> Self {
+        self.retry_after_server_error = true;
+        self
     }
 
     pub(super) fn resolved_provider(&self) -> Option<&(dyn BillingProvider + '_)> {
@@ -152,7 +181,7 @@ pub use actix::{
 /// for more than about 10,000 verified deliveries per day.
 #[cfg(feature = "axum")]
 pub async fn verify_webhook(req: Request, next: Next) -> Result<Response, StatusCode> {
-    verify_webhook_inner(req, next, &DEFAULT_REPLAY_STORE, false, provider()).await
+    verify_webhook_inner(req, next, &DEFAULT_REPLAY_STORE, false, provider(), false).await
 }
 
 /// Explicit local-only middleware variant for deterministic `mock_*` webhook credentials.
@@ -162,10 +191,13 @@ pub async fn verify_webhook(req: Request, next: Next) -> Result<Response, Status
 /// [`verify_webhook`].
 #[cfg(feature = "axum")]
 pub async fn verify_webhook_mock_local(req: Request, next: Next) -> Result<Response, StatusCode> {
-    verify_webhook_inner(req, next, &DEFAULT_REPLAY_STORE, true, provider()).await
+    verify_webhook_inner(req, next, &DEFAULT_REPLAY_STORE, true, provider(), false).await
 }
 
 /// Configurable middleware entry point for a caller-owned replay store.
+///
+/// With [`WebhookMiddlewareState::with_retry_after_server_error`] it removes
+/// the delivery's replay claim after a 5xx answer from the handler.
 #[cfg(feature = "axum")]
 pub async fn verify_webhook_with_state(
     State(state): State<WebhookMiddlewareState>,
@@ -178,6 +210,7 @@ pub async fn verify_webhook_with_state(
         &state.replay_store,
         state.allow_mock,
         state.resolved_provider(),
+        state.retry_after_server_error,
     )
     .await
 }
@@ -189,6 +222,7 @@ async fn verify_webhook_inner(
     replay_store: &WebhookReplayBackend,
     allow_mock: bool,
     active_provider: Option<&dyn BillingProvider>,
+    retry_after_server_error: bool,
 ) -> Result<Response, StatusCode> {
     let (parts, body) = req.into_parts();
     if ["webhook-id", "webhook-timestamp", "webhook-signature"]
@@ -216,7 +250,7 @@ async fn verify_webhook_inner(
     }
 
     let active_provider = active_provider.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
-    let verified = verify_delivery(
+    let (verified, claim) = verify_delivery(
         active_provider,
         &body_bytes,
         &header_map,
@@ -227,7 +261,42 @@ async fn verify_webhook_inner(
     .map_err(capital_error_status)?;
 
     let request = rebuild_request(parts, body_bytes, verified);
-    Ok(next.run(request).await)
+    let response = next.run(request).await;
+    if retry_after_server_error && response.status().is_server_error() {
+        release_after_server_error(replay_store, claim).await;
+    }
+    Ok(response)
+}
+
+/// Releases the delivery's replay claim after a server-error answer, so the
+/// provider's retry of the same payload is accepted instead of getting 409.
+/// The in-memory store releases at once; the SQL store in a task of its own,
+/// so a slow database neither delays the answer nor loses the release when
+/// the request is dropped. A release that fails keeps the claim.
+#[cfg(any(feature = "axum", feature = "actix"))]
+pub(super) async fn release_after_server_error(
+    replay_store: &WebhookReplayBackend,
+    claim: Option<ReplayClaim>,
+) {
+    let Some(claim) = claim else {
+        return;
+    };
+    match claim {
+        ReplayClaim::Memory { .. } => {
+            let _ = replay_store.release(claim).await;
+        }
+        #[cfg(feature = "webhook-sql")]
+        ReplayClaim::Sql { .. } => {
+            let backend = replay_store.clone();
+            let release = async move {
+                let _ = backend.release(claim).await;
+            };
+            match tokio::runtime::Handle::try_current() {
+                Ok(runtime) => drop(runtime.spawn(release)),
+                Err(_) => release.await,
+            }
+        }
+    }
 }
 
 #[cfg(feature = "axum")]
@@ -244,7 +313,7 @@ fn rebuild_request(mut parts: Parts, body: Bytes, verified: VerifiedWebhook) -> 
 }
 
 /// What the middleware inserts into the request extensions.
-#[cfg(any(feature = "axum", feature = "actix", test))]
+#[cfg(any(feature = "axum", feature = "actix"))]
 #[derive(Debug)]
 pub(super) enum VerifiedWebhook {
     /// A signed (or local mock) event.
@@ -253,25 +322,25 @@ pub(super) enum VerifiedWebhook {
     Notification(PaymentNotification),
 }
 
-#[cfg(any(feature = "axum", feature = "actix", test))]
+#[cfg(any(feature = "axum", feature = "actix"))]
 pub(super) async fn verify_delivery(
     active_provider: &dyn BillingProvider,
     body: &[u8],
     headers: &HashMap<String, String>,
     replay_store: &WebhookReplayBackend,
     allow_mock: bool,
-) -> Result<VerifiedWebhook, CapitalError> {
+) -> Result<(VerifiedWebhook, Option<ReplayClaim>), CapitalError> {
     if active_provider.webhook_verification_mode()? == WebhookVerificationMode::ConfirmedAtSource {
         return active_provider
             .parse_payment_notification(body, headers)
-            .map(VerifiedWebhook::Notification);
+            .map(|notification| (VerifiedWebhook::Notification(notification), None));
     }
-    verify_payload(active_provider, body, headers, replay_store, allow_mock)
+    verify_claimed_payload(active_provider, body, headers, replay_store, allow_mock)
         .await
-        .map(VerifiedWebhook::Event)
+        .map(|(event, claim)| (VerifiedWebhook::Event(event), Some(claim)))
 }
 
-#[cfg(any(feature = "axum", feature = "actix", test))]
+#[cfg(test)]
 pub(super) async fn verify_payload(
     active_provider: &dyn BillingProvider,
     body: &[u8],
@@ -279,6 +348,20 @@ pub(super) async fn verify_payload(
     replay_store: &WebhookReplayBackend,
     allow_mock: bool,
 ) -> Result<WebhookEvent, CapitalError> {
+    verify_claimed_payload(active_provider, body, headers, replay_store, allow_mock)
+        .await
+        .map(|(event, _)| event)
+}
+
+/// The verified event and the replay claim recorded for its payload.
+#[cfg(any(feature = "axum", feature = "actix", test))]
+async fn verify_claimed_payload(
+    active_provider: &dyn BillingProvider,
+    body: &[u8],
+    headers: &HashMap<String, String>,
+    replay_store: &WebhookReplayBackend,
+    allow_mock: bool,
+) -> Result<(WebhookEvent, ReplayClaim), CapitalError> {
     match active_provider.webhook_verification_mode()? {
         WebhookVerificationMode::Mock if !allow_mock => {
             return Err(CapitalError::MockWebhookNotAllowed(
@@ -296,10 +379,10 @@ pub(super) async fn verify_payload(
         WebhookVerificationMode::Real | WebhookVerificationMode::Mock => {}
     }
     let event = active_provider.handle_webhook(body, headers)?;
-    replay_store
+    let claim = replay_store
         .record_payload(active_provider.name(), body)
         .await?;
-    Ok(event)
+    Ok((event, claim))
 }
 
 pub(super) fn validate_replay_provider(provider: &str) -> Result<(), CapitalError> {

@@ -101,6 +101,18 @@ pub(super) fn delete_expired_sql(backend: SqlWebhookBackend) -> &'static str {
     }
 }
 
+#[cfg(any(feature = "axum", feature = "actix", test))]
+pub(super) fn delete_claim_sql(backend: SqlWebhookBackend) -> &'static str {
+    match backend {
+        SqlWebhookBackend::Postgres => {
+            "DELETE FROM rullst_webhook_replay_claims WHERE provider = $1 AND replay_hash = $2 AND accepted_at = $3"
+        }
+        _ => {
+            "DELETE FROM rullst_webhook_replay_claims WHERE provider = ? AND replay_hash = ? AND accepted_at = ?"
+        }
+    }
+}
+
 pub(super) fn contains_claim_sql(backend: SqlWebhookBackend) -> &'static str {
     match backend {
         SqlWebhookBackend::Postgres => {

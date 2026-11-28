@@ -1,4 +1,6 @@
 use super::*;
+use crate::webhook::{InMemoryWebhookReplayStore, WebhookReplayBackend};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 static DATABASE_SEQUENCE: AtomicU64 = AtomicU64::new(0);
@@ -305,6 +307,62 @@ async fn sqlite_store_debug_index_clock_bounds_and_close_are_observable() {
 
     store.close().await;
     assert!(store.pool().is_closed());
+}
+
+#[tokio::test]
+async fn a_released_payload_claim_is_accepted_again() {
+    let store = Arc::new(
+        SqlWebhookReplayStore::connect("sqlite::memory:", 4, Duration::from_secs(60))
+            .await
+            .expect("SQLite replay store"),
+    );
+    store.prepare_schema().await.expect("replay schema");
+    let (key, accepted_at) = store
+        .record_payload_claim("stripe", b"body")
+        .await
+        .expect("payload claim");
+    assert_eq!(key, payload_key("stripe", b"body"));
+    // A claim recorded at another time is not this one.
+    store
+        .release_claim("stripe", &key, accepted_at + 1)
+        .await
+        .expect("release");
+    assert!(matches!(
+        store.check_and_record_payload("stripe", b"body").await,
+        Err(CapitalError::WebhookReplay(_))
+    ));
+    store
+        .release_claim("stripe", &key, accepted_at)
+        .await
+        .expect("release");
+    store
+        .check_and_record_payload("stripe", b"body")
+        .await
+        .expect("the retry is accepted");
+
+    // Through the backend the middleware uses; a memory claim is not released
+    // by the SQL backend.
+    let backend = WebhookReplayBackend::from(Arc::clone(&store));
+    let claim = backend
+        .record_payload("stripe", b"other")
+        .await
+        .expect("backend claim");
+    backend.release(claim).await.expect("backend release");
+    let memory = WebhookReplayBackend::from(Arc::new(InMemoryWebhookReplayStore::default()));
+    let foreign = memory
+        .record_payload("stripe", b"other")
+        .await
+        .expect("memory claim");
+    backend
+        .record_payload("stripe", b"other")
+        .await
+        .expect("released claim accepted again");
+    backend.release(foreign).await.expect("foreign release");
+    assert!(matches!(
+        backend.record_payload("stripe", b"other").await,
+        Err(CapitalError::WebhookReplay(_))
+    ));
+    store.close().await;
 }
 
 #[tokio::test]

@@ -52,13 +52,13 @@ thiserror = { workspace = true }
 axum = { workspace = true, optional = true }
 actix-web = { version = "4", optional = true, default-features = false }
 futures-util = { workspace = true, optional = true }
-tokio = { workspace = true, features = ["sync"] }
+tokio = { workspace = true, features = ["rt", "sync"] }
 printpdf = { workspace = true, optional = true }
 
 [dev-dependencies]
 # Local provider protocol fixtures need a server even without the public Axum adapter.
 axum = { workspace = true }
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
 tower = { workspace = true, features = ["util"] }
 criterion = { workspace = true, features = ["async_tokio"] }
 testcontainers = { version = "0.27.3", default-features = false, features = ["aws-lc-rs"] }

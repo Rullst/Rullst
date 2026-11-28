@@ -7,6 +7,8 @@ use std::time::Duration;
 
 mod statements;
 
+#[cfg(any(feature = "axum", feature = "actix", test))]
+use statements::delete_claim_sql;
 use statements::{
     active_count_sql, claim_expiry_index_sql, claim_schema_sql, config_schema_sql,
     contains_claim_sql, delete_expired_sql, insert_claim_sql, insert_config_sql,
@@ -152,6 +154,18 @@ impl SqlWebhookReplayStore {
         provider: &str,
         payload: &[u8],
     ) -> Result<(), CapitalError> {
+        self.record_payload_claim(provider, payload)
+            .await
+            .map(|_| ())
+    }
+
+    /// [`Self::check_and_record_payload`], returning the claim's key and its
+    /// database timestamp for [`Self::release_claim`].
+    pub(super) async fn record_payload_claim(
+        &self,
+        provider: &str,
+        payload: &[u8],
+    ) -> Result<(String, u64), CapitalError> {
         let mut transaction = self
             .pool
             .begin()
@@ -161,7 +175,27 @@ impl SqlWebhookReplayStore {
         let result = self
             .check_and_record_at(&mut transaction, provider, payload, accepted_at)
             .await;
-        finish_transaction(transaction, result).await
+        finish_transaction(transaction, result).await?;
+        Ok((payload_key(provider, payload), accepted_at))
+    }
+
+    /// Deletes the claim of `key` recorded at `accepted_at`; a later claim of
+    /// the same key, recorded after this one expired, stays.
+    #[cfg(any(feature = "axum", feature = "actix", test))]
+    pub(super) async fn release_claim(
+        &self,
+        provider: &str,
+        key: &str,
+        accepted_at: u64,
+    ) -> Result<(), CapitalError> {
+        rullst_orm::sqlx::query(delete_claim_sql(self.backend))
+            .bind(provider)
+            .bind(key)
+            .bind(to_i64(accepted_at)?)
+            .execute(&self.pool)
+            .await
+            .map_err(|_| CapitalError::WebhookReplayStoreUnavailable)?;
+        Ok(())
     }
 
     /// Persists a replay claim in a caller-owned transaction.

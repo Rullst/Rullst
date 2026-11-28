@@ -116,6 +116,18 @@ impl InMemoryWebhookReplayStore {
 
     /// Computes and records a stable provider-scoped SHA-256 payload key.
     pub fn record_payload(&self, provider_name: &str, payload: &[u8]) -> Result<(), CapitalError> {
+        self.record_payload_at(provider_name, payload, Instant::now())
+            .map(|_| ())
+    }
+
+    /// Records the payload key at `now`; returns the key, which with `now`
+    /// identifies this claim for [`Self::release_at`].
+    pub(super) fn record_payload_at(
+        &self,
+        provider_name: &str,
+        payload: &[u8],
+        now: Instant,
+    ) -> Result<String, CapitalError> {
         validate_replay_provider(provider_name)?;
         if payload.is_empty() || payload.len() > MAX_WEBHOOK_PAYLOAD_BYTES {
             return Err(CapitalError::ConfigurationError(
@@ -123,7 +135,25 @@ impl InMemoryWebhookReplayStore {
                     .to_string(),
             ));
         }
-        self.check_and_record(payload_key(provider_name, payload))
+        let key = payload_key(provider_name, payload);
+        self.check_and_record_at(key.clone(), now)?;
+        Ok(key)
+    }
+
+    /// Removes the claim recorded for `key` at `accepted_at`, and no later
+    /// claim of the same key.
+    #[cfg(any(feature = "axum", feature = "actix", test))]
+    pub(super) fn release_at(&self, key: &str, accepted_at: Instant) -> Result<(), CapitalError> {
+        let mut entries = self.entries.lock().map_err(|_| {
+            CapitalError::General("Webhook replay store lock was poisoned".to_string())
+        })?;
+        if let Some(position) = entries
+            .iter()
+            .position(|entry| entry.key == key && entry.accepted_at == accepted_at)
+        {
+            let _ = entries.remove(position);
+        }
+        Ok(())
     }
 
     /// Records a provider-scoped semantic event identifier selected after signature verification.
@@ -189,17 +219,68 @@ impl From<Arc<SqlWebhookReplayStore>> for WebhookReplayBackend {
     }
 }
 
+/// The payload claim one delivery recorded, so the middleware can release it
+/// when the handler fails.
+#[cfg(any(feature = "axum", feature = "actix", test))]
+#[derive(Debug)]
+pub(crate) enum ReplayClaim {
+    Memory {
+        key: String,
+        accepted_at: Instant,
+    },
+    #[cfg(feature = "webhook-sql")]
+    Sql {
+        provider: String,
+        key: String,
+        accepted_at: u64,
+    },
+}
+
 impl WebhookReplayBackend {
     #[cfg(any(feature = "axum", feature = "actix", test))]
     pub(super) async fn record_payload(
         &self,
         provider: &str,
         payload: &[u8],
-    ) -> Result<(), CapitalError> {
+    ) -> Result<ReplayClaim, CapitalError> {
         match self {
-            Self::Memory(store) => store.record_payload(provider, payload),
+            Self::Memory(store) => {
+                let accepted_at = Instant::now();
+                let key = store.record_payload_at(provider, payload, accepted_at)?;
+                Ok(ReplayClaim::Memory { key, accepted_at })
+            }
             #[cfg(feature = "webhook-sql")]
-            Self::Sql(store) => store.check_and_record_payload(provider, payload).await,
+            Self::Sql(store) => {
+                let (key, accepted_at) = store.record_payload_claim(provider, payload).await?;
+                Ok(ReplayClaim::Sql {
+                    provider: provider.to_string(),
+                    key,
+                    accepted_at,
+                })
+            }
+        }
+    }
+
+    /// Removes a claim this backend recorded, so the provider's retry of the
+    /// same payload is accepted.
+    #[cfg(any(feature = "axum", feature = "actix", test))]
+    pub(super) async fn release(&self, claim: ReplayClaim) -> Result<(), CapitalError> {
+        match (self, claim) {
+            (Self::Memory(store), ReplayClaim::Memory { key, accepted_at }) => {
+                store.release_at(&key, accepted_at)
+            }
+            #[cfg(feature = "webhook-sql")]
+            (
+                Self::Sql(store),
+                ReplayClaim::Sql {
+                    provider,
+                    key,
+                    accepted_at,
+                },
+            ) => store.release_claim(&provider, &key, accepted_at).await,
+            // A claim is released only by the backend that recorded it.
+            #[cfg(feature = "webhook-sql")]
+            _ => Ok(()),
         }
     }
 }

@@ -4,6 +4,7 @@ use crate::capital::{SubscriptionStatus, WebhookEvent};
 use crate::providers::{InfinitePayProvider, StripeProvider};
 #[cfg(feature = "axum")]
 use axum::http::{Method, Version};
+use std::sync::Arc;
 use std::time::Instant;
 
 #[cfg(feature = "axum")]
@@ -124,6 +125,43 @@ fn replay_store_is_bounded_and_provider_scoped() {
         store.record_payload("stripe", b"different body"),
         Err(CapitalError::WebhookReplayStoreFull)
     );
+}
+
+#[test]
+fn a_release_removes_only_the_claim_recorded_at_that_instant() {
+    let store = InMemoryWebhookReplayStore::new(4, Duration::from_secs(60)).unwrap();
+    let accepted_at = Instant::now();
+    let key = store
+        .record_payload_at("stripe", b"body", accepted_at)
+        .unwrap();
+    assert_eq!(key, payload_key("stripe", b"body"));
+    store
+        .release_at(&key, accepted_at + Duration::from_secs(1))
+        .unwrap();
+    assert!(matches!(
+        store.record_payload("stripe", b"body"),
+        Err(CapitalError::WebhookReplay(_))
+    ));
+    store.release_at(&key, accepted_at).unwrap();
+    assert!(store.record_payload("stripe", b"body").is_ok());
+    // Releasing a claim that is gone changes nothing.
+    store.release_at(&key, accepted_at).unwrap();
+    assert!(matches!(
+        store.record_payload("stripe", b"body"),
+        Err(CapitalError::WebhookReplay(_))
+    ));
+}
+
+#[tokio::test]
+async fn the_backend_releases_the_claim_it_recorded() {
+    let backend = WebhookReplayBackend::from(Arc::new(InMemoryWebhookReplayStore::default()));
+    let claim = backend.record_payload("stripe", b"body").await.unwrap();
+    assert!(matches!(
+        backend.record_payload("stripe", b"body").await,
+        Err(CapitalError::WebhookReplay(_))
+    ));
+    backend.release(claim).await.unwrap();
+    assert!(backend.record_payload("stripe", b"body").await.is_ok());
 }
 
 #[test]

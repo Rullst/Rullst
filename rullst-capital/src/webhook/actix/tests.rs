@@ -101,6 +101,68 @@ async fn middleware_preserves_body_inserts_event_and_rejects_replay() {
 }
 
 #[tokio::test]
+async fn a_server_error_releases_the_claim_and_a_client_error_keeps_it() {
+    let statuses = std::sync::Mutex::new(
+        vec![
+            StatusCode::INTERNAL_SERVER_ERROR,
+            StatusCode::NO_CONTENT,
+            StatusCode::UNPROCESSABLE_ENTITY,
+        ]
+        .into_iter(),
+    );
+    let statuses = web::Data::new(statuses);
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(state().with_retry_after_server_error()))
+            .app_data(statuses)
+            .wrap(actix_web::middleware::from_fn(
+                verify_webhook_actix_with_state,
+            ))
+            .route(
+                "/webhook",
+                web::post().to(
+                    |statuses: web::Data<std::sync::Mutex<std::vec::IntoIter<StatusCode>>>| async move {
+                        let status = statuses.lock().unwrap().next().unwrap_or(StatusCode::OK);
+                        HttpResponse::build(status).finish()
+                    },
+                ),
+            ),
+    )
+    .await;
+    let deliver = |body: Vec<u8>| {
+        test::TestRequest::post()
+            .uri("/webhook")
+            .insert_header(("stripe-signature", "mock_actix_signature"))
+            .set_payload(body)
+            .to_request()
+    };
+    // 500, then the retry is accepted (204) and a replay is refused again.
+    for expected in [
+        StatusCode::INTERNAL_SERVER_ERROR,
+        StatusCode::NO_CONTENT,
+        StatusCode::CONFLICT,
+    ] {
+        assert_eq!(
+            test::call_service(&app, deliver(payload())).await.status(),
+            expected
+        );
+    }
+    // A 422 for another payload keeps its claim.
+    let mut other = payload();
+    other.push(b' ');
+    assert_eq!(
+        test::call_service(&app, deliver(other.clone()))
+            .await
+            .status(),
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
+    assert_eq!(
+        test::call_service(&app, deliver(other)).await.status(),
+        StatusCode::CONFLICT
+    );
+}
+
+#[tokio::test]
 async fn middleware_rejects_signature_payload_and_missing_state() {
     let app = test::init_service(
         App::new()

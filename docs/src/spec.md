@@ -4239,7 +4239,10 @@ remains for its offline fixtures and has no handle for live operations.
 * A custom adapter for a provider that signs only the body checks no delivery
   timestamp (provider retries can span hours or days). An exact captured body
   therefore verifies again after its replay claim expires (24 hours by default,
-  at most 30 days) or, with the process-local store, after a restart. Hosts must
+  at most 30 days), with the process-local store after a restart, and, since
+  13.1.0 with `WebhookMiddlewareState::with_retry_after_server_error()`, after
+  each server-error answer of the handler (a timestamped protocol re-admits it
+  only within its freshness window). Hosts must
   record the provider's event or subscription state durably and reject stale or
   repeated transitions instead of relying on the replay window alone.
 * The opt-in `webhook-sql` store shares bounded payload-digest or semantic-event

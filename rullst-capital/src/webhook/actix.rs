@@ -4,7 +4,7 @@
 use super::InMemoryWebhookReplayStore;
 use super::{
     DEFAULT_REPLAY_STORE, MAX_WEBHOOK_PAYLOAD_BYTES, VerifiedWebhook, WebhookMiddlewareState,
-    WebhookReplayBackend, capital_error_status_code, verify_delivery,
+    WebhookReplayBackend, capital_error_status_code, release_after_server_error, verify_delivery,
 };
 #[cfg(test)]
 use crate::capital::WebhookEvent;
@@ -31,7 +31,7 @@ pub async fn verify_webhook_actix<B>(
 where
     B: MessageBody + 'static,
 {
-    verify_webhook_actix_inner(req, next, &DEFAULT_REPLAY_STORE, false, provider()).await
+    verify_webhook_actix_inner(req, next, &DEFAULT_REPLAY_STORE, false, provider(), false).await
 }
 
 /// Explicit local-only Actix middleware that permits signed `mock_*` fixtures.
@@ -44,13 +44,15 @@ pub async fn verify_webhook_actix_mock_local<B>(
 where
     B: MessageBody + 'static,
 {
-    verify_webhook_actix_inner(req, next, &DEFAULT_REPLAY_STORE, true, provider()).await
+    verify_webhook_actix_inner(req, next, &DEFAULT_REPLAY_STORE, true, provider(), false).await
 }
 
 /// Actix middleware entry point using [`WebhookMiddlewareState`] from application data.
 ///
 /// Mount with `App::app_data(web::Data::new(state))` and
-/// `actix_web::middleware::from_fn(verify_webhook_actix_with_state)`.
+/// `actix_web::middleware::from_fn(verify_webhook_actix_with_state)`. With
+/// [`WebhookMiddlewareState::with_retry_after_server_error`] it removes the
+/// delivery's replay claim after a 5xx answer from the handler.
 pub async fn verify_webhook_actix_with_state<B>(
     state: web::Data<WebhookMiddlewareState>,
     req: ServiceRequest,
@@ -65,6 +67,7 @@ where
         &state.replay_store,
         state.allow_mock,
         state.resolved_provider(),
+        state.retry_after_server_error,
     )
     .await
 }
@@ -75,6 +78,7 @@ async fn verify_webhook_actix_inner<B>(
     replay_store: &WebhookReplayBackend,
     allow_mock: bool,
     active_provider: Option<&dyn BillingProvider>,
+    retry_after_server_error: bool,
 ) -> Result<ServiceResponse<EitherBody<B>>, Error>
 where
     B: MessageBody + 'static,
@@ -112,7 +116,7 @@ where
         return Ok(reject(req, StatusCode::INTERNAL_SERVER_ERROR));
     };
     let headers = collect_headers(&req);
-    let verified =
+    let (verified, claim) =
         match verify_delivery(active_provider, &body, &headers, replay_store, allow_mock).await {
             Ok(verified) => verified,
             Err(error) => return Ok(reject(req, status_from_error(&error))),
@@ -127,9 +131,17 @@ where
         }
     }
     req.set_payload(Payload::from(body));
-    next.call(req)
-        .await
-        .map(ServiceResponse::map_into_left_body)
+    let result = next.call(req).await;
+    // An error is answered with its `error_response()`, whose status may
+    // differ from `status_code()`.
+    let server_error = match &result {
+        Ok(response) => response.status().is_server_error(),
+        Err(error) => error.error_response().status().is_server_error(),
+    };
+    if retry_after_server_error && server_error {
+        release_after_server_error(replay_store, claim).await;
+    }
+    result.map(ServiceResponse::map_into_left_body)
 }
 
 fn collect_headers(req: &ServiceRequest) -> HashMap<String, String> {

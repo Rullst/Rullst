@@ -240,11 +240,16 @@ CSRF baseline answers the provider's `POST` with 403 before the signature is
 checked. List only paths whose handler or middleware verifies the signature.
 
 SQL-backed middleware claims the payload before dispatch. Treat it as a
-fail-closed replay firewall, not an exactly-once delivery guarantee: the claim
-is kept when the handler fails, so after an error status, a timeout or a crash
-the provider's retry of the same payload gets `409 Conflict` for the replay TTL
-(24 hours by default) and the event is lost. Store the event durably before
-answering `2xx`. For an
+fail-closed replay firewall, not an exactly-once delivery guarantee: by
+default the claim is kept when the handler fails, so after an error status, a
+timeout or a crash the provider's retry of the same payload gets
+`409 Conflict` for the replay TTL (24 hours by default) and the event is lost.
+Store the event durably before answering `2xx`. Since 13.1.0,
+`WebhookMiddlewareState::with_retry_after_server_error()` removes the claim
+after a 5xx answer from the handler, so the retry reaches it again; while the
+handler keeps failing, a captured signed body can then be delivered again and
+runs the handler each time, so enable it only when a 5xx answer means nothing
+was applied. For an
 atomic relational state change, verify the exact payload through the selected
 provider, obtain its stable event identifier, then call
 `check_and_record_event_key_with_transaction` inside the same transaction as
