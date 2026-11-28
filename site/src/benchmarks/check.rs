@@ -5,8 +5,8 @@ use std::collections::BTreeSet;
 use serde_json::{Map, Value};
 
 use super::{
-    CATEGORIES, Cell, FLAGS, MEMORY, MINIMAL, ROWS, Results, Row, SCHEMA, STABILITY, STATUSES,
-    WEIGHTS, row_name,
+    CATEGORIES, Cell, FLAGS, MEMORY, MINIMAL, Results, Row, SCHEMA, STABILITY, STATUSES, WEIGHTS,
+    known_rows, row_name,
 };
 use crate::date::Date;
 use crate::input::{show, truthy};
@@ -136,7 +136,8 @@ fn row(raw: &Value, ranked: u32, overall_published: bool) -> Checked<Option<Row>
     let Some(object) = raw.as_object() else {
         return Ok(None);
     };
-    let Some(slug) = known(&ROWS.map(|(slug, _)| slug), object.get("slug")) else {
+    let slugs: Vec<&'static str> = known_rows().map(|(slug, _)| *slug).collect();
+    let Some(slug) = known(&slugs, object.get("slug")) else {
         return Ok(None);
     };
     let name = row_name(slug);

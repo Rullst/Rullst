@@ -814,12 +814,11 @@ def validate_benchmark_rendering() -> None:
             missing = [text for text in expected if text not in rendered]
             assert not missing, f"{page}: unexpected benchmark rendering, missing {missing}"
             results = results_block(rendered)
-            # The fixture's FastAPI row is not one the page shows.
-            assert "FastAPI" not in results, f"{page}: renders a framework outside the comparison"
-            # By overall position (Loco before Rullst in their shared 3–4 by score),
-            # the row without an overall position after them, the diagnostic last.
+            # By overall position (Loco before Rullst in their shared 3–4 by score; the fixture's
+            # FastAPI, a framework of another language, at its 11–12), the row without an overall
+            # position after them, the diagnostic last.
             rows = table_rows(results)
-            assert rows == ["Actix Web", "Topcoat", "Loco", "Rullst", "Gin", MINIMAL_NAMES[lang]], f"{page}: benchmark rows {rows}"
+            assert rows == ["Actix Web", "Topcoat", "Loco", "Rullst", "FastAPI", "Gin", MINIMAL_NAMES[lang]], f"{page}: benchmark rows {rows}"
             legend = re.search(r'<ul class="benchmark-legend">(.*?)</ul>', results, re.DOTALL)
             assert legend and all(sign in legend[1] for sign in FLAG_SIGNS), f"{page}: the legend must explain every sign shown"
         for page, (lang, expected) in LANDING_RENDERING.items():
@@ -871,7 +870,7 @@ def validate_benchmark_rendering() -> None:
         site, _warnings = generate(Path(temp) / "no-minimal", fixture_variant(
             lambda d: d.update(rows=[r for r in d["rows"] if r["slug"] not in ("rullst-minimal", "gin")])), FIXTURE_DAY.isoformat())
         results = results_block((site / COMPARE_PAGE).read_text(encoding="utf-8"))
-        assert table_rows(results) == ["Actix Web", "Topcoat", "Loco", "Rullst", "Gin"], f"rows without the minimal one: {table_rows(results)}"
+        assert table_rows(results) == ["Actix Web", "Topcoat", "Loco", "Rullst", "FastAPI", "Gin"], f"rows without the minimal one: {table_rows(results)}"
         assert '<td colspan="7">Not in this measurement run.</td>' in results, "a missing framework must say it is not in this run"
         # Without a published overall score the page has no Overall column and says so.
         site, _warnings = generate(Path(temp) / "no-overall", fixture_variant(lambda d: d.update(overall_published=False, weights={})),
