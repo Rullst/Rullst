@@ -488,8 +488,10 @@ production data. [Assisted upgrade tutorial](https://rullst.github.io/Rullst/boo
 
 ## 🚀 Versions: v13 is a prerelease
 
-`13.0.0-rc.2` is the latest v13 prerelease, the second release candidate
-for `13.0.0`, which follows. After the 13.0 feature freeze (`13.0.0-alpha.6`),
+`13.0.0-rc.2` is the second release candidate for `13.0.0`, which follows;
+until it is on crates.io, `13.0.0-rc.1` (published on 26 November 2026) is
+the latest published v13 prerelease and the commands below need
+`=13.0.0-rc.1`. After the 13.0 feature freeze (`13.0.0-alpha.6`),
 rc.1 took fixes and documentation, and the changes the maintainer approved
 one by one after the freeze: the removal
 of `rullst-iot`'s simulator fixtures and new names for two `rullst-labs`

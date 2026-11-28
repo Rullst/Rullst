@@ -23,10 +23,13 @@ pub(super) const ALPHA5_CHECKLIST: &str = "upgrading-an-alpha5-application-to-al
 /// Its checklist for 13.0.0-alpha.6 applications, the changes of
 /// 13.0.0-rc.1.
 pub(super) const ALPHA6_CHECKLIST: &str = "upgrading-an-alpha6-application-to-rc1";
+/// Its checklist for 13.0.0-rc.1 applications, the changes of 13.0.0-rc.2.
+pub(super) const RC1_CHECKLIST: &str = "upgrading-an-rc1-application-to-rc2";
 
 /// The checklist for an application on the 13.0 prerelease `current`, if
-/// the guide has one: alpha.2 to alpha.6 have their own; a later alpha, beta
-/// or release candidate gets the alpha.6 one, the latest. alpha.1 has none.
+/// the guide has one: alpha.2 to alpha.6 have their own, a release candidate
+/// gets the rc.1 one, the latest, and a later alpha or a beta the alpha.6
+/// one. alpha.1 has none.
 fn checklist(current: &Version) -> Option<&'static str> {
     if (current.major, current.minor, current.patch) != (13, 0, 0) || current.pre.is_empty() {
         return None;
@@ -40,7 +43,10 @@ fn checklist(current: &Version) -> Option<&'static str> {
         Some(Ok(number)) if number >= 6 => Some(ALPHA6_CHECKLIST),
         Some(_) => None,
         None if pre.starts_with("alpha") => None,
-        None => Some(ALPHA6_CHECKLIST),
+        None => match pre.strip_prefix("rc.").map(str::parse::<u64>) {
+            Some(Ok(number)) if number >= 1 => Some(RC1_CHECKLIST),
+            _ => Some(ALPHA6_CHECKLIST),
+        },
     }
 }
 

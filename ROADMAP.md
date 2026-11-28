@@ -132,7 +132,10 @@ After rc.1 was published on 26 November 2026:
   the environment as `Server` does (the process, then `.env`, then
   `[app] env`), through the new `rullst::config::project_environment()`
   ([#860](https://github.com/Rullst/Rullst/issues/860)). Both are in
-  [#874](https://github.com/Rullst/Rullst/pull/874).
+  [#874](https://github.com/Rullst/Rullst/pull/874). The maintainer chose an
+  rc.2 with this fix on 27 November 2026, knowing that it adds
+  `project_environment()` and `PartialEq` for the configuration structs to
+  the public API listing of `rullst-core`.
 - Also merged: the Nexus AI setup text
   ([#871](https://github.com/Rullst/Rullst/pull/871)), the wording fixes
   reported by the applications upgraded to rc.1

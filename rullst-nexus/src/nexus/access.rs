@@ -104,9 +104,11 @@ impl fmt::Debug for NexusBasicAuth {
 
 /// Explicit capability for running Nexus without credentials on loopback in development.
 ///
-/// This policy is accepted only in debug builds whose process environment
-/// (`RULLST_ENV`, then `APP_ENV`) is not staging or production; an invalid
-/// value counts as one of them. Every request must also contain Axum
+/// This policy is accepted only in debug builds whose environment, resolved
+/// as `Server` resolves it (the process `RULLST_ENV`, then `APP_ENV`, then
+/// `.env`, then `[app] env`; see `rullst_core::config::project_environment`),
+/// is not staging or production; an invalid value or a resolution error
+/// counts as one of them. Every request must also contain Axum
 /// `ConnectInfo<SocketAddr>` for a loopback peer and a local Host authority.
 /// Unsafe methods also require an exact same-origin Origin header. This
 /// browser boundary prevents DNS rebinding and blind cross-origin mutations.
@@ -280,7 +282,8 @@ pub(crate) fn validate_policy(policy: NexusAuthPolicy) -> Result<NexusAuthPolicy
 }
 
 /// Whether the credential-free loopback policy may be built: in a debug build
-/// whose process environment is not staging or production.
+/// whose environment, resolved as `Server` resolves it, is not staging or
+/// production.
 fn loopback_permitted() -> bool {
     cfg!(debug_assertions) && !project_environment_requires_secure_defaults()
 }

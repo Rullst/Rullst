@@ -1,6 +1,7 @@
 # v13 delivery plan and evidence
 
-**13.0.0-rc.2 prepared on November 27, 2026.** The release-preparation pull
+**13.0.0-rc.2 prepared on November 27, 2026, for a tag on November 29 or
+later** (the date of its changelog section). The release-preparation pull
 request sets all twenty packages to `13.0.0-rc.2`; the coordinator records
 the tag, the exact-SHA admission and the release run here after publication.
 It is the second release candidate for 13.0.0 and fixes two defects found in

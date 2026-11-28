@@ -72,15 +72,20 @@ the error can be logged without exposing `app_key` or connection strings.
 `Server` then replaces them (since 13.0.0-rc.2; in 13.0.0-rc.1 it kept them, so
 `[app] env` and every other `Rullst.toml` setting were lost), so every later
 call sees the real configuration. A reference taken before still holds the
-defaults, and the `Server` logs a warning that names the early read when the
-two differ; it likewise warns when an earlier `RullstConfig::set_global` call
-installed a configuration that differs from `Rullst.toml`, which stays the
-global one. Read the configuration after the `Server` starts.
+defaults, and the `Server` logs a warning that names `RullstConfig::global()`
+(not the code that called it) when the two differ; it likewise warns when a
+configuration installed earlier by `RullstConfig::set_global` or by an
+earlier `Server` differs from `Rullst.toml`, and that one stays the global
+one. The comparison covers the `Rullst.toml` values only: an early read whose
+outcome depended on an environment set in the process or `.env` logs
+nothing. Read the configuration after the `Server` starts.
 
 Code that must decide before a `Server` exists, such as building a router,
 calls `rullst::config::project_environment()` (since 13.0.0-rc.2). It reads the
-process variables, `./.env` and `./Rullst.toml` in the `Server` order and
-returns an error for an invalid value or an unreadable file. Studio's and
+process variables, `./.env` and `./Rullst.toml` in the `Server` order, and
+returns an error for an invalid value or for a malformed or unreadable file
+it has to read (it reads `.env` only when the process sets neither variable,
+and `Rullst.toml` only when neither sets one). Studio's and
 Nexus's loopback boundary uses it at build time and refuses to build when it
 cannot resolve the environment.
 

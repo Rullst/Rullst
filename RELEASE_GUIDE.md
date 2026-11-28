@@ -236,9 +236,10 @@ Dependabot proposes dependency updates only for `main`. A dependency's major
 version does not by itself prove that Rullst's public API must break.
 
 Version 12.3.0, the last 12.x release, is the latest published stable release.
-13.0.0-alpha.6 is the 13.0 feature freeze; 13.0.0-rc.1 then takes fixes and
+13.0.0-alpha.6 is the 13.0 feature freeze; 13.0.0-rc.1 then took fixes and
 documentation, and the changes the maintainer approved one by one after the
-freeze ([ROADMAP.md](ROADMAP.md#release-rule)), and 13.0.0 follows.
+freeze ([ROADMAP.md](ROADMAP.md#release-rule)), 13.0.0-rc.2 fixes two defects
+found in rc.1, and 13.0.0 follows.
 Synchronize package versions
 only when the candidate is accepted for release.
 A major upgrade needs its own tested migration rules, not just an updated
@@ -332,5 +333,5 @@ git push origin v13.X.Y
 | Former maintenance line | Frozen `v12`; end of life since 16 October 2026 |
 | Legacy source | Immutable `v5.0.0` tag and published archive |
 | Published v13 prereleases | `13.0.0-alpha.1` (October 11, 2026), `13.0.0-alpha.2` (October 17), `13.0.0-alpha.3` (October 24), `13.0.0-alpha.4` (October 31) and `13.0.0-alpha.5` (November 14); check [crates.io](https://crates.io/crates/rullst/versions) for later ones |
-| Release path | `13.0.0-alpha.6` (feature freeze), then `13.0.0-rc.1` (fixes and documentation, and the changes approved one by one after the freeze) and `13.0.0` |
+| Release path | `13.0.0-alpha.6` (feature freeze), then `13.0.0-rc.1` (fixes and documentation, and the changes approved one by one after the freeze), `13.0.0-rc.2` (two fixes found in rc.1) and `13.0.0` |
 | Latest published stable | Check [crates.io](https://crates.io/crates/rullst) and the [v12 record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md) |
