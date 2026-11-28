@@ -99,7 +99,12 @@ requirement for this; it relates to V13.3.1 (L2) in chapter V13 Configuration.
 Runs the same `cargo audit` step as `cargo rullst audit`, with the same
 `--audit-ignore` exceptions, on the project's `Cargo.lock` or, in a workspace
 member, on the workspace root's lockfile. Without `cargo-audit` the check is `NOT CHECKED`;
-a run that reports advisories or fails is `ERROR`. Maps to V15.2.1 (L1).
+a run that reports advisories is `FINDINGS`, with one finding per advisory
+(its ID and title, the crate and version in `Cargo.lock`, and the fixed
+versions, or that none is listed; at most 50, and the detail says how many
+more), and any other run that exits with an error, such as one without a
+report or one whose report counts no vulnerability, is `ERROR`. Maps to
+V15.2.1 (L1).
 
 ### IDOR
 

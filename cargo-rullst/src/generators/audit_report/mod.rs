@@ -23,10 +23,11 @@ mod web;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
+use crate::generators::audit_advisories::LISTED_ADVISORIES;
 use crate::generators::audit_compliance::EvidenceStatus;
 use crate::generators::audit_idor::collect_rust_source_files;
 use crate::generators::audit_scope::{
-    cargo_audit_status, package_source_roots, scan_each, validate_audit_ignores,
+    package_source_roots, run_cargo_audit, scan_each, validate_audit_ignores,
 };
 use crate::generators::output_guard::write_output;
 use crate::ui::error_report::AlreadyReported;
@@ -88,22 +89,47 @@ impl Tools<'static> {
 }
 
 fn dependency_check(root: &Path, cargo: &OsStr, ignores: &[String]) -> Check {
-    let status = cargo_audit_status(cargo, root, ignores);
-    let detail = match &status {
+    let audit = run_cargo_audit(cargo, root, ignores);
+    // One finding per listed advisory; how many were not listed goes in the
+    // detail.
+    let findings: Vec<Finding> = match &audit.status {
+        EvidenceStatus::Findings(_) => audit
+            .advisories
+            .iter()
+            .take(LISTED_ADVISORIES)
+            .map(|advisory| Finding::new("Cargo.lock", None, advisory.summary()))
+            .collect(),
+        _ => Vec::new(),
+    };
+    let detail = match &audit.status {
         EvidenceStatus::NoFindingsOutsideExceptions(ids) => format!(
             "cargo-audit reported no advisory outside the governed exceptions {}; those advisories remain unresolved and need separate review.",
             ids.join(", ")
         ),
-        EvidenceStatus::Findings(count) => format!(
+        EvidenceStatus::Findings(count) if findings.is_empty() => format!(
             "cargo-audit reported {count} vulnerable dependency advisory(ies); run `cargo audit` for the advisories and their fixes."
         ),
+        EvidenceStatus::Findings(count) => {
+            let unlisted = count.saturating_sub(findings.len());
+            let rest = if unlisted > 0 {
+                format!(
+                    " The first {} are listed; run `cargo audit` for the other {unlisted}.",
+                    findings.len()
+                )
+            } else {
+                String::new()
+            };
+            format!(
+                "cargo-audit reported {count} vulnerable dependency advisory(ies), listed with their fixed versions; `cargo audit` shows which dependencies pull them in.{rest}"
+            )
+        }
         EvidenceStatus::Error(error) => format!(
             "cargo-audit did not complete successfully; run `cargo audit` for its full output. Last error: {}",
             last_error_line(error)
         ),
         other => other.detail(),
     };
-    Check::with_status(&DEPENDENCIES, status, Vec::new(), detail)
+    Check::with_status(&DEPENDENCIES, audit.status, findings, detail)
 }
 
 /// The last `error:` line of a tool's standard error (or its last line), so

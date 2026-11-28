@@ -2,6 +2,7 @@ use colored::Colorize;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::generators::audit_advisories::listing;
 use crate::generators::audit_compliance::{
     ComplianceEvidence, EvidenceStatus, write_compliance_report,
 };
@@ -13,7 +14,7 @@ use crate::generators::audit_idor::{GUARD_SCOPE_NOTE, collect_rust_source_files}
 use crate::generators::audit_scope::cargo_audit_arguments;
 pub use crate::generators::audit_scope::scan_unsafe_code;
 use crate::generators::audit_scope::{
-    audit_lockfile, cargo_audit_status, package_source_roots, scan_each, validate_audit_ignores,
+    audit_lockfile, package_source_roots, run_cargo_audit, scan_each, validate_audit_ignores,
 };
 
 /// A scan whose source walk hit a bound is reported as a finding, not as clean.
@@ -167,8 +168,8 @@ pub(crate) fn run_audit(options: AuditOptions<'_>) -> Result<(), Box<dyn std::er
         "[AUDIT]".magenta()
     );
     let dependency_audit =
-        cargo_audit_status(std::ffi::OsStr::new("cargo"), Path::new("."), audit_ignores);
-    match &dependency_audit {
+        run_cargo_audit(std::ffi::OsStr::new("cargo"), Path::new("."), audit_ignores);
+    match &dependency_audit.status {
         EvidenceStatus::NoFindings => say!(
             json,
             "  {} No advisories reported by cargo-audit.",
@@ -186,12 +187,25 @@ pub(crate) fn run_audit(options: AuditOptions<'_>) -> Result<(), Box<dyn std::er
             "[NOTE]".yellow()
         ),
         EvidenceStatus::Findings(count) => {
-            say!(
-                json,
-                "  {} cargo-audit reported {} vulnerable dependency advisory(ies); run `cargo audit` for the list.",
-                "[FINDINGS]".red().bold(),
-                count
-            );
+            let listed = listing(&dependency_audit.advisories, *count);
+            if listed.is_empty() {
+                say!(
+                    json,
+                    "  {} cargo-audit reported {} vulnerable dependency advisory(ies); run `cargo audit` for the list.",
+                    "[FINDINGS]".red().bold(),
+                    count
+                );
+            } else {
+                say!(
+                    json,
+                    "  {} cargo-audit reported {} vulnerable dependency advisory(ies):",
+                    "[FINDINGS]".red().bold(),
+                    count
+                );
+                for line in listed {
+                    say!(json, "    - {line}");
+                }
+            }
             issues_found += count;
         }
         _ => {
@@ -426,7 +440,7 @@ pub(crate) fn run_audit(options: AuditOptions<'_>) -> Result<(), Box<dyn std::er
         } else {
             EvidenceStatus::Findings(weak_secret_findings)
         },
-        dependency_audit,
+        dependency_audit: dependency_audit.status,
         unsafe_scan: if !unsafe_source_available {
             EvidenceStatus::NotChecked("no src directory was available to inspect")
         } else if unsafe_count == 0 {

@@ -224,7 +224,64 @@ fn dependency_check_reuses_cargo_audit_and_its_exceptions() {
         "{}",
         check.detail
     );
+    // A report without a list sends the reader to `cargo audit`.
+    assert!(
+        check
+            .detail
+            .ends_with("run `cargo audit` for the advisories and their fixes."),
+        "{}",
+        check.detail
+    );
     assert!(check.status.fails());
+    assert!(check.findings.is_empty());
+    // Listed advisories become findings that name the crate and the fix.
+    let listed = fake_cargo_reporting(
+        tools.path(),
+        1,
+        r#"{"vulnerabilities":{"found":true,"count":1,"list":[{"advisory":{"id":"RUSTSEC-2026-0592","package":"url","title":"t"},"versions":{"patched":[">=2.5.9"]},"package":{"name":"url","version":"2.5.8"}}]}}"#,
+    );
+    let check = dependency_check(root.path(), listed.as_os_str(), &[]);
+    assert_eq!(check.status, EvidenceStatus::Findings(1));
+    assert_eq!(check.findings.len(), 1);
+    assert_eq!(check.findings[0].file, "Cargo.lock");
+    assert_eq!(
+        check.findings[0].message,
+        "RUSTSEC-2026-0592 in url 2.5.8: t; fixed in >=2.5.9"
+    );
+    assert!(check.detail.contains("listed with their fixed versions"));
+    assert!(!check.detail.contains("other"), "{}", check.detail);
+    // Past the bound, the findings stay advisories and the detail counts the rest.
+    let entries: Vec<String> = (0..super::LISTED_ADVISORIES + 2)
+        .map(|index| {
+            format!(
+                r#"{{"advisory":{{"id":"RUSTSEC-2099-{index:04}","package":"p","title":"t"}},"versions":{{"patched":[]}},"package":{{"name":"p","version":"1.0.0"}}}}"#
+            )
+        })
+        .collect();
+    let many = fake_cargo_reporting(
+        tools.path(),
+        1,
+        &format!(
+            r#"{{"vulnerabilities":{{"found":true,"count":{},"list":[{}]}}}}"#,
+            entries.len(),
+            entries.join(",")
+        ),
+    );
+    let check = dependency_check(root.path(), many.as_os_str(), &[]);
+    assert_eq!(check.findings.len(), super::LISTED_ADVISORIES);
+    assert!(
+        check
+            .findings
+            .iter()
+            .all(|finding| finding.message.starts_with("RUSTSEC-2099-"))
+    );
+    assert!(
+        check
+            .detail
+            .ends_with("The first 50 are listed; run `cargo audit` for the other 2."),
+        "{}",
+        check.detail
+    );
     let check = dependency_check(root.path(), OsStr::new("rullst-missing-cargo"), &[]);
     assert!(matches!(check.status, EvidenceStatus::NotChecked(_)));
 }

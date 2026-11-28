@@ -4,6 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use crate::generators::audit_advisories::{ReportedAdvisory, reported_advisories};
 use crate::generators::audit_compliance::EvidenceStatus;
 use crate::generators::source_walk::rust_sources;
 
@@ -159,22 +160,35 @@ pub(super) fn audit_lockfile(program: &std::ffi::OsStr, root: &Path) -> Option<P
     Some(workspace.workspace_root.join("Cargo.lock")).filter(|lockfile| lockfile.is_file())
 }
 
+/// A `cargo audit` run: its status, and the advisories its report lists.
+#[derive(Debug)]
+pub(super) struct DependencyAudit {
+    pub status: EvidenceStatus,
+    /// Empty unless `status` is `Findings`.
+    pub advisories: Vec<ReportedAdvisory>,
+}
+
 /// Runs `cargo audit` (through `program`, normally `cargo`) in `root` with the
 /// governed exceptions, on the lockfile [`audit_lockfile`] finds. An
-/// unavailable tool is `NOT CHECKED`; a run that exits non-zero, including
-/// one that reports advisories, is `ERROR`.
-pub(super) fn cargo_audit_status(
+/// unavailable tool is `NOT CHECKED`; a run whose JSON report counts
+/// vulnerabilities is `FINDINGS`, with the advisories it lists; any other run
+/// that exits non-zero is `ERROR`.
+pub(super) fn run_cargo_audit(
     program: &std::ffi::OsStr,
     root: &Path,
     audit_ignores: &[String],
-) -> EvidenceStatus {
+) -> DependencyAudit {
+    let status = |status| DependencyAudit {
+        status,
+        advisories: Vec::new(),
+    };
     let available = Command::new(program)
         .args(["audit", "--version"])
         .current_dir(root)
         .output()
         .is_ok_and(|tool| tool.status.success());
     if !available {
-        return EvidenceStatus::NotChecked("cargo-audit is unavailable");
+        return status(EvidenceStatus::NotChecked("cargo-audit is unavailable"));
     }
     let mut audit = Command::new(program);
     audit
@@ -189,21 +203,26 @@ pub(super) fn cargo_audit_status(
     }
     match audit.output() {
         Ok(out) if !out.status.success() && reported_vulnerabilities(&out.stdout) > 0 => {
-            EvidenceStatus::Findings(reported_vulnerabilities(&out.stdout))
+            DependencyAudit {
+                status: EvidenceStatus::Findings(reported_vulnerabilities(&out.stdout)),
+                advisories: reported_advisories(&out.stdout),
+            }
         }
-        Ok(out) if out.status.success() && audit_ignores.is_empty() => EvidenceStatus::NoFindings,
-        Ok(out) if out.status.success() => {
-            EvidenceStatus::NoFindingsOutsideExceptions(audit_ignores.to_vec())
+        Ok(out) if out.status.success() && audit_ignores.is_empty() => {
+            status(EvidenceStatus::NoFindings)
         }
+        Ok(out) if out.status.success() => status(EvidenceStatus::NoFindingsOutsideExceptions(
+            audit_ignores.to_vec(),
+        )),
         Ok(out) => {
             let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
-            EvidenceStatus::Error(if stderr.is_empty() {
+            status(EvidenceStatus::Error(if stderr.is_empty() {
                 format!("cargo-audit exited with status {}", out.status)
             } else {
                 stderr
-            })
+            }))
         }
-        Err(error) => EvidenceStatus::Error(error.to_string()),
+        Err(error) => status(EvidenceStatus::Error(error.to_string())),
     }
 }
 
@@ -356,13 +375,13 @@ mod tests {
 
         // Another test thread forking while the script was open for writing
         // makes executing it fail briefly with ETXTBSY; retry that case.
-        let mut status = cargo_audit_status(cargo.as_os_str(), &member, &[]);
+        let mut status = run_cargo_audit(cargo.as_os_str(), &member, &[]).status;
         for _ in 0..20 {
             if status != EvidenceStatus::NotChecked("cargo-audit is unavailable") {
                 break;
             }
             std::thread::sleep(std::time::Duration::from_millis(50));
-            status = cargo_audit_status(cargo.as_os_str(), &member, &[]);
+            status = run_cargo_audit(cargo.as_os_str(), &member, &[]).status;
         }
         assert_eq!(status, EvidenceStatus::NoFindings);
     }
@@ -384,14 +403,14 @@ mod tests {
         let run = |output: &str, status: &str| {
             fs::write(root.join("fake-cargo.out"), output).unwrap();
             fs::write(root.join("fake-cargo.status"), status).unwrap();
-            let mut result = cargo_audit_status(cargo.as_os_str(), root, &[]);
+            let mut result = run_cargo_audit(cargo.as_os_str(), root, &[]).status;
             // A forking test thread can make the fresh script fail with ETXTBSY.
             for _ in 0..20 {
                 if result != EvidenceStatus::NotChecked("cargo-audit is unavailable") {
                     break;
                 }
                 std::thread::sleep(std::time::Duration::from_millis(50));
-                result = cargo_audit_status(cargo.as_os_str(), root, &[]);
+                result = run_cargo_audit(cargo.as_os_str(), root, &[]).status;
             }
             result
         };

@@ -8,6 +8,7 @@ pub(crate) mod age_gate;
 pub mod ai_context;
 pub(crate) mod api_contract;
 pub mod audit;
+mod audit_advisories;
 mod audit_compliance;
 mod audit_evidence;
 mod audit_idor;

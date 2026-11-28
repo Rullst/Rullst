@@ -830,7 +830,7 @@ if [ "$1" = "audit" ] && [ "$2" = "--version" ]; then
   exit 0
 fi
 if [ "$1" = "audit" ]; then
-  printf '{"vulnerabilities":{"found":true,"count":1,"list":[]},"warnings":{}}'
+  printf '{"vulnerabilities":{"found":true,"count":1,"list":[{"advisory":{"id":"RUSTSEC-2026-0592","package":"url","title":"t"},"versions":{"patched":[">=2.5.9"]},"package":{"name":"url","version":"2.5.8"}}]},"warnings":{}}'
   echo 'error: 1 vulnerability found!' >&2
   exit 1
 fi
@@ -845,7 +845,11 @@ exit 0
     let output = output_text(&result);
     assert!(!result.status.success(), "advisories must fail the audit");
     assert!(
-        output.contains("cargo-audit reported 1 vulnerable dependency advisory(ies)"),
+        output.contains("cargo-audit reported 1 vulnerable dependency advisory(ies):"),
+        "{output}"
+    );
+    assert!(
+        output.contains("- RUSTSEC-2026-0592 in url 2.5.8: t; fixed in >=2.5.9"),
         "{output}"
     );
     assert!(

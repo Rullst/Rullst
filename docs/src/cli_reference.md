@@ -2309,7 +2309,10 @@ Quadlet and Kubernetes.
 Executes bounded automated checks across recognized source, configuration,
 route, dependency, and local network patterns, and can invoke installed
 dependency scanners. Static findings require human review and are not a
-penetration test or compliance certification.
+penetration test or compliance certification. When cargo-audit is installed,
+the dependency check lists each advisory it reports with its ID and title,
+the crate and version in `Cargo.lock`, and the fixed versions (at most 50,
+then how many more).
 * **Optional Flags:**
   * `--ai`: Prints fixed, rule-based remediation suggestions after the checks. It calls no AI model or network service; the flag keeps its legacy name.
   * `--compliance`: Writes `SECURITY_COMPLIANCE.md`, an evidence report. Each executed check is `NO FINDINGS`, `NO FINDINGS OUTSIDE EXCEPTIONS`, `FINDINGS`, `GENERATED`, `OBSERVED`, `NOT CHECKED`, or `ERROR`, and control families outside the command's scope are `NOT EVALUATED`. It never reports `PASS` and is not a SOC 2, ISO 27001, or transport certification.

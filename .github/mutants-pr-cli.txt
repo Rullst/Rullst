@@ -11,6 +11,7 @@ cargo-rullst/src/generators/add/capability.rs
 cargo-rullst/src/generators/add/mod.rs
 cargo-rullst/src/generators/add/plan.rs
 cargo-rullst/src/generators/audit.rs
+cargo-rullst/src/generators/audit_advisories.rs
 cargo-rullst/src/generators/audit_compliance.rs
 cargo-rullst/src/generators/audit_evidence.rs
 cargo-rullst/src/generators/audit_idor.rs
