@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795863810152,
+  "lastUpdate": 1795891910977,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -16531,6 +16531,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 558,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f2400a573bb05def80afe1f5470dd54db0de0bd6",
+          "message": "Merge pull request #891 from Rullst/docs/site-why-rullst\n\ndocs(site): say when each framework fits and pin the published CLI version",
+          "timestamp": "2026-11-28T15:33:07-03:00",
+          "tree_id": "2700c2f6c9042c7a3861976b826c5ba96f465418",
+          "url": "https://github.com/Rullst/Rullst/commit/f2400a573bb05def80afe1f5470dd54db0de0bd6"
+        },
+        "date": 1795891910029,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 271,
+            "range": "± 18",
             "unit": "ns/iter"
           }
         ]
