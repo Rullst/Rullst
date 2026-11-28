@@ -3,7 +3,7 @@
 //! struct fields of [`ChronoBindings`] that hold one, and the expressions
 //! that start with or reach one.
 
-use super::{ChronoBindings, collect, elements, is_chrono_type, is_punct};
+use super::{ChronoBindings, collect, elements, is_chrono_type, is_ident, is_punct};
 use proc_macro2::{Delimiter, TokenTree};
 use std::collections::BTreeSet;
 
@@ -56,6 +56,17 @@ pub(super) fn is_jiff_type(tokens: &[TokenTree]) -> bool {
     !is_chrono_type(tokens) && names(tokens)
 }
 
+/// The body of the closure `tokens` (`|..| body`, also after `move`), or
+/// `None` when `tokens` is not a closure.
+fn closure_body(tokens: &[TokenTree]) -> Option<&[TokenTree]> {
+    let start = usize::from(is_ident(tokens.first(), "move"));
+    if !is_punct(tokens.get(start), '|') {
+        return None;
+    }
+    let close = (start + 1..tokens.len()).find(|at| is_punct(tokens.get(*at), '|'))?;
+    Some(&tokens[close + 1..])
+}
+
 /// Whether the expression `tokens` only reads a field: `name.field`, more
 /// fields after it, a leading `&` or `*`, and no call.
 fn field_read(tokens: &[TokenTree]) -> bool {
@@ -101,9 +112,9 @@ impl ChronoBindings {
     }
 
     /// The expression `tokens` without the `?` and the calls of
-    /// [`KEEPING_METHODS`] that end it, as long as their arguments hold and
-    /// name no chrono value (`paid_at.unwrap_or_else(Utc::now)` keeps a
-    /// chrono field).
+    /// [`KEEPING_METHODS`] that end it, as long as their arguments are not
+    /// chrono ([`Self::not_chrono`]; `paid_at.unwrap_or_else(Utc::now)`
+    /// reads a chrono field).
     fn before_kept_calls<'a>(&self, mut tokens: &'a [TokenTree]) -> &'a [TokenTree] {
         loop {
             tokens = match tokens {
@@ -115,13 +126,28 @@ impl ChronoBindings {
                     TokenTree::Group(args),
                 ] if dot.as_char() == '.'
                     && KEEPING_METHODS.iter().any(|name| method == name)
-                    && !self.carries_chrono(&args.stream())
-                    && !is_chrono_type(&collect(args.stream())) =>
+                    && elements(&collect(args.stream())).all(|arg| self.not_chrono(arg)) =>
                 {
                     rest
                 }
                 _ => return tokens,
             };
+        }
+    }
+
+    /// Whether the fallback `tokens` is not chrono: it holds no chrono
+    /// value, names no chrono type and is not a function of the file that
+    /// returns one (`now_utc`). A closure counts only when its body holds a
+    /// jiff value (`|| Timestamp::now()`).
+    fn not_chrono(&self, tokens: &[TokenTree]) -> bool {
+        match closure_body(tokens) {
+            Some(body) => self.holds_jiff(body),
+            None => {
+                let function = tokens.last().is_some_and(|last| {
+                    matches!(last, TokenTree::Ident(name) if self.functions.contains(&name.to_string()))
+                });
+                !self.is_chrono_value(tokens) && !is_chrono_type(tokens) && !function
+            }
         }
     }
 

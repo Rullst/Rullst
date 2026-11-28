@@ -1742,9 +1742,10 @@ Work through the steps in order.
     declared in another file, is left alone too, also (since the
     13.0.0-rc.2 CLI) through `?`, `.clone()`, `.unwrap()` or an
     `.unwrap_or_else(..)` whose fallback is not chrono
-    (`charge.paid_at.unwrap_or_else(Timestamp::now)`). Another value whose
-    type the file does not show is still reported, so an application that
-    finished the move can still see such calls with `--all-rules` or
+    (`charge.paid_at.unwrap_or_else(Timestamp::now)`, or a closure whose
+    body holds a jiff value such as `|| Timestamp::now()`). Another value
+    whose type the file does not show is still reported, so an application
+    that finished the move can still see such calls with `--all-rules` or
     `--from`; they are must-change findings, so check that each compiles
     and continue with `--keep-on-failure`.
 

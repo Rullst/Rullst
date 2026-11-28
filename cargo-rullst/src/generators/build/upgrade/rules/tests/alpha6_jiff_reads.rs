@@ -37,6 +37,7 @@ fn field_reads_through_kept_calls_need_no_change_unless_they_hold_chrono() {
 use rullst::capital::Invoice;
 use rullst::orm::Timestamp;
 struct Old { at: Option<chrono::DateTime<chrono::Utc>> }
+fn now_utc() -> DateTime<Utc> { Utc::now() }
 fn bill(c: &Charge, old: &Old, since: Option<DateTime<Utc>>) -> Result<(), Error> {
     let fallback = chrono::Utc::now();
     let a = Invoice::new("1", "a@x", c.paid_at.unwrap_or(Timestamp::UNIX_EPOCH), "BRL");
@@ -44,19 +45,23 @@ fn bill(c: &Charge, old: &Old, since: Option<DateTime<Utc>>) -> Result<(), Error
     let d = Invoice::new("3", "a@x", c.paid_at.clone(), "BRL");
     let e = Invoice::new("4", "a@x", &c.charge.paid_at.clone().unwrap_or_default(), "BRL");
     let g = Invoice::new("5", "a@x", c.paid_at.to_owned(), "BRL");
-    let h = Invoice::new("6", "a@x", c.paid_at.unwrap_or_else(chrono::Utc::now), "BRL");
-    let i = Invoice::new("7", "a@x", c.paid_at.unwrap_or(fallback), "BRL");
-    let j = Invoice::new("8", "a@x", c.paid_at.unwrap_or_else(|| Utc::now()), "BRL");
-    let k = Invoice::new("9", "a@x", old.at.clone().unwrap_or_default(), "BRL");
-    let l = Invoice::new("10", "a@x", since.unwrap_or_else(Utc::now), "BRL");
-    let m = Invoice::new("11", "a@x", chrono::Utc::now().clone(), "BRL");
-    let n = Invoice::new("12", "a@x", c.paid_at.other(), "BRL");
+    let o = Invoice::new("6", "a@x", c.paid_at.unwrap_or_else(|| Timestamp::now()), "BRL");
+    let h = Invoice::new("7", "a@x", c.paid_at.unwrap_or_else(chrono::Utc::now), "BRL");
+    let i = Invoice::new("8", "a@x", c.paid_at.unwrap_or(fallback), "BRL");
+    let j = Invoice::new("9", "a@x", c.paid_at.unwrap_or_else(|| Utc::now()), "BRL");
+    let q = Invoice::new("10", "a@x", c.paid_at.unwrap_or_else(|| fallback), "BRL");
+    let r = Invoice::new("11", "a@x", c.paid_at.unwrap_or_else(now_utc), "BRL");
+    let k = Invoice::new("12", "a@x", old.at.clone().unwrap_or_default(), "BRL");
+    let l = Invoice::new("13", "a@x", since.unwrap_or_else(Utc::now), "BRL");
+    let m = Invoice::new("14", "a@x", chrono::Utc::now().clone(), "BRL");
+    let n = Invoice::new("15", "a@x", c.paid_at.other(), "BRL");
     Ok(())
 }
 "#;
-    // A chrono fallback, a chrono field of the file, a chrono binding or
-    // path, and a call that may return another type are still reported.
-    assert_eq!(found(source, CAPITAL), [12, 13, 14, 15, 16, 17, 18]);
+    // A chrono fallback (a path, a binding, a closure that returns one, a
+    // function of the file), a chrono field of the file, a chrono binding
+    // or path, and a call that may return another type are still reported.
+    assert_eq!(found(source, CAPITAL), [14, 15, 16, 17, 18, 19, 20, 21, 22]);
 }
 
 #[test]
@@ -67,15 +72,16 @@ fn show(locale: &Locale, user: &User) {
     locale.format_date(user.birthday.unwrap_or_default(), DateStyle::Short);
     locale.format_date(&user.profile.birthday.clone()?, DateStyle::Short);
     locale.format_date(user.birthday.unwrap_or(chrono::NaiveDate::MIN), DateStyle::Short);
+    locale.format_date(user.birthday.unwrap_or_else(|| Local::now().date_naive()), DateStyle::Short);
 }
 "#;
-    assert_eq!(found(source, LOCALE), [6]);
+    assert_eq!(found(source, LOCALE), [6, 7]);
 }
 
 #[test]
 fn kept_calls_keep_a_field_read_unless_their_arguments_hold_chrono() {
     let bindings = ChronoBindings::of(
-        "struct S { old: DateTime<Utc> }\nfn f(when: chrono::NaiveDate) {\n    let d = Utc::now();\n}\n"
+        "struct S { old: DateTime<Utc> }\nfn now_utc() -> DateTime<Utc> { Utc::now() }\nfn f(when: chrono::NaiveDate) {\n    let d = Utc::now();\n}\n"
             .parse()
             .unwrap(),
     );
@@ -111,6 +117,9 @@ fn kept_calls_keep_a_field_read_unless_their_arguments_hold_chrono() {
         "*p.paid_at.copied()",
         "p.a.b.unwrap_or(Timestamp::MIN)",
         "p.paid_at.clone()?.clone()?",
+        "p.paid_at.unwrap_or_else(|| Timestamp::now())",
+        "p.paid_at.unwrap_or_else(move || Timestamp::now())",
+        "p.paid_at.unwrap_or_else(|_| Timestamp::UNIX_EPOCH)",
     ] {
         assert!(taken(kept), "{kept}");
     }
@@ -120,6 +129,14 @@ fn kept_calls_keep_a_field_read_unless_their_arguments_hold_chrono() {
         "p.paid_at.unwrap_or(when)",
         "p.paid_at.unwrap_or_else(|| Utc::now())",
         "p.paid_at.unwrap_or_else(|| chrono::Local::now())",
+        "p.paid_at.unwrap_or_else(|| Local::now().date_naive())",
+        "p.paid_at.unwrap_or_else(|| d)",
+        "p.paid_at.unwrap_or_else(move || d)",
+        "p.paid_at.unwrap_or_else(|_| d)",
+        "p.paid_at.unwrap_or_else(|| unknown())",
+        "p.paid_at.unwrap_or_else(now_utc)",
+        "p.paid_at.unwrap_or_else(crate::time::now_utc)",
+        "p.paid_at.unwrap_or(convert(Utc::now()))",
         "s.old.clone()",
         "s.old?",
         "when.clone()",
