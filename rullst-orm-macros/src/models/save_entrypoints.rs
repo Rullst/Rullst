@@ -21,6 +21,13 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
     };
 
     if !parsed.auditable {
+        let (keep_snapshot, restore_snapshot) = super::dirty_tracking::snapshot_guard(parsed);
+        let autocommit = super::autocommit_save::generate(
+            parsed,
+            &tenant_prepare,
+            &keep_snapshot,
+            &restore_snapshot,
+        );
         // The whole transaction rolls back on error, so no savepoint.
         let save_body = instrument_query(
             name,
@@ -28,10 +35,12 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
             "save",
             &[],
             guards.managed_save(
+                &autocommit.attempt,
                 quote! { self.__rullst_save_in_tx(&mut transaction) },
                 "save failed",
             ),
         );
+        let autocommit_methods = autocommit.methods;
         let save_with_tx_body = instrument_query(
             name,
             table_name,
@@ -59,6 +68,8 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
             pub async fn save_with_tx(&mut self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<(), rullst_orm::Error> {
                 #save_with_tx_body
             }
+
+            #autocommit_methods
 
             async fn __rullst_save_in_tx(&mut self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<(), rullst_orm::Error> {
                 let is_new = self.id == 0;
@@ -98,6 +109,7 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
         "save",
         &[],
         guards.managed_save(
+            &TokenStream::new(),
             quote! { self.save_with_tx(&mut transaction) },
             "auditable save failed",
         ),
@@ -159,11 +171,17 @@ struct SaveGuards {
 
 impl SaveGuards {
     /// `save()`: joins the task's managed transaction (through `save_with_tx`),
-    /// otherwise runs `write`, a future that saves into `transaction`, in a new
-    /// transaction that commits only when it succeeds. A failed write or
+    /// otherwise runs `autocommit` (a save that may return without a
+    /// transaction), then `write`, a future that saves into `transaction`, in
+    /// a new transaction that commits only when it succeeds. A failed write or
     /// COMMIT restores `id` and the snapshot; `failure` starts the error
     /// message of a failed rollback.
-    fn managed_save(&self, write: TokenStream, failure: &str) -> TokenStream {
+    fn managed_save(
+        &self,
+        autocommit: &TokenStream,
+        write: TokenStream,
+        failure: &str,
+    ) -> TokenStream {
         let Self {
             clean_return,
             keep_snapshot,
@@ -183,6 +201,7 @@ impl SaveGuards {
                 }
             }
 
+            #autocommit
             let original_id = self.id;
             #keep_snapshot
             let mut transaction = rullst_orm::Orm::begin_transaction().await?;

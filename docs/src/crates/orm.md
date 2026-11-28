@@ -404,17 +404,31 @@ async fn rename(id: i32, name: String) -> Result<(), rullst_orm::Error> {
   plaintext, so an unchanged secret is not encrypted again, JSON fields
   (`#[sqlx(json)]`, `Json<T>`, `serde_json::Value`) by their canonical
   document, and other fields by their Serde serialization.
-- The `UPDATE` sets only the changed columns, keeps the tenant predicate and
-  returns the stored row (PostgreSQL and SQLite; MySQL/MariaDB read it again in
-  the same transaction). The columns it did not write, `#[orm(db_default)]`
-  columns and the soft-delete marker take their stored values, so the handle,
-  the audit diff, model events and the search document describe the row as
-  stored. A row deleted meanwhile still fails with `RecordNotFound`.
+- The `UPDATE` sets only the changed columns and keeps the tenant predicate.
+  When it leaves a column unwritten, or the model has `#[orm(db_default)]`
+  columns or a soft-delete marker, it returns the stored row (PostgreSQL and
+  SQLite; MySQL/MariaDB read it again in the same transaction): the columns it
+  did not write, `#[orm(db_default)]` columns and the soft-delete marker take
+  their stored values, so the handle, the audit diff, model events and the
+  search document describe the row as stored. An `UPDATE` that writes every
+  column of a model without such columns reads nothing back. A row deleted
+  meanwhile still fails with `RecordNotFound`.
 - When nothing changed, `save()` runs no `UPDATE`, no `updating`, `updated` or
   `saved` observers, no `after_save` hook, audit entry or post-commit event.
   The `before_save` hook and the `saving` observers run first and may change
   fields; a model with neither, and without a policy, does not even open a
   transaction.
+- Since 13.1, with the query timeout off (`Orm::set_query_timeout(0)`; it is
+  30 seconds by default), a model that is not auditable and has no hooks,
+  policy or registered observers saves without a transaction when the save is
+  one statement: an insert, or an `UPDATE` that writes every column of a model
+  without `#[orm(db_default)]` columns or a soft-delete marker (a full-row
+  model's update always is). A failed statement persists nothing, as before.
+  A statement that outlives the timeout keeps running on the server, and only
+  a transaction undoes it, so with a timeout every save keeps its
+  transaction. The
+  [specification](../spec.md#55-process-local-post-commit-contract) lists
+  the two cases where the outcome differs from a transaction.
 - A record built in code holds `RowSnapshot::default()`: `save()` inserts it,
   or, with a non-zero `id`, writes every column. `mark_all_dirty()` makes a
   loaded record do the same, for code that relied on overwriting the row.

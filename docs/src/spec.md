@@ -2924,14 +2924,20 @@ compares: with no difference it returns `Ok` and runs nothing else (no
 `updating`/`updated`/`saved` observer, `after_save` hook, audit entry or
 post-commit effect); otherwise it runs the `updating` observers, recomputes
 the difference and issues `UPDATE <table> SET <changed columns> WHERE id = ?`
-(plus the tenant predicate) with `RETURNING *` on PostgreSQL and SQLite, or
-followed by `SELECT * ... WHERE id = ?` in the same transaction on
-MySQL/MariaDB. No row is `RecordNotFound` (the tenant-scope `Validation` error
-on tenant models). The handle's unwritten tracked columns,
+(plus the tenant predicate). No row is `RecordNotFound` (the tenant-scope
+`Validation` error on tenant models). When that statement leaves a tracked
+column unwritten, or the model has an `#[orm(db_default)]` column or a
+soft-delete marker, the save reads the stored row back, with `RETURNING *` on
+PostgreSQL and SQLite or with `SELECT * ... WHERE id = ?` in the same
+transaction on MySQL/MariaDB: the handle's unwritten tracked columns,
 `#[orm(db_default)]` columns and soft-delete marker take the stored values,
 so observers, the audit diff, events and the Scout document see the stored
-row, and the snapshot is recaptured. An insert records the snapshot of the
-inserted values. Without a `before_save` hook, policy or registered observer,
+row. An `UPDATE` that writes every tracked column of a model without such
+columns reads nothing back, because the handle already holds every value it
+wrote (since 13.1; before, every tracked update read the row back, so a
+stored value the model could not decode failed even such a save). The
+snapshot is then recaptured. An insert records the snapshot of the inserted
+values. Without a `before_save` hook, policy or registered observer,
 an unchanged `save()`/`save_with_tx()` returns before opening a transaction
 or savepoint (it still applies and checks the tenant context). A failed save
 restores the previous snapshot, so its changes stay pending; a rollback of a
@@ -3461,6 +3467,24 @@ while portability and semantic review remain the model author's responsibility.
   restores the model's `id`, so a caller that catches the error and commits
   does not persist the failed write. A direct `save()` owns its transaction
   and needs no savepoint.
+* Since 13.1 a direct `save()` that sends one statement runs it without
+  `BEGIN`/`COMMIT`, so the statement commits on its own and the save records
+  no `rullst.orm.transaction.begin` span. That needs a model that is not
+  auditable and declares no `before_save`/`after_save` hook and no policy, no
+  registered observer, the query timeout off (`Orm::set_query_timeout(0)`;
+  it is 30 seconds by default, and a statement that times out keeps running
+  on the server, where only a transaction undoes it), and an insert, a
+  full-row update, or a tracked update that writes every tracked column of a
+  model without `#[orm(db_default)]` or soft-delete columns; a tracked update
+  that reads the row back keeps its transaction. A rejected statement
+  persists nothing and restores `id` and the snapshot as a rollback does,
+  with the same error, and post-commit callbacks run after the statement
+  under the same `PostCommit` contract. Two outcomes differ from a
+  transaction: an insert decodes its `id` from the statement's result, so a
+  table whose `id` column contradicts the model's `i32` key (another type,
+  `NULL`, or a value past `i32::MAX` on SQLite) keeps the inserted row when
+  `save()` returns the decode error; and a save whose future is dropped after
+  its statement was sent may still persist, as a dropped `COMMIT` may.
 * Every queued callback is attempted. A failure is returned as `PostCommit`,
   whose contract explicitly means the database mutation is already durable.
   Applications must not retry the database mutation blindly from this error.
