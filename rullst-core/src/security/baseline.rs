@@ -106,25 +106,33 @@ pub(crate) fn apply_server_baseline(
         },
         security,
         environment,
-        vary_html,
     });
+    Ok(if vary_html {
+        compose::<Varying>(app, baseline, cors)
+    } else {
+        compose::<Plain>(app, baseline, cors)
+    })
+}
+
+/// `app` inside the baseline's middleware, with `S` inside its checks.
+fn compose<S: RouteStep>(app: Router, baseline: Arc<Baseline>, cors: Option<CorsLayer>) -> Router {
     // Only a CORS policy splits the baseline, to keep its place.
-    Ok(match cors {
+    match cors {
         None => app.layer(axum::middleware::from_fn_with_state(
             baseline,
-            whole_baseline,
+            whole_baseline::<S>,
         )),
         Some(cors) => app
             .layer(axum::middleware::from_fn_with_state(
                 baseline.clone(),
-                request_checks,
+                request_checks::<S>,
             ))
             .layer(cors)
             .layer(axum::middleware::from_fn_with_state(
                 baseline,
                 headers_layer,
             )),
-    })
+    }
 }
 
 /// Whether the baseline masks PII in responses: in staging and production,
@@ -189,31 +197,49 @@ struct Baseline {
     /// production.
     headers_over_http: super::headers::HeaderPlan,
     waf: Waf,
-    /// Whether the baseline adds `Vary: HX-Request` itself (see
-    /// [`apply_server_baseline`]).
-    vary_html: bool,
 }
 
-/// What runs inside the baseline's checks: the routes, then, when the
-/// baseline adds `Vary: HX-Request` itself, that step on their response.
-struct Routes {
-    next: Next,
-    vary_html: bool,
+/// What runs inside the baseline's checks: the routes as they are
+/// ([`Plain`]), or the routes and then the `Vary: HX-Request` step
+/// ([`Varying`], see [`apply_server_baseline`]).
+trait RouteStep: Send + Sync + 'static {
+    type Routes: super::Run;
+    fn routes(next: Next) -> Self::Routes;
 }
 
-impl super::Run for Routes {
+/// The routes as they are.
+struct Plain;
+
+impl RouteStep for Plain {
+    type Routes = Next;
+    fn routes(next: Next) -> Next {
+        next
+    }
+}
+
+/// The routes, then `Vary: HX-Request` on their HTML responses.
+struct Varying;
+
+impl RouteStep for Varying {
+    type Routes = VaryingRoutes;
+    fn routes(next: Next) -> VaryingRoutes {
+        VaryingRoutes(next)
+    }
+}
+
+struct VaryingRoutes(Next);
+
+impl super::Run for VaryingRoutes {
     async fn run(self, req: Request) -> Response {
-        let mut response = self.next.run(req).await;
-        if self.vary_html {
-            crate::htmx::vary_route_response(&mut response);
-        }
+        let mut response = self.0.run(req).await;
+        crate::htmx::vary_route_response(&mut response);
         response
     }
 }
 
 /// The baseline without a CORS policy, outer to inner: configuration
 /// extensions, secure headers, secure framework cookies, WAF, CSRF.
-async fn whole_baseline(
+async fn whole_baseline<S: RouteStep>(
     State(baseline): State<Arc<Baseline>>,
     req: Request,
     next: Next,
@@ -221,7 +247,7 @@ async fn whole_baseline(
     let req = baseline.install(req);
     let plan = baseline.header_plan(&req);
     super::headers::with_security_headers(req, plan, |req| {
-        with_request_checks(req, baseline.waf, baseline.routes(next))
+        with_request_checks(req, baseline.waf, S::routes(next))
     })
     .await
 }
@@ -240,19 +266,19 @@ async fn headers_layer(
 
 /// The part of the baseline inside a CORS policy: secure framework cookies
 /// (outside CSRF, so the cookie it mints is covered too), WAF, CSRF.
-async fn request_checks(
+async fn request_checks<S: RouteStep>(
     State(baseline): State<Arc<Baseline>>,
     req: Request,
     next: Next,
 ) -> Response {
-    with_request_checks(req, baseline.waf, baseline.routes(next)).await
+    with_request_checks(req, baseline.waf, S::routes(next)).await
 }
 
-async fn with_request_checks(req: Request, waf: Waf, next: Routes) -> Response {
+async fn with_request_checks(req: Request, waf: Waf, next: impl super::Run) -> Response {
     super::secure_cookies::with_secure_framework_cookies(req, |req| inspected(req, waf, next)).await
 }
 
-async fn inspected(req: Request, waf: Waf, next: Routes) -> Response {
+async fn inspected(req: Request, waf: Waf, next: impl super::Run) -> Response {
     match waf {
         Waf::Enforce => super::waf::with_waf(req, |req| super::csrf::with_csrf(req, next)).await,
         Waf::Report => {
@@ -270,14 +296,6 @@ impl Baseline {
         req.extensions_mut().insert(self.security.clone());
         req.extensions_mut().insert(self.environment);
         req
-    }
-
-    /// `next`, with this baseline's `Vary: HX-Request` step.
-    fn routes(&self, next: Next) -> Routes {
-        Routes {
-            next,
-            vary_html: self.vary_html,
-        }
     }
 
     /// The header values for `req`: HSTS only over HTTPS outside staging and
