@@ -16,6 +16,8 @@ mod missing_rows;
 mod nested_transaction;
 mod offset_paging;
 mod qualified_scopes;
+mod save_paths;
+mod save_recorder;
 mod schema_constraints;
 mod search_relevance;
 mod soft_delete_lifecycle;
@@ -45,4 +47,5 @@ pub async fn exercise() {
     temporal::exercise().await;
     jiff_temporal::exercise().await;
     wide_values::exercise().await;
+    save_paths::exercise().await;
 }
