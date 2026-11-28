@@ -314,6 +314,9 @@ pub(super) struct WorkspaceFacts {
     /// A manifest enables SQLx's `chrono` feature itself, which Rullst's ORM
     /// no longer enables since 13.0.0-alpha.6.
     pub sqlx_chrono: bool,
+    /// The `[security]` static-file lists of the project's `Rullst.toml`,
+    /// which `V13-CSRF-STATIC-PREFIXES` compares paths with.
+    csrf_static: alpha6_defaults::StaticPaths,
 }
 
 /// Scans the workspace when the plan targets v13.
@@ -326,7 +329,8 @@ pub(super) fn scan_workspace(
     if target_major != TARGET_MAJOR {
         return Ok(scan);
     }
-    let (mut manifest_findings, facts) = files::manifest_findings(plans);
+    let (mut manifest_findings, mut facts) = files::manifest_findings(plans);
+    facts.csrf_static = files::csrf_static_paths(root);
     scan.reviewed
         .extend(reviewed::drop_reviewed(&mut manifest_findings));
     scan.findings.extend(manifest_findings);

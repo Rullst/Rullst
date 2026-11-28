@@ -3,7 +3,9 @@
 //! middleware decides static files by path (`csrf_static_prefixes` and
 //! `csrf_static_paths`) instead of by extension, the CSRF token a page
 //! embeds is masked per response, and `Server` applies the CSRF check and the
-//! secure headers in every environment. [`super::tokens`] calls the field, string,
+//! secure headers in every environment. The static-file rule compares paths
+//! with the lists of the project's `Rullst.toml` ([`StaticPaths`]).
+//! [`super::tokens`] calls the field, string,
 //! method and call rules with what it reads, [`super::rust`] the struct rule with
 //! each struct literal and [`super::files`] the script rule with each script
 //! line.
@@ -14,6 +16,7 @@ use super::catalog::{
     HEALTH_PROBE_VERSION_FIELD, ROUTER_BASELINE_LAYERS,
 };
 use proc_macro2::{TokenStream, TokenTree};
+use rullst_core::config::SecurityConfig;
 
 /// The probe payload types whose `version` field 13.0.0-alpha.6 removed.
 const PROBE_TYPES: &[&str] = &["HealthProbeResponse", "ReadinessProbeResponse"];
@@ -44,13 +47,50 @@ pub(super) fn string_rule(value: &str, text: &str) -> Option<&'static Rule> {
         .then_some(&HEALTH_FRAMEWORK_VERSION)
 }
 
-/// Whether Core's default `csrf_static_prefixes` and `csrf_static_paths`
-/// cover what a service mounted at `path` serves: everything below a prefix
-/// (`/static`, `/static/`) or one exact file.
-fn default_static(path: &str) -> bool {
-    let security = rullst_core::config::SecurityConfig::default();
-    security.is_csrf_static_path(&format!("{}/", path.trim_end_matches('/')))
-        || security.is_csrf_static_path(path)
+/// The `[security]` `csrf_static_prefixes` and `csrf_static_paths` that
+/// `V13-CSRF-STATIC-PREFIXES` compares paths with: those of the project's
+/// `Rullst.toml`, read as `Server` reads them
+/// ([`super::files::csrf_static_paths`]), or Core's defaults.
+#[derive(Debug, Default)]
+pub(super) struct StaticPaths {
+    security: SecurityConfig,
+    /// Why the project's `Rullst.toml` was not used, the note of each
+    /// location; the defaults apply then.
+    unread: Option<String>,
+}
+
+impl StaticPaths {
+    /// The lists of a `Rullst.toml` that `Server` accepts: a missing key
+    /// keeps its default and a list replaces it.
+    pub(super) fn project(security: SecurityConfig) -> Self {
+        Self {
+            security,
+            unread: None,
+        }
+    }
+
+    /// The defaults, for a `Rullst.toml` that `Server` refuses with `error`.
+    pub(super) fn unread(error: impl std::fmt::Display) -> Self {
+        Self {
+            security: SecurityConfig::default(),
+            unread: Some(format!(
+                "`Rullst.toml` was not used ({error}), so this path is compared with the default `csrf_static_prefixes` and `csrf_static_paths`; `Server` refuses to start with it"
+            )),
+        }
+    }
+
+    /// The note of every location when `Rullst.toml` was not used.
+    pub(super) fn note(&self) -> Option<&str> {
+        self.unread.as_deref()
+    }
+
+    /// Whether the lists cover what a route or a service at `path` serves:
+    /// everything below a prefix (`/static`, `/static/`) or one exact path.
+    fn covers(&self, path: &str) -> bool {
+        self.security
+            .is_csrf_static_path(&format!("{}/", path.trim_end_matches('/')))
+            || self.security.is_csrf_static_path(path)
+    }
 }
 
 /// The extensions that made a `GET` or `HEAD` path a static file until
@@ -78,49 +118,58 @@ fn names(tokens: &[TokenTree], name: &str) -> bool {
 }
 
 /// The rule for a method call with `args`: `.nest_service("/path", ..)` or
-/// `.route_service("/path", ..)` at a path the default static-file settings
-/// do not cover, in a file that names `ServeDir` or `ServeFile`, and the
-/// routes of [`route_rule`].
-pub(super) fn method_rule(name: &str, args: &TokenStream, text: &str) -> Option<&'static Rule> {
+/// `.route_service("/path", ..)` at a path the `static_paths` do not cover,
+/// in a file that names `ServeDir` or `ServeFile`, and the routes of
+/// [`route_rule`].
+pub(super) fn method_rule(
+    name: &str,
+    args: &TokenStream,
+    text: &str,
+    static_paths: &StaticPaths,
+) -> Option<&'static Rule> {
     let tokens: Vec<TokenTree> = args.clone().into_iter().collect();
     match name {
-        "route" => route_rule(&tokens),
+        "route" => route_rule(&tokens, static_paths),
         "nest_service" | "route_service"
             if text.contains("ServeDir") || text.contains("ServeFile") =>
         {
             let path = super::tokens::string_value(tokens.first())?;
-            (path.starts_with('/') && !default_static(&path)).then_some(&CSRF_STATIC_PREFIXES)
+            (path.starts_with('/') && !static_paths.covers(&path)).then_some(&CSRF_STATIC_PREFIXES)
         }
         _ => None,
     }
 }
 
-/// The rule for `.route("/path", method_router)` at a path the default
-/// static-file settings do not cover: a `get_service` of a `ServeDir` or
+/// The rule for `.route("/path", method_router)` at a path the
+/// `static_paths` do not cover: a `get_service` of a `ServeDir` or
 /// `ServeFile` at any such path, and a `get` route whose path ends in an
-/// extension alpha.5 treated as static (`/feed.xml`, `/data.json`), which
-/// served files without minting the CSRF cookie until then.
-fn route_rule(tokens: &[TokenTree]) -> Option<&'static Rule> {
+/// extension alpha.5 treated as static (`/feed.xml`, `/data.json`), whose
+/// response, a file or what its handler renders, never minted the CSRF
+/// cookie until then.
+fn route_rule(tokens: &[TokenTree], static_paths: &StaticPaths) -> Option<&'static Rule> {
     let path = super::tokens::string_value(tokens.first())?;
     let router = &tokens[1..];
     let file_service =
         names(router, "get_service") && (names(router, "ServeDir") || names(router, "ServeFile"));
     let static_route = names(router, "get") && static_extension(&path);
-    (path.starts_with('/') && (file_service || static_route) && !default_static(&path))
+    (path.starts_with('/') && (file_service || static_route) && !static_paths.covers(&path))
         .then_some(&CSRF_STATIC_PREFIXES)
 }
 
 /// The rule for a call `path(args)`: a `get("/path" => handler)` route of
 /// `routes!` whose path ends in an extension alpha.5 treated as static and
-/// the default static-file settings do not cover, as [`route_rule`] reads
-/// `.route`.
-pub(super) fn call_rule(segments: &[&str], args: &[TokenTree]) -> Option<&'static Rule> {
+/// the `static_paths` do not cover, as [`route_rule`] reads `.route`.
+pub(super) fn call_rule(
+    segments: &[&str],
+    args: &[TokenTree],
+    static_paths: &StaticPaths,
+) -> Option<&'static Rule> {
     if segments.last() != Some(&"get") {
         return None;
     }
     let path = super::tokens::string_value(args.first())?;
     let arrow = matches!(args.get(1), Some(TokenTree::Punct(punct)) if punct.as_char() == '=');
-    (arrow && path.starts_with('/') && static_extension(&path) && !default_static(&path))
+    (arrow && path.starts_with('/') && static_extension(&path) && !static_paths.covers(&path))
         .then_some(&CSRF_STATIC_PREFIXES)
 }
 
