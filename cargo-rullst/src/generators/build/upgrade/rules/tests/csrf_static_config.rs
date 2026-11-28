@@ -2,8 +2,10 @@
 //! `csrf_static_prefixes` and `csrf_static_paths` of the project's
 //! `Rullst.toml`, read as `Server` reads them (#895).
 
+use super::super::alpha6_defaults::StaticPaths;
 use super::files::plan;
 use super::*;
+use rullst_core::config::SecurityConfig;
 
 const STATIC: &str = "V13-CSRF-STATIC-PREFIXES";
 const PACKAGE: &str = "[package]\nname = \"app\"\n";
@@ -89,6 +91,42 @@ fn the_paths_the_project_lists_are_not_reported() {
             "[security]\ncsrf_static_prefixes = [\"/assets/\"]\ncsrf_static_paths = [\"/api/x.json\", \"/feed.xml\"]\n"
         )),
         lines(&[6, 7])
+    );
+}
+
+/// `Server` checks the request path, so an exact path covers no file below
+/// a `nest_service`, even one equal to the mount point.
+#[test]
+fn only_a_prefix_covers_a_mounted_service() {
+    for exact in ["/assets/", "/assets"] {
+        assert_eq!(
+            reviewed(Some(&format!(
+                "[security]\ncsrf_static_paths = [\"{exact}\"]\n"
+            ))),
+            lines(&[4, 5, 6, 11, 12]),
+            "{exact}"
+        );
+    }
+    // A `route_service` serves its own path only: `/assets` is not below
+    // `/assets/`, while a wildcard route below it is.
+    let facts = WorkspaceFacts {
+        csrf_static: StaticPaths::project(
+            SecurityConfig::default().with_csrf_static_prefix("/assets/"),
+        ),
+        ..WorkspaceFacts::default()
+    };
+    let source = r#"use tower_http::services::ServeDir;
+fn router() -> axum::Router {
+    axum::Router::new()
+        .nest_service("/assets", ServeDir::new("assets"))
+        .route_service("/assets", ServeDir::new("assets"))
+        .route_service("/assets/{*path}", ServeDir::new("assets"))
+        .route("/assets", get_service(ServeDir::new("assets")))
+}
+"#;
+    assert_eq!(
+        scan_with(source, "lib.rs", &facts),
+        [(STATIC, 5), (STATIC, 7)]
     );
 }
 

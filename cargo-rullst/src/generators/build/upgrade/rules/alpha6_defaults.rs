@@ -84,12 +84,23 @@ impl StaticPaths {
         self.unread.as_deref()
     }
 
-    /// Whether the lists cover what a route or a service at `path` serves:
-    /// everything below a prefix (`/static`, `/static/`) or one exact path.
-    fn covers(&self, path: &str) -> bool {
+    /// Whether the lists cover the files a `nest_service` mounted at `path`
+    /// serves below it: only a prefix does (`/static` and `/static/images`
+    /// below `/static/`), because an exact path, even `/assets/`, matches no
+    /// file below the mount.
+    fn covers_mount(&self, path: &str) -> bool {
+        let below = format!("{}/", path.trim_end_matches('/'));
         self.security
-            .is_csrf_static_path(&format!("{}/", path.trim_end_matches('/')))
-            || self.security.is_csrf_static_path(path)
+            .csrf_static_prefixes
+            .iter()
+            .any(|prefix| below.starts_with(prefix.as_str()))
+    }
+
+    /// Whether the lists cover a route at `path` (`route_service`, `.route`,
+    /// `routes!`), as `Server` checks the request path: below a prefix or
+    /// equal to one exact path.
+    fn covers_route(&self, path: &str) -> bool {
+        self.security.is_csrf_static_path(path)
     }
 }
 
@@ -117,10 +128,10 @@ fn names(tokens: &[TokenTree], name: &str) -> bool {
     })
 }
 
-/// The rule for a method call with `args`: `.nest_service("/path", ..)` or
-/// `.route_service("/path", ..)` at a path the `static_paths` do not cover,
-/// in a file that names `ServeDir` or `ServeFile`, and the routes of
-/// [`route_rule`].
+/// The rule for a method call with `args`: `.nest_service("/path", ..)`
+/// below no prefix of the `static_paths` or `.route_service("/path", ..)` at
+/// a path they do not cover, in a file that names `ServeDir` or `ServeFile`,
+/// and the routes of [`route_rule`].
 pub(super) fn method_rule(
     name: &str,
     args: &TokenStream,
@@ -134,7 +145,12 @@ pub(super) fn method_rule(
             if text.contains("ServeDir") || text.contains("ServeFile") =>
         {
             let path = super::tokens::string_value(tokens.first())?;
-            (path.starts_with('/') && !static_paths.covers(&path)).then_some(&CSRF_STATIC_PREFIXES)
+            let covered = if name == "nest_service" {
+                static_paths.covers_mount(&path)
+            } else {
+                static_paths.covers_route(&path)
+            };
+            (path.starts_with('/') && !covered).then_some(&CSRF_STATIC_PREFIXES)
         }
         _ => None,
     }
@@ -152,7 +168,7 @@ fn route_rule(tokens: &[TokenTree], static_paths: &StaticPaths) -> Option<&'stat
     let file_service =
         names(router, "get_service") && (names(router, "ServeDir") || names(router, "ServeFile"));
     let static_route = names(router, "get") && static_extension(&path);
-    (path.starts_with('/') && (file_service || static_route) && !static_paths.covers(&path))
+    (path.starts_with('/') && (file_service || static_route) && !static_paths.covers_route(&path))
         .then_some(&CSRF_STATIC_PREFIXES)
 }
 
@@ -169,7 +185,7 @@ pub(super) fn call_rule(
     }
     let path = super::tokens::string_value(args.first())?;
     let arrow = matches!(args.get(1), Some(TokenTree::Punct(punct)) if punct.as_char() == '=');
-    (arrow && path.starts_with('/') && static_extension(&path) && !static_paths.covers(&path))
+    (arrow && path.starts_with('/') && static_extension(&path) && !static_paths.covers_route(&path))
         .then_some(&CSRF_STATIC_PREFIXES)
 }
 

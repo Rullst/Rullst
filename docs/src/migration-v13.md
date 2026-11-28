@@ -1531,9 +1531,12 @@ Work through the steps in order.
     `/report.json` now get a `CsrfToken` and need no change: mark them
     `rullst-upgrade: reviewed V13-CSRF-STATIC-PREFIXES`. Since the
     13.0.0-rc.2 CLI the rule reads both lists from the project's
-    `Rullst.toml`, as `Server` does, and leaves out the paths they cover; a
-    path added in code with `with_csrf_static_prefix`/`with_csrf_static_path`
-    is not read, so mark its location reviewed.
+    `Rullst.toml`, as `Server` does, and leaves out the paths they cover (a
+    `nest_service` only below a prefix); a path added in code with
+    `with_csrf_static_prefix`/`with_csrf_static_path` is not read, so mark
+    its location reviewed. It compares a path as written, without the prefix
+    of an enclosing `.nest("/blog", ..)`: check a route of a nested router by
+    its full path.
 12. **Embed the masked CSRF token** (CSRF token masked per response row).
     `CsrfToken::as_str()` no longer equals the `rullst_csrf` cookie: it
     returns the token masked for each response (86 characters for the
