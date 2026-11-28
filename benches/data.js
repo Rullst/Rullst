@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795834440050,
+  "lastUpdate": 1795837410874,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -39551,6 +39551,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1582,
             "range": "± 22",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b56805483f3a602b78649839186303a575293999",
+          "message": "Merge pull request #885 from Rullst/docs/v13-site-review-2026-11-27\n\ndocs(site): correct the rc.1 status, the benchmark's access log and comparison rows",
+          "timestamp": "2026-11-28T00:36:57-03:00",
+          "tree_id": "3cc603f8421cfbd889b26fff177e322fcb3e7c00",
+          "url": "https://github.com/Rullst/Rullst/commit/b56805483f3a602b78649839186303a575293999"
+        },
+        "date": 1795837406571,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 570,
+            "range": "± 42",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 751,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 320,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1522,
+            "range": "± 15",
             "unit": "ns/iter"
           }
         ]
