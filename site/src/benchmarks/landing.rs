@@ -5,7 +5,7 @@ use rullst::html;
 use rullst::html::Markup;
 
 use super::compare::{gate_note, measured_date, measured_line};
-use super::format::{mib, score};
+use super::format::{access_log_off, mib, score};
 use super::text::{self, words};
 use super::{CATEGORIES, Cell, FLAGS, MINIMAL, Results, Row, SPEED, row_name};
 use crate::pages::Lang;
@@ -329,9 +329,9 @@ fn summary(results: &Results, row: &Row, lang: Lang) -> Markup {
             .collect::<Vec<_>>()
             .join(", ");
         if pt {
-            html! { <p class="landing-bench-minimal">"A linha de diagnóstico “Rullst (mínimo)”, o mesmo roteador, ORM e templates "<code>"html!"</code>" servidos sem esse middleware e sem posição, pontua "{listed}"; a diferença entre as duas linhas é o custo dessas camadas."</p> }
+            html! { <p class="landing-bench-minimal">"A linha de diagnóstico “Rullst (mínimo)”, o mesmo roteador, ORM e templates "<code>"html!"</code>" servidos pelo próprio servidor do Axum, sem o "<code>"Server"</code>" e sem posição, pontua "{listed}"; a diferença entre as duas linhas é aproximadamente o custo da pilha de produção do "<code>"Server"</code>", incluindo o próprio "<code>"Server"</code>"."</p> }
         } else {
-            html! { <p class="landing-bench-minimal">"The diagnostic “Rullst (minimal)” row, the same router, ORM and "<code>"html!"</code>" templates served without that middleware and without a position, scores "{listed}"; the gap between the two rows is what those layers cost."</p> }
+            html! { <p class="landing-bench-minimal">"The diagnostic “Rullst (minimal)” row, the same router, ORM and "<code>"html!"</code>" templates served by Axum's own server, without "<code>"Server"</code>" and without a position, scores "{listed}"; the gap between the two rows is roughly what "<code>"Server"</code>"'s production stack costs, "<code>"Server"</code>" itself included."</p> }
         }
     });
     let legend = if pt {
@@ -356,8 +356,8 @@ fn summary(results: &Results, row: &Row, lang: Lang) -> Markup {
     }
 }
 
-/// "In plain words": what the numbers mean for a real application, every sentence chosen
-/// from the data (nothing about a result is written by hand).
+/// "In plain words": what the numbers mean for a real application. Every number comes from the
+/// data; whether the measured application wrote an access log follows from its Rullst version.
 fn meaning(results: &Results, row: &Row, lang: Lang) -> Markup {
     let pt = lang.is_pt();
     let words = words(lang);
@@ -407,11 +407,26 @@ fn meaning(results: &Results, row: &Row, lang: Lang) -> Markup {
             .filter(|cell| cell.score.is_some())
             .map(|cell| score(cell, lang, false))
     };
+    let log_off = access_log_off(&results.rullst_version);
+    let layers = match (log_off, pt) {
+        (true, false) => {
+            "the WAF, CSRF protection, secure cookies and secure headers of Server's production stack, on by default (its access log, also on by default, is off in the benchmark)"
+        }
+        (false, false) => {
+            "the WAF, CSRF protection, secure cookies, secure headers and access log of Server's production stack, on by default"
+        }
+        (true, true) => {
+            "o WAF, a proteção contra CSRF, os cookies seguros e os cabeçalhos seguros da pilha de produção do Server, ligados por padrão (o log de acesso dele, também ligado por padrão, fica desligado no benchmark)"
+        }
+        (false, true) => {
+            "o WAF, a proteção contra CSRF, os cookies seguros, os cabeçalhos seguros e o log de acesso da pilha de produção do Server, ligados por padrão"
+        }
+    };
     let cost = hello("rullst").map(|own| match (hello(MINIMAL), pt) {
-        (Some(minimal), false) => format!("The price of the security layers: every request passes through the WAF, CSRF check, secure headers and access log that are on by default. On the smallest request (Hello world), where they weigh most, the generated application scores {own} Axum's and the same application without them {minimal}. Fewer requests per second on a busy small machine is what you pay for those protections."),
-        (None, false) => format!("The price of the security layers: every request passes through the WAF, CSRF check, secure headers and access log that are on by default. On the smallest request (Hello world), where they weigh most, the generated application scores {own} Axum's. Fewer requests per second on a busy small machine is what you pay for those protections."),
-        (Some(minimal), true) => format!("O preço das camadas de segurança: toda requisição passa pelo WAF, pela verificação CSRF, pelos cabeçalhos seguros e pelo log de acesso que vêm ligados por padrão. Na menor requisição (Hello world), onde elas pesam mais, a aplicação gerada pontua {own} a do Axum e a mesma aplicação sem elas {minimal}. Menos requisições por segundo numa máquina pequena e ocupada é o que se paga por essas proteções."),
-        (None, true) => format!("O preço das camadas de segurança: toda requisição passa pelo WAF, pela verificação CSRF, pelos cabeçalhos seguros e pelo log de acesso que vêm ligados por padrão. Na menor requisição (Hello world), onde elas pesam mais, a aplicação gerada pontua {own} a do Axum. Menos requisições por segundo numa máquina pequena e ocupada é o que se paga por essas proteções."),
+        (Some(minimal), false) => format!("The price of the security layers: every request passes through {layers}. On the smallest request (Hello world), where they weigh most, the generated application scores {own} Axum's and the same application without Server {minimal}. Fewer requests per second on a busy small machine is what you pay for those protections."),
+        (None, false) => format!("The price of the security layers: every request passes through {layers}. On the smallest request (Hello world), where they weigh most, the generated application scores {own} Axum's. Fewer requests per second on a busy small machine is what you pay for those protections."),
+        (Some(minimal), true) => format!("O preço das camadas de segurança: toda requisição passa por {layers}. Na menor requisição (Hello world), onde elas pesam mais, a aplicação gerada pontua {own} a do Axum e a mesma aplicação sem o Server {minimal}. Menos requisições por segundo numa máquina pequena e ocupada é o que se paga por essas proteções."),
+        (None, true) => format!("O preço das camadas de segurança: toda requisição passa por {layers}. Na menor requisição (Hello world), onde elas pesam mais, a aplicação gerada pontua {own} a do Axum. Menos requisições por segundo numa máquina pequena e ocupada é o que se paga por essas proteções."),
     });
     let behind: Vec<String> = SPEED
         .iter()

@@ -30,7 +30,7 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                     <p class="eyebrow"><span class="short-line" aria-hidden="true"></span>" Three Rust web frameworks. Checked facts."</p>
                     <h1>"Rullst, Loco and Topcoat,"<br /><span class="accent-green">"what each one chose and what it costs."</span></h1>
                     <p class="compare-lede">"All three build web applications in Rust on Tokio, and each one is the better fit for some projects. For every topic this page says in plain words what it is, then what each framework chose, the advantage of that choice and its cost. The choice comes from each project's own documentation; where a project does not document something, the page says so instead of guessing. The advantage and the cost are the author's reading of that choice, not a measurement."</p>
-                    <p class="compare-checked" id="checked">"Checked on "<time datetime="2026-11-25">"25 November 2026"</time>" against Rullst "<code>"13.0.0-rc.1"</code>" (the source on "<code>"main"</code>"), Loco "<code>"loco-rs 1.3.1"</code>" and Topcoat "<code>"topcoat 0.12.1"</code>", the latest release of each that day. Loco's documentation website still showed its 1.2.0 pages that day, so what concerns cookie sessions, OAuth and notifications comes from the 1.3.1 sources in its repository. Rullst's maintainer wrote this page. If a fact is wrong or out of date, please "<a href="https://github.com/Rullst/Rullst/issues">"open an issue"</a>"."</p>
+                    <p class="compare-checked" id="checked">"Checked on "<time datetime="2026-11-27">"27 November 2026"</time>" against Rullst "<code>"13.0.0-rc.1"</code>" (the source on "<code>"main"</code>"), Loco "<code>"loco-rs 1.3.1"</code>" and Topcoat "<code>"topcoat 0.12.1"</code>", the latest release of each that day. Loco's documentation website still showed its 1.2.0 pages that day, so what concerns sessions, OAuth and notifications comes from the 1.3.1 sources in its repository. Rullst's maintainer wrote this page. If a fact is wrong or out of date, please "<a href="https://github.com/Rullst/Rullst/issues">"open an issue"</a>"."</p>
                     <ul class="compare-jump" aria-label="Topics">
                         <li><a href="#fit">"Where each fits"</a></li><li><a href="#topic-rendering">"Rendering"</a></li><li><a href="#topic-database">"Database"</a></li><li><a href="#topic-security">"Security"</a></li><li><a href="#topic-jobs">"Jobs"</a></li><li><a href="#topic-mail">"Mail"</a></li><li><a href="#topic-billing">"Payments"</a></li><li><a href="#topic-admin">"Admin"</a></li><li><a href="#topic-cli">"CLI"</a></li><li><a href="#topic-deployment">"Deployment"</a></li><li><a href="#topic-stability">"Stability"</a></li><li><a href="#topic-maturity">"Community"</a></li><li><a href="#benchmarks">"Performance"</a></li>
                     </ul>
@@ -109,14 +109,14 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                                     minus: html! { "Every request pays for them, which lowers throughput (see "<a href="#benchmarks">"Performance"</a>"). One maintainer, no external audit, and the authorization rules of your application stay yours." },
                                 },
                                 Choice {
-                                    chose: html! { "JWT by default, with Argon2id hashing and API keys. Opt-in signed or encrypted cookie sessions, and OAuth2 with GitHub and Google presets. Secure-headers middleware (presets such as "<code>"github"</code>" and "<code>"owasp"</code>") exists but is disabled by default; CSRF middleware is not documented. On by default: a payload limit, panic catching, ETag, request ids and logging." },
+                                    chose: html! { "JWT by default, with Argon2id hashing and API keys. Opt-in sessions, kept in a signed or encrypted cookie or, since 1.3.0, in a database or Redis store with remember-me, and OAuth2 with GitHub and Google presets. Secure-headers middleware (presets such as "<code>"github"</code>" and "<code>"owasp"</code>") exists but is disabled by default; CSRF middleware is not documented. On by default: a payload limit, panic catching, ETag, request ids, logging, an "<code>"X-Powered-By"</code>" header and, outside production, a fallback page." },
                                     plus: html! { "Stateless tokens suit API clients, and secure headers have ready presets you can switch on." },
                                     minus: html! { "Secure headers stay off until you enable them, and no CSRF protection or WAF is documented, so an application that uses cookie sessions adds its own." },
                                 },
                                 Choice {
-                                    chose: html! { "Session tokens with storage you provide, in "<code>"__Host-"</code>", Secure, HttpOnly, SameSite=Lax cookies. A default origin policy rejects cross-origin state-changing requests. Authentication is on the roadmap; password hashing, secure headers and CSRF tokens are not documented." },
+                                    chose: html! { "Session tokens with storage you provide (sign-in and sign-out, sliding expiration and token rotation), in "<code>"__Host-"</code>", Secure, HttpOnly, SameSite=Lax cookies. A default origin policy rejects cross-origin state-changing requests. Authentication is on the roadmap; password hashing, secure headers and CSRF tokens are not documented." },
                                     plus: html! { "Strict cookie settings and an origin check that is on by default, in a small surface." },
-                                    minus: html! { "No built-in authentication yet: you bring the storage, the password handling and the headers. The origin policy does not protect a state-changing GET request." },
+                                    minus: html! { "No user accounts or password handling yet: you bring the session storage, the password handling and the headers. The origin policy does not protect a state-changing GET request." },
                                 },
                             ])}
                         {blocks::topic(Lang::En,
@@ -198,9 +198,9 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                                     minus: html! { "No admin UI: you build or add one." },
                                 },
                                 Choice {
-                                    chose: html! { "No admin framework (an admin demo app exists). Logging and health endpoints are not documented; OpenAPI generation arrived in 0.12.1." },
+                                    chose: html! { "No admin framework (an admin demo app exists). Logging and a built-in health endpoint are not documented (its examples write a "<code>"/api/health"</code>" route by hand); OpenAPI generation arrived in 0.12.1." },
                                     plus: html! { "It can generate an OpenAPI description of your API." },
-                                    minus: html! { "No admin, logging guidance or health endpoints are documented." },
+                                    minus: html! { "No admin, logging guidance or built-in health endpoint is documented." },
                                 },
                             ])}
                         {blocks::topic(Lang::En,
@@ -216,7 +216,7 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                                 Choice {
                                     chose: html! { <code>"loco new"</code>" (server-rendered and client-rendered SaaS, REST API, lightweight and advanced templates) and "<code>"cargo loco generate"</code>" for models, migrations, scaffolds, controllers, tasks, workers, mailers and deployment files." },
                                     plus: html! { "Rails-style generators for most pieces, deployment files included." },
-                                    minus: html! { "Generators run only in debug builds, and the template is chosen interactively." },
+                                    minus: html! { "Generators run only in debug builds, and "<code>"loco new"</code>" has no template flag: it asks for one unless "<code>"--db"</code>", "<code>"--bg"</code>" and "<code>"--assets"</code>" are all given." },
                                 },
                                 Choice {
                                     chose: html! { <code>"topcoat new"</code>", "<code>"dev"</code>", "<code>"fmt"</code>", "<code>"ui"</code>" (copies components into the project), "<code>"asset bundle"</code>" and "<code>"l10n check"</code>". Model or controller generators are not documented." },
@@ -237,7 +237,7 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                                 Choice {
                                     chose: html! { "A release binary, plus generated Docker, nginx or AWS Lambda setups, and "<code>"loco doctor"</code>" before going live." },
                                     plus: html! { "Generated deployment files, and a command that checks the setup." },
-                                    minus: html! { "I did not find which hosts those generated files were tested on." },
+                                    minus: html! { "Its CI builds the generated Docker image every night for a new SQLite application; none of its workflows runs that image or deploys the nginx or Lambda setups." },
                                 },
                                 Choice {
                                     chose: html! { "Deployment docs are on the roadmap. A Cloudflare Workers example, and custom hosting through "<code>"serve()"</code>" or "<code>"Router::handle"</code>"." },
@@ -251,7 +251,7 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                             html! { <strong>"In plain words: "</strong>"how much an upgrade may break your code, and for how long a version keeps receiving fixes." },
                             [
                                 Choice {
-                                    chose: html! { "13.0 is in prerelease; 13.0.0-alpha.6 froze its features and public API, and 13.0.0-rc.1, the first release candidate, adds fixes, documentation and the changes the maintainer approved one by one after the freeze: two of them break the API, and others change what a working alpha.6 deployment does, such as refusing empty settings in staging and production. After 13.0.0, the maintainer intends to keep 13.x the active line for 12 months, then give it security fixes for 1 to 3 more months after 14.0.0 (an intention, not a guarantee). Semantic Versioning; MSRV Rust 1.96." },
+                                    chose: html! { "13.0 is in prerelease; 13.0.0-alpha.6 froze its features and public API, and 13.0.0-rc.1, the first release candidate (published on 26 November 2026), adds fixes, documentation and the changes the maintainer approved one by one after the freeze: two of them break the API, and others change what a working alpha.6 deployment does, such as refusing empty settings in staging and production. After 13.0.0, the maintainer intends to keep 13.x the active line for 12 months, then give it security fixes for 1 to 3 more months after 14.0.0 (an intention, not a guarantee). Semantic Versioning; MSRV Rust 1.96." },
                                     plus: html! { "A stated support intention and Semantic Versioning, with a migration checklist from alpha.6 to rc.1." },
                                     minus: html! { "Not final yet, and the window is an intention, not a guarantee." },
                                 },
@@ -272,17 +272,17 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                             html! { <strong>"In plain words: "</strong>"a bigger community means more answers, examples and people fixing bugs; a smaller one means you may be on your own." },
                             [
                                 Choice {
-                                    chose: html! { "First published in May 2026. MIT license. 21 GitHub stars and 7 contributors on 25 November 2026; two of the contributors are bots and one is an AI coding agent's account; Rullst has one maintainer." },
+                                    chose: html! { "First published in May 2026. MIT license. 21 GitHub stars and 7 contributors on 27 November 2026; two of the contributors are AI coding agents (one of them a bot account) and one is Dependabot; Rullst has one maintainer." },
                                     plus: html! { "An MIT license and a maturity tier documented for every package." },
                                     minus: html! { "The smallest community of the three, one maintainer who is a single point of failure, and no external audit." },
                                 },
                                 Choice {
-                                    chose: html! { "First release in November 2023. Apache-2.0 license. 9,667 GitHub stars and 157 contributors on 25 November 2026." },
+                                    chose: html! { "First release in November 2023. Apache-2.0 license. 9,675 GitHub stars and 157 contributors on 27 November 2026." },
                                     plus: html! { "The largest community of the three and the longest release history." },
                                     minus: html! { "Its documentation website lagged its newest release when checked (1.2.0 pages while 1.3.1 was out), so some features are documented only in the repository." },
                                 },
                                 Choice {
-                                    chose: html! { "Repository created in April 2026, first functional release in July 2026, in the tokio-rs GitHub organization. MIT license. 7,317 GitHub stars and 41 contributors on 25 November 2026." },
+                                    chose: html! { "Repository created in April 2026, first functional release in July 2026, in the tokio-rs GitHub organization. MIT license. 7,331 GitHub stars and 41 contributors on 27 November 2026." },
                                     plus: html! { "Maintained inside the tokio-rs organization, with a growing contributor base." },
                                     minus: html! { "A young 0.x project." },
                                 },
@@ -290,7 +290,7 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                     </section>
                     <section id="ui-frameworks" aria-labelledby="ui-frameworks-heading">
                         <h2 id="ui-frameworks-heading">"Why not Leptos or Dioxus?"</h2>
-                        <p class="compare-checked" id="checked-ui">"Checked on "<time datetime="2026-11-19">"19 November 2026"</time>" against Leptos "<code>"leptos 0.8.23"</code>" and Dioxus "<code>"dioxus 0.7.10"</code>"."</p>
+                        <p class="compare-checked" id="checked-ui">"Checked on "<time datetime="2026-11-27">"27 November 2026"</time>" against Leptos "<code>"leptos 0.8.23"</code>" and Dioxus "<code>"dioxus 0.7.10"</code>", their latest stable releases that day."</p>
                         <p>"Leptos and Dioxus are full-stack in a different sense: they are UI frameworks. The same Rust components can render HTML on the server and then run in the browser as WebAssembly, which hydrates that HTML, and server functions let the browser call Rust code that runs only on the server. Dioxus also targets desktop and mobile."</p>
                         <p>"As UI frameworks, neither ships an ORM, migrations or authentication, and neither documents mail, background jobs or an admin panel. The Leptos book says Leptos itself provides neither the HTTP server nor the database; the Dioxus documentation says Dioxus does not provide a built-in way of managing authentication, and its database tutorial uses "<code>"rusqlite"</code>" and names SQLx and SeaORM among the alternatives. Applications assemble these parts from other crates: the Leptos authentication example and the Dioxus authentication guide both use "<code>"axum_session_auth"</code>" with SQLx."</p>
                         <p>"They are not in the Performance section because it measures equivalent applications serving HTTP requests. The server side of a Leptos application runs on Actix Web or Axum through Leptos's integrations, and Dioxus Fullstack is built on Axum, which is already the benchmark's baseline; an equivalent application would also need its ORM and authentication assembled by hand. The approaches are complementary: a Leptos or Dioxus interface can call a Rullst HTTP API."</p>
@@ -306,7 +306,8 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                                 <li><strong>"The categories answer different questions."</strong>" Hello world: what a framework costs per request when the page is trivial. Database: how it reads, writes and renders rows. Application: what it does with a real request (input, validation, a write, a form with CSRF protection, a signed-in user). Memory: how much RAM it needs under load. Startup: how fast it starts. Stability (pass or fail): whether it keeps working under heavier load."</li>
                                 <li><strong>"The database usually comes first."</strong>" In a real application the database is usually the limit before the framework is, so a large gap in Hello world shrinks or disappears once requests read and write data; Database and Application are closer to what an application does."</li>
                                 <li><strong>"The overall score is a summary."</strong>" It combines the five category scores, with Hello world, Database and Application counted twice and Memory and Startup once, for quick reading. The categories are the real result: other weights change the order, as the full results show."</li>
-                                <li><strong>"Rullst appears twice."</strong>" \"Rullst\" is the application that "<code>"cargo rullst new"</code>" generates, with the production middleware it turns on: WAF, CSRF protection, secure cookies, security headers and an access log; it is the Rullst with a position. \"Rullst (minimal)\" is the same router, ORM and "<code>"html!"</code>" templates without those layers, served like the Axum app; it is a diagnostic, with scores and without a position. The gap between the two rows is what those layers cost."</li>
+                                <li><strong>"Rullst appears twice."</strong>" \"Rullst\" is the application that "<code>"cargo rullst new"</code>" generates, with "<code>"Server"</code>"'s production stack on: the WAF, CSRF protection, secure cookies and secure headers (its access log, also on by default, is off in the benchmark, as per-request logging is for every implementation); it is the Rullst with a position. \"Rullst (minimal)\" is the same router, ORM and "<code>"html!"</code>" templates served by Axum's own server, without "<code>"Server"</code>", like the Axum app; it is a diagnostic, with scores and without a position. The gap between the two rows is roughly what that stack costs, "<code>"Server"</code>" itself included."</li>
+                                <li><strong>"Database pools differ."</strong>" Since 13.0.0-rc.1, Rullst's pool pings a PostgreSQL connection before handing it out only when it has been idle for at least 500 ms. The Axum reference, Actix Web and Loco ping on every acquisition (SQLx's default, which SeaORM 2.0.4 under Loco keeps). Each Database score includes its pool setting: in the 27 November 2026 run, Axum without the ping scored 1.24× in Database ("<a href="/Benchmarks/diagnostics/#pool">"database-layer defaults"</a>")."</li>
                             </ul>
                         </div>
                         <div class="benchmark-results" data-benchmark-results>
