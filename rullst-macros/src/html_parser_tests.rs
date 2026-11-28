@@ -171,10 +171,10 @@ fn static_attribute_values_escape_double_quotes_only() {
     .to_tokens()
     .to_string();
     assert!(
-        tokens.contains(r#"" content=\"{&quot;includeIndicatorStyles&quot;:false}\"""#),
+        tokens.contains(r#" content=\"{&quot;includeIndicatorStyles&quot;:false}\" "#),
         "{tokens}"
     );
-    assert!(tokens.contains(r#"" title=\"a &amp; <b>\"""#), "{tokens}");
+    assert!(tokens.contains(r#" title=\"a &amp; <b>\" />""#), "{tokens}");
     // The capacity hint counts the written text.
     let attribute = super::attributes::HtmlAttribute {
         name: "content".to_string(),
@@ -409,7 +409,7 @@ fn capacity_hints_add_tags_attributes_children_and_text() {
     // and nothing for `{x}`.
     assert_eq!(element.static_size(), 39);
     assert_eq!(div.static_size(), 39);
-    let tokens = div.to_tokens().to_string();
+    let tokens = document.to_tokens().to_string();
     assert!(
         tokens.contains("String :: with_capacity (39usize)"),
         "{tokens}"
