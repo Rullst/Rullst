@@ -372,7 +372,7 @@ try {
         legend: document.querySelectorAll('.benchmark-legend li').length,
         reading: document.querySelectorAll('.benchmark-reading code').length,
       }))()`);
-      assert.deepEqual(page, { overflow: false, howto: 7, pending: 0, tables: [true, true], rows: ["Actix Web", "Topcoat", "Loco", "Rullst", "Gin", minimal], legend: 5, reading: 1 }, `Rendered comparison ${route} at ${width}px`);
+      assert.deepEqual(page, { overflow: false, howto: 7, pending: 0, tables: [true, true], rows: ["Actix Web", "Topcoat", "Loco", "Rullst", "FastAPI", "Gin", minimal], legend: 5, reading: 1 }, `Rendered comparison ${route} at ${width}px`);
       if (output) {
         const clip = await evaluate(`(() => { const box = document.querySelector('#benchmarks').getBoundingClientRect(); return { x: 0, y: box.top + scrollY, width: innerWidth, height: box.height, scale: 1 }; })()`);
         const { data } = await send("Page.captureScreenshot", { format: "png", clip, captureBeyondViewport: true });

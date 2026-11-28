@@ -20,7 +20,15 @@
   "rows": [
     {"slug": "fastapi", "framework": "FastAPI", "label": "FastAPI", "version": "0.1.0", "role": "ranked", "status": "measured",
      "overall": {"status": "ranked", "score": 0.2, "position": [11, 12], "margin_percent": 15.3, "flags": []},
-     "categories": {}, "stability": "pass", "memory": {}, "startup_s": 1.0},
+     "categories": {
+       "hello": {"status": "ranked", "score": 0.06, "position": [11, 11], "margin_percent": 12.1, "flags": ["cpu_cost"]},
+       "database": {"status": "ranked", "score": 0.14, "position": [13, 13], "margin_percent": 10.2, "flags": ["cpu_cost"]},
+       "application": {"status": "ranked", "score": 0.08, "position": [11, 13], "margin_percent": 9.4, "flags": ["cpu_cost"]},
+       "memory": {"status": "ranked", "score": 0.34, "position": [11, 11], "margin_percent": 3.1, "flags": []},
+       "startup": {"status": "ranked", "score": 0.75, "position": [12, 13], "margin_percent": 4.0, "flags": []}},
+     "stability": "pass",
+     "memory": {"peak_ram_mib": 188.0, "axum_peak_ram_mib": 18.4, "after_logins_peak_ram_mib": 410.0, "axum_after_logins_peak_ram_mib": 929.2},
+     "startup_s": 1.0},
     {"slug": "rullst", "framework": "Rullst", "label": "Rullst (as generated)", "version": "13.0.0-alpha.6", "role": "ranked", "status": "measured",
      "overall": {"status": "ranked", "score": 0.6123, "position": [3, 4], "margin_percent": 5.48, "flags": ["put_not_written"]},
      "categories": {

@@ -37,6 +37,24 @@ pub const ROWS: [(&str, &str); 6] = [
     ("gin", "Gin"),
     (MINIMAL, "Rullst (minimal)"),
 ];
+/// The frameworks of other languages the benchmark also measures (slug, name), shown at their
+/// position when the data has them and never reported missing.
+pub const OTHER_ROWS: [(&str, &str); 9] = [
+    ("phoenix", "Phoenix"),
+    ("aspnet-core", "ASP.NET Core"),
+    ("spring-boot", "Spring Boot"),
+    ("rails", "Ruby on Rails"),
+    ("laravel", "Laravel"),
+    ("django", "Django"),
+    ("fastapi", "FastAPI"),
+    ("nestjs", "NestJS"),
+    ("fastify", "Fastify"),
+];
+
+/// Every slug the pages show: [`ROWS`], then [`OTHER_ROWS`].
+pub fn known_rows() -> impl Iterator<Item = &'static (&'static str, &'static str)> {
+    ROWS.iter().chain(OTHER_ROWS.iter())
+}
 /// The data must use exactly these categories, overall weights and flags; the pages
 /// explain no other (a new one needs a new schema and a change here).
 pub const CATEGORIES: [&str; 5] = ["hello", "database", "application", "memory", "startup"];
@@ -155,7 +173,7 @@ impl Results {
 /// The name a row has in the data's English (the comparison's names are the same in both languages
 /// apart from the minimal row, which the pages translate).
 pub fn row_name(slug: &str) -> &'static str {
-    ROWS.iter()
+    known_rows()
         .find(|(known, _)| *known == slug)
         .map_or("", |(_, name)| name)
 }

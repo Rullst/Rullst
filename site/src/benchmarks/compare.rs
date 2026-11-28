@@ -6,7 +6,7 @@ use rullst::html::Markup;
 
 use super::format::{number, render_note, score};
 use super::text::{self, words};
-use super::{Cell, FLAGS, MINIMAL, ROWS, Results, Row};
+use super::{Cell, FLAGS, MINIMAL, ROWS, Results, Row, known_rows};
 use crate::pages::Lang;
 
 /// Measurement runs of Rullst/Benchmarks whose results an automatic run would not
@@ -113,10 +113,10 @@ fn row_header(slug: &str, row: Option<&Row>, lang: Lang) -> Markup {
 }
 
 /// Measured rows by overall position (the fixed order without a published overall), then
-/// the compared frameworks missing from the run, then the diagnostic row.
+/// the compared frameworks missing from the run, then the diagnostic row. A framework of
+/// another language is shown only when the run has it.
 pub fn shown_rows(results: &Results) -> Vec<&'static str> {
-    let mut order: Vec<&Row> = ROWS
-        .iter()
+    let mut order: Vec<&Row> = known_rows()
         .filter_map(|(slug, _)| results.row(slug))
         .collect();
     if results.overall_published {
