@@ -84,7 +84,7 @@ pub fn page(cx: &Context) -> Markup {
                         <p>"The date above identifies the latest revision. We will update this notice when the website's data practices change, provide additional notice where required, and obtain consent before introducing processing that requires it. This notice describes these pages and their contact channel; it is not a certification of worldwide compliance or a privacy policy for every Rullst application."</p>
                     </section>
                 </main>
-                {made_with::page_footer(cx, Lang::En, "/privacy.html")}
+                {made_with::page_footer(cx, Lang::En, "/privacy.html", ("/", "Rullst home"), "Contact the team")}
             </body>
         </html>
     }

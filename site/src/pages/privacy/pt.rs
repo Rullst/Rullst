@@ -84,7 +84,7 @@ pub fn page(cx: &Context) -> Markup {
                         <p>"A data acima identifica a revisão mais recente. Atualizaremos este aviso quando as práticas de dados do site mudarem, daremos aviso adicional quando exigido e obteremos consentimento antes de introduzir tratamentos que o exijam. Este aviso descreve estas páginas e o canal de contato delas; não é uma certificação de conformidade mundial nem uma política de privacidade para toda aplicação feita com Rullst."</p>
                     </section>
                 </main>
-                {made_with::page_footer(cx, Lang::PtBr, "/pt-br/privacy.html")}
+                {made_with::page_footer(cx, Lang::PtBr, "/pt-br/privacy.html", ("/pt-br/", "Página inicial do Rullst"), "Fale com a equipe")}
             </body>
         </html>
     }

@@ -361,7 +361,7 @@ pub fn page(cx: &Context, results: Markup) -> Markup {
                         </ul>
                     </section>
                 </main>
-                {made_with::page_footer(cx, Lang::En, "/compare/")}
+                {made_with::page_footer(cx, Lang::En, "/compare/", ("/", "Rullst home"), "Contact the team")}
             </body>
         </html>
     }

@@ -124,17 +124,19 @@ pub fn badge(lang: Lang, weight: Option<Markup>) -> Markup {
 }
 
 /// The footer of the comparison and privacy pages: the badge with the weight of `path` (the
-/// published page), then the home and contact links.
-pub fn page_footer(cx: &Context, lang: Lang, path: &str) -> Markup {
+/// published page), then the link `home` (address, label) and the contact link labelled
+/// `contact`. The labels come from each language's page.
+pub fn page_footer(
+    cx: &Context,
+    lang: Lang,
+    path: &str,
+    (home, home_label): (&str, &str),
+    contact: &str,
+) -> Markup {
     let weight = cx
         .weights
         .page(path)
         .map(|weight| crate::footprint::render(weight, lang));
-    let (home, home_label, contact) = if lang.is_pt() {
-        ("/pt-br/", "Página inicial do Rullst", "Fale com a equipe")
-    } else {
-        ("/", "Rullst home", "Contact the team")
-    };
     html! {
         <footer class="shell page-footer">
             {badge(lang, weight)}
