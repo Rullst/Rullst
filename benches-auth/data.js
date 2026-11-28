@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795840396091,
+  "lastUpdate": 1795863766401,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -26659,6 +26659,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2979,
             "range": "± 25",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c20dd93a234d58b1b48eafba66f614c5cf103b82",
+          "message": "Merge pull request #890 from Rullst/fix/v13-rc2-retain-replaced-defaults\n\nfix(core): keep the defaults a published configuration replaced reachable",
+          "timestamp": "2026-11-28T07:45:31-03:00",
+          "tree_id": "3dee323d854c99583868f9b5c57f4abe5488a29d",
+          "url": "https://github.com/Rullst/Rullst/commit/c20dd93a234d58b1b48eafba66f614c5cf103b82"
+        },
+        "date": 1795863765734,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1080,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 754,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1827,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4339,
+            "range": "± 28",
             "unit": "ns/iter"
           }
         ]
