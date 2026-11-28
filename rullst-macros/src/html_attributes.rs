@@ -11,6 +11,8 @@ use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
 use syn::{Expr, Ident, LitStr, Result, Token, token};
 
+use super::write::{Helpers, Writer};
+
 pub struct HtmlAttribute {
     pub name: String,
     pub value: HtmlAttrValue,
@@ -66,10 +68,10 @@ pub fn allows_data_urls(tag: &str) -> bool {
         .any(|element| tag.eq_ignore_ascii_case(element))
 }
 
-/// Local helper emitted into elements with dynamic URL attributes. It returns
-/// the escaped value, or `#` for a script-capable scheme. It is generated
-/// inline instead of calling a runtime function, so the expansion works with
-/// any `rullst::html` version that provides `escape_attr`.
+/// Local helper emitted once into an expansion with dynamic URL attributes.
+/// The escaped value has just been written to `buffer` from `start`; a
+/// script-capable scheme replaces it with `#`. It is generated inline instead
+/// of calling a runtime function.
 ///
 /// Like the URL parser, it skips leading C0 controls and spaces and ignores
 /// ASCII tab, LF and CR anywhere before reading the scheme. Every character
@@ -79,18 +81,23 @@ pub fn allows_data_urls(tag: &str) -> bool {
 pub fn url_guard_tokens() -> TokenStream {
     quote! {
         #[inline]
-        fn rullst_url_attr(value: &str, allow_data: bool) -> &str {
+        fn rullst_url_attr(buffer: &mut String, start: usize, allow_data: bool) {
             let mut scheme = [0u8; 10];
             let mut len = 0usize;
+            let value = buffer.get(start..).unwrap_or_default();
             for byte in value.bytes().skip_while(|byte| *byte <= b' ') {
                 match byte {
                     b'\t' | b'\n' | b'\r' => {}
                     b':' => {
                         let scheme = &scheme[..len];
-                        let unsafe_scheme = scheme == b"javascript"
+                        if scheme == b"javascript"
                             || scheme == b"vbscript"
-                            || (!allow_data && scheme == b"data");
-                        return if unsafe_scheme { "#" } else { value };
+                            || (!allow_data && scheme == b"data")
+                        {
+                            buffer.truncate(start);
+                            buffer.push('#');
+                        }
+                        return;
                     }
                     b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'+' | b'-' | b'.'
                         if len < scheme.len() =>
@@ -98,10 +105,9 @@ pub fn url_guard_tokens() -> TokenStream {
                         scheme[len] = byte.to_ascii_lowercase();
                         len += 1;
                     }
-                    _ => return value,
+                    _ => return,
                 }
             }
-            value
         }
     }
 }
@@ -114,13 +120,12 @@ fn static_attribute_value(lit: &LitStr) -> String {
     lit.value().replace('"', "&quot;")
 }
 
-/// Items emitted once into an element with `name={value}` attributes. Each
+/// Items emitted once into an expansion with `name={value}` attributes. Each
 /// such value is passed to `rullst_attribute_value`, which resolves by
 /// autoref to the deprecated method for an `Option` (or `&Option`) and to the
 /// plain one for every other type, so `name={option}` raises a deprecation
 /// warning at the value while the attribute is written exactly as before. The
-/// calls do nothing at run time. Generated inline, like the URL guard, so the
-/// expansion needs nothing new from `rullst::html`.
+/// calls do nothing at run time. Generated inline, like the URL guard.
 pub fn option_value_probe_tokens() -> TokenStream {
     quote! {
         struct RullstAttributeValue<'a, T: ?Sized>(&'a T);
@@ -284,12 +289,6 @@ impl Parse for HtmlAttribute {
 }
 
 impl HtmlAttribute {
-    /// Whether the attribute is written `name={value}`, whose element needs
-    /// [`option_value_probe_tokens`].
-    pub fn is_dynamic(&self) -> bool {
-        matches!(self.value, HtmlAttrValue::Dynamic(_))
-    }
-
     /// Bytes this attribute writes at least, for the buffer capacity.
     pub fn static_size(&self) -> usize {
         match &self.value {
@@ -299,60 +298,75 @@ impl HtmlAttribute {
         }
     }
 
-    /// Statements appending the attribute to `buffer`, and whether they call
-    /// the element's local URL guard.
-    pub fn to_tokens(&self, buffer: &Ident, allow_data_urls: bool) -> (TokenStream, bool) {
+    /// Whether the value's expression mentions `continue` or `break`.
+    pub(super) fn mentions_loop_exit(&self) -> bool {
+        match &self.value {
+            HtmlAttrValue::Dynamic(expr) | HtmlAttrValue::Optional(expr) => {
+                super::write::expr_mentions_loop_exit(expr)
+            }
+            HtmlAttrValue::Static(_) | HtmlAttrValue::Bare => false,
+        }
+    }
+
+    /// Appends the statements that write the attribute, and records the
+    /// local helpers they call.
+    pub(super) fn write(&self, out: &mut Writer, helpers: &mut Helpers, allow_data_urls: bool) {
         let name = &self.name;
-        let prefix = format!(" {name}=\"");
+        let buffer = out.buffer().clone();
         let is_url = is_url_attribute(name);
-        // The escaped value of a URL attribute goes through the guard.
-        let write_value = |value: TokenStream| {
+        // The escaped value of a URL attribute, written from `start`, goes
+        // through the guard.
+        let start = Ident::new("start", Span::mixed_site());
+        let write_value = |write: TokenStream| {
             if is_url {
-                quote! { #buffer.push_str(rullst_url_attr(&#value, #allow_data_urls)); }
+                quote! {
+                    let #start = #buffer.len();
+                    #write
+                    rullst_url_attr(&mut #buffer, #start, #allow_data_urls);
+                }
             } else {
-                quote! { #buffer.push_str(&#value); }
+                write
             }
         };
         match &self.value {
             HtmlAttrValue::Static(lit) => {
-                let attribute = format!(" {name}=\"{}\"", static_attribute_value(lit));
-                (quote! { #buffer.push_str(#attribute); }, false)
+                out.text(&format!(" {name}=\"{}\"", static_attribute_value(lit)));
             }
-            HtmlAttrValue::Bare => {
-                let attribute = format!(" {name}");
-                (quote! { #buffer.push_str(#attribute); }, false)
-            }
+            HtmlAttrValue::Bare => out.text(&format!(" {name}")),
             HtmlAttrValue::Dynamic(expr) => {
+                helpers.option_probe = true;
+                helpers.url_guard |= is_url;
                 let binding = Ident::new("value", Span::mixed_site());
-                let value = write_value(quote! { rullst::html::escape_attr(#binding) });
+                let value = write_value(super::write::escaped_attribute(&buffer, &binding));
                 // Spanned at the value, so the `Option` warning points there.
                 let probe = quote_spanned! { expr.span()=>
                     (&RullstAttributeValue(#binding)).rullst_attribute_value();
                 };
                 // The scrutinee's temporaries, such as `format!(..)`, live
                 // until the value has been written.
-                let tokens = quote! {
+                out.text(&format!(" {name}=\""));
+                out.code(quote! {
                     match &(#expr) {
                         #binding => {
                             #probe
-                            #buffer.push_str(#prefix);
                             #value
-                            #buffer.push_str("\"");
                         }
                     }
-                };
-                (tokens, is_url)
+                });
+                out.text("\"");
             }
             HtmlAttrValue::Optional(expr) => {
+                helpers.url_guard |= is_url;
+                let prefix = format!(" {name}=\"");
                 let bare = format!(" {name}");
                 let binding = Ident::new("value", Span::mixed_site());
-                let value = write_value(quote! { #binding });
+                let value = write_value(quote! { #buffer.push_str(&#binding); });
                 // A value that is neither a `bool` nor an `Option` is reported
                 // at the expression rather than at the whole macro.
                 let presence =
                     quote_spanned! { expr.span()=> rullst::html::optional_attr(&(#expr)) };
                 // The scrutinee's temporaries live until the match ends.
-                let tokens = quote! {
+                out.code(quote! {
                     match #presence {
                         rullst::html::AttributePresence::Value(#binding) => {
                             #buffer.push_str(#prefix);
@@ -362,8 +376,7 @@ impl HtmlAttribute {
                         rullst::html::AttributePresence::Bare => #buffer.push_str(#bare),
                         rullst::html::AttributePresence::Absent => {}
                     }
-                };
-                (tokens, is_url)
+                });
             }
         }
     }

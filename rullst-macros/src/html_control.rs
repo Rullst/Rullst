@@ -5,11 +5,12 @@
 //! like Rust's own `if`/`for`/`match` (`if let` included); bodies are `html!`
 //! nodes in braces.
 
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::TokenStream;
 use quote::quote;
 use syn::parse::ParseStream;
-use syn::{Expr, Ident, Pat, Result, Token, token};
+use syn::{Expr, Pat, Result, Token, token};
 
+use super::write::{Helpers, Writer, expr_mentions_loop_exit, write_loop_body};
 use super::{HtmlNode, parse_children};
 
 pub struct HtmlIf {
@@ -150,74 +151,83 @@ fn parse_body(input: ParseStream) -> Result<Vec<HtmlNode>> {
     Ok(nodes)
 }
 
-/// Statements appending each node of `body` to `buffer`.
-fn push_nodes(buffer: &Ident, body: &[HtmlNode]) -> TokenStream {
-    let nodes = body.iter().map(HtmlNode::to_tokens);
-    quote! { #( #buffer.push_str(&#nodes); )* }
+/// The statements writing the nodes of a block body into `out`'s buffer.
+fn write_body(body: &[HtmlNode], out: &Writer, helpers: &mut Helpers) -> TokenStream {
+    let mut writer = out.body();
+    for node in body {
+        node.write(&mut writer, helpers);
+    }
+    writer.finish()
+}
+
+fn any_mentions_loop_exit(body: &[HtmlNode]) -> bool {
+    body.iter().any(HtmlNode::mentions_loop_exit)
 }
 
 impl HtmlIf {
-    /// A block evaluating to the `String` of the branch that matched.
-    pub fn to_tokens(&self) -> TokenStream {
-        let buffer = Ident::new("s", Span::mixed_site());
+    /// Appends the `if` chain writing the branch that matched.
+    pub(super) fn write(&self, out: &mut Writer, helpers: &mut Helpers) {
         let mut chain = TokenStream::new();
         for (index, (condition, body)) in self.branches.iter().enumerate() {
-            let pushes = push_nodes(&buffer, body);
+            let writes = write_body(body, out, helpers);
             if index > 0 {
                 chain.extend(quote! { else });
             }
-            chain.extend(quote! { if #condition { #pushes } });
+            chain.extend(quote! { if #condition { #writes } });
         }
         if let Some(body) = &self.otherwise {
-            let pushes = push_nodes(&buffer, body);
-            chain.extend(quote! { else { #pushes } });
+            let writes = write_body(body, out, helpers);
+            chain.extend(quote! { else { #writes } });
         }
-        quote! {
-            {
-                let mut #buffer = String::new();
-                #chain
-                #buffer
-            }
-        }
+        out.code(chain);
+    }
+
+    pub(super) fn mentions_loop_exit(&self) -> bool {
+        self.branches.iter().any(|(condition, body)| {
+            expr_mentions_loop_exit(condition) || any_mentions_loop_exit(body)
+        }) || self
+            .otherwise
+            .as_deref()
+            .is_some_and(any_mentions_loop_exit)
     }
 }
 
 impl HtmlFor {
-    /// A block evaluating to the `String` of every iteration.
-    pub fn to_tokens(&self) -> TokenStream {
-        let buffer = Ident::new("s", Span::mixed_site());
-        let pushes = push_nodes(&buffer, &self.body);
+    /// Appends the loop writing every iteration.
+    pub(super) fn write(&self, out: &mut Writer, helpers: &mut Helpers) {
+        let mut body = out.body();
+        write_loop_body(&self.body, &mut body, helpers);
+        let writes = body.finish();
         let pattern = &self.pattern;
         let iterable = &self.iterable;
-        quote! {
-            {
-                let mut #buffer = String::new();
-                for #pattern in #iterable { #pushes }
-                #buffer
-            }
-        }
+        out.code(quote! { for #pattern in #iterable { #writes } });
     }
 }
 
 impl HtmlMatch {
-    /// A block evaluating to the `String` of the arm that matched. Rust checks
-    /// the patterns, guards and exhaustiveness as for its own `match`.
-    pub fn to_tokens(&self) -> TokenStream {
-        let buffer = Ident::new("s", Span::mixed_site());
+    /// Appends the `match` writing the arm that matched. Rust checks the
+    /// patterns, guards and exhaustiveness as for its own `match`.
+    pub(super) fn write(&self, out: &mut Writer, helpers: &mut Helpers) {
         let match_token = &self.match_token;
         let scrutinee = &self.scrutinee;
-        let arms = self.arms.iter().map(|arm| {
-            let pattern = &arm.pattern;
-            let guard = arm.guard.as_ref().map(|guard| quote! { if #guard });
-            let pushes = push_nodes(&buffer, &arm.body);
-            quote! { #pattern #guard => { #pushes } }
-        });
-        quote! {
-            {
-                let mut #buffer = String::new();
-                #match_token #scrutinee { #(#arms)* }
-                #buffer
-            }
-        }
+        let arms: Vec<TokenStream> = self
+            .arms
+            .iter()
+            .map(|arm| {
+                let pattern = &arm.pattern;
+                let guard = arm.guard.as_ref().map(|guard| quote! { if #guard });
+                let writes = write_body(&arm.body, out, helpers);
+                quote! { #pattern #guard => { #writes } }
+            })
+            .collect();
+        out.code(quote! { #match_token #scrutinee { #(#arms)* } });
+    }
+
+    pub(super) fn mentions_loop_exit(&self) -> bool {
+        expr_mentions_loop_exit(&self.scrutinee)
+            || self.arms.iter().any(|arm| {
+                arm.guard.as_ref().is_some_and(expr_mentions_loop_exit)
+                    || any_mentions_loop_exit(&arm.body)
+            })
     }
 }

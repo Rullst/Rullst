@@ -13,6 +13,14 @@ pub mod html {
         value.to_string().replace('"', "&quot;")
     }
 
+    pub fn push_escaped(out: &mut String, value: &impl std::fmt::Display) {
+        out.push_str(&escape(value));
+    }
+
+    pub fn push_escaped_attr(out: &mut String, value: &impl std::fmt::Display) {
+        out.push_str(&escape_attr(value));
+    }
+
     pub enum AttributePresence {
         Absent,
         Bare,

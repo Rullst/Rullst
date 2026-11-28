@@ -98,6 +98,14 @@ impl HtmlEscape for Markup {
     fn escape_attribute(&self) -> Cow<'_, str> {
         super::escape_str(&self.0)
     }
+
+    fn push_html(&self, out: &mut String) {
+        out.push_str(&self.0);
+    }
+
+    fn push_attribute(&self, out: &mut String) {
+        super::push_escaped_str(out, &self.0);
+    }
 }
 
 impl From<RawHtml> for Markup {

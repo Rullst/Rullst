@@ -25,7 +25,7 @@ use declarations::{
 
 #[path = "html_attributes.rs"]
 mod attributes;
-use attributes::{HtmlAttribute, allows_data_urls, option_value_probe_tokens, url_guard_tokens};
+use attributes::{HtmlAttribute, allows_data_urls};
 
 #[path = "html_control.rs"]
 mod control;
@@ -34,6 +34,10 @@ use control::{HtmlFor, HtmlIf, HtmlMatch};
 #[path = "html_text.rs"]
 mod text;
 use text::Child;
+
+#[path = "html_write.rs"]
+mod write;
+use write::{Helpers, Writer};
 
 impl Parse for HtmlDocument {
     fn parse(input: ParseStream) -> Result<Self> {
@@ -156,47 +160,61 @@ fn parse_children(input: ParseStream) -> Result<Vec<HtmlNode>> {
 }
 
 impl HtmlDocument {
-    /// Expands the document into a `rullst::html::Markup`: the rendered string
-    /// already escapes every interpolated value that is not itself markup.
+    /// Expands the document into a `rullst::html::Markup`: every node writes
+    /// into one `String`, escaping every interpolated value that is not
+    /// itself markup.
     pub fn to_tokens(&self) -> TokenStream {
-        let rendered = self.render_tokens();
-        quote! { rullst::html::Markup::from_trusted(#rendered) }
-    }
-
-    fn render_tokens(&self) -> TokenStream {
-        if self.nodes.len() == 1 {
-            return self.nodes[0].to_tokens();
-        }
-
         let capacity = self.nodes.iter().map(HtmlNode::static_size).sum::<usize>();
-        let nodes = self.nodes.iter().map(HtmlNode::to_tokens);
         // Keep the generated local out of caller expressions, including an `s`
         // binding in a fragment. Renaming a call-site identifier is not hygiene.
         let buffer = Ident::new("s", Span::mixed_site());
+        let mut helpers = Helpers::default();
+        let mut out = Writer::new(buffer.clone(), 0);
+        for node in &self.nodes {
+            node.write(&mut out, &mut helpers);
+        }
+        let statements = out.finish();
+        let helpers = helpers.to_tokens();
         quote! {
-            {
+            rullst::html::Markup::from_trusted({
+                #helpers
                 let mut #buffer = String::with_capacity(#capacity);
-                #(#buffer.push_str(&#nodes);)*
+                #statements
                 #buffer
-            }
+            })
         }
     }
 }
 
 impl HtmlNode {
-    pub fn to_tokens(&self) -> TokenStream {
+    /// Appends the statements that write this node.
+    fn write(&self, out: &mut Writer, helpers: &mut Helpers) {
         match self {
-            HtmlNode::Element(el) => el.to_tokens(),
-            HtmlNode::Text(txt) => {
-                let val = txt.value();
-                quote! { #val.to_string() }
-            }
+            HtmlNode::Element(el) => el.write(out, helpers),
+            HtmlNode::Text(txt) => out.text(&txt.value()),
             HtmlNode::Block(expr) => {
-                quote! { rullst::html::escape(&(#expr)) }
+                let tokens = write::escaped_text(out.buffer(), expr);
+                out.code(tokens);
             }
-            HtmlNode::If(node) => node.to_tokens(),
-            HtmlNode::For(node) => node.to_tokens(),
-            HtmlNode::Match(node) => node.to_tokens(),
+            HtmlNode::If(node) => node.write(out, helpers),
+            HtmlNode::For(node) => node.write(out, helpers),
+            HtmlNode::Match(node) => node.write(out, helpers),
+        }
+    }
+
+    /// Whether an expression of this node, outside the bodies of `@for`
+    /// blocks it contains, mentions `continue` or `break`.
+    fn mentions_loop_exit(&self) -> bool {
+        match self {
+            HtmlNode::Element(el) => {
+                el.attributes.iter().any(HtmlAttribute::mentions_loop_exit)
+                    || el.children.iter().any(HtmlNode::mentions_loop_exit)
+            }
+            HtmlNode::Text(_) => false,
+            HtmlNode::Block(expr) => write::expr_mentions_loop_exit(expr),
+            HtmlNode::If(node) => node.mentions_loop_exit(),
+            HtmlNode::For(node) => write::expr_mentions_loop_exit(&node.iterable),
+            HtmlNode::Match(node) => node.mentions_loop_exit(),
         }
     }
 
@@ -208,6 +226,12 @@ impl HtmlNode {
         }
     }
 }
+
+/// Elements written `<name />`, which take no closing tag.
+const VOID_ELEMENTS: [&str; 14] = [
+    "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source",
+    "track", "wbr",
+];
 
 impl HtmlElement {
     pub fn static_size(&self) -> usize {
@@ -224,68 +248,27 @@ impl HtmlElement {
         size
     }
 
-    pub fn to_tokens(&self) -> TokenStream {
+    /// Appends the statements that write the element, its attributes and
+    /// its children.
+    fn write(&self, out: &mut Writer, helpers: &mut Helpers) {
         let tag = self.tag_name.to_string();
-        let capacity = self.static_size();
-        // Use one hygienic binding for this element and all its attribute
-        // writes; interpolated caller expressions retain their original spans.
-        let buffer = Ident::new("s", Span::mixed_site());
-
         let allow_data_urls = allows_data_urls(&tag);
-        let mut needs_url_guard = false;
-        let mut attr_tokens = Vec::new();
+        out.text("<");
+        out.text(&tag);
         for attr in &self.attributes {
-            let (tokens, uses_url_guard) = attr.to_tokens(&buffer, allow_data_urls);
-            needs_url_guard |= uses_url_guard;
-            attr_tokens.push(tokens);
+            attr.write(out, helpers, allow_data_urls);
         }
-        // Local helper items: the URL guard and the `Option` value probe.
-        let mut helpers = if needs_url_guard {
-            url_guard_tokens()
-        } else {
-            TokenStream::new()
-        };
-        if self.attributes.iter().any(HtmlAttribute::is_dynamic) {
-            helpers.extend(option_value_probe_tokens());
+        if self.children.is_empty() && VOID_ELEMENTS.contains(&tag.as_str()) {
+            out.text(" />");
+            return;
         }
-
-        let child_tokens = self.children.iter().map(|child| child.to_tokens());
-
-        let void_elements = [
-            "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param",
-            "source", "track", "wbr",
-        ];
-        let is_void = void_elements.contains(&tag.as_str());
-
-        if self.children.is_empty() && is_void {
-            quote! {
-                {
-                    #helpers
-                    let mut #buffer = String::with_capacity(#capacity);
-                    #buffer.push_str("<");
-                    #buffer.push_str(#tag);
-                    #( #attr_tokens )*
-                    #buffer.push_str(" />");
-                    #buffer
-                }
-            }
-        } else {
-            quote! {
-                {
-                    #helpers
-                    let mut #buffer = String::with_capacity(#capacity);
-                    #buffer.push_str("<");
-                    #buffer.push_str(#tag);
-                    #( #attr_tokens )*
-                    #buffer.push_str(">");
-                    #( #buffer.push_str(&#child_tokens); )*
-                    #buffer.push_str("</");
-                    #buffer.push_str(#tag);
-                    #buffer.push_str(">");
-                    #buffer
-                }
-            }
+        out.text(">");
+        for child in &self.children {
+            child.write(out, helpers);
         }
+        out.text("</");
+        out.text(&tag);
+        out.text(">");
     }
 }
 
@@ -346,18 +329,13 @@ mod kani_proofs {
 
     #[kani::proof]
     fn verify_void_elements_check() {
-        let void_elements = [
-            "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param",
-            "source", "track", "wbr",
-        ];
-
         let i: usize = kani::any();
-        kani::assume(i < void_elements.len());
+        kani::assume(i < VOID_ELEMENTS.len());
 
-        let tag = void_elements[i];
+        let tag = VOID_ELEMENTS[i];
 
         // Assert that the parsing logic's void element check works correctly
-        let is_void = void_elements.contains(&tag);
+        let is_void = VOID_ELEMENTS.contains(&tag);
         assert!(is_void);
     }
 }

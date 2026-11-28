@@ -38,8 +38,9 @@ mod memoize_tests;
 mod require_role_tests;
 
 /// A macro for writing HTML inline in Rust.
-/// It compiles down to highly optimized string concatenations at compile time,
-/// and automatically escapes dynamic variables to prevent XSS.
+/// It compiles to code that writes the page into one `String` (text known at
+/// compile time is joined into one write per run), and automatically escapes
+/// dynamic variables to prevent XSS.
 ///
 /// The result is a `rullst::html::Markup`: escaped HTML that a handler can
 /// return directly (`text/html; charset=utf-8`) and that another `html!`
