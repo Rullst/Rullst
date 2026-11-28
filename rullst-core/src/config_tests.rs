@@ -383,6 +383,22 @@ fn early_global_read_returns_defaults_and_server_publication_replaces_them() {
     assert_eq!(later.app.env.as_deref(), Some("production"));
     // The reference taken before the replacement is the one that is stale.
     assert_eq!(early.app.env, None);
+    // The slot keeps the replaced defaults, so they stay reachable rather
+    // than leaked (LeakSanitizer reported them in the 13.0.0-rc.2 admission).
+    let slot = CELL.read().unwrap();
+    let replaced = slot.as_ref().and_then(|slot| slot._replaced).unwrap();
+    assert!(std::ptr::eq(replaced, early));
+}
+
+#[test]
+fn a_first_publication_replaces_nothing() {
+    static CELL: GlobalCell = std::sync::RwLock::new(None);
+    assert_eq!(
+        publish_in(&CELL, &production_config()),
+        GlobalOutcome::Installed
+    );
+    let slot = CELL.read().unwrap();
+    assert!(slot.as_ref().unwrap()._replaced.is_none());
 }
 
 #[test]
