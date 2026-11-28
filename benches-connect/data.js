@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795715249192,
+  "lastUpdate": 1795835264597,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -16411,6 +16411,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 384,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "44facd0393b7d047097cb556f20450c6fb507a4e",
+          "message": "Merge pull request #874 from Rullst/fix/v13-13-0-environment-resolution\n\nfix(core): resolve the configuration and environment before Server starts as Server does",
+          "timestamp": "2026-11-27T23:48:17-03:00",
+          "tree_id": "2e0127a360a7db4660db5666793c845ee5bc4777",
+          "url": "https://github.com/Rullst/Rullst/commit/44facd0393b7d047097cb556f20450c6fb507a4e"
+        },
+        "date": 1795835263282,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 449,
+            "range": "± 24",
             "unit": "ns/iter"
           }
         ]
