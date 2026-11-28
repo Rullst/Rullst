@@ -14,7 +14,7 @@ tutoriais, está em inglês.
 Com o Rust instalado ([rustup.rs](https://rustup.rs/)):
 
 ```bash
-cargo install cargo-rullst --version =13.0.0-rc.1 --locked
+cargo install cargo-rullst --version =13.0.0-rc.2 --locked
 cargo rullst new my_app    # choose the Blank, API or SaaS starter
 cd my_app
 cargo rullst dev           # rebuilds and restarts every time you save

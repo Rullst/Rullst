@@ -1,7 +1,7 @@
 # 41. Tenant-Bound RAG in One Typed Operation
 
 > [!IMPORTANT]
-> Dependency examples pin the v13 prerelease `=13.0.0-rc.1` exactly: Cargo
+> Dependency examples pin the v13 prerelease `=13.0.0-rc.2` exactly: Cargo
 > never selects a prerelease on its own, and the v12 line reached end of life
 > on 16 October 2026 (see the [release record](../v12.md)). Commit Cargo.lock
 > for reproducible builds. Use path dependencies only when intentionally
@@ -20,7 +20,7 @@ dimensions define an index.
 
 ```toml
 [dependencies]
-rullst = { version = "=13.0.0-rc.1", default-features = false, features = ["ai"] }
+rullst = { version = "=13.0.0-rc.2", default-features = false, features = ["ai"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 

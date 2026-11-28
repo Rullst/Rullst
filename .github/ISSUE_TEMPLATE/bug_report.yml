@@ -19,7 +19,7 @@ body:
       description: >-
         The exact versions from `Cargo.lock`, and `cargo rullst --version` if
         the CLI is involved. For unreleased source, the commit SHA.
-      placeholder: rullst 13.0.0-rc.1, cargo-rullst 13.0.0-rc.1
+      placeholder: rullst 13.0.0-rc.2, cargo-rullst 13.0.0-rc.2
     validations:
       required: true
   - type: textarea
@@ -30,7 +30,7 @@ body:
         The Rullst crates your project depends on with their Cargo features,
         and the starter, database or provider involved, if any.
       placeholder: |
-        rullst = { version = "=13.0.0-rc.1", features = ["orm", "strict-postgres", "auth"] }
+        rullst = { version = "=13.0.0-rc.2", features = ["orm", "strict-postgres", "auth"] }
       render: toml
     validations:
       required: true

@@ -7,11 +7,12 @@ limits of each capability, and [`CHANGELOG.md`](CHANGELOG.md) what shipped.
 
 ## In one minute
 
-- **Where v13 is (26 November 2026):** `13.0.0-alpha.1` to `alpha.6` and
+- **Where v13 is (27 November 2026):** `13.0.0-alpha.1` to `alpha.6` and
   `13.0.0-rc.1` were published from 11 October to 26 November 2026;
-  `13.0.0-alpha.6` is the 13.0 feature and public API freeze, and
-  `13.0.0-rc.1` is the first release candidate.
-- **Next:** `13.0.0`, after the maintainer's applications have run rc.1, then
+  `13.0.0-alpha.6` is the 13.0 feature and public API freeze,
+  `13.0.0-rc.1` is the first release candidate, and `13.0.0-rc.2`, prepared
+  on 27 November 2026, fixes two defects found in rc.1.
+- **Next:** `13.0.0`, after the maintainer's applications have run rc.2, then
   [13.1](#next-131). v12 reached end of life on 16 October 2026 (12.3.0).
 - **Rule:** additive work in 13.x minors, breaking changes avoided, no v14 by
   choice ([release rule](#release-rule)).
@@ -20,7 +21,7 @@ limits of each capability, and [`CHANGELOG.md`](CHANGELOG.md) what shipped.
 
 ## Release rule
 
-- **13.0.0-rc.1 takes fixes and documentation,** and the changes the
+- **The 13.0.0 release candidates take fixes and documentation,** and the changes the
   maintainer approves one by one after the freeze (listed under
   [Planned after 13.0.0-alpha.6](#planned-after-1300-alpha6)); a changed
   `.github/public-api/` listing must be one of them, named in the changelog
@@ -44,12 +45,19 @@ limits of each capability, and [`CHANGELOG.md`](CHANGELOG.md) what shipped.
    found in alpha.6 (by its admission, the applications upgraded to it and the
    first-hour and deployment jobs), corrects documentation and carries the
    changes the maintainer approved after the freeze; it adds no feature.
-3. **13.0.0** follows once rc.1 leaves no open defect in the stability scope;
+3. **13.0.0-rc.2** was prepared on 27 November 2026. It fixes two defects
+   found in rc.1, [#858](https://github.com/Rullst/Rullst/issues/858) and
+   [#860](https://github.com/Rullst/Rullst/issues/860)
+   ([Merged into `main` for rc.2](#merged-into-main-for-rc2)); the fix is not
+   trivial and adds a public function, so it is a new release candidate
+   rather than 13.0.0.
+4. **13.0.0** follows once rc.2 leaves no open defect in the stability scope;
    the [maturity tiers](docs/src/maturity.md) and the 13.x support window
-   apply from it. It adds no new code: the maintainer's applications run rc.1
-   in production for about a week, only defects found in rc.1 are fixed, and
-   a fix that is not trivial means a `13.0.0-rc.2`. An independent skeptic
-   review of the changes since rc.1 runs before publication
+   apply from it. It adds no new code: the maintainer's applications run the
+   release candidate in production for a few days to a week, only defects
+   found in it are fixed, and a fix that is not trivial means another
+   release candidate. An independent skeptic
+   review of the changes since rc.2 runs before publication
    ([MAINTAINING](MAINTAINING.md#7-releasing-a-prerelease)), and publication
    needs the maintainer's explicit approval. Performance work does not hold
    13.0.0; it goes to [13.1](#next-131).
@@ -111,6 +119,32 @@ Planned on 21 November 2026 to close rc.1; anything else goes to 13.1:
   ([compatibility policy](docs/src/compatibility-policy.md#keeping-13x-compatible)).
   The comparison page takes the Benchmarks v3 results after their skeptic
   review; the website is published from `main`, so it does not hold rc.1.
+
+#### Merged into `main` for rc.2
+
+After rc.1 was published on 26 November 2026:
+
+- **A configuration read before `Server` starts** no longer hides
+  `Rullst.toml`: `Server` replaces the defaults that an early
+  `RullstConfig::global()` read installed and logs a warning when what was
+  handed out differs ([#858](https://github.com/Rullst/Rullst/issues/858)).
+- **The build-time checks of the local Studio and a loopback Nexus** resolve
+  the environment as `Server` does (the process, then `.env`, then
+  `[app] env`), through the new `rullst::config::project_environment()`
+  ([#860](https://github.com/Rullst/Rullst/issues/860)). Both are in
+  [#874](https://github.com/Rullst/Rullst/pull/874). The maintainer chose an
+  rc.2 with this fix on 27 November 2026, knowing that it adds
+  `project_environment()` and `PartialEq` for the configuration structs to
+  the public API listing of `rullst-core`.
+- Also merged: the Nexus AI setup text
+  ([#871](https://github.com/Rullst/Rullst/pull/871)), the wording fixes
+  reported by the applications upgraded to rc.1
+  ([#882](https://github.com/Rullst/Rullst/pull/882)), tests for the mutants
+  the rc.1 campaigns left
+  ([#872](https://github.com/Rullst/Rullst/pull/872),
+  [#873](https://github.com/Rullst/Rullst/pull/873)), the
+  [How Rullst is verified](docs/src/how-rullst-is-verified.md) page
+  ([#881](https://github.com/Rullst/Rullst/pull/881)) and website updates.
 
 ## Next: 13.1
 
@@ -367,7 +401,8 @@ after its tag.
 | **v13.0.0-alpha.5** | `[x] Published prerelease` | All twenty packages were published on 14 November 2026 from tag `v13.0.0-alpha.5` at `5feda4ac` ([release run 43631881119](https://github.com/Rullst/Rullst/actions/runs/43631881119)) after all 23 required workflows passed on that commit. A first tag at `034df65e` stopped in release verification before publishing anything (`cargo rullst audit` lacked the governed advisory exceptions, #690) and was replaced with the maintainer's approval. The fixes and additions from the applications upgraded to alpha.4; planned as the 13.0 feature and public API freeze, which moved to alpha.6 the same day. See [Delivered in 13.0.0-alpha.5](#delivered-in-1300-alpha5) and the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha5---2026-11-14). |
 | **v13.0.0-alpha.6** | `[x] Published prerelease` | All twenty packages were published on 20 November 2026 from tag `v13.0.0-alpha.6` at `58438b64` ([release run 44753380780](https://github.com/Rullst/Rullst/actions/runs/44753380780)) after all 23 required workflows passed on that commit. Admission of the first candidate, `ef28c0e0`, found two Miri scopes and the packaged distribution's email-login consumer failing; [#773](https://github.com/Rullst/Rullst/pull/773) fixed them before the tag. The 13.0 feature and public API freeze: every pending fix and improvement, the Rust 1.100 toolchain and current dependency majors, the removal of every API still deprecated (in 12.x or during the 13.0 prereleases), smaller dependency graphs and the `#[non_exhaustive]` public API audit. See [Delivered in 13.0.0-alpha.6](#delivered-in-1300-alpha6) and the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-alpha6---2026-11-20). |
 | **v13.0.0-rc.1** | `[x] Published release candidate` | All twenty packages were published on 26 November 2026 from tag `v13.0.0-rc.1` at `9ea50d98` ([release run 45837583222](https://github.com/Rullst/Rullst/actions/runs/45837583222)) after all 23 required workflows passed on that commit; its changelog section keeps the date it was prepared for, 24 November. Admission of the first candidate, `1be0033f`, found a stale threat-model source path and `RUSTSEC-2026-0592` (`url`), fixed by [#862](https://github.com/Rullst/Rullst/pull/862); the fuzzing run of the second, `7ecad3bc`, was cancelled on GitHub's side, and `RUSTSEC-2026-0594` (`cookie`) appeared meanwhile, fixed by [#867](https://github.com/Rullst/Rullst/pull/867). The first release candidate for 13.0.0: fixes, documentation and the changes the maintainer approved after the alpha.6 feature and API freeze. See [Planned after 13.0.0-alpha.6](#planned-after-1300-alpha6) and the [changelog](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md#1300-rc1---2026-11-24). |
-| **v13.0.0** | `[ ] Planned stable` | Follows once rc.1 leaves no open defect in the stability scope; the [maturity tiers](docs/src/maturity.md) apply from this release. |
+| **v13.0.0-rc.2** | `[ ] Release candidate` | Prepared on 27 November 2026 and not yet published; the coordinator records the tag, release run and publication here. Twenty packages; it fixes [#858](https://github.com/Rullst/Rullst/issues/858) and [#860](https://github.com/Rullst/Rullst/issues/860), found in rc.1. |
+| **v13.0.0** | `[ ] Planned stable` | Follows once rc.2 leaves no open defect in the stability scope; the [maturity tiers](docs/src/maturity.md) apply from this release. |
 | **v13.x** | `[ ] After 13.0.0` | Compatible minors after 13.0.0: 13.1 is planned under [Next: 13.1](#next-131) and later ideas under [Later](#later-13x-no-date); breaking changes are avoided ([release rule](#release-rule)). |
 
 ## History

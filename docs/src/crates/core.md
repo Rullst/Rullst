@@ -318,7 +318,7 @@ remains separate.
   `server::read_project_setting` apply the same precedence for first-party
   crates such as `rullst-mail`, and `ProjectSettings::environment` applies the
   `Server` precedence for `RULLST_ENV`/`APP_ENV`/`[app].env`; they are not a
-  stable extension point. `config::project_environment()` (since 13.0.0) resolves
+  stable extension point. `config::project_environment()` (since 13.0.0-rc.2) resolves
   the environment of the working directory with that precedence without a
   `Server`.
 - **Bounded cache metadata:** Memory and Redis expose value length and TTL for

@@ -16,7 +16,7 @@ Release builds do not start it; runtime `RULLST_ENV` or legacy `APP_ENV` values
 cannot override that compile-time boundary. A debug build refuses to build the
 loopback boundary when the environment `Server` resolves for the project (the
 process `RULLST_ENV`, then `APP_ENV`, then either one from `.env`, then
-`[app] env` in `Rullst.toml`; since 13.0.0, earlier it read the process
+`[app] env` in `Rullst.toml`; since 13.0.0-rc.2, earlier it read the process
 variables only) is staging, production or invalid.
 
 To watch a deployed application, mount the read-only
@@ -25,7 +25,7 @@ v13): it reports request rates, latency, errors, queues, N+1
 findings and (since 13.0.0-alpha.6) sampled request traces and the security
 radar behind a token or the application's own sign-in. The standalone
 `rullst-studio` binary
-(`cargo install rullst-studio --version =13.0.0-rc.1 --no-default-features --features remote --locked`,
+(`cargo install rullst-studio --version =13.0.0-rc.2 --no-default-features --features remote --locked`,
 then `rullst-studio` or `cargo rullst studio --remote`) reads it for several projects from your
 machine, with a project switcher and encrypted local tokens; see
 [Watch your projects from Studio](production-monitoring.md#watch-your-projects-from-studio).

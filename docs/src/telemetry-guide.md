@@ -93,7 +93,7 @@ never selects a prerelease on its own):
 
 ```toml
 [dependencies]
-rullst-core = { version = "=13.0.0-rc.1", features = ["telemetry"] }
+rullst-core = { version = "=13.0.0-rc.2", features = ["telemetry"] }
 ```
 
 ```env

@@ -9,13 +9,13 @@ use super::*;
 
 #[tokio::test]
 async fn test_global_config_access() {
+    // A parallel test may publish a configuration over the defaults between
+    // two reads (since 13.0.0-rc.2), so the two references may differ; both
+    // keep the default security settings, which no test here changes.
     let config1 = RullstConfig::global();
     let config2 = RullstConfig::global();
-    assert!(
-        std::ptr::eq(config1, config2),
-        "global() should return the same instance"
-    );
     assert_eq!(config1.security.csrf_same_site, "Lax");
+    assert_eq!(config2.security.csrf_same_site, "Lax");
 }
 
 #[test]

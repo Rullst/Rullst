@@ -15,7 +15,7 @@ use crate::footprint::Weights;
 
 /// The `cargo-rullst` version the install commands pin: the current release in
 /// `cargo-rullst/Cargo.toml` (`validate-site.py` checks it).
-pub const INSTALL_VERSION: &str = "13.0.0-rc.1";
+pub const INSTALL_VERSION: &str = "13.0.0-rc.2";
 
 /// The `rullst` crate these pages are made with (build.rs reads it from `site/Cargo.lock`), and
 /// the `cargo-rullst` version the deployment installs to weigh the published landing pages.

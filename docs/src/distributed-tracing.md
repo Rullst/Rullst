@@ -13,12 +13,12 @@ standard OpenTelemetry Collector 0.161.0 over verified TLS. Hosted workspace/pla
 
 ```toml
 [dependencies]
-rullst = { version = "=13.0.0-rc.1", default-features = false, features = ["telemetry"] }
+rullst = { version = "=13.0.0-rc.2", default-features = false, features = ["telemetry"] }
 tracing = "0.1.44"
 tracing-subscriber = "0.3"
 ```
 
-This version is the 13.0.0-rc.1 prerelease, which `cargo add rullst` does not
+This version is the 13.0.0-rc.2 prerelease, which `cargo add rullst` does not
 select; name it explicitly.
 
 ```rust,no_run

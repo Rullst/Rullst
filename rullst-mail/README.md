@@ -64,9 +64,9 @@ on 16 October 2026):
 
 ```toml
 [dependencies]
-rullst-mail = "=13.0.0-rc.1"
+rullst-mail = "=13.0.0-rc.2"
 # With SMTP delivery:
-# rullst-mail = { version = "=13.0.0-rc.1", features = ["mail-smtp"] }
+# rullst-mail = { version = "=13.0.0-rc.2", features = ["mail-smtp"] }
 ```
 
 The default build has no optional feature and includes the `Mail` facade, the
@@ -508,7 +508,7 @@ version pin):
 
 ```toml
 [dependencies]
-rullst-mail = { version = "=13.0.0-rc.1", features = ["aws-ses"] }
+rullst-mail = { version = "=13.0.0-rc.2", features = ["aws-ses"] }
 aws-config = "1.11"
 ```
 

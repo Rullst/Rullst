@@ -9,7 +9,7 @@ separada, um cliente mobile ou uma integração.
 [índice completo da trilha de aprendizado de APIs](../../api-reference.md#httprest-a-connected-learning-path).
 
 Este guia rápido cria um endpoint JSON executável, sem banco de dados nem
-provedor de IA. Ele usa o pré-lançamento `13.0.0-rc.1` da v13; a linha v12
+provedor de IA. Ele usa o pré-lançamento `13.0.0-rc.2` da v13; a linha v12
 chegou ao fim da vida útil (veja o [registro da versão](../../v12.md)). Você
 precisa do Rust 1.96.0 ou mais recente, e recomendamos a versão estável mais
 recente do Rust (o [Tutorial 01](01-hello-world.md#1-instale-o-rust-e-o-cargo)
@@ -20,7 +20,7 @@ mostra como instalá-lo).
 ```bash
 cargo new first_rullst_api
 cd first_rullst_api
-cargo add rullst@=13.0.0-rc.1
+cargo add rullst@=13.0.0-rc.2
 cargo add tokio --features macros,rt-multi-thread
 cargo add serde --features derive
 ```

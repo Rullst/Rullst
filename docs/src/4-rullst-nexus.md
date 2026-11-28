@@ -229,7 +229,7 @@ which a dual-stack `::` listener reports for IPv4 clients, counts as IPv4); rele
 then the working directory's `.env`. Missing connection metadata
 is denied, and neither `RULLST_ENV` nor legacy `APP_ENV` can turn credential-free access on in a release
 binary. A debug build whose environment is staging, production or invalid
-uses the application's sign-in or credentials as well; since 13.0.0 that
+uses the application's sign-in or credentials as well; since 13.0.0-rc.2 that
 environment is the one `Server` resolves (the process `RULLST_ENV`, then
 `APP_ENV`, then either one from `.env`, then `[app] env`), where 13.0.0-rc.1
 read the process variables only at build time. Applications can call `basic_from_env()` directly in debug when testing
@@ -507,7 +507,7 @@ the providers `rullst-ai` reads from the environment (`GEMINI_API_KEY`,
 offline schema helper when none is configured. The keys are read from the
 process environment only: a line in `.env` is not picked up, because `Server`
 and `cargo rullst dev` do not load `.env` into the process (the chat's setup
-answer says so since 13.0.0; it used to send the reader to `.env`). Since 13.0.0-alpha.4 it is an
+answer says so since 13.0.0-rc.2; it used to send the reader to `.env`). Since 13.0.0-alpha.4 it is an
 optional feature:
 
 | Dependency | Feature that enables the assistant |
@@ -524,7 +524,7 @@ The security and telemetry pages report the assistant as not enabled. With
 the feature, routes and behaviour are those of earlier releases:
 
 ```toml
-rullst = { version = "=13.0.0-rc.1", default-features = false, features = ["nexus-ai", "strict-sqlite"] }
+rullst = { version = "=13.0.0-rc.2", default-features = false, features = ["nexus-ai", "strict-sqlite"] }
 ```
 
 ## Content Security Policy

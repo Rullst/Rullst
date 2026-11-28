@@ -374,7 +374,7 @@ prerelease on its own). The v12 line (`rullst-orm@12`) reached end of life on
 16 October 2026:
 
 ```bash
-cargo add rullst-orm@=13.0.0-rc.1 -F strict-sqlite
+cargo add rullst-orm@=13.0.0-rc.2 -F strict-sqlite
 cargo add tokio -F full
 ```
 
@@ -694,7 +694,7 @@ async fn for_lesson(lesson_id: Option<i64>) -> Result<Vec<Progress>, rullst_orm:
 A standalone ORM dependency compiles only the SQLx drivers it selects:
 
 ```toml
-rullst-orm = { version = "=13.0.0-rc.1", default-features = false, features = ["strict-postgres"] }
+rullst-orm = { version = "=13.0.0-rc.2", default-features = false, features = ["strict-postgres"] }
 ```
 
 `strict-mysql` and `strict-sqlite` select their respective backends, and
@@ -727,7 +727,7 @@ enums specifically require `strict-postgres`, because SQLx's dynamic `Any`
 driver cannot decode custom PostgreSQL types:
 
 ```toml
-rullst-orm = { version = "=13.0.0-rc.1", features = ["strict-postgres"] }
+rullst-orm = { version = "=13.0.0-rc.2", features = ["strict-postgres"] }
 ```
 
 Then derive one label contract and use it in schema code:
