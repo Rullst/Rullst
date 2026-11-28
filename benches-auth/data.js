@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795891859671,
+  "lastUpdate": 1795895659474,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -26755,6 +26755,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3251,
             "range": "± 143",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "58fec9136f984fe2289986f9e753ef9c61a3ddc8",
+          "message": "Merge pull request #893 from Rullst/docs/site-other-languages\n\ndocs(site): show the frameworks of other languages in the comparison",
+          "timestamp": "2026-11-28T16:37:39-03:00",
+          "tree_id": "e794617895d4d9b2006c397c2470607d74155831",
+          "url": "https://github.com/Rullst/Rullst/commit/58fec9136f984fe2289986f9e753ef9c61a3ddc8"
+        },
+        "date": 1795895658338,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 872,
+            "range": "± 60",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 661,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1531,
+            "range": "± 128",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3692,
+            "range": "± 15",
             "unit": "ns/iter"
           }
         ]
