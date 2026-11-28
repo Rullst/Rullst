@@ -16,7 +16,7 @@ Release builds do not start it; runtime `RULLST_ENV` or legacy `APP_ENV` values
 cannot override that compile-time boundary. A debug build refuses to build the
 loopback boundary when the environment `Server` resolves for the project (the
 process `RULLST_ENV`, then `APP_ENV`, then either one from `.env`, then
-`[app] env` in `Rullst.toml`; since 13.0.0, earlier it read the process
+`[app] env` in `Rullst.toml`; since 13.0.0-rc.2, earlier it read the process
 variables only) is staging, production or invalid.
 
 To watch a deployed application, mount the read-only

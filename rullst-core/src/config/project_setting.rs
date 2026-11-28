@@ -67,7 +67,7 @@ pub(crate) fn project_setting_in(
 /// Use it where a decision depends on the environment before a `Server`
 /// exists, such as when a router is built. [`Environment::detect`] reads the
 /// process variables only and so misses an environment set in `.env` or
-/// `Rullst.toml`. Added in 13.0.0.
+/// `Rullst.toml`. Added in 13.0.0-rc.2.
 ///
 /// # Errors
 /// [`ConfigError::InvalidEnvironment`] for an unknown name,

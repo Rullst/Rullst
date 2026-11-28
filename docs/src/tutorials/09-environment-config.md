@@ -69,7 +69,7 @@ the error can be logged without exposing `app_key` or connection strings.
 
 `RullstConfig::global()` returns the configuration the `Server` loaded from
 `Rullst.toml`. A read before the `Server` starts returns the defaults, and the
-`Server` then replaces them (since 13.0.0; in 13.0.0-rc.1 it kept them, so
+`Server` then replaces them (since 13.0.0-rc.2; in 13.0.0-rc.1 it kept them, so
 `[app] env` and every other `Rullst.toml` setting were lost), so every later
 call sees the real configuration. A reference taken before still holds the
 defaults, and the `Server` logs a warning that names the early read when the
@@ -78,7 +78,7 @@ installed a configuration that differs from `Rullst.toml`, which stays the
 global one. Read the configuration after the `Server` starts.
 
 Code that must decide before a `Server` exists, such as building a router,
-calls `rullst::config::project_environment()` (since 13.0.0). It reads the
+calls `rullst::config::project_environment()` (since 13.0.0-rc.2). It reads the
 process variables, `./.env` and `./Rullst.toml` in the `Server` order and
 returns an error for an invalid value or an unreadable file. Studio's and
 Nexus's loopback boundary uses it at build time and refuses to build when it
