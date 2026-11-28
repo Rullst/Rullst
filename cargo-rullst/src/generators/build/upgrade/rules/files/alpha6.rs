@@ -1,8 +1,10 @@
 //! Manifest and `Rullst.toml` rules for 13.0.0-alpha.6: the session
 //! registry and `jsonwebtoken` facts that Rust rules depend on,
-//! `ed25519-dalek` 2 beside Rullst's 3 (`V13-ED25519-DALEK-3`) and SQLite
-//! without a journal-mode setting (`V13-SQLITE-WAL-AVAILABLE`).
+//! `ed25519-dalek` 2 beside Rullst's 3 (`V13-ED25519-DALEK-3`), SQLite
+//! without a journal-mode setting (`V13-SQLITE-WAL-AVAILABLE`) and the static
+//! file lists `V13-CSRF-STATIC-PREFIXES` compares paths with.
 
+use super::super::alpha6_defaults::StaticPaths;
 use super::super::catalog::ED25519_DALEK_3;
 use super::super::{SourceFinding, WorkspaceFacts};
 use super::features::{feature_reference, has_feature};
@@ -187,4 +189,24 @@ pub(super) fn sqlite_without_journal_mode(root: &Path) -> Option<(&'static str, 
         })?;
         Some((name, line))
     })
+}
+
+/// The `[security]` `csrf_static_prefixes` and `csrf_static_paths` of
+/// `root`'s `Rullst.toml`, read as `Server` reads the file
+/// ([`RullstConfig::from_toml`], then [`RullstConfig::validate`]): Core's
+/// defaults without the file or a key, and a list in the file replaces its
+/// default. A file that `Server` refuses keeps the defaults, with the reason.
+///
+/// [`RullstConfig::from_toml`]: rullst_core::config::RullstConfig::from_toml
+/// [`RullstConfig::validate`]: rullst_core::config::RullstConfig::validate
+pub(in super::super) fn csrf_static_paths(root: &Path) -> StaticPaths {
+    let Some(text) = read_small(&root.join("Rullst.toml")) else {
+        return StaticPaths::default();
+    };
+    match rullst_core::config::RullstConfig::from_toml(&text)
+        .and_then(|config| config.validate().map(|()| config))
+    {
+        Ok(config) => StaticPaths::project(config.security),
+        Err(error) => StaticPaths::unread(error),
+    }
 }

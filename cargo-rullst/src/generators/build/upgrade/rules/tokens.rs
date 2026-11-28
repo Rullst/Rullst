@@ -183,6 +183,15 @@ impl Scanner<'_, '_> {
         self.out.add(rule, line);
     }
 
+    /// A `V13-CSRF-STATIC-PREFIXES` location, with the note of a project
+    /// `Rullst.toml` the rule could not use.
+    fn static_hit(&mut self, rule: &'static Rule, line: usize) {
+        match self.context.facts.csrf_static.note() {
+            Some(note) => self.out.add_note(rule, line, note.to_string()),
+            None => self.hit(rule, line),
+        }
+    }
+
     fn level(&mut self, stream: TokenStream, macro_name: Option<&str>) {
         let tokens: Vec<TokenTree> = stream.into_iter().collect();
         match macro_name {
@@ -456,8 +465,10 @@ impl Scanner<'_, '_> {
         if let Some(rule) = super::alpha6_gaps::session_call_rule(&names, self.context.facts) {
             self.hit(rule, at);
         }
-        if let Some(rule) = super::alpha6_defaults::call_rule(&names, &args) {
-            self.hit(rule, at);
+        if let Some(rule) =
+            super::alpha6_defaults::call_rule(&names, &args, &self.context.facts.csrf_static)
+        {
+            self.static_hit(rule, at);
         }
         if let Some(rule) =
             super::alpha6_jiff::call_rule(&names, &args, self.context.text, &self.chrono)
@@ -526,8 +537,13 @@ impl Scanner<'_, '_> {
     }
 
     fn method(&mut self, name: &str, chain: &[String], args: TokenStream, at: usize) {
-        if let Some(rule) = super::alpha6_defaults::method_rule(name, &args, self.context.text) {
-            self.hit(rule, at);
+        if let Some(rule) = super::alpha6_defaults::method_rule(
+            name,
+            &args,
+            self.context.text,
+            &self.context.facts.csrf_static,
+        ) {
+            self.static_hit(rule, at);
         }
         if let Some(rule) = super::alpha6_defaults::layer_rule(name, &args) {
             self.hit(rule, at);

@@ -23,6 +23,7 @@ mod alpha6_passkeys;
 mod alpha6_public_deps;
 mod cron_corpus;
 mod csrf_scripts;
+mod csrf_static_config;
 mod data;
 mod docs;
 mod files;

@@ -25,6 +25,7 @@ mod htmx;
 mod script_tokens;
 #[path = "files/scripts.rs"]
 mod scripts;
+pub(super) use alpha6::csrf_static_paths;
 #[cfg(test)]
 pub(super) use csrf_scripts::{
     compared_lines as csrf_compared_lines, comparisons as csrf_comparisons,
