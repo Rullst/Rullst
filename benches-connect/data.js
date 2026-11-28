@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795891910977,
+  "lastUpdate": 1795895717133,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -16561,6 +16561,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 271,
             "range": "± 18",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "58fec9136f984fe2289986f9e753ef9c61a3ddc8",
+          "message": "Merge pull request #893 from Rullst/docs/site-other-languages\n\ndocs(site): show the frameworks of other languages in the comparison",
+          "timestamp": "2026-11-28T16:37:39-03:00",
+          "tree_id": "e794617895d4d9b2006c397c2470607d74155831",
+          "url": "https://github.com/Rullst/Rullst/commit/58fec9136f984fe2289986f9e753ef9c61a3ddc8"
+        },
+        "date": 1795895715863,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 376,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
