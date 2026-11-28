@@ -97,17 +97,28 @@ pub fn card(lang: Lang) -> Markup {
 /// The footer line: the Rullst version these pages are made with, and `extra` after it.
 pub fn line(lang: Lang, extra: Option<Markup>) -> Markup {
     if lang.is_pt() {
-        html! { <p class="made-with-line">"Feito com "<a href={SOURCE}>"Rullst "{RULLST_VERSION}</a>": estas páginas são escritas pela macro "<code>"html!"</code>" do Rullst."{extra.map(|extra| html! { " "{extra} })}</p> }
+        html! { <p class="made-with-line">"Feito com "<a href={SOURCE}>"Rullst "{RULLST_VERSION}</a>": estas páginas são escritas em Rust pela macro "<code>"html!"</code>" do Rullst e publicadas como arquivos estáticos."{extra.map(|extra| html! { " "{extra} })}</p> }
     } else {
-        html! { <p class="made-with-line">"Made with "<a href={SOURCE}>"Rullst "{RULLST_VERSION}</a>": these pages are written by Rullst's "<code>"html!"</code>" macro."{extra.map(|extra| html! { " "{extra} })}</p> }
+        html! { <p class="made-with-line">"Made with "<a href={SOURCE}>"Rullst "{RULLST_VERSION}</a>": these pages are written in Rust by Rullst's "<code>"html!"</code>" macro and published as static files."{extra.map(|extra| html! { " "{extra} })}</p> }
     }
 }
 
-/// The short form for the footers of the comparison and privacy pages.
-pub fn short(lang: Lang) -> Markup {
-    if lang.is_pt() {
-        html! { <span class="made-with-line">"Feito com "<a href={SOURCE}>"Rullst "{RULLST_VERSION}</a></span> }
+/// The footer badge of every page: that the page is made with Rullst, how, its measured weight
+/// (`weight`, when its report passed the checks) and a link to its source.
+pub fn badge(lang: Lang, weight: Option<Markup>) -> Markup {
+    let (title, source) = if lang.is_pt() {
+        ("Esta página é feita com Rullst", "Veja como é feita ↗")
     } else {
-        html! { <span class="made-with-line">"Made with "<a href={SOURCE}>"Rullst "{RULLST_VERSION}</a></span> }
+        ("This page is made with Rullst", "See how it is made ↗")
+    };
+    html! {
+        <aside class="built-with" aria-labelledby="built-with-title">
+            <span class="built-with-mark" aria-hidden="true">"R"<span>"."</span></span>
+            <div class="built-with-body">
+                <p class="built-with-title" id="built-with-title">{title}</p>
+                {line(lang, weight)}
+            </div>
+            <a class="built-with-source" href={SOURCE}>{source}</a>
+        </aside>
     }
 }
